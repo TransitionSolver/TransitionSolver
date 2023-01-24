@@ -1,3 +1,30 @@
+# Requirements and compatibility
+
+## Operating system
+
+`TransitionSolver` is written in Python, so it should be cross-platform. However, the example scripts will only work in Windows, specifically a version with Windows Subsystem for Linux. I believe all that needs to change to run the example scripts on Linux is the removal of the `'wsl'` command in suprocess.call. Compatibility of these example scripts on macOS is unknown.
+
+## Languages
+
+Python 3.9 was used to develop `TransitionSolver`. At the very least, Python 3.5 is required for type hinting, however a later version may be required due to some other feature used in the program. The oldest compatible version is currently unknown.
+
+I believe `PhaseTracer` requires at least C++11.
+
+## Packages and modules
+
+The following packages are required for `TransitionSolver`:
+
+* A modified version of `CosmoTransitions` that fixes many numerical errors.
+* `PhaseTracer` in the `TransitionSolverInterface` branch.
+
+The following non-core Python modules are required for `TransitionSolver`:
+
+* `matplotlib`
+* `numpy`
+* `scipy`
+
+See [here](https://github.com/PhaseTracer/PhaseTracer#requirements) for the requirements for running `PhaseTracer`.
+
 # How to run
 Two example scripts are provided: `PipelineExample.py` and `BarebonesExample.py`. These can be run from the terminal but accept no arguments. `PipelineExample.py` has two example functions that perform the same task in slightly different ways: `example` and `example_parameterPointFile`. See their respective documentation for details. To run, use the commands:
 
@@ -17,31 +44,6 @@ Simply import `NotifyHandler` into a script to enable a global event handler. So
 	notifyHandler.addEvent('ActionSampler-on_create', configureActionSampler)
 
 Then, when `ActionSampler` is created, the `configureActionSampler` function will be called. This allows for very convenient configuration of objects that are not created directly from the main script. Note that the existing queried events currently all have a tag of the form `<className>-<eventName>`, and the event queried from the creation of an object always has the `eventName` of `on_create`. This is just a convention, and all other events can be named arbitrarily.
-
-# Compatibility
-
-## Operating system
-
-`TransitionSolver` is written in Python, so it should be cross-platform. However, the example scripts will only work in Windows, specifically a version with Windows Subsystem for Linux. I believe all that needs to change to run the example scripts on Linux is the removal of the `'wsl'` command in suprocess.call. Compatibility of these example scripts on macOS is unknown.
-
-## Languages
-
-Python 3.9 was used to develop `TransitionSolver`. At the very least, Python 3.5 is required for type hinting, however a later version may be required due to some other feature used in the program. The oldest compatible version is currently unknown.
-
-## Packages and modules
-
-The following packages are required for `TransitionSolver`:
-
-* A modified version of `CosmoTransitions` that fixes many numerical errors.
-* `PhaseTracer` in the `TransitionSolverInterface` branch.
-
-The following non-core Python modules are required for `TransitionSolver`:
-
-* `matplotlib`
-* `numpy`
-* `scipy`
-
-See [here](https://github.com/PhaseTracer/PhaseTracer#requirements) for the requirements for running `PhaseTracer`.
 
 # Support
 For assistance, please contact: [lachlan.morris@monash.edu](mailto:lachlan.morris@monash.edu).
