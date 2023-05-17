@@ -767,7 +767,7 @@ class TransitionAnalyser():
                 # The 1 suffix is for T[simIndex+1] and the 2 suffix is for T[simIndex] (noting that T[simIndex+1] is
                 # smaller than T[simIndex]). So these points are ordered with ascending temperature.
                 T1, T2 = self.actionSampler.T[simIndex+1], self.actionSampler.T[simIndex]
-                # Note that rhof2 and rhof2 suffixes are backwards!
+                # Note that rhof1 and rhof2 suffixes are backwards!
                 rhoV1 = rhof2 - radDensity*self.actionSampler.T[simIndex+1]**4 - self.groundStateEnergyDensity
                 rhoV2 = rhof1 - radDensity*self.actionSampler.T[simIndex]**4 - self.groundStateEnergyDensity
 
@@ -1082,6 +1082,32 @@ class TransitionAnalyser():
             plt.rcParams.update({"text.usetex": True})
 
             textY = 0.1
+            rhoV = self.actionSampler.subRhoV
+            rhoR = [radDensity*t**4 for t in self.actionSampler.subT]
+            rhoTot = [rhoR[i]+rhoV[i] for i in range(len(self.actionSampler.subT))]
+            plt.plot(self.actionSampler.subT, rhoV)
+            plt.plot(self.actionSampler.subT, rhoR)
+            plt.plot(self.actionSampler.subT, rhoTot)
+            plt.xlabel('$T$')
+            plt.ylabel('$\\rho$')
+            plt.legend(['$\\rho_V$', '$\\rho_R$', '$\\rho_{\\mathrm{tot}}$'])
+            plt.show()
+
+            drhoVdT = (rhoV[-2] - rhoV[-1]) / (self.actionSampler.subT[-2] - self.actionSampler.subT[-1])
+            extrapRhoV = lambda x: rhoV[-1] + (x - self.actionSampler.subT[-1])*drhoVdT
+            extraT = list(np.linspace(2*self.actionSampler.subT[-1]-self.actionSampler.subT[-2], 0, 100))
+            fullT = self.actionSampler.subT + extraT
+            fullRhoR = rhoR + [radDensity*t**4 for t in extraT]
+            fullRhoV = rhoV + [extrapRhoV(t) for t in extraT]
+            fullRhoTot = [fullRhoR[i] + fullRhoV[i] for i in range(len(fullT))]
+            plt.plot(fullT, fullRhoV)
+            plt.plot(fullT, fullRhoR)
+            plt.plot(fullT, fullRhoTot)
+            plt.axvline(self.actionSampler.subT[-1], ls='--')
+            plt.xlabel('$T$')
+            plt.ylabel('$\\rho$')
+            plt.legend(['$\\rho_V$', '$\\rho_R$', '$\\rho_{\\mathrm{tot}}$'])
+            plt.show()
 
             if Tf > 0:
                 maxIndex = len(self.actionSampler.subT)
@@ -1237,6 +1263,11 @@ class TransitionAnalyser():
                     highTempIndex = i
                     break
 
+            # If the mean bubble separation is always larger than it is at the lowest sampled temperature, plot the
+            # entire range of sampled temperatures.
+            if highTempIndex == len(self.actionSampler.subT)-1:
+                highTempIndex = 0
+
             plt.figure(figsize=(12, 8))
             plt.plot(self.actionSampler.subT, averageBubbleRadius, linewidth=2.5)
             plt.plot(self.actionSampler.subT, meanBubbleSeparationArray, linewidth=2.5)
@@ -1248,7 +1279,7 @@ class TransitionAnalyser():
             if Te > 0: plt.axvline(Te, c='b', ls=':')
             if Tf > 0: plt.axvline(Tf, c='k', ls=':')
             plt.xlim(self.actionSampler.subT[-1], self.actionSampler.subT[highTempIndex])
-            plt.ylim(0, meanBubbleSeparationArray[-1])
+            plt.ylim(0, 1.2*max(meanBubbleSeparationArray[-1], averageBubbleRadius[-1]))
             plt.tick_params(size=5, labelsize=16)
             plt.margins(0, 0)
             plt.show()
@@ -2007,7 +2038,7 @@ class TransitionAnalyser():
         Tsep = upperLimit - Tmax
 
         # TODO: this assumes the rhoV contribution monotonically increases with decreasing T below Tc.
-        # This could hold even for regular (non-subcritical) transitions., particularly those with a low Tc.
+        # This could hold even for regular (non-subcritical) transitions, particularly those with a low Tc.
         energyAtTmax = energyEra(Tmax)
         if energyAtTmax > 0:
             rhoVatTmax = energyAtTmax + radDensity*Tmax**4
@@ -2107,13 +2138,31 @@ class TransitionAnalyser():
                 # Tmin must be non-zero, otherwise we would have rhoR = 0 and therefore vacuum domination. So we can
                 # extrapolate rhoV to find Teq.
 
-                drhoV = (energyEra(Tmax-Tsep) + radDensity*(Tmax - Tsep)**4 - rhoVatTmin) / Tsep
+                #drhoV = (energyEra(Tmax-Tsep) + radDensity*(Tmax - Tsep)**4 - rhoVatTmin) / Tsep
+                Tsample = newTmin + Tsep
+                rhoVsample = energyEra(Tsample) + radDensity*Tsample**4
+                drhoVdT = (rhoVsample - rhoVatTmin) / Tsep
 
                 # 0 at Teq, +ve for vacuum domination, -ve for radiation domination.
-                approxEnergyEra = lambda T: rhoVatTmin + (T - newTmin)*drhoV - radDensity*T**4
+                approxEnergyEra = lambda T: rhoVatTmin + (T - newTmin)*drhoVdT - radDensity*T**4
 
-                # Negate the result to indicate this value is obtained via extrapolation.
-                Teq = -scipy.optimize.toms748(approxEnergyEra, 0, newTmin)
+                if approxEnergyEra(0) < 0:  # => rhoV(0) < 0.
+                    # We can't bracket a root, so use fsolve instead. There may not be a solution.
+                    root = scipy.optimize.fsolve(energyEra, newTmin)
+
+                    # If there is a solution.
+                    if len(root) > 0 and energyEra(root[0]) >= 1e-10:
+                        if self.bDebug:
+                            print('Found Teq using unbracketed root finding.')
+                        # Negate the result to indicate this value is obtained via extrapolation.
+                        Teq = -root[0]
+                    else:
+                        if self.bDebug:
+                            print('Unable to find Teq from unbracketed root finding.')
+                        Teq = 0
+                else:
+                    # Negate the result to indicate this value is obtained via extrapolation.
+                    Teq = -scipy.optimize.toms748(approxEnergyEra, 0, newTmin)
 
                 if self.bDebug:
                     print('Predicting Teq =', -Teq)
