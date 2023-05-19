@@ -26,6 +26,8 @@ The following non-core Python modules are required for `TransitionSolver`:
 See [here](https://github.com/PhaseTracer/PhaseTracer#requirements) for the requirements for running `PhaseTracer`.
 
 # How to run
+Note: All scripts should be run from the root directory: `TransitionSolver/`.
+
 Two example scripts are provided in the `examples` subdirectory: `PipelineExample.py` and `BarebonesExample.py`. These examples do not support any arguments from the command line, so modification must be done within the code. These examples can be run from the terminal but accept no arguments. `PipelineExample.py` has two example functions that perform the same task in slightly different ways: `example` and `example_parameterPointFile`. See their respective documentation for details. To run, use the commands:
 
 	python -m examples.PipelineExample
