@@ -8,7 +8,7 @@ import pathlib
 
 
 # The relative file path to PhaseTracer. This is user specific.
-PHASETRACER_DIR = '../../../../../Software/PhaseTracer/'
+PHASETRACER_DIR = 'C:/Work/Software/PhaseTracer/'
 
 
 def writePhaseHistoryReport(fileName: str, paths: list[TransitionGraph.ProperPath], phaseStructure:
@@ -35,7 +35,7 @@ def writePhaseHistoryReport(fileName: str, paths: list[TransitionGraph.ProperPat
 
 def main():
     # The folder where we will write the output.
-    outputFolder = '../output/example3'
+    outputFolder = 'output/example3'
     # Create the output folder if it doesn't exist already.
     pathlib.Path(str(pathlib.Path(outputFolder))).mkdir(parents=True, exist_ok=True)
 
