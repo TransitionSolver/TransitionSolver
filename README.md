@@ -26,10 +26,25 @@ The following non-core Python modules are required for `TransitionSolver`:
 See [here](https://github.com/PhaseTracer/PhaseTracer#requirements) for the requirements for running `PhaseTracer`.
 
 # How to run
-Two example scripts are provided: `PipelineExample.py` and `BarebonesExample.py`. These can be run from the terminal but accept no arguments. `PipelineExample.py` has two example functions that perform the same task in slightly different ways: `example` and `example_parameterPointFile`. See their respective documentation for details. To run, use the commands:
+Two example scripts are provided in the `examples` subdirectory: `PipelineExample.py` and `BarebonesExample.py`. These examples do not support any arguments from the command line, so modification must be done within the code. These examples can be run from the terminal but accept no arguments. `PipelineExample.py` has two example functions that perform the same task in slightly different ways: `example` and `example_parameterPointFile`. See their respective documentation for details. To run, use the commands:
 
-	python PipelineExample.py
-	python BarebonesExample.py
+	python -m examples.PipelineExample
+	python -m examples.BarebonesExample
+
+There is now a new way to run `TransitionSolver`, using `CommandLineInterface.py`, again in the `examples` subdirectory. This accepts arguments from the command line. Two methods for using this script are:
+
+	python -m examples.CommandLineInterface <modelLabel> <outputFolderName> <inputFileName>
+	python -m examples.CommandLineInterface <modelLabel> <outputFolderName> <parameter value 1> <parameter value 2> ... <parameter value n>
+	
+The first method reads parameter values from an input text file `<inputFileName>`. It must be a `.txt` file. The second method reads parameter values 1 to n from the command line. Both methods save results in the folder specified by `<outputFolderName>`. The argument `<modelLabel>` specifies which model to use. Currently supported model labels are `rss` for the real scalar singlet model, `rss_ht` for the high temperature expansion, and `toy` for the toy model. Here are some examples that can be run using the first method:
+
+	python -m examples.CommandLineInterface rss output/RSS/RSS_BP<n> input/RSS/RSS_BP<n>.txt
+	python -m examples.CommandLineInterface rss_ht output/RSS/RSS_BP1 input/RSS/RSS_BP1.txt
+	python -m examples.CommandLineInterface toy output/Toy/Toy_BP<n> input/Toy/Toy_BP<n>.txt
+
+Here, `<n>` ranges from 1 to 5 because only five benchmarks for the `rss` and `toy` models have been provided in the `input` subdirectory. The `rss_ht` model currently only has one benchmark. Equivantly, using the second method for running `CommandLineInterface`, one could do e.g.
+
+	python -m examples.CommandLineInterface toy output/Toy/Toy_BP5 0.1040047755 250 3.5 0.2
 
 # Defining a model
 Unfortunately, defining a model currently requires double effort: it must be defined in `TransitionSolver` and `PhaseTracer`. In `PhaseTracer`, the model should extend either `Potential` or `OneLoopPotential`. In `TransitionSolver`, the model should extend `AnalysablePotential`, which in turn extends `CosmoTransitions`' `generic_potential`. See `ToyModel.hpp` in `PhaseTracer/EffectivePotential/include/models` and `ToyModel.py` in `TransitionSolver` for a simple example model.
