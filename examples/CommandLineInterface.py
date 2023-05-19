@@ -45,7 +45,7 @@ def main(potentialClass, outputFolder, PT_script, PT_params, parameterPoint):
 
     # Load the relative path to PhaseTracer from the config file.
     try:
-        with open('../config/config_user.json', 'r') as f:
+        with open('config/config_user.json', 'r') as f:
             config = json.load(f)
     except FileNotFoundError:
         print('Unable to load configuration file.')
@@ -108,6 +108,8 @@ def main(potentialClass, outputFolder, PT_script, PT_params, parameterPoint):
 
 if __name__ == "__main__":
     import sys
+
+    print(sys.argv)
 
     # Check that the user has included enough parameters in the run command.
     if len(sys.argv) < 4:
