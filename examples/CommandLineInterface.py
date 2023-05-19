@@ -31,7 +31,7 @@ def writePhaseHistoryReport(fileName: str, paths: list[TransitionGraph.ProperPat
         print('Failed to write report')
 
 
-def main(potentialClass, outputFolder, PT_script, PT_params, parameterPoint, windows):
+def main(potentialClass, outputFolder, PT_script, PT_params, parameterPoint):
     # Create the output folder if it doesn't exist already.
     pathlib.Path(str(pathlib.Path(outputFolder))).mkdir(parents=True, exist_ok=True)
 
@@ -39,17 +39,27 @@ def main(potentialClass, outputFolder, PT_script, PT_params, parameterPoint, win
     # history). Also, we can have PhaseTracer construct the potential by reading the saved parameter point.
     np.savetxt(outputFolder + '/parameter_point.txt', np.array([parameterPoint]))
 
+    config = None
     PhaseTracer_directory = ''
+    windows = False
 
     # Load the relative path to PhaseTracer from the config file.
     try:
         with open('../config/config_user.json', 'r') as f:
             config = json.load(f)
-            PhaseTracer_directory = config['PhaseTracer_directory']
     except FileNotFoundError:
         print('Unable to load configuration file.')
+        sys.exit(1)
+
+    try:
+        PhaseTracer_directory = config['PhaseTracer_directory']
     except KeyError:
         print('Unable to load PhaseTracer directory from the configuration file.')
+
+    try:
+        windows = config['Windows']
+    except KeyError:
+        pass  # Just assume not Windows.
 
     if PhaseTracer_directory == '':
         sys.exit(1)
@@ -103,22 +113,8 @@ if __name__ == "__main__":
     if len(sys.argv) < 4:
         print('Please specify a model, an output folder, and a parameter point.')
         sys.exit(1)
-    # At the moment, Windows users need to prepend the argument 'w' to their run command
-    #   (e.g. ./CommandLineInterface.py w <outputFolder> <inputFile>)
-    elif len(sys.argv) == 4 and sys.argv[1] == 'w':
-        print('Please specify a model, an output folder, and a parameter point.')
-        sys.exit(1)
 
-    # The first argument should be 'w' for Windows machines. If 'w' is first, then all other arguments are offset by
-    # one position compared to their expected positions.
-    if sys.argv[1] == 'w':
-        _windows = True
-        offset = 1
-    else:
-        _windows = False
-        offset = 0
-
-    modelLabel = sys.argv[1+offset].lower()
+    modelLabel = sys.argv[1].lower()
 
     # Support model labels.
     modelLabels = ['toy', 'rss', 'rss_ht']
@@ -144,9 +140,9 @@ if __name__ == "__main__":
         print(f'Invalid model label: {modelLabel}. Valid model labels are: {modelLabels}')
         sys.exit(1)
 
-    outputFolder = sys.argv[2+offset]
+    outputFolder = sys.argv[2]
 
-    _parameterPoint = sys.argv[3+offset]
+    _parameterPoint = sys.argv[3]
     loadedParameterPoint = False
 
     # First, attempt to treat the parameter point as a file name.
@@ -163,11 +159,11 @@ if __name__ == "__main__":
     if not loadedParameterPoint:
         try:
             _parameterPoint = []
-            for i in range(3+offset, len(sys.argv)):
+            for i in range(3, len(sys.argv)):
                 _value = float(sys.argv[i])
                 _parameterPoint.append(_value)
         except:
-            print('Failed to load parameter point defined by:', ' '.join(sys.argv[2+offset:]))
+            print('Failed to load parameter point defined by:', ' '.join(sys.argv[2:]))
             sys.exit(1)
 
-    main(_potentialClass, outputFolder, _PT_script, _PT_params, _parameterPoint, _windows)
+    main(_potentialClass, outputFolder, _PT_script, _PT_params, _parameterPoint)
