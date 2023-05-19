@@ -25,8 +25,26 @@ The following non-core Python modules are required for `TransitionSolver`:
 
 See [here](https://github.com/PhaseTracer/PhaseTracer#requirements) for the requirements for running `PhaseTracer`.
 
+# Configuration
+Currently only user-specific settings are configurable. From the root directory, create a configuration folder and file: `config/config_user.json`. Add:
+
+	{
+		"PhaseTracer_directory": "<location of PhaseTracer>"
+	}
+	
+to the configuration file. The location of `PhaseTracer` can be specified as a relative or absolute path. If it is a relative path, it should be relative to the root directory: `TransitionSolver/`.
+
+If you are using Windows, `PhaseTracer` must be run using WSL. This requires adding the setting `"Windows": true` to `config_user.json`, which would then read:
+
+	{
+		"PhaseTracer_directory": "<location of PhaseTracer>",
+		"Windows": true
+	}
+	
+The `Windows` entry could be set to false if you are not using Windows, or can be omitted entirely.
+
 # How to run
-Note: All scripts should be run from the root directory: `TransitionSolver/`.
+Note: All scripts should be run from the root directory: `TransitionSolver/`. Before running any scripts, `TransitionSolver` must first be configured for the machine it is run on --- see the Configuration section.
 
 Two example scripts are provided in the `examples` subdirectory: `PipelineExample.py` and `BarebonesExample.py`. These examples do not support any arguments from the command line, so modification must be done within the code. These examples can be run from the terminal but accept no arguments. `PipelineExample.py` has two example functions that perform the same task in slightly different ways: `example` and `example_parameterPointFile`. See their respective documentation for details. To run, use the commands:
 
