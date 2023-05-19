@@ -1,7 +1,15 @@
+import traceback
+import typing
+
 import numpy as np
 import matplotlib.pyplot as plt
 import json
-from cosmoTransitions import pathDeformation, generic_potential
+from cosmoTransitions import pathDeformation
+
+from analysis import PhaseStructure
+
+
+# Various functions that may be useful for debugging an effective potential or a first-order phase transition.
 
 
 def plotHubbleParameter():
@@ -237,7 +245,7 @@ def plotPotentialBetweenPhases(potentialClass, folderName, transitionID, deltaT,
         return
 
     potential: potentialClass = potentialClass(*scanPoint)
-    bFileExists, phaseHistory = load_data(folderName+'/0.dat', bAltTransition=False, bExpectFile=False)
+    bFileExists, phaseHistory = PhaseStructure.load_data(folderName + '/0.dat', bExpectFile=False)
 
     if not bFileExists:
         print('Phase history data file does not exist:', folderName+'/0.dat')
@@ -262,7 +270,7 @@ def plotPotentialBetweenPhases(potentialClass, folderName, transitionID, deltaT,
         print(f'Failed to find transition ID {transitionID} in JSON report.')
         return
 
-    transition: typing.Optional[Transition] = None
+    transition: typing.Optional[PhaseStructure.Transition] = None
 
     for tr in phaseHistory.transitions:
         if tr.ID == transitionID:
@@ -273,8 +281,8 @@ def plotPotentialBetweenPhases(potentialClass, folderName, transitionID, deltaT,
         print(f'Failed to find transition ID {transitionID} in phase history data.')
         return
 
-    fromPhase: Phase = phaseHistory.phases[transition.false_phase]
-    toPhase: Phase = phaseHistory.phases[transition.true_phase]
+    fromPhase: PhaseStructure.Phase = phaseHistory.phases[transition.false_phase]
+    toPhase: PhaseStructure.Phase = phaseHistory.phases[transition.true_phase]
 
     try:
         Tn = transitionReport['Tn']

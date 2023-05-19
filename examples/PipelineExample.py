@@ -2,7 +2,7 @@
 # a simple index parameter into the pipeline and using that index to determine the parameter point and file names, one
 # can run multiple instances of the pipeline in parallel with different indices.
 
-from __future__ import annotations
+
 import numpy as np
 
 from typing import Type, Callable, Optional
@@ -24,18 +24,15 @@ import traceback
 # For getting the current function name.
 import inspect
 
-from SingletModel import SingletModel
-from TransitionAnalysis import FailedActionCalculationException
-import PhaseHistoryAnalysis as PHA
-import PhaseStructure as PS
-import TransitionAnalysis as TA
-import TransitionGraph as TG
-from AnalysablePotential import AnalysablePotential
-from NotifyHandler import notifyHandler
+from models.ToyModel import ToyModel
+from analysis.TransitionAnalysis import FailedActionCalculationException
+from analysis import PhaseStructure as PS, PhaseHistoryAnalysis as PHA, TransitionGraph as TG, TransitionAnalysis as TA
+from models.AnalysablePotential import AnalysablePotential
+from util.NotifyHandler import notifyHandler
 
 
 # The relative file path to PhaseTracer. This is user specific.
-PHASETRACER_DIR = '/home/xuzhongxiu/PhaseTracer/' 
+PHASETRACER_DIR = '../../../../../Software/PhaseTracer/'
 
 
 class PipelineSettings:
@@ -215,8 +212,8 @@ def pipeline_getPhaseStructure(settings: PipelineSettings):
     try:
         if not settings.bPreExistingResult:
             # Call PhaseTracer. Suppress standard output from PhaseTracer.
-            subprocess.call([ PHASETRACER_DIR + 'bin/' + settings.phaseStructureProgram_name,
-                *settings.phaseStructureProgram_commands], timeout=settings.timeout_phaseStructure, 
+            subprocess.call(['wsl', PHASETRACER_DIR + 'bin/' + settings.phaseStructureProgram_name,
+                *settings.phaseStructureProgram_commands], timeout=settings.timeout_phaseStructure, shell=True,
                 stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
         # Check if the output file exists.
@@ -311,8 +308,7 @@ def notify_PhaseHistoryAnalyser_on_create(phaseHistoryAnalyser: PHA.PhaseHistory
 
 
 def generateParameterPoint(fileName):
-    #parameterPoint = np.array([-8720.10,-4860.43,0.129,0.1,0.3,246])
-    parameterPoint = np.array([-8720.10,-2430.215,0.129,0.025,0.15,246])
+    parameterPoint = np.array([0.104005, 250, 3.5, 0.2])
     np.savetxt(fileName, parameterPoint)
 
 
@@ -327,8 +323,7 @@ def example():
     notifyHandler.addEvent('PhaseHistoryAnalyser-on_create', notify_PhaseHistoryAnalyser_on_create)
 
     # Create a potential to analyse.
-    #potential = SingletModel(-8720.10,-4860.43,0.129,0.1,0.3,246)
-    potential = SingletModel(-8720.10,-2430.215,0.129,0.025,0.15,246)
+    potential = ToyModel(0.104005, 250, 3.5, 0.2)
 
     # ==================================================================================================================
     # Define configurations for the program.
@@ -336,10 +331,9 @@ def example():
 
     # This is the name of the PhaseTracer program that will be executed to determine the phase structure. This program
     # name will be searched for in <path_to_PhaseTracer>/PhaseTracer/bin/.
-    #phaseStructureProgramName = 'run_SingletModel'
     phaseStructureProgramName = 'run_Standard234Potential'
     # Where all output files will be saved, relative to the TransitionSolver directory.
-    outputFolder = 'output/example11'
+    outputFolder = 'output/example1'
     # Write PhaseTracer's output to the output folder.
     phaseStructureOutputFolder = outputFolder
     # The name of the phase structure file to search for. PhaseTracer will name the file phase_structure.dat by default.
@@ -348,7 +342,7 @@ def example():
     fileName_phaseHistoryReport = outputFolder + '/phase_history.json'
     # The commands to pass to the PhaseTracer program. In this case, it is the parameter values that define the
     # potential.
-    phaseStructureProgramCommands = [str(potential.mu2), str(potential.mus2), str(potential.lamda), str(potential.lamda2), str(potential.lamda3), str(potential.v),
+    phaseStructureProgramCommands = [str(potential.AonV), str(potential.v), str(potential.D), str(potential.E),
         phaseStructureOutputFolder]
     # Whether the phase structure is relevant for the current study. E.g. we require at least one transition path from
     # the high-temperature phase to the current phase of the Universe.
@@ -395,9 +389,9 @@ def example_parameterPointFile():
 
     # This is the name of the PhaseTracer program that will be executed to determine the phase structure. This program
     # name will be searched for in <path_to_PhaseTracer>/PhaseTracer/bin/.
-    phaseStructureProgramName = 'run_SingletModel'
+    phaseStructureProgramName = 'run_ToyModel'
     # Where all output files will be saved, relative to the TransitionSolver directory.
-    outputFolder = 'output/example21'
+    outputFolder = '../output/example2'
     # Write PhaseTracer's output to the output folder.
     phaseHistoryOutputFolder = outputFolder
 
@@ -411,11 +405,10 @@ def example_parameterPointFile():
     phaseStructureProgramCommands = [fileName_parameterPoint, phaseHistoryOutputFolder]
     # The function that generates parameter points. This could take arguments (such as point ID) to define a sampling
     # scheme for a scan.
-    #function_getParameterPoint = lambda: [-8720.10,-4860.43,0.129,0.1,0.3,246]
-    function_getParameterPoint = lambda: [-8720.10,-2430.215,0.129,0.025,0.15,246]
-    
+    function_getParameterPoint = lambda: [0.104005, 250, 3.5, 0.2]
     # The function that determines whether a potential is valid (i.e. satisfies some user-defined constraints).
-    function_isValidPotential = lambda potential: potential.mu2<0 and potential.mus2<0 and  potential.lamda>0 and potential.lamda2>0 and potential.lamda3>0 and potential.v>0 
+    function_isValidPotential = lambda potential: potential.AonV > 0 and potential.v > 0 and potential.D > 0 and\
+        potential.E > 0
     # Whether the phase structure is relevant for the current study. E.g. we require at least one transition path from
     # the high-temperature phase to the current phase of the Universe.
     function_isPhaseStructureRelevant = lambda phaseStructure: len(phaseStructure.transitionPaths) > 0
@@ -438,7 +431,7 @@ def example_parameterPointFile():
     settings.bReportPaths = True
     settings.bCheckPossibleCompletion = False
     # This time we have to set the potential class.
-    settings.potentialClass = SingletModel
+    settings.potentialClass = ToyModel
 
     # Creates a potential, then runs PhaseTracer and TransitionSolver on the potential.
     pipeline_full(settings)
@@ -447,5 +440,3 @@ def example_parameterPointFile():
 if __name__ == "__main__":
     #example()
     example_parameterPointFile()
-
-

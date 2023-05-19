@@ -1,5 +1,5 @@
-from AnalysablePotential import AnalysablePotential
 import numpy as np
+from models.AnalysablePotential import AnalysablePotential
 
 
 # See https://arxiv.org/pdf/1611.05853.pdf or https://arxiv.org/pdf/2212.07559.pdf for details of this model.

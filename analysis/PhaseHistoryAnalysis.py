@@ -1,10 +1,10 @@
-from AnalysablePotential import AnalysablePotential
-import PhaseStructure as PS
-import TransitionAnalysis as TA
-import TransitionGraph as TG
+from models.AnalysablePotential import AnalysablePotential
+import analysis.PhaseStructure as PS
+import analysis.TransitionAnalysis as TA
+import analysis.TransitionGraph as TG
 import time
 import numpy as np
-from NotifyHandler import notifyHandler
+from util.NotifyHandler import notifyHandler
 
 
 # TODO: use this class.

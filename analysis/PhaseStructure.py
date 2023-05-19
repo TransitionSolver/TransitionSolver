@@ -4,7 +4,7 @@ import numpy as np
 from scipy import optimize
 import traceback
 if TYPE_CHECKING:
-    import AnalysablePotential
+    from models import AnalysablePotential
     import TransitionAnalysis as TA
 
 

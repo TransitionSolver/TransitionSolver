@@ -1,7 +1,7 @@
 from typing import Optional, Union
 
 from cosmoTransitions.tunneling1D import ThinWallError
-from PrintSuppressor import PrintSuppressor
+from util.PrintSuppressor import PrintSuppressor
 import numpy as np
 import scipy.optimize
 
@@ -10,15 +10,15 @@ try:
 except ImportError:
     from io import StringIO  # for Python 3
 from cosmoTransitions import pathDeformation
-from AnalysablePotential import AnalysablePotential
+from models.AnalysablePotential import AnalysablePotential
 from scipy.interpolate import lagrange
 import matplotlib.pyplot as plt
-import IntegrationHelper
+from util import IntegrationHelper
 import time
 import json
 
-import PhaseStructure as PS
-from NotifyHandler import notifyHandler
+import analysis.PhaseStructure as PS
+from util.NotifyHandler import notifyHandler
 
 
 totalActionEvaluations = 0
@@ -840,7 +840,7 @@ class TransitionAnalyser():
                 # vacuum probability arrays as usual below.
                 if integrationHelper_trueVacVol is None and len(self.actionSampler.subT) == 4:
                     integrationHelper_trueVacVol = IntegrationHelper.CubedNestedIntegrationHelper([0, 1, 2],
-                        outerFunction_trueVacVol, innerFunction_trueVacVol, sampleTransformationFunction)
+                                                                                                  outerFunction_trueVacVol, innerFunction_trueVacVol, sampleTransformationFunction)
 
                     # Don't add the first element since we have already stored Vext[0] = 0, Pf[0] = 1, etc.
                     for j in range(1, len(integrationHelper_trueVacVol.data)):
@@ -854,8 +854,8 @@ class TransitionAnalyser():
                     # Do the same thing for the average bubble radius integration helper. This needs to be done after Pf has
                     # been filled with data because outerFunction_avgBubRad uses this data.
                     integrationHelper_avgBubRad = IntegrationHelper.LinearNestedNormalisedIntegrationHelper([0, 1],
-                        outerFunction_avgBubRad, innerFunction_avgBubRad, outerFunction_avgBubRad,
-                        sampleTransformationFunction)
+                                                                                                            outerFunction_avgBubRad, innerFunction_avgBubRad, outerFunction_avgBubRad,
+                                                                                                            sampleTransformationFunction)
 
                     # Since the average bubble radius integration helper requires one less data point for initialisation, it
                     # currently contains one less data point than it should have. Add one more data point: the previous
@@ -1699,7 +1699,7 @@ class TransitionAnalyser():
                 maxTempBelowIndex = -1
                 prevMaxTempBelowIndex = -1
                 for i in range(len(actionSamples)):
-                    if actionSamples[i][3] and actionSamples[i][1] < self.actionSampler.maxSonTThreshold:
+                    if actionSamples[i][2] and actionSamples[i][1] < self.actionSampler.maxSonTThreshold:
                         if maxTempBelowIndex < 0 or actionSamples[i][0] > actionSamples[maxTempBelowIndex][0]:
                             prevMaxTempBelowIndex = maxTempBelowIndex
                             maxTempBelowIndex = i
