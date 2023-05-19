@@ -9,10 +9,6 @@ import time
 import pathlib
 
 
-# The relative file path to PhaseTracer. This is user specific.
-PHASETRACER_DIR = '../../../../../Software/PhaseTracer/'
-
-
 def writePhaseHistoryReport(fileName: str, paths: list[TransitionGraph.ProperPath], phaseStructure:
         PhaseStructure.PhaseStructure, analysisTime: float):
     report = {}
@@ -43,15 +39,29 @@ def main(potentialClass, outputFolder, PT_script, PT_params, parameterPoint, win
     # history). Also, we can have PhaseTracer construct the potential by reading the saved parameter point.
     np.savetxt(outputFolder + '/parameter_point.txt', np.array([parameterPoint]))
 
+    PhaseTracer_directory = ''
+
+    # Load the relative path to PhaseTracer from the config file.
+    try:
+        with open('../config/config_user.json', 'r') as f:
+            config = json.load(f)
+            PhaseTracer_directory = config['PhaseTracer_directory']
+    except FileNotFoundError:
+        print('Unable to load configuration file.')
+    except KeyError:
+        print('Unable to load PhaseTracer directory from the configuration file.')
+
+    if PhaseTracer_directory == '':
+        sys.exit(1)
+
     # Call PhaseTracer to determine the phase structure of the potential. 'wsl' is the Windows Subsystem for Linux,
     # which is required because PhaseTracer does not run on Windows directly. The second element of the list is the
     # program name. The remaining elements are the input parameters for the specified program. The timeout (in seconds)
-    # ensures that PhaseTracer cannot run indefinitely. shell=True is required so that WSL can be called from the shell.
-    # stdout is routed to DEVNULL to suppress any print statements from PhaseTracer. stderr is routed to STDOUT so that
-    # errors in PhaseTracer are printed here.
-    command = (['wsl'] if windows else []) + [PHASETRACER_DIR + f'bin/{PT_script}', outputFolder +
+    # ensures that PhaseTracer cannot run indefinitely. stdout is routed to DEVNULL to suppress any print statements
+    # from PhaseTracer. stderr is routed to STDOUT so that errors in PhaseTracer are printed here.
+    command = (['wsl'] if windows else []) + [PhaseTracer_directory + f'bin/{PT_script}', outputFolder +
         '/parameter_point.txt', outputFolder] + PT_params
-    subprocess.call(command, timeout=60)#, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    subprocess.call(command, timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
     # Load the phase structure saved by PhaseTracer.
     bFileExists, phaseStructure = PhaseStructure.load_data(outputFolder + '/phase_structure.dat', bExpectFile=True)
