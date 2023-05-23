@@ -1,3 +1,4 @@
+from __future__ import annotations
 import TransitionGraph
 from ToyModel import ToyModel
 import PhaseHistoryAnalysis
@@ -10,7 +11,7 @@ import pathlib
 
 
 # The relative file path to PhaseTracer. This is user specific.
-PHASETRACER_DIR = '../../../../Software/PhaseTracer/'
+PHASETRACER_DIR = '/home/xuzhongxiu/PhaseTracer/'
 
 
 def writePhaseHistoryReport(fileName: str, paths: list[TransitionGraph.ProperPath], phaseStructure:
@@ -54,8 +55,9 @@ def main():
     # ensures that PhaseTracer cannot run indefinitely. shell=True is required so that WSL can be called from the shell.
     # stdout is routed to DEVNULL to suppress any print statements from PhaseTracer. stderr is routed to STDOUT so that
     # errors in PhaseTracer are printed here.
-    subprocess.call(['wsl', PHASETRACER_DIR + 'bin/run_ToyModel', outputFolder + '/parameter_point.txt', outputFolder],
-        timeout=60, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    subprocess.call([ PHASETRACER_DIR + 'bin/run_ToyModel', outputFolder + '/parameter_point.txt', outputFolder],
+        timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+
 
     # Load the phase structure saved by PhaseTracer.
     bFileExists, phaseStructure = PhaseStructure.load_data(outputFolder + '/phase_structure.dat', bExpectFile=True)

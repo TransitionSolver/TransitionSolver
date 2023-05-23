@@ -2,7 +2,7 @@
 # a simple index parameter into the pipeline and using that index to determine the parameter point and file names, one
 # can run multiple instances of the pipeline in parallel with different indices.
 
-
+from __future__ import annotations
 import numpy as np
 
 from typing import Type, Callable, Optional
@@ -35,7 +35,7 @@ from NotifyHandler import notifyHandler
 
 
 # The relative file path to PhaseTracer. This is user specific.
-PHASETRACER_DIR = '../../../../Software/PhaseTracer/'
+PHASETRACER_DIR = '/home/xuzhongxiu/PhaseTracer/' 
 
 
 class PipelineSettings:
@@ -215,8 +215,8 @@ def pipeline_getPhaseStructure(settings: PipelineSettings):
     try:
         if not settings.bPreExistingResult:
             # Call PhaseTracer. Suppress standard output from PhaseTracer.
-            subprocess.call(['wsl', PHASETRACER_DIR + 'bin/' + settings.phaseStructureProgram_name,
-                *settings.phaseStructureProgram_commands], timeout=settings.timeout_phaseStructure, shell=True,
+            subprocess.call([ PHASETRACER_DIR + 'bin/' + settings.phaseStructureProgram_name,
+                *settings.phaseStructureProgram_commands], timeout=settings.timeout_phaseStructure, 
                 stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
         # Check if the output file exists.
@@ -443,3 +443,5 @@ def example_parameterPointFile():
 if __name__ == "__main__":
     #example()
     example_parameterPointFile()
+
+
