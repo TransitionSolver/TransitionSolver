@@ -24,20 +24,17 @@ import traceback
 # For getting the current function name.
 import inspect
 
-from ToyModel import ToyModel
-from TransitionAnalysis import FailedActionCalculationException
-import PhaseHistoryAnalysis as PHA
-import PhaseStructure as PS
-import TransitionAnalysis as TA
-import TransitionGraph as TG
-from AnalysablePotential import AnalysablePotential
-from NotifyHandler import notifyHandler
+from models.ToyModel import ToyModel
+from analysis.TransitionAnalysis import FailedActionCalculationException
+from analysis import PhaseStructure as PS, PhaseHistoryAnalysis as PHA, TransitionGraph as TG, TransitionAnalysis as TA
+from models.AnalysablePotential import AnalysablePotential
+from util.NotifyHandler import notifyHandler
 
 
 # The relative file path to PhaseTracer. This is user specific.
+
 PHASETRACER_DIR = '/home/xuzhongxiu/PhaseTracer/' 
-
-
+S
 class PipelineSettings:
     bDebug: bool = False
     bPlot: bool = False
@@ -394,7 +391,7 @@ def example_parameterPointFile():
     # name will be searched for in <path_to_PhaseTracer>/PhaseTracer/bin/.
     phaseStructureProgramName = 'run_ToyModel'
     # Where all output files will be saved, relative to the TransitionSolver directory.
-    outputFolder = 'output/example2'
+    outputFolder = '../output/example2'
     # Write PhaseTracer's output to the output folder.
     phaseHistoryOutputFolder = outputFolder
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Optional, Union 
  
 from cosmoTransitions.tunneling1D import ThinWallError
-from PrintSuppressor import PrintSuppressor
+from util.PrintSuppressor import PrintSuppressor
 import numpy as np
 import scipy.optimize
 
@@ -11,15 +11,15 @@ try:
 except ImportError:
     from io import StringIO  # for Python 3
 from cosmoTransitions import pathDeformation
-from AnalysablePotential import AnalysablePotential
+from models.AnalysablePotential import AnalysablePotential
 from scipy.interpolate import lagrange
 import matplotlib.pyplot as plt
-import IntegrationHelper
+from util import IntegrationHelper
 import time
 import json
 
-import PhaseStructure as PS
-from NotifyHandler import notifyHandler
+import analysis.PhaseStructure as PS
+from util.NotifyHandler import notifyHandler
 
 
 totalActionEvaluations = 0
@@ -768,7 +768,7 @@ class TransitionAnalyser():
                 # The 1 suffix is for T[simIndex+1] and the 2 suffix is for T[simIndex] (noting that T[simIndex+1] is
                 # smaller than T[simIndex]). So these points are ordered with ascending temperature.
                 T1, T2 = self.actionSampler.T[simIndex+1], self.actionSampler.T[simIndex]
-                # Note that rhof2 and rhof2 suffixes are backwards!
+                # Note that rhof1 and rhof2 suffixes are backwards!
                 rhoV1 = rhof2 - radDensity*self.actionSampler.T[simIndex+1]**4 - self.groundStateEnergyDensity
                 rhoV2 = rhof1 - radDensity*self.actionSampler.T[simIndex]**4 - self.groundStateEnergyDensity
 
@@ -841,7 +841,7 @@ class TransitionAnalyser():
                 # vacuum probability arrays as usual below.
                 if integrationHelper_trueVacVol is None and len(self.actionSampler.subT) == 4:
                     integrationHelper_trueVacVol = IntegrationHelper.CubedNestedIntegrationHelper([0, 1, 2],
-                        outerFunction_trueVacVol, innerFunction_trueVacVol, sampleTransformationFunction)
+                                                                                                  outerFunction_trueVacVol, innerFunction_trueVacVol, sampleTransformationFunction)
 
                     # Don't add the first element since we have already stored Vext[0] = 0, Pf[0] = 1, etc.
                     for j in range(1, len(integrationHelper_trueVacVol.data)):
@@ -855,8 +855,8 @@ class TransitionAnalyser():
                     # Do the same thing for the average bubble radius integration helper. This needs to be done after Pf has
                     # been filled with data because outerFunction_avgBubRad uses this data.
                     integrationHelper_avgBubRad = IntegrationHelper.LinearNestedNormalisedIntegrationHelper([0, 1],
-                        outerFunction_avgBubRad, innerFunction_avgBubRad, outerFunction_avgBubRad,
-                        sampleTransformationFunction)
+                                                                                                            outerFunction_avgBubRad, innerFunction_avgBubRad, outerFunction_avgBubRad,
+                                                                                                            sampleTransformationFunction)
 
                     # Since the average bubble radius integration helper requires one less data point for initialisation, it
                     # currently contains one less data point than it should have. Add one more data point: the previous
@@ -1083,6 +1083,32 @@ class TransitionAnalyser():
             plt.rcParams.update({"text.usetex": True})
 
             textY = 0.1
+            rhoV = self.actionSampler.subRhoV
+            rhoR = [radDensity*t**4 for t in self.actionSampler.subT]
+            rhoTot = [rhoR[i]+rhoV[i] for i in range(len(self.actionSampler.subT))]
+            plt.plot(self.actionSampler.subT, rhoV)
+            plt.plot(self.actionSampler.subT, rhoR)
+            plt.plot(self.actionSampler.subT, rhoTot)
+            plt.xlabel('$T$')
+            plt.ylabel('$\\rho$')
+            plt.legend(['$\\rho_V$', '$\\rho_R$', '$\\rho_{\\mathrm{tot}}$'])
+            plt.show()
+
+            drhoVdT = (rhoV[-2] - rhoV[-1]) / (self.actionSampler.subT[-2] - self.actionSampler.subT[-1])
+            extrapRhoV = lambda x: rhoV[-1] + (x - self.actionSampler.subT[-1])*drhoVdT
+            extraT = list(np.linspace(2*self.actionSampler.subT[-1]-self.actionSampler.subT[-2], 0, 100))
+            fullT = self.actionSampler.subT + extraT
+            fullRhoR = rhoR + [radDensity*t**4 for t in extraT]
+            fullRhoV = rhoV + [extrapRhoV(t) for t in extraT]
+            fullRhoTot = [fullRhoR[i] + fullRhoV[i] for i in range(len(fullT))]
+            plt.plot(fullT, fullRhoV)
+            plt.plot(fullT, fullRhoR)
+            plt.plot(fullT, fullRhoTot)
+            plt.axvline(self.actionSampler.subT[-1], ls='--')
+            plt.xlabel('$T$')
+            plt.ylabel('$\\rho$')
+            plt.legend(['$\\rho_V$', '$\\rho_R$', '$\\rho_{\\mathrm{tot}}$'])
+            plt.show()
 
             if Tf > 0:
                 maxIndex = len(self.actionSampler.subT)
@@ -1238,6 +1264,11 @@ class TransitionAnalyser():
                     highTempIndex = i
                     break
 
+            # If the mean bubble separation is always larger than it is at the lowest sampled temperature, plot the
+            # entire range of sampled temperatures.
+            if highTempIndex == len(self.actionSampler.subT)-1:
+                highTempIndex = 0
+
             plt.figure(figsize=(12, 8))
             plt.plot(self.actionSampler.subT, averageBubbleRadius, linewidth=2.5)
             plt.plot(self.actionSampler.subT, meanBubbleSeparationArray, linewidth=2.5)
@@ -1249,7 +1280,7 @@ class TransitionAnalyser():
             if Te > 0: plt.axvline(Te, c='b', ls=':')
             if Tf > 0: plt.axvline(Tf, c='k', ls=':')
             plt.xlim(self.actionSampler.subT[-1], self.actionSampler.subT[highTempIndex])
-            plt.ylim(0, meanBubbleSeparationArray[-1])
+            plt.ylim(0, 1.2*max(meanBubbleSeparationArray[-1], averageBubbleRadius[-1]))
             plt.tick_params(size=5, labelsize=16)
             plt.margins(0, 0)
             plt.show()
@@ -1669,7 +1700,7 @@ class TransitionAnalyser():
                 maxTempBelowIndex = -1
                 prevMaxTempBelowIndex = -1
                 for i in range(len(actionSamples)):
-                    if actionSamples[i][3] and actionSamples[i][1] < self.actionSampler.maxSonTThreshold:
+                    if actionSamples[i][2] and actionSamples[i][1] < self.actionSampler.maxSonTThreshold:
                         if maxTempBelowIndex < 0 or actionSamples[i][0] > actionSamples[maxTempBelowIndex][0]:
                             prevMaxTempBelowIndex = maxTempBelowIndex
                             maxTempBelowIndex = i
@@ -2008,7 +2039,7 @@ class TransitionAnalyser():
         Tsep = upperLimit - Tmax
 
         # TODO: this assumes the rhoV contribution monotonically increases with decreasing T below Tc.
-        # This could hold even for regular (non-subcritical) transitions., particularly those with a low Tc.
+        # This could hold even for regular (non-subcritical) transitions, particularly those with a low Tc.
         energyAtTmax = energyEra(Tmax)
         if energyAtTmax > 0:
             rhoVatTmax = energyAtTmax + radDensity*Tmax**4
@@ -2108,17 +2139,32 @@ class TransitionAnalyser():
                 # Tmin must be non-zero, otherwise we would have rhoR = 0 and therefore vacuum domination. So we can
                 # extrapolate rhoV to find Teq.
 
-                drhoV = (energyEra(Tmax-Tsep) + radDensity*(Tmax - Tsep)**4 - rhoVatTmin) / Tsep
-                print("rhoVatTmin=", rhoVatTmin, "  newTmin=  ", newTmin, "radDensity=", radDensity, "drhoV=", drhoV)
+                #drhoV = (energyEra(Tmax-Tsep) + radDensity*(Tmax - Tsep)**4 - rhoVatTmin) / Tsep
+                Tsample = newTmin + Tsep
+                rhoVsample = energyEra(Tsample) + radDensity*Tsample**4
+                drhoVdT = (rhoVsample - rhoVatTmin) / Tsep
+
                 # 0 at Teq, +ve for vacuum domination, -ve for radiation domination.
-                approxEnergyEra = lambda T: rhoVatTmin + (T - newTmin)*drhoV - radDensity*T**4
-                
-                print("approxEnergyEra(0) =", approxEnergyEra(0), "approxEnergyEra(newTmin) =", approxEnergyEra(newTmin),"approxEnergyEra(1) =", approxEnergyEra(1) ,"newTmin = ", newTmin)
-               
-                
-                # Negate the result to indicate this value is obtained via extrapolation.
-                Teq = -scipy.optimize.toms748(approxEnergyEra, 0, newTmin)
-        
+                approxEnergyEra = lambda T: rhoVatTmin + (T - newTmin)*drhoVdT - radDensity*T**4
+
+                if approxEnergyEra(0) < 0:  # => rhoV(0) < 0.
+                    # We can't bracket a root, so use fsolve instead. There may not be a solution.
+                    root = scipy.optimize.fsolve(energyEra, newTmin)
+
+                    # If there is a solution.
+                    if len(root) > 0 and energyEra(root[0]) >= 1e-10:
+                        if self.bDebug:
+                            print('Found Teq using unbracketed root finding.')
+                        # Negate the result to indicate this value is obtained via extrapolation.
+                        Teq = -root[0]
+                    else:
+                        if self.bDebug:
+                            print('Unable to find Teq from unbracketed root finding.')
+                        Teq = 0
+                else:
+                    # Negate the result to indicate this value is obtained via extrapolation.
+                    Teq = -scipy.optimize.toms748(approxEnergyEra, 0, newTmin)
+
                 if self.bDebug:
                     print('Predicting Teq =', -Teq)
 

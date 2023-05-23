@@ -1,8 +1,6 @@
 from __future__ import annotations
-import TransitionGraph
-from ToyModel import ToyModel
-import PhaseHistoryAnalysis
-import PhaseStructure
+from models.ToyModel import ToyModel
+from analysis import PhaseStructure, PhaseHistoryAnalysis, TransitionGraph
 import numpy as np
 import subprocess
 import json
@@ -10,7 +8,7 @@ import time
 import pathlib
 
 
-# The relative file path to PhaseTracer. This is user specific.
+# The file path to PhaseTracer. This is user specific.
 PHASETRACER_DIR = '/home/xuzhongxiu/PhaseTracer/'
 
 
@@ -38,7 +36,7 @@ def writePhaseHistoryReport(fileName: str, paths: list[TransitionGraph.ProperPat
 
 def main():
     # The folder where we will write the output.
-    outputFolder = 'output/example3'
+    outputFolder = '../output/example3'
     # Create the output folder if it doesn't exist already.
     pathlib.Path(str(pathlib.Path(outputFolder))).mkdir(parents=True, exist_ok=True)
 

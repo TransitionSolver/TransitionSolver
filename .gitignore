@@ -1,5 +1,7 @@
 output
 .idea/
+# Ignore the user-specific config file.
+config/config_user.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

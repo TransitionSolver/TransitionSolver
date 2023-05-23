@@ -1,11 +1,11 @@
 from __future__ import annotations
-from AnalysablePotential import AnalysablePotential
-import PhaseStructure as PS
-import TransitionAnalysis as TA
-import TransitionGraph as TG
+from models.AnalysablePotential import AnalysablePotential
+import analysis.PhaseStructure as PS
+import analysis.TransitionAnalysis as TA
+import analysis.TransitionGraph as TG
 import time
 import numpy as np
-from NotifyHandler import notifyHandler
+from util.NotifyHandler import notifyHandler
 
 
 # TODO: use this class.
@@ -84,6 +84,8 @@ class PhaseHistoryAnalyser:
             if phase.T[0] == 0 and phase.V[0] < groundStateEnergyDensity:
                 groundStateEnergyDensity = phase.V[0]
        
+        #groundStateEnergyDensity = potential.Vtot(potential.approxZeroTMin()[1], 0)
+
         #groundStateEnergyDensity = potential.Vtot(potential.approxZeroTMin()[1], 0)
 
         # Find all low temperature phases. These are needed to check if a path is valid, i.e. if it terminates at a low
