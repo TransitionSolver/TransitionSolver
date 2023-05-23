@@ -1,5 +1,6 @@
-from typing import Optional, Union
-
+from __future__ import annotations
+from typing import Optional, Union 
+ 
 from cosmoTransitions.tunneling1D import ThinWallError
 from PrintSuppressor import PrintSuppressor
 import numpy as np
@@ -2108,13 +2109,16 @@ class TransitionAnalyser():
                 # extrapolate rhoV to find Teq.
 
                 drhoV = (energyEra(Tmax-Tsep) + radDensity*(Tmax - Tsep)**4 - rhoVatTmin) / Tsep
-
+                print("rhoVatTmin=", rhoVatTmin, "  newTmin=  ", newTmin, "radDensity=", radDensity, "drhoV=", drhoV)
                 # 0 at Teq, +ve for vacuum domination, -ve for radiation domination.
                 approxEnergyEra = lambda T: rhoVatTmin + (T - newTmin)*drhoV - radDensity*T**4
-
+                
+                print("approxEnergyEra(0) =", approxEnergyEra(0), "approxEnergyEra(newTmin) =", approxEnergyEra(newTmin),"approxEnergyEra(1) =", approxEnergyEra(1) ,"newTmin = ", newTmin)
+               
+                
                 # Negate the result to indicate this value is obtained via extrapolation.
                 Teq = -scipy.optimize.toms748(approxEnergyEra, 0, newTmin)
-
+        
                 if self.bDebug:
                     print('Predicting Teq =', -Teq)
 
@@ -2435,3 +2439,5 @@ def loadPrecomputedActionData(fileName, transition, maxSonTThreshold) -> tuple[l
 
 if __name__ == "__main__":
     print('No script to run.')
+    
+
