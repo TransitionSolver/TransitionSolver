@@ -1,3 +1,5 @@
+import traceback
+
 from models.ToyModel import ToyModel
 from models.RealScalarSingletModel import RealScalarSingletModel
 from models.RealScalarSingletModel_HT import RealScalarSingletModel_HT
@@ -47,7 +49,8 @@ def main(potentialClass, outputFolder, PT_script, PT_params, parameterPoint):
     try:
         with open('config/config_user.json', 'r') as f:
             config = json.load(f)
-    except FileNotFoundError:
+    except FileNotFoundError as e:
+        traceback.print_exc()
         print('Unable to load configuration file.')
         sys.exit(1)
 
