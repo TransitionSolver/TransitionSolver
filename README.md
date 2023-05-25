@@ -59,7 +59,7 @@ There is now a new way to run `TransitionSolver`, using `CommandLineInterface.py
 The first method reads parameter values from an input text file `<inputFileName>`. It must be a `.txt` file. The second method reads parameter values 1 to n from the command line. Both methods save results in the folder specified by `<outputFolderName>`. The argument `<modelLabel>` specifies which model to use. Currently supported model labels are `rss` for the real scalar singlet model, `rss_ht` for the high temperature expansion, and `toy` for the toy model. Here are some examples that can be run using the first method:
 
 	python -m examples.CommandLineInterface rss output/RSS/RSS_BP<n> input/RSS/RSS_BP<n>.txt
-	python -m examples.CommandLineInterface rss_ht output/RSS/RSS_BP1 input/RSS/RSS_BP1.txt
+	python -m examples.CommandLineInterface rss_ht output/RSS_HT/RSS_HT_BP1 input/RSS_HT/RSS_HT_BP1.txt
 	python -m examples.CommandLineInterface toy output/Toy/Toy_BP<n> input/Toy/Toy_BP<n>.txt
 
 Here, `<n>` ranges from 1 to 5 because only five benchmarks for the `rss` and `toy` models have been provided in the `input` subdirectory. The `rss_ht` model currently only has one benchmark. Equivantly, using the second method for running `CommandLineInterface`, one could do e.g.
