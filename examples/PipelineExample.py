@@ -33,6 +33,7 @@ from util.NotifyHandler import notifyHandler
 
 # The relative file path to PhaseTracer. This is user specific.
 
+
 PHASETRACER_DIR = '/home/xuzhongxiu/PhaseTracer/' 
 
 class PipelineSettings:
@@ -181,6 +182,7 @@ def pipeline_potentialSupplied(potential: AnalysablePotential, settings: Pipelin
     fileName = settings.fileName_phaseStructure
 
     if phaseStructure is None:
+        print('phase structure is empty')
         if settings.bCleanupInvalidPoints:
             # Attempt to delete the invalid point.
             try:
@@ -203,14 +205,18 @@ def pipeline_potentialSupplied(potential: AnalysablePotential, settings: Pipelin
         return 'Irrelevant phase structure'
 
     if not settings.bSkipAnalysis:
+        print('analysing...')
         return pipeline_analysePhaseHistory(potential, phaseStructure, settings)
     else:
+        print('skipping analysis')
         return 'Success'
 
 
 def pipeline_getPhaseStructure(settings: PipelineSettings):
     try:
         if not settings.bPreExistingResult:
+            print('args:', ['wsl', PHASETRACER_DIR + 'bin/' + settings.phaseStructureProgram_name,
+                *settings.phaseStructureProgram_commands])
             # Call PhaseTracer. Suppress standard output from PhaseTracer.
             subprocess.call([ PHASETRACER_DIR + 'bin/' + settings.phaseStructureProgram_name,
                 *settings.phaseStructureProgram_commands], timeout=settings.timeout_phaseStructure, 
@@ -314,7 +320,8 @@ def generateParameterPoint(fileName):
 
 # An example where we first construct a potential manually, then run PhaseTracer and TransitionSolver on that potential.
 # The parameter values that define the potential are not saved.
-def example():
+# TODO: run_ToyModel no longer accepts individual parameter values so this method is now irrelevant.
+"""def example():
     # Set up notification events for convenient configuration of other objects required for the analysis. E.g. when the
     # ActionSampler object is created, call notify_ActionSampler_on_create, passing in the ActionSampler instance so its
     # properties can be configured. This avoids the need for passing large sets of parameters through multiple objects.
@@ -331,7 +338,7 @@ def example():
 
     # This is the name of the PhaseTracer program that will be executed to determine the phase structure. This program
     # name will be searched for in <path_to_PhaseTracer>/PhaseTracer/bin/.
-    phaseStructureProgramName = 'run_Standard234Potential'
+    phaseStructureProgramName = 'run_ToyModel'
     # Where all output files will be saved, relative to the TransitionSolver directory.
     outputFolder = 'output/example1'
     # Write PhaseTracer's output to the output folder.
@@ -367,8 +374,12 @@ def example():
     settings.bReportPaths = True
     settings.bCheckPossibleCompletion = False
 
+    print('About to run.')
+
     # Runs PhaseTracer and TransitionSolver on the potential.
     pipeline_potentialSupplied(potential, settings)
+
+    print('Finished')"""
 
 
 # An example where we define a function that constructs a potential and saves the parameter values to a file. Then we
@@ -391,7 +402,7 @@ def example_parameterPointFile():
     # name will be searched for in <path_to_PhaseTracer>/PhaseTracer/bin/.
     phaseStructureProgramName = 'run_ToyModel'
     # Where all output files will be saved, relative to the TransitionSolver directory.
-    outputFolder = '../output/example2'
+    outputFolder = 'output/example2'
     # Write PhaseTracer's output to the output folder.
     phaseHistoryOutputFolder = outputFolder
 
@@ -438,7 +449,6 @@ def example_parameterPointFile():
 
 
 if __name__ == "__main__":
-    #example()
     example_parameterPointFile()
 
 
