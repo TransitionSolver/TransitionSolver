@@ -34,7 +34,7 @@ from util.NotifyHandler import notifyHandler
 # The relative file path to PhaseTracer. This is user specific.
 
 PHASETRACER_DIR = '/home/xuzhongxiu/PhaseTracer/' 
-S
+
 class PipelineSettings:
     bDebug: bool = False
     bPlot: bool = False

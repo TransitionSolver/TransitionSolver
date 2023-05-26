@@ -1,3 +1,4 @@
+from __future__ import annotations
 from models.ToyModel import ToyModel
 from models.RealScalarSingletModel import RealScalarSingletModel
 from models.RealScalarSingletModel_HT import RealScalarSingletModel_HT
