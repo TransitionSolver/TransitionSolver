@@ -1,5 +1,6 @@
 from __future__ import annotations
 from models.ToyModel import ToyModel
+from models.SingletModel import SingletModel
 from models.RealScalarSingletModel import RealScalarSingletModel
 from analysis import PhaseStructure, PhaseHistoryAnalysis, TransitionGraph
 import numpy as np
@@ -57,6 +58,8 @@ def main():
     # errors in PhaseTracer are printed here.
 
 #subprocess.call([ PHASETRACER_DIR + 'bin/run_ToyModel', outputFolder + '/parameter_point.txt', outputFolder],timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+   # subprocess.call([ PHASETRACER_DIR + 'bin/run_SingletModel', outputFolder + '/parameter_point.txt', outputFolder],
+        timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     subprocess.call([ PHASETRACER_DIR + 'bin/run_RSS', outputFolder + '/parameter_point.txt', outputFolder],
         timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
@@ -82,6 +85,7 @@ def main():
 
     # Create the potential using the parameter point.
     #potential = ToyModel(*parameterPoint)
+    #potential = SingletModel(*parameterPoint)
     potential = RealScalarSingletModel(*parameterPoint)
 
     # Analyse the phase history and track the execution time. The timing will be handled internally in a future version
