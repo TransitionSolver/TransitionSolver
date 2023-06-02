@@ -54,6 +54,16 @@ class ToyModel(AnalysablePotential):
         return 1.5*(self.E*T + self.A)/self.l * (1. + np.sqrt(1. - 8./9.*self.l*self.D*(T*T - self.T0Sq)
             / ((self.E*T + self.A)*(self.E*T + self.A))))
 
+    def getSoundSpeedSqFalse(self, T):
+        return 1./3.
+
+    def getSoundSpeedSqTrue(self, T):
+        phi_t = self.getTrueVacuumLocation(T)
+        dFdT = 2*self.D*T*phi_t**2 - self.E*phi_t**3 - 2*np.pi/45*self.ndof*T**3
+        d2FdT2 = 2*self.D*phi_t**2 - 2*np.pi/15*self.ndof*T**2
+
+        return dFdT / (T*d2FdT2)
+
     # Returns a list of the parameters value that define this potential.
     def getParameterPoint(self):
         return [self.AonV, self.v, self.D, self.E]

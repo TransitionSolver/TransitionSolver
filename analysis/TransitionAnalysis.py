@@ -972,7 +972,7 @@ class TransitionAnalyser():
                     else:
                         interpFactor = 1 - physicalVolume[-1] / (physicalVolume[-1] - physicalVolume[-2])
                     Ts1 = Tprev + interpFactor*(Tnew - Tprev)
-                    self.transition.Ts1 = Ts1
+                    self.transition.TVphysDecr_high = Ts1
 
                 if Ts1 > 0 and Ts2 < 0 and physicalVolume[-1] > 0:
                     if physicalVolume[-1] == physicalVolume[-2]:
@@ -980,7 +980,7 @@ class TransitionAnalyser():
                     else:
                         interpFactor = 1 - physicalVolume[-1] / (physicalVolume[-1] - physicalVolume[-2])
                     Ts2 = Tprev + interpFactor*(Tnew - Tprev)
-                    self.transition.Ts2 = Ts2
+                    self.transition.TVphysDecr_low = Ts2
 
             if Tf > 0 and not self.bAnalyseTransitionPastCompletion:
                 if self.bDebug:
@@ -1031,8 +1031,8 @@ class TransitionAnalyser():
             Tp = self.transition.Tp
             Te = self.transition.Te
             Tf = self.transition.Tf
-            Ts1 = self.transition.Ts1
-            Ts2 = self.transition.Ts2
+            Ts1 = self.transition.TVphysDecr_high
+            Ts2 = self.transition.TVphysDecr_low
             Tp_reh = self.transition.Treh_pw
             Te_reh = self.transition.Treh_ps
             Tf_reh = self.transition.Treh_f
@@ -1122,8 +1122,8 @@ class TransitionAnalyser():
 
                 plt.figure(figsize=(14, 11))
                 plt.plot(self.actionSampler.subT[:maxIndex+1], physicalVolumeRelative, zorder=3, lw=3.5)
-                #if Ts1 > 0: plt.axvline(Ts1, c='r', ls='--', lw=2)
-                #if Ts2 > 0: plt.axvline(Ts2, c='r', ls='--', lw=2)
+                #if TVphysDecr_high > 0: plt.axvline(TVphysDecr_high, c='r', ls='--', lw=2)
+                #if TVphysDecr_low > 0: plt.axvline(TVphysDecr_low, c='r', ls='--', lw=2)
                 if Ts1 > 0 and Ts2 > 0: plt.axvspan(Ts2, Ts1, alpha=0.3, color='r', zorder=-1)
                 if Tp > 0:
                     plt.axvline(Tp, c='g', ls='--', lw=2)
@@ -1156,8 +1156,8 @@ class TransitionAnalyser():
 
             plt.figure(figsize=(14, 11))
             plt.plot(self.actionSampler.subT, physicalVolume, zorder=3, lw=3.5)
-            #if Ts1 > 0: plt.axvline(Ts1, c='r', ls='--', lw=2)
-            #if Ts2 > 0: plt.axvline(Ts2, c='r', ls='--', lw=2)
+            #if TVphysDecr_high > 0: plt.axvline(TVphysDecr_high, c='r', ls='--', lw=2)
+            #if TVphysDecr_low > 0: plt.axvline(TVphysDecr_low, c='r', ls='--', lw=2)
             if Ts1 > 0 and Ts2 > 0: plt.axvspan(Ts2, Ts1, alpha=0.3, color='r', zorder=-1)
             if Tp > 0:
                 plt.axvline(Tp, c='g', ls='--', lw=2)
@@ -1190,7 +1190,7 @@ class TransitionAnalyser():
             #    bPlot=bPlot, bDebug=bDebug)
 
             self.transition.transitionStrength = transitionStrength
-            self.transition.averageBubbleRadius = averageBubbleRadius[indexTp]
+            self.transition.meanBubbleRadius = averageBubbleRadius[indexTp]
             self.transition.meanBubbleSeparation = meanBubbleSeparation
             #transition.energyWeightedBubbleRadius = energyWeightedBubbleRadius
             #transition.volumeWeightedBubbleRadius = volumeWeightedBubbleRadius
