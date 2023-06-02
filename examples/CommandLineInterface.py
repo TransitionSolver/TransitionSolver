@@ -41,15 +41,11 @@ def main(potentialClass, outputFolder, PT_script, PT_params, parameterPoint):
     # history). Also, we can have PhaseTracer construct the potential by reading the saved parameter point.
     np.savetxt(outputFolder + '/parameter_point.txt', np.array([parameterPoint]))
 
-    config = None
-    PhaseTracer_directory = ''
-    windows = False
-
     # Load the relative path to PhaseTracer from the config file.
     try:
         with open('config/config_user.json', 'r') as f:
             config = json.load(f)
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         traceback.print_exc()
         print('Unable to load configuration file.')
         sys.exit(1)
@@ -58,11 +54,12 @@ def main(potentialClass, outputFolder, PT_script, PT_params, parameterPoint):
         PhaseTracer_directory = config['PhaseTracer_directory']
     except KeyError:
         print('Unable to load PhaseTracer directory from the configuration file.')
+        sys.exit(1)
 
     try:
         windows = config['Windows']
     except KeyError:
-        pass  # Just assume not Windows.
+        windows = False  # Just assume not Windows.
 
     if PhaseTracer_directory == '':
         sys.exit(1)

@@ -79,10 +79,10 @@ class Transition:
     Tp: float
     Te: float
     Tf: float
-    # The temperature at which the physical volume of the false vacuum starts shrinking. Ts1 > Ts2
-    Ts1: float
-    # The temperature at which the physical volume of the false vacuum stops shrinking. Ts1 > Ts2
-    Ts2: float
+    # The temperature at which the physical volume of the false vacuum starts shrinking.
+    TVphysDecr_high: float
+    # The temperature at which the physical volume of the false vacuum stops shrinking.
+    TVphysDecr_low: float
     Treh_pw: float
     Treh_ps: float
     Treh_f: float
@@ -101,7 +101,7 @@ class Transition:
     ID: int
     vw: float
     gammaTn: float
-    averageBubbleRadius: float
+    meanBubbleRadius: float
     meanBubbleSeparation: float
     energyWeightedBubbleRadius: float
     volumeWeightedBubbleRadius: float
@@ -114,7 +114,7 @@ class Transition:
     bFoundTeq: bool
     bFoundNucleationWindow: bool
 
-    def __init__(self, transition: np.ndarray, bAlt: bool = False):
+    def __init__(self, transition: np.ndarray):
         self.n_field = (len(transition)+1 - 7) // 2
         self.Tc = transition[2]
         self.true_vacuum = transition[3:3+self.n_field]
@@ -133,8 +133,8 @@ class Transition:
         self.Tp = -1.
         self.Te = -1.
         self.Tf = -1.
-        self.Ts1 = -1.
-        self.Ts2 = -1.
+        self.TVphysDecr_high = -1.
+        self.TVphysDecr_low = -1.
         self.Treh_pw = -1
         self.Treh_ps = -1
         self.Treh_f = -1
@@ -153,7 +153,7 @@ class Transition:
         self.gammaTn = -1.
         self.analysis = None
 
-        self.averageBubbleRadius = -1.
+        self.meanBubbleRadius = -1.
         self.meanBubbleSeparation = -1.
         self.energyWeightedBubbleRadius = -1.
         self.volumeWeightedBubbleRadius = -1.
@@ -184,11 +184,11 @@ class Transition:
         return self.completes() and not self.decreasingVphysAtTf
 
     # TODO: [2023] shouldn't all of these properties be in AnalysedTransition?
-    def getOutputList(self):
-        return [self.Tn, self.Tp, self.Te, self.Tf, self.averageBubbleRadius, self.meanBubbleSeparation,
-            self.energyWeightedBubbleRadius, self.volumeWeightedBubbleRadius, self.transitionStrength]
+    def getOutputList(self) -> list[float]:
+        return [self.Tn, self.Tp, self.Te, self.Tf, self.meanBubbleRadius, self.meanBubbleSeparation,
+                self.energyWeightedBubbleRadius, self.volumeWeightedBubbleRadius, self.transitionStrength]
 
-    def getReport(self, reportFileName):
+    def getReport(self, reportFileName) -> dict:
         report = {}
 
         report['id'] = self.ID
@@ -222,8 +222,8 @@ class Transition:
         if self.Tp > 0: report['Tp'] = self.Tp
         if self.Te > 0: report['Te'] = self.Te
         if self.Tf > 0: report['Tf'] = self.Tf
-        if self.Ts1 > 0: report['Ts1'] = self.Ts1
-        if self.Ts2 > 0: report['Ts2'] = self.Ts2
+        if self.TVphysDecr_high > 0: report['TVphysDecr_high'] = self.TVphysDecr_high
+        if self.TVphysDecr_low > 0: report['TVphysDecr_low'] = self.TVphysDecr_low
         if self.Treh_pw > 0: report['Treh_pw'] = self.Treh_pw
         if self.Treh_ps > 0: report['Treh_ps'] = self.Treh_ps
         if self.Treh_f > 0: report['Treh_f'] = self.Treh_f
@@ -246,7 +246,7 @@ class Transition:
 
         if self.Tp > 0:
             report['meanBubbleSeparation'] = self.meanBubbleSeparation
-            report['averageBubbleRadius'] = self.averageBubbleRadius
+            report['meanBubbleRadius'] = self.meanBubbleRadius
             report['energyWeightedBubbleRadius'] = self.energyWeightedBubbleRadius
             report['volumeWeightedBubbleRadius'] = self.volumeWeightedBubbleRadius
 
@@ -273,7 +273,7 @@ class PhaseStructure:
         self.reportMessage = ''
 
 
-def load_data(dat_name, bExpectFile=True):
+def load_data(dat_name, bExpectFile=True) -> tuple[bool, Optional[PhaseStructure]]:
     try:
         with open(dat_name) as d:
             data = d.read()
@@ -307,16 +307,16 @@ def load_data(dat_name, bExpectFile=True):
     return True, phaseStructure
 
 
-def constructPhase(text):
+def constructPhase(text) -> Phase:
     return Phase(text[0].split()[2], np.array([[float(string) for string in text[i].split()]
         for i in range(1, len(text))]))
 
 
-def constructTransition(text):
+def constructTransition(text) -> Transition:
     return Transition(np.array([float(string) for string in text[1].split()]))
 
 
-def constructTransitionPath(text):
+def constructTransitionPath(text) -> TransitionPath:
     pathElements = text[1].split()
     path = np.zeros(len(pathElements), dtype='int')
     for i in range(len(path)):
