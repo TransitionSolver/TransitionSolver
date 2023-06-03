@@ -1,3 +1,4 @@
+from __future__ import annotations
 import traceback
 import json
 import numpy as np
@@ -8,7 +9,7 @@ from models.ToyModel import ToyModel
 from models.RealScalarSingletModel import RealScalarSingletModel
 from models.AnalysablePotential import AnalysablePotential
 from analysis import PhaseStructure
-import GieseKappa
+from gws import GieseKappa
 
 GRAV_CONST = 6.7088e-39
 
