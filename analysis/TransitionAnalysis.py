@@ -2398,6 +2398,7 @@ def calculateTypicalLengthScale(Tp, indexTp, indexTn, Tc, meanBubbleSeparation, 
     return REnergyMax, RVolMax
 
 
+# TODO: Do elsewhere?
 def calculateTransitionStrength(potential, fromPhase, toPhase, T):
     dT = min(0.001*T, 0.5*(min(toPhase.T[-1], fromPhase.T[-1]) - T))
 

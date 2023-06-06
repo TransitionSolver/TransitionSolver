@@ -1,16 +1,298 @@
 import traceback
 import json
+
+import matplotlib.pyplot as plt
 import numpy as np
-from typing import Callable, Type
+from typing import Callable, Type, Optional
+
+import scipy.integrate
 
 from analysis.PhaseStructure import Phase
-from models.ToyModel import ToyModel
+from gws.Hydrodynamics import HydroVars
 from models.RealScalarSingletModel import RealScalarSingletModel
 from models.AnalysablePotential import AnalysablePotential
 from analysis import PhaseStructure
-import GieseKappa
+from gws import GieseKappa, Hydrodynamics
+from gws.detectors.LISA import LISA
+from gws.detectors.GWDetector import GWDetector
 
 GRAV_CONST = 6.7088e-39
+
+
+class GWAnalyser_InidividualTransition:
+    potential: AnalysablePotential
+    phaseStructure: PhaseStructure
+    fromPhase: Phase
+    toPhase: Phase
+    transitionReport: dict
+    hydroVars: HydroVars
+    detector: GWDetector
+    peakAmplitude: float
+    peakFrequency_primary: float
+    peakFrequency_secondary: float
+    SNR: float
+
+    def __init__(self, phaseStructure: PhaseStructure, transitionReport: dict, potential: AnalysablePotential, detector:
+            GWDetector):
+        self.transitionReport = transitionReport
+        self.phaseStructure = phaseStructure
+        self.fromPhase = self.phaseStructure.phases[self.transitionReport['falsePhase']]
+        self.toPhase = self.phaseStructure.phases[self.transitionReport['truePhase']]
+        self.potential = potential
+        self.detector = detector
+        self.determineGWs()
+
+    def determineGWs(self) -> tuple[float, float]:
+        # General form: Omega = redshift * H tau_sw * H tau_c * spectralShape
+
+        T = self.determineTransitionTemperature()
+        self.hydroVars = Hydrodynamics.getHydroVars(self.fromPhase, self.toPhase, self.potential, T)
+        Treh = self.determineReheatingTemperature()
+        vw = self.determineBubbleWallVelocity()
+        K = self.determineKineticEnergyFraction(vw)
+        if K == 0:
+            return 0., 0.
+        lenScale_primary = self.determineLengthScale()
+
+        H = np.sqrt(8*np.pi*GRAV_CONST/3*(self.hydroVars.energyDensityFalse -
+            self.phaseStructure.groundStateEnergyDensity))
+
+        # Weight the enthalpy by the fraction of the Universe in each phase. This will underestimate the enthalpy
+        # because we neglect the reheated regions around the bubble wall.
+        # TODO: maybe we can get this from Giese's code?
+        averageEnthalpy = self.hydroVars.enthalpyDensityFalse*0.71 + 0.29*self.hydroVars.enthalpyDensityTrue
+
+        # Assuming energy conservation so averageEnergy = rhof.
+        #adiabaticIndex = averageEnthalpy / (self.hydroVars.energyDensityFalse - self.phaseStructure.groundStateEnergyDensity)
+        # TODO: this is sometimes negative...
+        adiabaticIndex = averageEnthalpy / self.hydroVars.energyDensityFalse
+
+        fluidVelocity = np.sqrt(K/adiabaticIndex)
+        # Assume the rotational modes are negligible.
+        fluidVelocityLong = fluidVelocity
+
+        tau_sw = lenScale_primary / fluidVelocityLong
+        upsilon = 1 - 1 / np.sqrt(1 + 2*H*tau_sw)
+
+        soundSpeed = np.sqrt(self.hydroVars.soundSpeedSqFalse)
+        #tau_c = lenScale_primary / soundSpeed
+        lenScale_secondary = lenScale_primary * abs(vw - np.sqrt(self.hydroVars.soundSpeedSqFalse)) / vw
+
+        redshift = 1.67e-5 * (100/self.potential.ndof)**(1./3.)
+
+        # General form:
+        #Omega_peak = redshift * K*K * upsilon * H*tau_c
+        #print('Omega peak (general):', Omega_peak)
+
+        # Fit from our GW review (but dividing length scale by soundSpeed in accordance with updated estimate of tau_c).
+        #Omega_peak = 2.59e-6*(100/potential.ndof)**(1./3.) * K*K * H*(lenScale/(8*np.pi)**(1./3.))/soundSpeed * upsilon
+        self.peakAmplitude = 0.15509*redshift * K*K * H*(lenScale_primary/(8*np.pi)**(1./3.))/soundSpeed * upsilon
+        zp = 10.  # This assumes the peak frequency corresponds to 10*lenScale. This result comes from simulations
+        # (https://arxiv.org/pdf/1704.05871.pdf) and is expected to change if vw ~ vCJ (specifically zp will increase).
+        self.peakFrequency_primary = 8.9e-6*(self.potential.ndof/100)**(1./6.)*(Treh/100)/(H*lenScale_primary)*(zp/10)
+        self.peakFrequency_secondary = 8.9e-6*(self.potential.ndof/100)**(1./6.)*(Treh/100)/(H*lenScale_secondary)*(zp/10)
+
+    def calculateSNR(self, gwFunc: Callable[[float], float]) -> float:
+        frequencies = self.detector.sensitivityCurve[0]
+        sensitivityCurve = self.detector.sensitivityCurve[1]
+
+        # TODO: vectorise.
+        gwAmpl = np.array([gwFunc(f) for f in frequencies])
+
+        integrand = [(gwAmpl[i] / sensitivityCurve[i]) ** 2 for i in range(len(frequencies))]
+
+        integral = scipy.integrate.simpson(integrand, frequencies)
+
+        self.SNR = np.sqrt(self.detector.detectionTime * self.detector.numIndependentChannels * integral)
+
+        return self.SNR
+
+    def spectralShape(self, f: float) -> float:
+        x = f/self.peakFrequency_primary
+        return x**3 * (7 / (4 + 3*x**2))**3.5
+
+    def spectralShape_doubleBroken(self, f: float):
+        # From https://arxiv.org/pdf/2209.13551.pdf (Eq. 2.11), originally from https://arxiv.org/pdf/1909.10040.pdf
+        # (Eq. # 5.7).
+        b = 1
+        rb = self.peakFrequency_primary / self.peakFrequency_secondary
+        m = (9*rb**4 + b) / (rb**4 + 1)
+        x = f/self.peakFrequency_secondary
+        return x**9 * ((1 + rb**4) / (rb**4 + x**4))**((9 - b) / 4) * ((b + 4) / (b + 4 - m + m*x**2))**((b + 4) / 2)
+
+    def getGWfunc(self, doubleBroken: bool = True) -> Callable[[float], float]:
+        if doubleBroken:
+            return lambda f: self.peakAmplitude*self.spectralShape_doubleBroken(f)
+        else:
+            return lambda f: self.peakAmplitude*self.spectralShape(f)
+
+    def determineTransitionTemperature(self) -> float:
+        return self.transitionReport['Tp']
+
+    def determineReheatingTemperature(self) -> float:
+        return self.transitionReport['Treh_p']
+
+    # TODO: Just pick a value for now. Should really read from the transition report but we can't trust that result
+    #  anyway. We can't use vw = 1 because it breaks Giese's code for kappa.
+    def determineBubbleWallVelocity(self) -> float:
+        return 0.95
+
+    def determineKineticEnergyFraction(self, vw: float) -> float:
+        # Pseudo-trace.
+        thetaf = (self.hydroVars.energyDensityFalse - self.hydroVars.pressureFalse/self.hydroVars.soundSpeedSqTrue) / 4
+        thetat = (self.hydroVars.energyDensityTrue - self.hydroVars.pressureTrue/self.hydroVars.soundSpeedSqTrue) / 4
+
+        alpha = 4*(thetaf - thetat) / (3*self.hydroVars.enthalpyDensityFalse)
+
+        kappa = GieseKappa.kappaNuMuModel(self.hydroVars.soundSpeedSqTrue, self.hydroVars.soundSpeedSqFalse, alpha, vw)
+
+        #return (thetaf - thetat) / (self.hydroVars.energyDensityFalse - self.phaseStructure.groundStateEnergyDensity) * kappa
+        # TODO: this is sometimes negative...
+        return (thetaf - thetat) / self.hydroVars.energyDensityFalse * kappa
+
+    def determineLengthScale(self) -> float:
+        return self.transitionReport['meanBubbleSeparation']
+
+
+class GWAnalyser:
+    peakAmplitude: float
+    peakFrequency_primary: float
+    peakFrequency_secondary: float
+    SNR: float
+    detector: Optional[GWDetector]
+    potential: AnalysablePotential
+    phaseHistoryReport: dict
+    relevantTransitions: list[dict]
+
+    def __init__(self, detectorClass: Type[GWDetector], potentialClass: Type[AnalysablePotential], outputFolder: str):
+        self.peakAmplitude = 0.
+        self.peakFrequency_primary = 0.
+        self.peakFrequency_secondary = 0.
+        self.SNR = 0.
+        self.detector = detectorClass()
+
+        with open(outputFolder + 'phase_history.json', 'r') as f:
+            self.phaseHistoryReport = json.load(f)
+
+        self.relevantTransitions = extractRelevantTransitions(self.phaseHistoryReport)
+
+        if len(self.relevantTransitions) == 0:
+            print('No relevant transition detected.')
+            return
+
+        bSuccess, self.phaseStructure = PhaseStructure.load_data(outputFolder + 'phase_structure.dat')
+
+        if not bSuccess:
+            print('Failed to load phase structure.')
+            return
+
+        self.potential = potentialClass(*np.loadtxt(outputFolder + 'parameter_point.txt'))
+
+        if len(self.detector.sensitivityCurve) == 0:
+            frequencies = np.logspace(-8, 3, 1000)
+            self.detector.constructSensitivityCurve(frequencies)
+
+        for transitionReport in self.relevantTransitions:
+            gws = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
+                self.detector)
+            gwFunc_single = gws.getGWfunc(doubleBroken=False)
+            gwFunc_double = gws.getGWfunc(doubleBroken=True)
+            SNR_single = gws.calculateSNR(gwFunc_single)
+            SNR_double = gws.calculateSNR(gwFunc_double)
+            print('Transition ID:', transitionReport['id'])
+            print('Peak amplitude:', gws.peakAmplitude)
+            print('Peak frequency (primary):', gws.peakFrequency_primary)
+            print('Peak frequency (secondary):', gws.peakFrequency_secondary)
+            print('SNR (single):', SNR_single)
+            print('SNR (double):', SNR_double)
+
+            plt.loglog(self.detector.sensitivityCurve[0], self.detector.sensitivityCurve[1])
+            plt.loglog(self.detector.sensitivityCurve[0], np.array([gwFunc_single(f) for f in
+                self.detector.sensitivityCurve[0]]))
+            plt.loglog(self.detector.sensitivityCurve[0], np.array([gwFunc_double(f) for f in
+                self.detector.sensitivityCurve[0]]))
+            plt.legend(['noise', 'single', 'double'])
+            plt.margins(0, 0)
+            plt.show()
+
+
+def hydroTester(potentialClass: Type[AnalysablePotential], outputFolder: str):
+    with open(outputFolder + 'phase_history.json', 'r') as f:
+        phaseHistoryReport = json.load(f)
+
+    relevantTransitions = extractRelevantTransitions(phaseHistoryReport)
+
+    if len(relevantTransitions) == 0:
+        print('No relevant transition detected.')
+        return
+
+    bSuccess, phaseStructure = PhaseStructure.load_data(outputFolder + 'phase_structure.dat')
+
+    if not bSuccess:
+        print('Failed to load phase structure.')
+        return
+
+    potential = potentialClass(*np.loadtxt(outputFolder + 'parameter_point.txt'))
+
+    for transitionReport in relevantTransitions:
+        fromPhase = phaseStructure.phases[transitionReport['falsePhase']]
+        toPhase = phaseStructure.phases[transitionReport['truePhase']]
+        Tc = phaseStructure.transitions[transitionReport['id']].Tc
+
+        pf = []
+        pt = []
+        ef = []
+        et = []
+        wf = []
+        wt = []
+        csfSq = []
+        cstSq = []
+        T = np.linspace(0, Tc*0.99, 100)
+
+        for t in T:
+            hydroVars = Hydrodynamics.getHydroVars(fromPhase, toPhase, potential, t)
+            pf.append(hydroVars.pressureFalse)
+            pt.append(hydroVars.pressureTrue)
+            ef.append(hydroVars.energyDensityFalse)
+            et.append(hydroVars.energyDensityTrue)
+            wf.append(hydroVars.enthalpyDensityFalse)
+            wt.append(hydroVars.enthalpyDensityTrue)
+            csfSq.append(hydroVars.soundSpeedSqFalse)
+            cstSq.append(hydroVars.soundSpeedSqTrue)
+
+        plt.plot(T, pf)
+        plt.plot(T, pt)
+        plt.axhline(-phaseStructure.groundStateEnergyDensity, ls='--')
+        plt.xlabel('$T$')
+        plt.ylabel('$p(T)$')
+        plt.legend(['False', 'True', 'Ground state'])
+        plt.margins(0, 0)
+        plt.show()
+
+        plt.plot(T, ef)
+        plt.plot(T, et)
+        plt.axhline(phaseStructure.groundStateEnergyDensity, ls='--')
+        plt.xlabel('$T$')
+        plt.ylabel('$\\rho(T)$')
+        plt.legend(['False', 'True', 'Ground state'])
+        plt.margins(0, 0)
+        plt.show()
+
+        plt.plot(T, wf)
+        plt.plot(T, wt)
+        plt.xlabel('$T$')
+        plt.ylabel('$w(T)$')
+        plt.legend(['False', 'True'])
+        plt.margins(0, 0)
+        plt.show()
+
+        plt.plot(T, csfSq)
+        plt.plot(T, cstSq)
+        plt.xlabel('$T$')
+        plt.ylabel('$c_s(T)$')
+        plt.legend(['False', 'True'])
+        plt.margins(0, 0)
+        plt.show()
 
 
 # Find all transitions that are part of valid transition paths.
@@ -29,274 +311,17 @@ def extractRelevantTransitions(report: dict) -> list[dict]:
                 relevantTransitions.append(transition)
 
         return relevantTransitions
-
     except Exception:
         traceback.print_exc()
         return []
 
 
-def determineGWs(phaseStructure: PhaseStructure.PhaseStructure, transitionReport: dict, potential: AnalysablePotential,
-        groundStateEnergyDensity: float) -> tuple[float, float]:
-    fromPhase: Phase = phaseStructure.phases[transitionReport['falsePhase']]
-    toPhase: Phase = phaseStructure.phases[transitionReport['truePhase']]
-
-    # General form: Omega = redshift * H tau_sw * H tau_c * spectralShape
-
-    T = determineTransitionTemperature(transitionReport)
-    vw = determineBubbleWallVelocity()
-    K = determineKineticEnergyFraction(fromPhase, toPhase, potential, T, vw)
-    if K == 0:
-        return 0., 0.
-    lenScale = determineLengthScale(transitionReport)
-
-    rhof, rhot = calculateEnergyDensityAtT(fromPhase, toPhase, potential, T)
-    wf, wt = calculateEnthalpyDensityAtT(fromPhase, toPhase, potential, T)
-    H = np.sqrt(8*np.pi*GRAV_CONST/3*(rhof - groundStateEnergyDensity))
-
-    # Weight the enthalpy by the fraction of the Universe in each phase. This will underestimate the enthalpy because
-    # we neglect the reheated regions around the bubble wall.
-    # TODO: maybe we can get this from Giese's code?
-    averageEnthalpy = wf*0.71 + 0.29*wt
-
-    # Assuming energy conservation so averageEnergy = rhof.
-    adiabaticIndex = averageEnthalpy / rhof
-
-    fluidVelocity = np.sqrt(K/adiabaticIndex)
-    # Assume the rotational modes are negligible.
-    fluidVelocityLong = fluidVelocity
-
-    tau_sw = lenScale / fluidVelocityLong
-    upsilon = 1 - 1 / np.sqrt(1 + 2*H*tau_sw)
-
-    csfSq, cstSq = calculateSoundSpeedSq(fromPhase, toPhase, potential, T)
-    soundSpeed = np.sqrt(csfSq)
-    tau_c = lenScale / soundSpeed
-
-    redshift = 1.67e-5 * (100/potential.ndof)**(1./3.)
-
-    # General form:
-    Omega_peak = redshift * K*K * upsilon * H*tau_c
-    print('Omega peak (general):', Omega_peak)
-    # Fit from our GW review (but dividing length scale by soundSpeed in accordance with updated estimate of tau_c).
-    #Omega_peak = 2.59e-6*(100/potential.ndof)**(1./3.) * K*K * H*(lenScale/(8*np.pi)**(1./3.))/soundSpeed * upsilon
-    Omega_peak = 0.15509*redshift * K*K * H*(lenScale/(8*np.pi)**(1./3.))/soundSpeed * upsilon
-    print('Omega peak (fit):', Omega_peak)
-    zp = 10.  # This assumes the peak frequency corresponds to 10*lenScale. This result comes from simulations
-    #   (https://arxiv.org/pdf/1704.05871.pdf) and is expected to change if vw ~ vCJ (specifically zp will increase).
-    f_peak = 8.9e-6*(potential.ndof/100)**(1./6.)*(T/100)/(H*lenScale)*(zp/10)
-
-    return Omega_peak, f_peak
-
-
-def spectralShape(f: float, f_peak: float) -> float:
-    x = f/f_peak
-    return x**3 * (7 / (4 + 3*x**2))**3.5
-
-
-def getGWfunc(phaseStructure: PhaseStructure.PhaseStructure, transitionReport: dict, potential: AnalysablePotential,
-        groundStateEnergyDensity: float) -> Callable[[float], float]:
-    Omega_peak, f_peak = determineGWs(phaseStructure, transitionReport, potential, groundStateEnergyDensity)
-    return lambda f: Omega_peak*spectralShape(f, f_peak)
-
-
-def determineTransitionTemperature(transition: dict) -> float:
-    return transition['Tp']
-
-
-# TODO: Just pick a value for now. Should really read from the transition report but we can't trust that result anyway.
-#  We can't use vw = 1 because it breaks Giese's code for kappa.
-def determineBubbleWallVelocity() -> float:
-    return 0.95
-
-
-def determineKineticEnergyFraction(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float,
-        vw: float) -> float:
-    pf, pt = calculatePressureAtT(fromPhase, toPhase, potential, T)
-    rhof, rhot = calculateEnergyDensityAtT(fromPhase, toPhase, potential, T)
-    wf, wt = calculateEnthalpyDensityAtT(fromPhase, toPhase, potential, T)
-    csfSq, cstSq = calculateSoundSpeedSq(fromPhase, toPhase, potential, T)
-
-    # Pseudo-trace.
-    thetaf = (rhof - pf/cstSq) / 4
-    thetat = (rhot - pt/cstSq) / 4
-
-    alpha = 4*(thetaf - thetat) / (3*wf)
-
-    kappa = GieseKappa.kappaNuMuModel(cstSq, csfSq, alpha, vw)
-
-    return (thetaf - thetat) / rhof * kappa
-
-
-def determineLengthScale(transitionReport: dict) -> float:
-    return transitionReport['meanBubbleSeparation']
-
-
-def calculatePressureAtT(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float) -> tuple[float,
-        float]:
-    # Field configuration for the two phases.
-    phif = fromPhase.findPhaseAtT(T, potential)
-    phit = toPhase.findPhaseAtT(T, potential)
-
-    # Free energy density of the two phases.
-    Ff = potential.freeEnergyDensity(phif, T)
-    Ft = potential.freeEnergyDensity(phit, T)
-
-    # Pressure.
-    pf = -Ff
-    pt = -Ft
-
-    return pf, pt
-
-
-def calculateEnergyDensityAtT(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float) ->\
-        tuple[float, float]:
-    Tmin = max(fromPhase.T[0], toPhase.T[0])
-    Tmax = min(fromPhase.T[-1], toPhase.T[-1])
-
-    # Make sure the step in either direction doesn't take us past Tmin or where one phase disappears. We don't care
-    # about Tc because we can sample in the region Tc < T < Tmax for the purpose of differentiation.
-    Tstep = min(max(0.0005*Tmax, 0.0001*potential.temperatureScale), 0.5*(T - Tmin), 0.5*(Tmax - T))
-
-    Tl = T - Tstep
-    Th = T + Tstep
-
-    # Field configuration for the two phases at 3 temperatures.
-    phifl = fromPhase.findPhaseAtT(Tl, potential)
-    phifm = fromPhase.findPhaseAtT(T, potential)
-    phifh = fromPhase.findPhaseAtT(Th, potential)
-    phitl = toPhase.findPhaseAtT(Tl, potential)
-    phitm = toPhase.findPhaseAtT(T, potential)
-    phith = toPhase.findPhaseAtT(Th, potential)
-
-    # Free energy density of the two phases at those 3 temperatures.
-    Ffl = potential.freeEnergyDensity(phifl, Tl)
-    Ffm = potential.freeEnergyDensity(phifm, T)
-    Ffh = potential.freeEnergyDensity(phifh, Th)
-    Ftl = potential.freeEnergyDensity(phitl, Tl)
-    Ftm = potential.freeEnergyDensity(phitm, T)
-    Fth = potential.freeEnergyDensity(phith, Th)
-
-    # Central difference method for the temperature derivative of the free energy density.
-    dFfdT = (Ffh - Ffl) / (2*Tstep)
-    dFtdT = (Fth - Ftl) / (2*Tstep)
-
-    # Energy density.
-    ef = Ffm - T*dFfdT
-    et = Ftm - T*dFtdT
-
-    return ef, et
-
-
-def calculateEnthalpyDensityAtT(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float) ->\
-        tuple[float, float]:
-    Tmin = max(fromPhase.T[0], toPhase.T[0])
-    Tmax = min(fromPhase.T[-1], toPhase.T[-1])
-
-    # Make sure the step in either direction doesn't take us past Tmin or where one phase disappears. We don't care
-    # about Tc because we can sample in the region Tc < T < Tmax for the purpose of differentiation.
-    Tstep = min(max(0.0005*Tmax, 0.0001*potential.temperatureScale), 0.5*(T - Tmin), 0.5*(Tmax - T))
-
-    Tl = T - Tstep
-    Th = T + Tstep
-
-    # Field configuration for the two phases at 2 temperatures.
-    phifl = fromPhase.findPhaseAtT(Tl, potential)
-    phifh = fromPhase.findPhaseAtT(Th, potential)
-    phitl = toPhase.findPhaseAtT(Tl, potential)
-    phith = toPhase.findPhaseAtT(Th, potential)
-
-    # Free energy density of the two phases at those 2 temperatures.
-    Ffl = potential.freeEnergyDensity(phifl, Tl)
-    Ffh = potential.freeEnergyDensity(phifh, Th)
-    Ftl = potential.freeEnergyDensity(phitl, Tl)
-    Fth = potential.freeEnergyDensity(phith, Th)
-
-    # Central difference method for the temperature derivative of the free energy density.
-    dFfdT = (Ffh - Ffl) / (2*Tstep)
-    dFtdT = (Fth - Ftl) / (2*Tstep)
-
-    # Enthalpy density.
-    wf = -T*dFfdT
-    wt = -T*dFtdT
-
-    return wf, wt
-
-
-def calculateSoundSpeedSq(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float) -> tuple[float,
-        float]:
-    Tmin = max(fromPhase.T[0], toPhase.T[0])
-    Tmax = min(fromPhase.T[-1], toPhase.T[-1])
-
-    # Make sure the step in either direction doesn't take us past Tmin or where one phase disappears. We don't care
-    # about Tc because we can sample in the region Tc < T < Tmax for the purpose of differentiation.
-    Tstep = min(max(0.0005*Tmax, 0.0001*potential.temperatureScale), 0.5*(T - Tmin), 0.5*(Tmax - T))
-
-    Tl = T - Tstep
-    Th = T + Tstep
-
-    # Field configuration for the two phases at 3 temperatures.
-    phifl = fromPhase.findPhaseAtT(Tl, potential)
-    phifm = fromPhase.findPhaseAtT(T, potential)
-    phifh = fromPhase.findPhaseAtT(Th, potential)
-    phitl = toPhase.findPhaseAtT(Tl, potential)
-    phitm = toPhase.findPhaseAtT(T, potential)
-    phith = toPhase.findPhaseAtT(Th, potential)
-
-    # Free energy density of the two phases at those 3 temperatures.
-    Ffl = potential.freeEnergyDensity(phifl, Tl)
-    Ffm = potential.freeEnergyDensity(phifm, T)
-    Ffh = potential.freeEnergyDensity(phifh, Th)
-    Ftl = potential.freeEnergyDensity(phitl, Tl)
-    Ftm = potential.freeEnergyDensity(phitm, T)
-    Fth = potential.freeEnergyDensity(phith, Th)
-
-    # Central difference method for the temperature derivative of the free energy density.
-    dFfdT = (Ffh - Ffl) / (2*Tstep)
-    dFtdT = (Fth - Ftl) / (2*Tstep)
-
-    # Central difference method for the second temperature derivative of the free energy density.
-    d2FfdT2 = (Ffh - 2*Ffm + Ffl) / Tstep**2
-    d2FtdT2 = (Fth - 2*Ftm + Ftl) / Tstep**2
-
-    # Sound speed squared.
-    csfSq = dFfdT / (T*d2FfdT2)
-    cstSq = dFtdT / (T*d2FtdT2)
-
-    return csfSq, cstSq
-
-
-def main(potentialClass: Type[AnalysablePotential], folderName: str) -> None:
-    with open(folderName + 'phase_history.json', 'r') as f:
-        report = json.load(f)
-
-    relevantTransitions = extractRelevantTransitions(report)
-
-    if len(relevantTransitions) == 0:
-        print('No relevant transition detected.')
-        return
-
-    bSuccess, phaseStructure = PhaseStructure.load_data(folderName + 'phase_structure.dat')
-
-    if not bSuccess:
-        print('Failed to load phase structure.')
-        return
-
-    potential = potentialClass(*np.loadtxt(folderName + 'parameter_point.txt'))
-
-    groundStateEnergyDensity = np.inf
-
-    # Find the ground state energy density.
-    for phase in phaseStructure.phases:
-        if phase.T[0] == 0 and phase.V[0] < groundStateEnergyDensity:
-            groundStateEnergyDensity = phase.V[0]
-
-    for transitionReport in relevantTransitions:
-        Omega_peak, f_peak = determineGWs(phaseStructure, transitionReport, potential, groundStateEnergyDensity)
-        #gwFunc = getGWfunc(phaseStructure, transitionReport, potential, groundStateEnergyDensity)
-        print('Transition ID:', transitionReport['id'])
-        print('Peak amplitude:', Omega_peak)
-        print('Peak frequency:', f_peak)
+def main(detectorClass, potentialClass, outputFolder):
+    GWAnalyser(detectorClass, potentialClass, outputFolder)
+    #hydroTester(potentialClass, outputFolder)
 
 
 if __name__ == "__main__":
-    main(RealScalarSingletModel, 'output/RSS/RSS_BP1/')
+    main(LISA, RealScalarSingletModel, 'output/RSS/RSS_BP1/')
+    #main(LISA, RealScalarSingletModel_HT, 'output/RSS_HT/RSS_HT_BP1/')
+    #main(LISA, ToyModel, 'output/Toy/Toy_BP1/')
