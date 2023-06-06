@@ -23,16 +23,14 @@ import time
 import traceback
 # For getting the current function name.
 import inspect
+# For exiting the program early if necessary.
+import sys
 
 from models.ToyModel import ToyModel
 from analysis.TransitionAnalysis import FailedActionCalculationException
 from analysis import PhaseStructure as PS, PhaseHistoryAnalysis as PHA, TransitionGraph as TG, TransitionAnalysis as TA
 from models.AnalysablePotential import AnalysablePotential
 from util.NotifyHandler import notifyHandler
-
-
-# The relative file path to PhaseTracer. This is user specific.
-PHASETRACER_DIR = 'C:/Work/Software/PhaseTracer/'
 
 
 class PipelineSettings:
@@ -212,13 +210,35 @@ def pipeline_potentialSupplied(potential: AnalysablePotential, settings: Pipelin
 
 
 def pipeline_getPhaseStructure(settings: PipelineSettings):
+    # Load the relative path to PhaseTracer from the config file.
+    try:
+        with open('config/config_user.json', 'r') as f:
+            config = json.load(f)
+    except FileNotFoundError:
+        traceback.print_exc()
+        print('Unable to load configuration file.')
+        sys.exit(1)
+
+    try:
+        PhaseTracer_directory = config['PhaseTracer_directory']
+    except KeyError:
+        print('Unable to load PhaseTracer directory from the configuration file.')
+        sys.exit(1)
+
+    try:
+        windows = config['Windows']
+    except KeyError:
+        windows = False  # Just assume not Windows.
+
+    if PhaseTracer_directory == '':
+        sys.exit(1)
+
     try:
         if not settings.bPreExistingResult:
-            print('args:', ['wsl', PHASETRACER_DIR + 'bin/' + settings.phaseStructureProgram_name,
-                *settings.phaseStructureProgram_commands])
             # Call PhaseTracer. Suppress standard output from PhaseTracer.
-            subprocess.call(['wsl', PHASETRACER_DIR + 'bin/' + settings.phaseStructureProgram_name,
-                *settings.phaseStructureProgram_commands], timeout=settings.timeout_phaseStructure, shell=True,
+            command = (['wsl'] if windows else []) + [PhaseTracer_directory + 'bin/' +
+                settings.phaseStructureProgram_name, *settings.phaseStructureProgram_commands]
+            subprocess.call(command, timeout=settings.timeout_phaseStructure, shell=True,
                 stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
         # Check if the output file exists.
