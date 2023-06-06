@@ -83,8 +83,8 @@ class Transition:
     TVphysDecr_high: float
     # The temperature at which the physical volume of the false vacuum stops shrinking.
     TVphysDecr_low: float
-    Treh_pw: float
-    Treh_ps: float
+    Treh_p: float
+    Treh_e: float
     Treh_f: float
 
     Tmin: float
@@ -135,8 +135,8 @@ class Transition:
         self.Tf = -1.
         self.TVphysDecr_high = -1.
         self.TVphysDecr_low = -1.
-        self.Treh_pw = -1
-        self.Treh_ps = -1
+        self.Treh_p = -1
+        self.Treh_e = -1
         self.Treh_f = -1
 
         self.Tmin = -1.
@@ -219,14 +219,23 @@ class Transition:
         if self.Tnbar > 0:
             report['Tnbar'] = self.Tnbar
             report['SonTnbar'] = self.analysis.SonTnbar
+
         if self.Tp > 0: report['Tp'] = self.Tp
         if self.Te > 0: report['Te'] = self.Te
         if self.Tf > 0: report['Tf'] = self.Tf
+
         if self.TVphysDecr_high > 0: report['TVphysDecr_high'] = self.TVphysDecr_high
         if self.TVphysDecr_low > 0: report['TVphysDecr_low'] = self.TVphysDecr_low
-        if self.Treh_pw > 0: report['Treh_pw'] = self.Treh_pw
-        if self.Treh_ps > 0: report['Treh_ps'] = self.Treh_ps
+
+        if self.Treh_p > 0: report['Treh_p'] = self.Treh_p
+        if self.Treh_e > 0: report['Treh_e'] = self.Treh_e
         if self.Treh_f > 0: report['Treh_f'] = self.Treh_f
+
+        if self.Tn > 0: report['betaTn'] = self.analysis.betaTn
+        if self.Tnbar > 0: report['betaTnbar'] = self.analysis.betaTnbar
+        if self.Tp > 0: report['betaTp'] = self.analysis.betaTp
+        if self.Te > 0: report['betaTe'] = self.analysis.betaTe
+        if self.Tf > 0: report['betaTf'] = self.analysis.betaTf
 
         if self.Tmin > 0:
             report['Tmin'] = self.Tmin
@@ -249,6 +258,7 @@ class Transition:
             report['meanBubbleRadius'] = self.meanBubbleRadius
             report['energyWeightedBubbleRadius'] = self.energyWeightedBubbleRadius
             report['volumeWeightedBubbleRadius'] = self.volumeWeightedBubbleRadius
+            report['transitionStrength'] = self.transitionStrength
 
         return report
 
@@ -265,12 +275,24 @@ class PhaseStructure:
     transitions: list[Transition]
     transitionPaths: list[TransitionPath]
     reportMessage: str
+    groundStateEnergyDensity: float
 
     def __init__(self):
         self.phases = []
         self.transitions = []
         self.transitionPaths = []
         self.reportMessage = ''
+        self.groundStateEnergyDensity = 0.
+
+    def determineGroundStateEnergyDensity(self):
+        self.groundStateEnergyDensity = np.inf
+
+        for phase in self.phases:
+            if phase.T[0] == 0 and phase.V[0] < self.groundStateEnergyDensity:
+                self.groundStateEnergyDensity = phase.V[0]
+
+        if self.groundStateEnergyDensity == np.inf:
+            self.groundStateEnergyDensity = 0.
 
 
 def load_data(dat_name, bExpectFile=True) -> tuple[bool, Optional[PhaseStructure]]:
@@ -303,6 +325,8 @@ def load_data(dat_name, bExpectFile=True) -> tuple[bool, Optional[PhaseStructure
             raise(Exception("Invalid header for phase, transition or transition path: " + part[0]))
 
     phaseStructure.transitions.sort(key=lambda x: x.ID)
+
+    phaseStructure.determineGroundStateEnergyDensity()
 
     return True, phaseStructure
 

@@ -9,8 +9,13 @@ import json
 import time
 import pathlib
 
+
 # The file path to PhaseTracer. This is user specific.
-PHASETRACER_DIR = '/home/xuzhongxiu/PhaseTracer/'
+#PHASETRACER_DIR = '/home/xuzhongxiu/PhaseTracer/'
+
+import traceback
+import sys
+
 
 
 def writePhaseHistoryReport(fileName: str, paths: list[TransitionGraph.ProperPath], phaseStructure:
@@ -50,6 +55,29 @@ def main():
     # history). Also, we can have PhaseTracer construct the potential by reading the saved parameter point.
     np.savetxt(outputFolder + '/parameter_point.txt', np.array([parameterPoint]))
 
+    # Load the relative path to PhaseTracer from the config file.
+    try:
+        with open('config/config_user.json', 'r') as f:
+            config = json.load(f)
+    except FileNotFoundError:
+        traceback.print_exc()
+        print('Unable to load configuration file.')
+        sys.exit(1)
+
+    try:
+        PhaseTracer_directory = config['PhaseTracer_directory']
+    except KeyError:
+        print('Unable to load PhaseTracer directory from the configuration file.')
+        sys.exit(1)
+
+    try:
+        windows = config['Windows']
+    except KeyError:
+        windows = False  # Just assume not Windows.
+
+    if PhaseTracer_directory == '':
+        sys.exit(1)
+
     # Call PhaseTracer to determine the phase structure of the potential. 'wsl' is the Windows Subsystem for Linux,
     # which is required because PhaseTracer does not run on Windows directly. The second element of the list is the
     # program name. The remaining elements are the input parameters for the specified program. The timeout (in seconds)
@@ -57,11 +85,17 @@ def main():
     # stdout is routed to DEVNULL to suppress any print statements from PhaseTracer. stderr is routed to STDOUT so that
     # errors in PhaseTracer are printed here.
 
+
 #subprocess.call([ PHASETRACER_DIR + 'bin/run_ToyModel', outputFolder + '/parameter_point.txt', outputFolder],timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
    # subprocess.call([ PHASETRACER_DIR + 'bin/run_SingletModel', outputFolder + '/parameter_point.txt', outputFolder],
         timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-    subprocess.call([ PHASETRACER_DIR + 'bin/run_RSS', outputFolder + '/parameter_point.txt', outputFolder],
-        timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+   # subprocess.call([ PHASETRACER_DIR + 'bin/run_RSS', outputFolder + '/parameter_point.txt', outputFolder],
+   #    timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+
+
+    command = (['wsl'] if windows else []) + [PhaseTracer_directory + 'bin/run_RSS', outputFolder +
+        '/parameter_point.txt', outputFolder]
+    subprocess.call(command, timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
 
     # Load the phase structure saved by PhaseTracer.

@@ -72,6 +72,12 @@ class AnalysedTransition:
         self.SonTe = -1
         self.SonTf = -1
 
+        self.betaTn = -1
+        self.betaTnbar = -1
+        self.betaTp = -1
+        self.betaTe = -1
+        self.betaTf = -1
+
         self.T = []
         self.SonT = []
         self.lowestSonT = -1
@@ -515,13 +521,11 @@ class TransitionAnalyser():
     Tmax: float = 0.
     Tstep: float = 0.
 
-    vw: float = 1.
-
     actionSampler: ActionSampler
 
-    # TODO: make vw a function of this class that can be overriden. Then remove vw from this input list.
+    # TODO: make vw a function of this class that can be overriden. Currently it is obtained from the transition.
     def __init__(self, potential: AnalysablePotential, transition: PS.Transition, fromPhase: PS.Phase, toPhase:
-            PS.Phase, groundStateEnergyDensity: float, Tmin: float = 0., Tmax: float = 0., vw: float = 1.):
+            PS.Phase, groundStateEnergyDensity: float, Tmin: float = 0., Tmax: float = 0.):
         self.potential = potential
         self.transition = transition
         self.fromPhase = fromPhase
@@ -529,7 +533,6 @@ class TransitionAnalyser():
         self.groundStateEnergyDensity = groundStateEnergyDensity
         self.Tmin = Tmin
         self.Tmax = Tmax
-        self.vw = vw
 
         if self.Tmin == 0:
             # The minimum temperature for which both phases exist, and prevent analysis below the effective potential's
@@ -569,7 +572,7 @@ class TransitionAnalyser():
             print('Tmin:', self.Tmin)
             print('Tmax:', self.Tmax)
             print('Tc:', self.transition.Tc)
-            print('vw:', self.vw)
+            print('vw:', self.transition.vw)
 
         if len(precomputedT) == 0:
             # TODO: we don't use allSamples anymore.
@@ -666,13 +669,13 @@ class TransitionAnalyser():
             return Gamma[x] / (self.actionSampler.subT[x]**4 * Hmegevand[x])
 
         def innerFunction_trueVacVol(x):
-            return self.vw / Hmegevand[x]
+            return self.transition.vw / Hmegevand[x]
 
         def outerFunction_avgBubRad(x):
             return Gamma[x]*Pf[x] / (self.actionSampler.subT[x] * Hmegevand[x])
 
         def innerFunction_avgBubRad(x):
-            return self.vw / Hmegevand[x]
+            return self.transition.vw / Hmegevand[x]
 
         def sampleTransformationFunction(x):
             return self.actionSampler.subT[x]
@@ -841,7 +844,7 @@ class TransitionAnalyser():
                 # vacuum probability arrays as usual below.
                 if integrationHelper_trueVacVol is None and len(self.actionSampler.subT) == 4:
                     integrationHelper_trueVacVol = IntegrationHelper.CubedNestedIntegrationHelper([0, 1, 2],
-                                                                                                  outerFunction_trueVacVol, innerFunction_trueVacVol, sampleTransformationFunction)
+                        outerFunction_trueVacVol, innerFunction_trueVacVol, sampleTransformationFunction)
 
                     # Don't add the first element since we have already stored Vext[0] = 0, Pf[0] = 1, etc.
                     for j in range(1, len(integrationHelper_trueVacVol.data)):
@@ -852,15 +855,16 @@ class TransitionAnalyser():
                             + 0.5*(T[j-1] - T[j])*T[j]**3 * (Gamma[j-1]*Pf[j-1] / (T[j-1]**4 * Hmegevand[j-1])
                             + Gamma[j]*Pf[j] / (T[j]**4 * Hmegevand[j])))
 
-                    # Do the same thing for the average bubble radius integration helper. This needs to be done after Pf has
-                    # been filled with data because outerFunction_avgBubRad uses this data.
+                    # Do the same thing for the average bubble radius integration helper. This needs to be done after Pf
+                    # has been filled with data because outerFunction_avgBubRad uses this data.
                     integrationHelper_avgBubRad = IntegrationHelper.LinearNestedNormalisedIntegrationHelper([0, 1],
-                                                                                                            outerFunction_avgBubRad, innerFunction_avgBubRad, outerFunction_avgBubRad,
-                                                                                                            sampleTransformationFunction)
+                        outerFunction_avgBubRad, innerFunction_avgBubRad, outerFunction_avgBubRad,
+                        sampleTransformationFunction)
 
-                    # Since the average bubble radius integration helper requires one less data point for initialisation, it
-                    # currently contains one less data point than it should have. Add one more data point: the previous
-                    # temperature sample. The current temperature sample will be added later in this iteration of i.
+                    # Since the average bubble radius integration helper requires one less data point for
+                    # initialisation, it currently contains one less data point than it should have. Add one more data
+                    # point: the previous temperature sample. The current temperature sample will be added later in this
+                    # iteration of i.
                     integrationHelper_avgBubRad.integrate(len(self.actionSampler.subT)-2)
 
                     for j in range(1, len(integrationHelper_avgBubRad.data)):
@@ -902,6 +906,7 @@ class TransitionAnalyser():
                     self.transition.analysis.SonTn = SonTprev + (SonTnew - SonTprev) * (numBubblesIntegral[-1] - 1)\
                         / (numBubblesIntegral[-1] - numBubblesIntegral[-2])
                     self.transition.Tn = Tn
+                    self.transition.analysis.betaTn = Tn*(SonTprev - SonTnew)/dT
 
                 if Tnbar < 0 and numBubblesCorrectedIntegral[-1] >= 1:
                     Tnbar = Tprev + (Tnew - Tprev) * (numBubblesCorrectedIntegral[-1] - 1)\
@@ -910,17 +915,16 @@ class TransitionAnalyser():
                         * (numBubblesCorrectedIntegral[-1] - 1) / (numBubblesCorrectedIntegral[-1]
                         - numBubblesCorrectedIntegral[-2])
                     self.transition.Tnbar = Tnbar
+                    self.transition.analysis.betaTnbar = Tnbar*(SonTprev - SonTnew)/dT
 
                 if Tp < 0 and Vext[-1] >= percolationThreshold_Vext:
                     indexTp = len(Hmegevand)-1
-                    # max(0, ...) for subcritical transitions, where it is possible that trueVacFracToUse[-2] > perc_thresh.
+                    # max(0, ...) for subcritical transitions, where it is possible that Vext[-2] > percThresh.
                     interpFactor = max(0, (percolationThreshold_Vext - Vext[-2]) / (Vext[-1] - Vext[-2]))
                     Tp = Tprev + interpFactor*(Tnew - Tprev)
                     self.transition.analysis.SonTp = SonTprev + interpFactor*(SonTnew - SonTprev)
-                    betaTp = Tp * (SonTprev - SonTnew) / dT
-                    betaCorrectedTp = betaTp - 2.5 - 1.5/SonTnew * (SonTprev*Tprev - SonTnew*Tnew) / dT
                     self.transition.Tp = Tp
-                    self.transition.analysis.betaTp = betaCorrectedTp
+                    self.transition.analysis.betaTp = Tp*(SonTprev - SonTnew)/dT
 
                     # Also store whether the physical volume of the false vacuum was decreasing at Tp.
                     # Make sure to cast to a bool, because JSON doesn't like encoding the numpy.bool type.
@@ -928,21 +932,19 @@ class TransitionAnalyser():
 
                     # Store the reheating temperature from this point, using conservation of energy.
                     Tp_reh = self.calculateReheatTemperature(Tp)
-                    self.transition.Treh_pw = Tp_reh
+                    self.transition.Treh_p = Tp_reh
 
                 if Te < 0 and Vext[-1] >= 1:
                     # max(0, ...) for subcritical transitions, where it is possible that Vext[-2] > 1.
                     interpFactor = max(0, (1 - Vext[-2]) / (Vext[-1] - Vext[-2]))
                     Te = Tprev + interpFactor*(Tnew - Tprev)
                     self.transition.analysis.SonTe = SonTprev + interpFactor*(SonTnew - SonTprev)
-                    betaTe = Te * (SonTprev - SonTnew) / dT
-                    betaCorrectedTe = betaTe - 2.5 - 1.5/SonTnew * (SonTprev*Tprev - SonTnew*Tnew) / dT
                     self.transition.Te = Te
-                    self.transition.analysis.betaTe = betaCorrectedTe
+                    self.transition.analysis.betaTe = Te*(SonTprev - SonTnew)/dT
 
                     # Store the reheating temperature from this point, using conservation of energy.
                     Te_reh = self.calculateReheatTemperature(Te)
-                    self.transition.Treh_ps = Te_reh
+                    self.transition.Treh_e = Te_reh
 
                 if Tf < 0 and Pf[-1] <= completionThreshold:
                     indexTf = len(Hmegevand)-1
@@ -1033,8 +1035,8 @@ class TransitionAnalyser():
             Tf = self.transition.Tf
             Ts1 = self.transition.TVphysDecr_high
             Ts2 = self.transition.TVphysDecr_low
-            Tp_reh = self.transition.Treh_pw
-            Te_reh = self.transition.Treh_ps
+            Tp_reh = self.transition.Treh_p
+            Te_reh = self.transition.Treh_e
             Tf_reh = self.transition.Treh_f
 
             print('N(T_0): ', numBubblesIntegral[-1])
@@ -2399,6 +2401,7 @@ def calculateTypicalLengthScale(Tp, indexTp, indexTn, Tc, meanBubbleSeparation, 
     return REnergyMax, RVolMax
 
 
+# TODO: Do elsewhere?
 def calculateTransitionStrength(potential, fromPhase, toPhase, T):
     dT = min(0.001*T, 0.5*(min(toPhase.T[-1], fromPhase.T[-1]) - T))
 

@@ -77,17 +77,6 @@ class PhaseHistoryAnalyser:
             if phases[i].T[-1] == highTemp:
                 bHighTemperaturePhase[i] = True
 
-        groundStateEnergyDensity = np.inf
-
-        # Find the ground state energy density.
-        for phase in phases:
-            if phase.T[0] == 0 and phase.V[0] < groundStateEnergyDensity:
-                groundStateEnergyDensity = phase.V[0]
-       
-        #groundStateEnergyDensity = potential.Vtot(potential.approxZeroTMin()[1], 0)
-
-        #groundStateEnergyDensity = potential.Vtot(potential.approxZeroTMin()[1], 0)
-
         # Find all low temperature phases. These are needed to check if a path is valid, i.e. if it terminates at a low
         # temperature phase.
         # TODO: why was it necessary to do it this way?
@@ -278,8 +267,8 @@ class PhaseHistoryAnalyser:
                             actionFileName = self.fileName_precomputedActionCurve[i]
 
                     transitionAnalyser: TA.TransitionAnalyser = TA.TransitionAnalyser(potential, transition,
-                        phases[transition.false_phase], phases[transition.true_phase], groundStateEnergyDensity, Tmin=Tmin,
-                        Tmax=Tmax)
+                        phases[transition.false_phase], phases[transition.true_phase],
+                        phaseStructure.groundStateEnergyDensity, Tmin=Tmin, Tmax=Tmax)
 
                     transitionAnalyser.bDebug = self.bDebug
                     transitionAnalyser.bPlot = self.bPlot
