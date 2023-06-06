@@ -520,13 +520,11 @@ class TransitionAnalyser():
     Tmax: float = 0.
     Tstep: float = 0.
 
-    vw: float = 1.
-
     actionSampler: ActionSampler
 
-    # TODO: make vw a function of this class that can be overriden. Then remove vw from this input list.
+    # TODO: make vw a function of this class that can be overriden. Currently it is obtained from the transition.
     def __init__(self, potential: AnalysablePotential, transition: PS.Transition, fromPhase: PS.Phase, toPhase:
-            PS.Phase, groundStateEnergyDensity: float, Tmin: float = 0., Tmax: float = 0., vw: float = 1.):
+            PS.Phase, groundStateEnergyDensity: float, Tmin: float = 0., Tmax: float = 0.):
         self.potential = potential
         self.transition = transition
         self.fromPhase = fromPhase
@@ -534,7 +532,6 @@ class TransitionAnalyser():
         self.groundStateEnergyDensity = groundStateEnergyDensity
         self.Tmin = Tmin
         self.Tmax = Tmax
-        self.vw = vw
 
         if self.Tmin == 0:
             # The minimum temperature for which both phases exist, and prevent analysis below the effective potential's
@@ -574,7 +571,7 @@ class TransitionAnalyser():
             print('Tmin:', self.Tmin)
             print('Tmax:', self.Tmax)
             print('Tc:', self.transition.Tc)
-            print('vw:', self.vw)
+            print('vw:', self.transition.vw)
 
         if len(precomputedT) == 0:
             # TODO: we don't use allSamples anymore.
@@ -671,13 +668,13 @@ class TransitionAnalyser():
             return Gamma[x] / (self.actionSampler.subT[x]**4 * Hmegevand[x])
 
         def innerFunction_trueVacVol(x):
-            return self.vw / Hmegevand[x]
+            return self.transition.vw / Hmegevand[x]
 
         def outerFunction_avgBubRad(x):
             return Gamma[x]*Pf[x] / (self.actionSampler.subT[x] * Hmegevand[x])
 
         def innerFunction_avgBubRad(x):
-            return self.vw / Hmegevand[x]
+            return self.transition.vw / Hmegevand[x]
 
         def sampleTransformationFunction(x):
             return self.actionSampler.subT[x]
