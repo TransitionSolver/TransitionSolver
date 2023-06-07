@@ -89,8 +89,8 @@ class GWAnalyser_InidividualTransition:
         self.peakAmplitude = 0.15509*redshift * K*K * H*(lenScale_primary/(8*np.pi)**(1./3.))/soundSpeed * upsilon
         zp = 10.  # This assumes the peak frequency corresponds to 10*lenScale. This result comes from simulations
         # (https://arxiv.org/pdf/1704.05871.pdf) and is expected to change if vw ~ vCJ (specifically zp will increase).
-        self.peakFrequency_primary = 8.9e-6*(self.potential.ndof/100)**(1./6.)*(Treh/100)/(H*lenScale_primary)*(zp/10)
-        self.peakFrequency_secondary = 8.9e-6*(self.potential.ndof/100)**(1./6.)*(Treh/100)/(H*lenScale_secondary)*(zp/10)
+        self.peakFrequency_primary = 8.9e-6*(self.potential.ndof/100)**(1./6.)*(Treh/100)/(H*lenScale_primary/(8*np.pi)**(1./3.))*(zp/10)
+        self.peakFrequency_secondary = 8.9e-6*(self.potential.ndof/100)**(1./6.)*(Treh/100)/(H*lenScale_secondary/(8*np.pi)**(1./3.))*(zp/10)
 
     def calculateSNR(self, gwFunc: Callable[[float], float]) -> float:
         frequencies = self.detector.sensitivityCurve[0]

@@ -219,11 +219,11 @@ class ActionSampler:
         GammaPrev = self.transitionAnalyser.calculateGamma(self.T[-2], self.SonT[-2])
 
         def nearMaxNucleation() -> bool:
-            betaNew = (self.SonT[-1] - SonTnew)/(self.T[-1] - Tnew)
-            beta = (self.SonT[-2] - self.SonT[-1])/(self.T[-2] - self.T[-1])
+            dSdTnew = (self.SonT[-1] - SonTnew)/(self.T[-1] - Tnew)
+            dSdT = (self.SonT[-2] - self.SonT[-1])/(self.T[-2] - self.T[-1])
             # If the relative derivative is changing rapidly, then we are near the minimum.
             # TODO: given the exponential curve, might need to change this derivative test.
-            derivTest = betaNew/beta < 0.8 if beta > 0 else betaNew/beta > 1.25
+            derivTest = dSdTnew/dSdT < 0.8 if dSdT > 0 else dSdTnew/dSdT > 1.25
             return GammaNew > 0 and (GammaNew/GammaCur < 0.8*GammaCur/GammaPrev or derivTest)
 
         stepFactor = 1.
@@ -632,7 +632,7 @@ class TransitionAnalyser():
         numBubblesCorrectedIntegral = [0.]
         Vext = [0.]
         Pf = [1.]
-        Hmegevand = [np.sqrt(self.calculateHubbleParameterSq(self.actionSampler.T[0]))]
+        H = [np.sqrt(self.calculateHubbleParameterSq(self.actionSampler.T[0]))]
         Gamma = [0.]
         bubbleNumberDensity = [0.]
         averageBubbleRadius = [0.]
@@ -647,7 +647,7 @@ class TransitionAnalyser():
 
         Gamma[0] = T4 * (self.actionSampler.SonT[0] / (2*np.pi))**(3/2) * np.exp(-self.actionSampler.SonT[0])
 
-        numBubblesIntegrand[0] = Gamma[0] / (self.actionSampler.T[0]*Hmegevand[0]**4)
+        numBubblesIntegrand[0] = Gamma[0] / (self.actionSampler.T[0]*H[0]**4)
         numBubblesCorrectedIntegrand[0] = numBubblesIntegrand[0]
 
         # The temperature for which S/T is minimised. This is important for determining the bubble number density. If this
@@ -665,16 +665,16 @@ class TransitionAnalyser():
         completionThreshold = 1e-2
 
         def outerFunction_trueVacVol(x):
-            return Gamma[x] / (self.actionSampler.subT[x]**4 * Hmegevand[x])
+            return Gamma[x] / (self.actionSampler.subT[x]**4 * H[x])
 
         def innerFunction_trueVacVol(x):
-            return self.transition.vw / Hmegevand[x]
+            return self.transition.vw / H[x]
 
         def outerFunction_avgBubRad(x):
-            return Gamma[x]*Pf[x] / (self.actionSampler.subT[x] * Hmegevand[x])
+            return Gamma[x]*Pf[x] / (self.actionSampler.subT[x] * H[x])
 
         def innerFunction_avgBubRad(x):
-            return self.transition.vw / Hmegevand[x]
+            return self.transition.vw / H[x]
 
         def sampleTransformationFunction(x):
             return self.actionSampler.subT[x]
@@ -718,7 +718,7 @@ class TransitionAnalyser():
                 TAtSonTmin = self.actionSampler.T[simIndex]
                 SonTmin = self.actionSampler.SonT[simIndex]
                 GammaAtSonTmin = Gamma[-1]
-                HAtSonTmin = Hmegevand[-1]
+                HAtSonTmin = H[-1]
                 if self.bDebug:
                     print('Gamma/(T*H^4) at Tmin:', GammaAtSonTmin/HAtSonTmin**4/TAtSonTmin)
                 self.transition.Tmin = TAtSonTmin
@@ -851,8 +851,8 @@ class TransitionAnalyser():
                         physicalVolume.append(3 + T[j]*(Vext[-2] - Vext[-1]) / (T[j-1] - T[j]))
                         Pf.append(np.exp(-Vext[-1]))
                         bubbleNumberDensity.append((T[j]/T[j-1])**3 * bubbleNumberDensity[-1]
-                            + 0.5*(T[j-1] - T[j])*T[j]**3 * (Gamma[j-1]*Pf[j-1] / (T[j-1]**4 * Hmegevand[j-1])
-                            + Gamma[j]*Pf[j] / (T[j]**4 * Hmegevand[j])))
+                            + 0.5*(T[j-1] - T[j])*T[j]**3 * (Gamma[j-1]*Pf[j-1] / (T[j-1]**4 * H[j-1])
+                            + Gamma[j]*Pf[j] / (T[j]**4 * H[j])))
 
                     # Do the same thing for the average bubble radius integration helper. This needs to be done after Pf
                     # has been filled with data because outerFunction_avgBubRad uses this data.
@@ -869,14 +869,14 @@ class TransitionAnalyser():
                     for j in range(1, len(integrationHelper_avgBubRad.data)):
                         averageBubbleRadius.append(integrationHelper_avgBubRad.data[j])
 
-                #Hmegevand.append(np.sqrt(self.calculateHubbleParameterSq(T[i])))
-                Hmegevand.append(np.sqrt(self.calculateHubbleParameterSq_supplied(rhof[i] -
+                #H.append(np.sqrt(self.calculateHubbleParameterSq(T[i])))
+                H.append(np.sqrt(self.calculateHubbleParameterSq_supplied(rhof[i] -
                     self.groundStateEnergyDensity)))
 
                 Gamma.append(self.calculateGamma(T[i], SonT[i]))
 
-                numBubblesIntegrand.append(Gamma[-1]/(T[i]*Hmegevand[-1]**4))
-                numBubblesCorrectedIntegrand.append(Gamma[-1]*Pf[-1]/(T[i]*Hmegevand[-1]**4))
+                numBubblesIntegrand.append(Gamma[-1]/(T[i]*H[-1]**4))
+                numBubblesCorrectedIntegrand.append(Gamma[-1]*Pf[-1]/(T[i]*H[-1]**4))
                 numBubblesIntegral.append(numBubblesIntegral[-1]
                     + 0.5*dT*(numBubblesIntegrand[-1] + numBubblesIntegrand[-2]))
                 numBubblesCorrectedIntegral.append(numBubblesCorrectedIntegral[-1]
@@ -888,8 +888,8 @@ class TransitionAnalyser():
                     physicalVolume.append(3 + T[i]*(Vext[-2] - Vext[-1]) / (self.actionSampler.subT[-2] - T[i]))
                     Pf.append(np.exp(-Vext[-1]))
                     bubbleNumberDensity.append((T[i]/T[i-1])**3 * bubbleNumberDensity[-1]
-                        + 0.5*(T[i-1] - T[i])*T[i]**3 * (Gamma[-2]*Pf[-2] / (T[i-1]**4 * Hmegevand[-2])
-                        + Gamma[-1]*Pf[-1] / (T[i]**4 * Hmegevand[-1])))
+                        + 0.5*(T[i-1] - T[i])*T[i]**3 * (Gamma[-2]*Pf[-2] / (T[i-1]**4 * H[-2])
+                        + Gamma[-1]*Pf[-1] / (T[i]**4 * H[-1])))
                     # This needs to be done after the new Pf has been added because outerFunction_avgBubRad uses this data.
                     integrationHelper_avgBubRad.integrate(len(self.actionSampler.subT)-1)
                     averageBubbleRadius.append(integrationHelper_avgBubRad.data[-1])
@@ -905,7 +905,7 @@ class TransitionAnalyser():
                     self.transition.analysis.SonTn = SonTprev + (SonTnew - SonTprev) * (numBubblesIntegral[-1] - 1)\
                         / (numBubblesIntegral[-1] - numBubblesIntegral[-2])
                     self.transition.Tn = Tn
-                    self.transition.analysis.betaTn = Tn*(SonTprev - SonTnew)/dT
+                    self.transition.analysis.betaTn = H[-1]*Tn*(SonTprev - SonTnew)/dT
 
                 if Tnbar < 0 and numBubblesCorrectedIntegral[-1] >= 1:
                     Tnbar = Tprev + (Tnew - Tprev) * (numBubblesCorrectedIntegral[-1] - 1)\
@@ -914,16 +914,16 @@ class TransitionAnalyser():
                         * (numBubblesCorrectedIntegral[-1] - 1) / (numBubblesCorrectedIntegral[-1]
                         - numBubblesCorrectedIntegral[-2])
                     self.transition.Tnbar = Tnbar
-                    self.transition.analysis.betaTnbar = Tnbar*(SonTprev - SonTnew)/dT
+                    self.transition.analysis.betaTnbar = H[-1]*Tnbar*(SonTprev - SonTnew)/dT
 
                 if Tp < 0 and Vext[-1] >= percolationThreshold_Vext:
-                    indexTp = len(Hmegevand)-1
+                    indexTp = len(H)-1
                     # max(0, ...) for subcritical transitions, where it is possible that Vext[-2] > percThresh.
                     interpFactor = max(0, (percolationThreshold_Vext - Vext[-2]) / (Vext[-1] - Vext[-2]))
                     Tp = Tprev + interpFactor*(Tnew - Tprev)
                     self.transition.analysis.SonTp = SonTprev + interpFactor*(SonTnew - SonTprev)
                     self.transition.Tp = Tp
-                    self.transition.analysis.betaTp = Tp*(SonTprev - SonTnew)/dT
+                    self.transition.analysis.betaTp = H[-1]*Tp*(SonTprev - SonTnew)/dT
 
                     # Also store whether the physical volume of the false vacuum was decreasing at Tp.
                     # Make sure to cast to a bool, because JSON doesn't like encoding the numpy.bool type.
@@ -939,14 +939,14 @@ class TransitionAnalyser():
                     Te = Tprev + interpFactor*(Tnew - Tprev)
                     self.transition.analysis.SonTe = SonTprev + interpFactor*(SonTnew - SonTprev)
                     self.transition.Te = Te
-                    self.transition.analysis.betaTe = Te*(SonTprev - SonTnew)/dT
+                    self.transition.analysis.betaTe = H[-1]*Te*(SonTprev - SonTnew)/dT
 
                     # Store the reheating temperature from this point, using conservation of energy.
                     Te_reh = self.calculateReheatTemperature(Te)
                     self.transition.Treh_e = Te_reh
 
                 if Tf < 0 and Pf[-1] <= completionThreshold:
-                    indexTf = len(Hmegevand)-1
+                    indexTf = len(H)-1
                     if Pf[-1] == Pf[-2]:
                         interpFactor = 0
                     else:
@@ -955,6 +955,7 @@ class TransitionAnalyser():
                     Tf = Tprev + interpFactor*(Tnew - Tprev)
                     self.transition.analysis.SonTf = SonTprev + interpFactor*(SonTnew - SonTprev)
                     self.transition.Tf = Tf
+                    self.transition.analysis.betaTf = H[-1]*Tf*(SonTprev - SonTnew)/dT
 
                     # Also store whether the physical volume of the false vacuum was decreasing at Tf.
                     # Make sure to cast to a bool, because JSON doesn't like encoding the numpy.bool type.
@@ -1210,10 +1211,10 @@ class TransitionAnalyser():
         if self.bReportAnalysis:
             print('Mean bubble separation (Tp):', meanBubbleSeparationArray[indexTp])
             print('Average bubble radius (Tp): ', averageBubbleRadius[indexTp])
-            print('Hubble radius (Tp):         ', 1/Hmegevand[indexTp])
+            print('Hubble radius (Tp):         ', 1/H[indexTp])
             print('Mean bubble separation (Tf):', meanBubbleSeparationArray[indexTf])
             print('Average bubble radius (Tf): ', averageBubbleRadius[indexTf])
-            print('Hubble radius (Tf):         ', 1/Hmegevand[indexTf])
+            print('Hubble radius (Tf):         ', 1/H[indexTf])
 
         if self.bPlot:
             Tn = self.transition.Tn
