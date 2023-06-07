@@ -10,6 +10,8 @@ import scipy.integrate
 from analysis.PhaseStructure import Phase
 from gws.Hydrodynamics import HydroVars
 from models.RealScalarSingletModel import RealScalarSingletModel
+from models.RealScalarSingletModel_HT import RealScalarSingletModel_HT
+from models.ToyModel import ToyModel
 from models.AnalysablePotential import AnalysablePotential
 from analysis import PhaseStructure
 from gws import GieseKappa, Hydrodynamics
@@ -54,18 +56,23 @@ class GWAnalyser_InidividualTransition:
             return 0., 0.
         lenScale_primary = self.determineLengthScale()
 
-        H = np.sqrt(8*np.pi*GRAV_CONST/3*(self.hydroVars.energyDensityFalse -
-            self.phaseStructure.groundStateEnergyDensity))
+        totalEnergyDensity = self.hydroVars.energyDensityFalse - self.phaseStructure.groundStateEnergyDensity
+
+        H = np.sqrt(8*np.pi*GRAV_CONST/3 * totalEnergyDensity)
 
         # Weight the enthalpy by the fraction of the Universe in each phase. This will underestimate the enthalpy
         # because we neglect the reheated regions around the bubble wall.
         # TODO: maybe we can get this from Giese's code?
-        averageEnthalpy = self.hydroVars.enthalpyDensityFalse*0.71 + 0.29*self.hydroVars.enthalpyDensityTrue
+        #averageEnthalpyDensity = self.hydroVars.enthalpyDensityFalse*0.71 + 0.29*self.hydroVars.enthalpyDensityTrue
+        # Slightly better than averaging the enthalpy of each phase. Use energy conservation for the energy, and average
+        # the pressure of each phase. Don't use totalEnergyDensity because we should not subtract off the ground state
+        # energy density. The enthalpy is -T*dV/dT, so the ground state energy density doesn't contribute.
+        # TODO: fix hard-coded vacuum fractions.
+        averageEnthalpyDensity = self.hydroVars.pressureFalse*0.71 + self.hydroVars.pressureTrue*0.29\
+            + self.hydroVars.energyDensityFalse
 
-        # Assuming energy conservation so averageEnergy = rhof.
-        #adiabaticIndex = averageEnthalpy / (self.hydroVars.energyDensityFalse - self.phaseStructure.groundStateEnergyDensity)
-        # TODO: this is sometimes negative...
-        adiabaticIndex = averageEnthalpy / self.hydroVars.energyDensityFalse
+        # Assuming energy conservation so averageEnergyDensity = totalEnergyDensity.
+        adiabaticIndex = averageEnthalpyDensity / totalEnergyDensity
 
         fluidVelocity = np.sqrt(K/adiabaticIndex)
         # Assume the rotational modes are negligible.
@@ -89,8 +96,10 @@ class GWAnalyser_InidividualTransition:
         self.peakAmplitude = 0.15509*redshift * K*K * H*(lenScale_primary/(8*np.pi)**(1./3.))/soundSpeed * upsilon
         zp = 10.  # This assumes the peak frequency corresponds to 10*lenScale. This result comes from simulations
         # (https://arxiv.org/pdf/1704.05871.pdf) and is expected to change if vw ~ vCJ (specifically zp will increase).
-        self.peakFrequency_primary = 8.9e-6*(self.potential.ndof/100)**(1./6.)*(Treh/100)/(H*lenScale_primary/(8*np.pi)**(1./3.))*(zp/10)
-        self.peakFrequency_secondary = 8.9e-6*(self.potential.ndof/100)**(1./6.)*(Treh/100)/(H*lenScale_secondary/(8*np.pi)**(1./3.))*(zp/10)
+        self.peakFrequency_primary = 8.9e-6*(self.potential.ndof/100)**(1./6.)*(Treh/100)\
+            /(H*lenScale_primary/(8*np.pi)**(1./3.))*(zp/10)
+        self.peakFrequency_secondary = 8.9e-6*(self.potential.ndof/100)**(1./6.)*(Treh/100)\
+            /(H*lenScale_secondary/(8*np.pi)**(1./3.))*(zp/10)
 
     def calculateSNR(self, gwFunc: Callable[[float], float]) -> float:
         frequencies = self.detector.sensitivityCurve[0]
@@ -99,7 +108,7 @@ class GWAnalyser_InidividualTransition:
         # TODO: vectorise.
         gwAmpl = np.array([gwFunc(f) for f in frequencies])
 
-        integrand = [(gwAmpl[i] / sensitivityCurve[i]) ** 2 for i in range(len(frequencies))]
+        integrand = [(gwAmpl[i]/sensitivityCurve[i])**2 for i in range(len(frequencies))]
 
         integral = scipy.integrate.simpson(integrand, frequencies)
 
@@ -146,9 +155,9 @@ class GWAnalyser_InidividualTransition:
 
         kappa = GieseKappa.kappaNuMuModel(self.hydroVars.soundSpeedSqTrue, self.hydroVars.soundSpeedSqFalse, alpha, vw)
 
-        #return (thetaf - thetat) / (self.hydroVars.energyDensityFalse - self.phaseStructure.groundStateEnergyDensity) * kappa
-        # TODO: this is sometimes negative...
-        return (thetaf - thetat) / self.hydroVars.energyDensityFalse * kappa
+        totalEnergyDensity = self.hydroVars.energyDensityFalse - self.phaseStructure.groundStateEnergyDensity
+
+        return (thetaf - thetat) / totalEnergyDensity * kappa
 
     def determineLengthScale(self) -> float:
         return self.transitionReport['meanBubbleSeparation']
@@ -247,34 +256,38 @@ def hydroTester(potentialClass: Type[AnalysablePotential], outputFolder: str):
         wt = []
         csfSq = []
         cstSq = []
+        gf = []
+        gt = []
         T = np.linspace(0, Tc*0.99, 100)
 
         for t in T:
             hydroVars = Hydrodynamics.getHydroVars(fromPhase, toPhase, potential, t)
-            pf.append(hydroVars.pressureFalse)
-            pt.append(hydroVars.pressureTrue)
-            ef.append(hydroVars.energyDensityFalse)
-            et.append(hydroVars.energyDensityTrue)
+            pf.append(hydroVars.pressureFalse + phaseStructure.groundStateEnergyDensity)
+            pt.append(hydroVars.pressureTrue + phaseStructure.groundStateEnergyDensity)
+            ef.append(hydroVars.energyDensityFalse - phaseStructure.groundStateEnergyDensity)
+            et.append(hydroVars.energyDensityTrue - phaseStructure.groundStateEnergyDensity)
             wf.append(hydroVars.enthalpyDensityFalse)
             wt.append(hydroVars.enthalpyDensityTrue)
             csfSq.append(hydroVars.soundSpeedSqFalse)
             cstSq.append(hydroVars.soundSpeedSqTrue)
+            gf.append(wf[-1] / ef[-1])
+            gt.append(wt[-1] / et[-1])
 
         plt.plot(T, pf)
         plt.plot(T, pt)
-        plt.axhline(-phaseStructure.groundStateEnergyDensity, ls='--')
+        #plt.axhline(-phaseStructure.groundStateEnergyDensity, ls='--')
         plt.xlabel('$T$')
         plt.ylabel('$p(T)$')
-        plt.legend(['False', 'True', 'Ground state'])
+        plt.legend(['False', 'True'])
         plt.margins(0, 0)
         plt.show()
 
         plt.plot(T, ef)
         plt.plot(T, et)
-        plt.axhline(phaseStructure.groundStateEnergyDensity, ls='--')
+        #plt.axhline(phaseStructure.groundStateEnergyDensity, ls='--')
         plt.xlabel('$T$')
-        plt.ylabel('$\\rho(T)$')
-        plt.legend(['False', 'True', 'Ground state'])
+        plt.ylabel('$\\rho(T) - \\rho_{\\mathrm{gs}}$')
+        plt.legend(['False', 'True'])
         plt.margins(0, 0)
         plt.show()
 
@@ -290,6 +303,14 @@ def hydroTester(potentialClass: Type[AnalysablePotential], outputFolder: str):
         plt.plot(T, cstSq)
         plt.xlabel('$T$')
         plt.ylabel('$c_s(T)$')
+        plt.legend(['False', 'True'])
+        plt.margins(0, 0)
+        plt.show()
+
+        plt.plot(T, gf)
+        plt.plot(T, gt)
+        plt.xlabel('$T$')
+        plt.ylabel('$\\Gamma(T)$')
         plt.legend(['False', 'True'])
         plt.margins(0, 0)
         plt.show()
