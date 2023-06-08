@@ -237,6 +237,12 @@ class Transition:
         if self.Te > 0: report['betaTe'] = self.analysis.betaTe
         if self.Tf > 0: report['betaTf'] = self.analysis.betaTf
 
+        if self.Tn > 0: report['Hn'] = self.analysis.Hn
+        if self.Tnbar > 0: report['Hnbar'] = self.analysis.Hnbar
+        if self.Tp > 0: report['Hp'] = self.analysis.Hp
+        if self.Te > 0: report['He'] = self.analysis.He
+        if self.Tf > 0: report['Hf'] = self.analysis.Hf
+
         if self.Tmin > 0:
             report['Tmin'] = self.Tmin
             report['SonTmin'] = self.SonTmin
