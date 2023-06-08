@@ -78,6 +78,12 @@ class AnalysedTransition:
         self.betaTe = -1
         self.betaTf = -1
 
+        self.Hn = -1
+        self.Hnbar = -1
+        self.Hp = -1
+        self.He = -1
+        self.Hf = -1
+
         self.T = []
         self.SonT = []
         self.lowestSonT = -1
@@ -900,31 +906,43 @@ class TransitionAnalyser():
                 SonTnew = self.actionSampler.subSonT[-1]
                 SonTprev = self.actionSampler.subSonT[-2]
 
+                # Check if we have reached any milestones (e.g. unit nucleation, percolation, etc.).
+
+                # Unit nucleation (including phantom bubbles).
                 if Tn < 0 and numBubblesIntegral[-1] >= 1:
-                    Tn = Tprev + (Tnew - Tprev) * (numBubblesIntegral[-1] - 1)\
-                        / (numBubblesIntegral[-1] - numBubblesIntegral[-2])
+                    interpFactor = (numBubblesIntegral[-1] - 1) / (numBubblesIntegral[-1] - numBubblesIntegral[-2])
+                    Tn = Tprev + interpFactor*(Tnew - Tprev)
+                    Hn = H[-2] + interpFactor*(H[-1] - H[-2])
                     self.transition.analysis.SonTn = SonTprev + (SonTnew - SonTprev) * (numBubblesIntegral[-1] - 1)\
                         / (numBubblesIntegral[-1] - numBubblesIntegral[-2])
                     self.transition.Tn = Tn
-                    self.transition.analysis.betaTn = H[-1]*Tn*(SonTprev - SonTnew)/dT
+                    self.transition.analysis.Hn = Hn
+                    self.transition.analysis.betaTn = Hn*Tn*(SonTprev - SonTnew)/dT
 
+                # Unit nucleation (excluding phantom bubbles).
                 if Tnbar < 0 and numBubblesCorrectedIntegral[-1] >= 1:
-                    Tnbar = Tprev + (Tnew - Tprev) * (numBubblesCorrectedIntegral[-1] - 1)\
-                        / (numBubblesCorrectedIntegral[-1] - numBubblesCorrectedIntegral[-2])
+                    interpFactor = (numBubblesCorrectedIntegral[-1] - 1) / (numBubblesCorrectedIntegral[-1] -
+                        numBubblesCorrectedIntegral[-2])
+                    Tnbar = Tprev + interpFactor*(Tnew - Tprev)
+                    Hnbar = H[-2] + interpFactor*(H[-1] - H[-2])
                     self.transition.analysis.SonTnbar = SonTprev + (SonTnew - SonTprev)\
                         * (numBubblesCorrectedIntegral[-1] - 1) / (numBubblesCorrectedIntegral[-1]
                         - numBubblesCorrectedIntegral[-2])
                     self.transition.Tnbar = Tnbar
-                    self.transition.analysis.betaTnbar = H[-1]*Tnbar*(SonTprev - SonTnew)/dT
+                    self.transition.analysis.Hnbar = Hnbar
+                    self.transition.analysis.betaTnbar = Hnbar*Tnbar*(SonTprev - SonTnew)/dT
 
+                # Percolation.
                 if Tp < 0 and Vext[-1] >= percolationThreshold_Vext:
                     indexTp = len(H)-1
                     # max(0, ...) for subcritical transitions, where it is possible that Vext[-2] > percThresh.
                     interpFactor = max(0, (percolationThreshold_Vext - Vext[-2]) / (Vext[-1] - Vext[-2]))
                     Tp = Tprev + interpFactor*(Tnew - Tprev)
+                    Hp = H[-2] + interpFactor*(H[-1] - H[-2])
                     self.transition.analysis.SonTp = SonTprev + interpFactor*(SonTnew - SonTprev)
                     self.transition.Tp = Tp
-                    self.transition.analysis.betaTp = H[-1]*Tp*(SonTprev - SonTnew)/dT
+                    self.transition.analysis.Hp = Hp
+                    self.transition.analysis.betaTp = Hp*Tp*(SonTprev - SonTnew)/dT
 
                     # Also store whether the physical volume of the false vacuum was decreasing at Tp.
                     # Make sure to cast to a bool, because JSON doesn't like encoding the numpy.bool type.
@@ -934,18 +952,22 @@ class TransitionAnalyser():
                     Tp_reh = self.calculateReheatTemperature(Tp)
                     self.transition.Treh_p = Tp_reh
 
+                # Pf = 1/e.
                 if Te < 0 and Vext[-1] >= 1:
                     # max(0, ...) for subcritical transitions, where it is possible that Vext[-2] > 1.
                     interpFactor = max(0, (1 - Vext[-2]) / (Vext[-1] - Vext[-2]))
                     Te = Tprev + interpFactor*(Tnew - Tprev)
+                    He = H[-2] + interpFactor*(H[-1] - H[-2])
                     self.transition.analysis.SonTe = SonTprev + interpFactor*(SonTnew - SonTprev)
                     self.transition.Te = Te
-                    self.transition.analysis.betaTe = H[-1]*Te*(SonTprev - SonTnew)/dT
+                    self.transition.analysis.He = He
+                    self.transition.analysis.betaTe = He*Te*(SonTprev - SonTnew)/dT
 
                     # Store the reheating temperature from this point, using conservation of energy.
                     Te_reh = self.calculateReheatTemperature(Te)
                     self.transition.Treh_e = Te_reh
 
+                # Completion.
                 if Tf < 0 and Pf[-1] <= completionThreshold:
                     indexTf = len(H)-1
                     if Pf[-1] == Pf[-2]:
@@ -954,9 +976,11 @@ class TransitionAnalyser():
                         interpFactor = (Pf[-1] - completionThreshold)\
                             / (Pf[-1] - Pf[-2])
                     Tf = Tprev + interpFactor*(Tnew - Tprev)
+                    Hf = H[-2] + interpFactor*(H[-1] - H[-2])
                     self.transition.analysis.SonTf = SonTprev + interpFactor*(SonTnew - SonTprev)
                     self.transition.Tf = Tf
-                    self.transition.analysis.betaTf = H[-1]*Tf*(SonTprev - SonTnew)/dT
+                    self.transition.analysis.Hf = Hf
+                    self.transition.analysis.betaTf = Hf*Tf*(SonTprev - SonTnew)/dT
 
                     # Also store whether the physical volume of the false vacuum was decreasing at Tf.
                     # Make sure to cast to a bool, because JSON doesn't like encoding the numpy.bool type.
@@ -969,6 +993,7 @@ class TransitionAnalyser():
                     if not self.bAnalyseTransitionPastCompletion:
                         break
 
+                # Physical volume of the false vacuum is decreasing.
                 if Ts1 < 0 and physicalVolume[-1] < 0:
                     if physicalVolume[-1] == physicalVolume[-2]:
                         interpFactor = 0
@@ -977,6 +1002,7 @@ class TransitionAnalyser():
                     Ts1 = Tprev + interpFactor*(Tnew - Tprev)
                     self.transition.TVphysDecr_high = Ts1
 
+                # Physical volume of the false vacuum is increasing *again*.
                 if Ts1 > 0 and Ts2 < 0 and physicalVolume[-1] > 0:
                     if physicalVolume[-1] == physicalVolume[-2]:
                         interpFactor = 0
