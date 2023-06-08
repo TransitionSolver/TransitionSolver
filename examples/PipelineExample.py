@@ -249,9 +249,10 @@ def pipeline_getPhaseStructure(settings: PipelineSettings):
 
             command = (['wsl'] if windows else []) + [PhaseTracer_directory + 'bin/' +
                 settings.phaseStructureProgram_name, *settings.phaseStructureProgram_commands]
-            subprocess.call(command, timeout=settings.timeout_phaseStructure, shell=True,
 
-                stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+            subprocess.call(command, timeout=settings.timeout_phaseStructure, stdout=subprocess.DEVNULL,
+                stderr=subprocess.STDOUT)
+
 
         # Check if the output file exists.
         bFileExists, phaseStructure = PS.load_data(settings.fileName_phaseStructure, bExpectFile=False)
