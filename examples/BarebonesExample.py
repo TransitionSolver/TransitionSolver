@@ -88,7 +88,7 @@ def main():
 
 #subprocess.call([ PHASETRACER_DIR + 'bin/run_ToyModel', outputFolder + '/parameter_point.txt', outputFolder],timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
    # subprocess.call([ PHASETRACER_DIR + 'bin/run_SingletModel', outputFolder + '/parameter_point.txt', outputFolder],
-        timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+   #     timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
    # subprocess.call([ PHASETRACER_DIR + 'bin/run_RSS', outputFolder + '/parameter_point.txt', outputFolder],
    #    timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
