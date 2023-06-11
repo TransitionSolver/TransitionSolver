@@ -1,3 +1,4 @@
+from __future__ import annotations
 from analysis.PhaseStructure import Phase
 from models.AnalysablePotential import AnalysablePotential
 
