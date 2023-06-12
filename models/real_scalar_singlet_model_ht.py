@@ -1,4 +1,4 @@
-from models.AnalysablePotential import AnalysablePotential
+from models.analysable_potential import AnalysablePotential
 import numpy as np
 
 

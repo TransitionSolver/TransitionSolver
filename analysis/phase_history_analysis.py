@@ -1,10 +1,11 @@
-from models.AnalysablePotential import AnalysablePotential
-import analysis.PhaseStructure as PS
-import analysis.TransitionAnalysis as TA
-import analysis.TransitionGraph as TG
+from analysis import phase_structure
+from models.analysable_potential import AnalysablePotential
+from analysis.phase_structure import PhaseStructure, Phase, Transition, TransitionPath
+from analysis.transition_analysis import TransitionAnalyser, AnalysedTransition
+from analysis.transition_graph import ProperTransitionEdge, ProperPath, ProperPhaseNode
 import time
-import numpy as np
-from util.NotifyHandler import notifyHandler
+from util.events import notifyHandler
+from typing import Optional
 
 
 # TODO: use this class.
@@ -31,23 +32,26 @@ class PhaseHistoryAnalyser:
     precomputedTransitionIDs: list[int] = []
     actionStepSizeMax: float = 0.95
     actionTolerance: float = 1e-6
+    analysisMetrics: AnalysisMetrics
 
     def __init__(self):
+        self.analysisMetrics = AnalysisMetrics()
         notifyHandler.handleEvent(self, 'on_create')
 
-    def analysePhaseHistory(self, potential: AnalysablePotential, phaseTracerDataFileName: str, vw: float = 1.):
-        bSuccess, phaseStructure = PS.load_data(phaseTracerDataFileName)
+    def analysePhaseHistory(self, potential: AnalysablePotential, phaseTracerDataFileName: str, vw: float = 1.) ->\
+            tuple[list[ProperPath], bool, Optional[AnalysisMetrics]]:
+        bSuccess, phaseStructure = phase_structure.load_data(phaseTracerDataFileName)
 
         if not bSuccess:
-            return
+            return [], False, None
 
         return self.analysePhaseHistory_supplied(potential, phaseStructure, vw=vw)
 
     # Second return value is whether we timed out.
-    def analysePhaseHistory_supplied(self, potential: AnalysablePotential, phaseStructure: PS.PhaseStructure,
-        vw: float = 1.) -> tuple[list[TG.ProperPath], bool]:
+    def analysePhaseHistory_supplied(self, potential: AnalysablePotential, phaseStructure: PhaseStructure, vw: float =
+            1.) -> tuple[list[ProperPath], bool, Optional[AnalysisMetrics]]:
         # We need startTime even if timeout <= 0 since we pass it to analyseTransition.
-        startTime = time.perf_counter()
+        self.analysisMetrics.analysisStartTime = time.perf_counter()
 
         if self.bDebug:
             print('Parameter point:', potential.getParameterPoint())
@@ -55,12 +59,12 @@ class PhaseHistoryAnalyser:
         # Extract high and low temperature phases.
         phases = phaseStructure.phases
         transitions = phaseStructure.transitions
-        transitionPaths: list[PS.TransitionPath] = phaseStructure.transitionPaths
+        transitionPaths: list[TransitionPath] = phaseStructure.transitionPaths
 
-        # TODO: added on 23/06/2022 to handle the case where PhaseTracer reports no possible transition paths. Need to make
-        #  sure PhaseTracer would have handled the case where we could stay in the same phase.
+        # TODO: added on 23/06/2022 to handle the case where PhaseTracer reports no possible transition paths. Need to
+        #  make sure PhaseTracer would have handled the case where we could stay in the same phase.
         if len(transitionPaths) == 0:
-            return [], False
+            return [], False, None
 
         highTemp = 0
         bLowTemperaturePhase = [False]*len(phases)
@@ -102,12 +106,12 @@ class PhaseHistoryAnalyser:
                 if bLowTemperaturePhase[i] and bHighTemperaturePhase[i]:
                     #validPaths.append(TG.ProperPath(i))
                     # The temperature of this phase might as well be the highest sampled temperature.
-                    validPaths.append(TG.ProperPath(TG.ProperPhaseNode(i, phases[i].T[-1])))
+                    validPaths.append(ProperPath(ProperPhaseNode(i, phases[i].T[-1])))
 
             if self.bReportPaths:
                 print('No transitions.')
                 print('Valid paths:', validPaths)
-            return validPaths, False
+            return validPaths, False, None
 
         # TODO: second time sorting transitions, why did we sort it by id to start with???
         transitions.sort(key=lambda tr: tr.Tc, reverse=True)
@@ -122,7 +126,7 @@ class PhaseHistoryAnalyser:
 
         transitionLists = [[] for _ in range(len(uniqueTransitionTemperatures))]
         # The first dimension is the phase index.
-        phaseIndexedTransitions: list[list[TG.ProperTransitionEdge]] = [[] for _ in range(len(phases))]
+        phaseIndexedTransitions: list[list[ProperTransitionEdge]] = [[] for _ in range(len(phases))]
 
         """uniqueTransitionTemperatureIndex = 0
     
@@ -144,13 +148,13 @@ class PhaseHistoryAnalyser:
     
                 transitionLists[j].append(i)"""
 
-        phaseNodes: list[list[TG.ProperPhaseNode]] = [[] for _ in range(len(phases))]
+        phaseNodes: list[list[ProperPhaseNode]] = [[] for _ in range(len(phases))]
 
         # Construct phase nodes segmenting each phase at each unique transition temperature.
         for i in range(len(phases)):
             for j in range(len(uniqueTransitionTemperatures)):
                 if phases[i].T[-1] >= uniqueTransitionTemperatures[j] >= phases[i].T[0]:
-                    phaseNodes[i].append(TG.ProperPhaseNode(i, uniqueTransitionTemperatures[j]))
+                    phaseNodes[i].append(ProperPhaseNode(i, uniqueTransitionTemperatures[j]))
 
         for i in range(len(uniqueTransitionTemperatures)):
             if i == len(uniqueTransitionTemperatures)-1:
@@ -175,14 +179,14 @@ class PhaseHistoryAnalyser:
                         truePhaseNodeIndex = k
                         break
 
-                transitionEdge = TG.ProperTransitionEdge(phaseNodes[falsePhase][falsePhaseNodeIndex],
+                transitionEdge = ProperTransitionEdge(phaseNodes[falsePhase][falsePhaseNodeIndex],
                     phaseNodes[truePhase][truePhaseNodeIndex], transitions[j], len(phaseIndexedTransitions[falsePhase]))
 
                 transitionLists[i].append(transitionEdge)
 
                 phaseIndexedTransitions[falsePhase].append(transitionEdge)
 
-            # Need to fill in with other possible transitions. This is what the reverse transition thing was all about!!!
+            # Need to fill in with other possible transitions. This is what the reverse transition thing was all about!
             # TODO: do this later.
 
         paths = []
@@ -190,7 +194,7 @@ class PhaseHistoryAnalyser:
 
         for i in range(len(phases)):
             if bHighTemperaturePhase[i]:
-                paths.append(TG.ProperPath(phaseNodes[i][0]))
+                paths.append(ProperPath(phaseNodes[i][0]))
                 phaseNodes[i][0].paths.append(paths[-1])
 
                 # Find the highest temperature transition from this phase and add it to the frontier.
@@ -199,8 +203,9 @@ class PhaseHistoryAnalyser:
                     phaseIndexedTransitions[i][0].path = paths[-1]
 
                     j = 1
-                    while j < len(phaseIndexedTransitions[i]) and phaseIndexedTransitions[i][j].transition.Tc == highTemp:
-                        paths.append(TG.ProperPath(phaseNodes[i][0]))
+                    while j < len(phaseIndexedTransitions[i]) and phaseIndexedTransitions[i][j].transition.Tc ==\
+                            highTemp:
+                        paths.append(ProperPath(phaseNodes[i][0]))
                         phaseNodes[i][0].paths.append(paths[-1])
 
                         frontier.append(phaseIndexedTransitions[i][j])
@@ -212,8 +217,9 @@ class PhaseHistoryAnalyser:
         while len(frontier) > 0:
             if self.timeout_phaseHistoryAnalysis > 0:
                 endTime = time.perf_counter()
-                if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                    return [], True
+                if endTime - self.analysisMetrics.analysisStartTime > self.timeout_phaseHistoryAnalysis:
+                    self.analysisMetrics.analysisElapsedTime = endTime - self.analysisMetrics.analysisStartTime
+                    return [], True, self.analysisMetrics
 
             if self.bDebug:
                 print('Frontier:')
@@ -236,10 +242,10 @@ class PhaseHistoryAnalyser:
                 Tmin = self.getMinTransitionTemperature_indexed(phases, phaseIndexedTransitions, transitionEdge)
 
                 if len(path.transitions) > 0:
-                    # TODO: changed on 16/11/2021. It is not correct to assume that the last transition along this path gets
-                    #  us to the false phase of the current transition. If the path has been extended from the current false
-                    #  vacuum by an alternative transition, then the end of the path does not correspond to the current
-                    #  false vacuum.
+                    # TODO: changed on 16/11/2021. It is not correct to assume that the last transition along this path
+                    #  gets us to the false phase of the current transition. If the path has been extended from the
+                    #  current false vacuum by an alternative transition, then the end of the path does not correspond
+                    #  to the current false vacuum.
                     #Tmax = min(transition.Tc, path.transitions[-1].Tn)
 
                     # Find the most recent transition that has a true phase equal to the current false phase (i.e. which
@@ -256,7 +262,7 @@ class PhaseHistoryAnalyser:
                     if self.bDebug:
                         print(f'Transition not possible since Tmin > Tmax ({Tmin} > {Tmax}).')
                 else:
-                    transition.analysis = TA.AnalysedTransition()
+                    transition.analysis = AnalysedTransition()
                     transition.vw = vw
 
                     actionFileName = ''
@@ -265,7 +271,7 @@ class PhaseHistoryAnalyser:
                         if self.precomputedTransitionIDs[i] == transition.ID:
                             actionFileName = self.fileName_precomputedActionCurve[i]
 
-                    transitionAnalyser: TA.TransitionAnalyser = TA.TransitionAnalyser(potential, transition,
+                    transitionAnalyser: TransitionAnalyser = TransitionAnalyser(potential, transition,
                         phases[transition.false_phase], phases[transition.true_phase],
                         phaseStructure.groundStateEnergyDensity, Tmin=Tmin, Tmax=Tmax)
 
@@ -273,18 +279,19 @@ class PhaseHistoryAnalyser:
                     transitionAnalyser.bPlot = self.bPlot
                     transitionAnalyser.bReportAnalysis = self.bReportAnalysis
 
-                    transitionAnalyser.analyseTransition(startTime=startTime, precomputedActionCurveFileName=actionFileName)
+                    transitionAnalyser.analyseTransition(startTime=self.analysisMetrics.analysisStartTime,
+                        precomputedActionCurveFileName=actionFileName)
 
                     if self.timeout_phaseHistoryAnalysis > 0:
                         endTime = time.perf_counter()
-                        if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                            return [], True
+                        if endTime - self.analysisMetrics.analysisStartTime > self.timeout_phaseHistoryAnalysis:
+                            self.analysisMetrics.analysisElapsedTime = endTime - self.analysisMetrics.analysisStartTime
+                            return [], True, self.analysisMetrics
             else:
                 if self.bDebug:
                     print(f'Already analysed transition {transition.ID}')
 
             # If the transition begins.
-            # TODO: no longer using nucleation as a test of whether a transition begins!
             if transition.Tp > 0:
                 if transition.Tf > 0:
                     frontierNodesToRemove = []
@@ -299,10 +306,10 @@ class PhaseHistoryAnalyser:
 
                 # First we handle the false phase side. The fact that the transition happened may cause a path splitting
                 # that couldn't be guaranteed before the transition was analysed.
-                # If the end of the current path is not where this transition starts, then the path has been continued in
-                # another direction due to a previous element in the frontier. One or two new paths need to be added to
-                # account for this divergence, depending on whether the divergence occurs at the start of the path or midway
-                # through, respectively.
+                # If the end of the current path is not where this transition starts, then the path has been continued
+                # in another direction due to a previous element in the frontier. One or two new paths need to be added
+                # to account for this divergence, depending on whether the divergence occurs at the start of the path or
+                # midway through, respectively.
                 if transitionEdge.falsePhaseNode.phase != path.phases[-1].phase:
                     # Don't split the path at the first phase along the path.
                     bSplit = len(path.phases) > 2
@@ -314,7 +321,7 @@ class PhaseHistoryAnalyser:
 
                     # Create a new path for this recently handled transition.
                     prevPath = path
-                    path = TG.ProperPath(transitionEdge.falsePhaseNode)
+                    path = ProperPath(transitionEdge.falsePhaseNode)
                     paths.append(path)
                     # Add this path to the phase node where this divergence occurs.
                     # TODO: changed on 15/11/2021 because pipeline/noNucleation_msScan-BP4_1/24 was breaking here.
@@ -325,8 +332,9 @@ class PhaseHistoryAnalyser:
                     #else:
                     #    transitionEdge.falsePhaseNode.paths.append(path)???
 
-                    # If we don't split the path, we still need to handle links between the prefixes of the previous path
-                    # and the new path. Whatever path is a prefix of the previous path is also a previous of the new path.
+                    # If we don't split the path, we still need to handle links between the prefixes of the previous
+                    # path and the new path. Whatever path is a prefix of the previous path is also a previous of the
+                    # new path.
                     if not bSplit:
                         path.prefixLinks = prevPath.prefixLinks
 
@@ -334,15 +342,15 @@ class PhaseHistoryAnalyser:
                         for prefix in path.prefixLinks:
                             prefix.suffixLinks.append(path)
 
-                # Now we need to handle the true phase side. If the transition takes the path to a phase node that is not
-                # currently occupied by another path, then the path can be freely extended there. If there are several paths
-                # from the true phase node, then we can set this path's suffixes to all of those paths and no further work
-                # is required. If there is only one path through the true phase node, we need to split it at the
-                # intersection point, setting the suffix of that path as the suffix of this path.
+                # Now we need to handle the true phase side. If the transition takes the path to a phase node that is
+                # not currently occupied by another path, then the path can be freely extended there. If there are
+                # several paths from the true phase node, then we can set this path's suffixes to all of those paths and
+                # no further work is required. If there is only one path through the true phase node, we need to split
+                # it at the intersection point, setting the suffix of that path as the suffix of this path.
 
-                # We can immediately add this transition to the current path, but the true phase will only be added to this
-                # path if the true phase doesn't already have a path through it. Otherwise, we can simply point to the other
-                # path as a suffix, implicitly adding the true phase to this path.
+                # We can immediately add this transition to the current path, but the true phase will only be added to
+                # this path if the true phase doesn't already have a path through it. Otherwise, we can simply point to
+                # the other path as a suffix, implicitly adding the true phase to this path.
                 path.transitions.append(transition)
 
                 truePhase = transitionEdge.truePhaseNode
@@ -368,11 +376,11 @@ class PhaseHistoryAnalyser:
                             temp = frontier[j]
                             frontier[j] = frontier[j-1]
                             frontier[j-1] = temp
-                # If there is only one path going through the true phase node, we need to split it at the intersection point
-                # unless the intersection point is the start of the other path.
+                # If there is only one path going through the true phase node, we need to split it at the intersection
+                # point unless the intersection point is the start of the other path.
                 elif len(truePhase.paths) == 1:
-                    # If the intersection point is the start of the other path, simply set the other path as the suffix of
-                    # this path.
+                    # If the intersection point is the start of the other path, simply set the other path as the suffix
+                    # of this path.
                     if truePhase.paths[0].phases[0] == truePhase:
                         path.suffixLinks.append(truePhase.paths[0])
                         truePhase.paths[0].prefixLinks.append(path)
@@ -383,19 +391,19 @@ class PhaseHistoryAnalyser:
                         suffix.prefixLinks.append(path)
                         path.suffixLinks.append(suffix)
                 # If there are already multiple paths going through the true phase node, we are guaranteed that they all
-                # begin at that node (i.e. they have been split already as necessary). Simply add those paths as suffixes
-                # of this path.
+                # begin at that node (i.e. they have been split already as necessary). Simply add those paths as
+                # suffixes of this path.
                 else:
                     path.suffixLinks += truePhase.paths
 
                     for suffix in truePhase.paths:
                         suffix.prefixLinks.append(path)
-            # TODO: I only just added this part (as of 20/01/2021). It was completely missing before. Need to make sure this
-            #  does all that it needs to, and that a suffix wouldn't have already handled this frontier extension.
+            # TODO: I only just added this part (as of 20/01/2021). It was completely missing before. Need to make sure
+            #  this does all that it needs to, and that a suffix wouldn't have already handled this frontier extension.
             # If the transition doesn't begin.
             else:
-                # We only need to check the false phase side. Add the next highest temperature transition along this phase
-                # to the frontier.
+                # We only need to check the false phase side. Add the next highest temperature transition along this
+                # phase to the frontier.
                 newFrontier = self.getNewFrontier(transitionEdge, phaseIndexedTransitions, path, False, phases)
 
                 # Insert the new frontier nodes into the frontier, maintaining the sorted order (i.e. decreasing
@@ -434,22 +442,24 @@ class PhaseHistoryAnalyser:
             print('\nAnalysed transitions:', [transitions[i].ID for i in range(len(transitions))
                 if transitions[i].analysis is not None])
 
-        return paths, False
+        self.analysisMetrics.analysisElapsedTime = time.perf_counter() - self.analysisMetrics.analysisStartTime
+        return paths, False, self.analysisMetrics
 
+    def getNewFrontier(self, transitionEdge: ProperTransitionEdge, phaseIndexedTransitions:
+            list[list[ProperTransitionEdge]], path: ProperPath, bTransitionStarts: bool, phases: list[Phase])\
+            -> list[ProperTransitionEdge]:
+        newFrontier: list[ProperTransitionEdge] = []
+        falsePhase: int = transitionEdge.falsePhaseNode.phase
+        truePhase: int = transitionEdge.truePhaseNode.phase
 
-    def getNewFrontier(self, transitionEdge: TG.ProperTransitionEdge, phaseIndexedTransitions: list[list[TG.ProperTransitionEdge]],
-        path: TG.ProperPath, bTransitionStarts: bool, phases: list[PS.Phase]):
-        newFrontier = []
-        falsePhase = transitionEdge.falsePhaseNode.phase
-        truePhase = transitionEdge.truePhaseNode.phase
-
-        # Find if there is a transition further down the false phase, and add it to the frontier if it could start before
-        # the path transitions to a new phase either through the current transition or another transition along the path.
+        # Find if there is a transition further down the false phase, and add it to the frontier if it could start
+        # before the path transitions to a new phase either through the current transition or another transition along
+        # the path.
         if transitionEdge.index < len(phaseIndexedTransitions[falsePhase])-1:
             Tc = phaseIndexedTransitions[falsePhase][transitionEdge.index+1].transition.Tc
             bAlreadyTransitioned = False
-            # Check the transitions already in this path, which may include a recent transition from the current false phase
-            # with a pending split based on the current transition.
+            # Check the transitions already in this path, which may include a recent transition from the current false
+            # phase with a pending split based on the current transition.
             for transition in path.transitions:
                 if transition.Tc > transitionEdge.transition.Tc and transition.Tf > Tc:
                     bAlreadyTransitioned = True
@@ -474,8 +484,8 @@ class PhaseHistoryAnalyser:
                 if phases[newTransition.true_phase].T[0] > transitionEdge.transition.Tn:
                     continue
 
-                # If the new transition could have started above the temperature we get to the true phase, then we may be
-                # able to add it as a subcritical transition.
+                # If the new transition could have started above the temperature we get to the true phase, then we may
+                # be able to add it as a subcritical transition.
                 if transitionEdge.transition.Tn < newTransition.Tc:
                     # Make sure the transition isn't reversed, removing it as a possibility.
                     newTruePhase = newTransition.true_phase
@@ -499,7 +509,8 @@ class PhaseHistoryAnalyser:
                         newFrontier.append(phaseIndexedTransitions[truePhase][i])
                         phaseIndexedTransitions[truePhase][i].path = path
                         if self.bDebug:
-                            print('Adding transition subcritically to the frontier!', phaseIndexedTransitions[truePhase][i])
+                            print('Adding transition subcritically to the frontier!',
+                                phaseIndexedTransitions[truePhase][i])
                 #if phaseIndexedTransitions[truePhase][i].transition.Tc <= transitionEdge.transition.Tn:
                 # Otherwise, we can add it as a regular transition.
                 else:
@@ -509,14 +520,13 @@ class PhaseHistoryAnalyser:
 
         return newFrontier
 
-
-    def getMinTransitionTemperature_indexed(self, phases: list[PS.Phase], phaseIndexedTransitions:
-        list[list[TG.ProperTransitionEdge]], transitionEdge: TG.ProperTransitionEdge) -> float:
+    def getMinTransitionTemperature_indexed(self, phases: list[Phase], phaseIndexedTransitions:
+            list[list[ProperTransitionEdge]], transitionEdge: ProperTransitionEdge) -> float:
         Tmin = 0
         transition = transitionEdge.transition
 
-        # Find if there is a reverse transition. This tells us that the forwards transition cannot occur below the critical
-        # temperature of the reverse transition.
+        # Find if there is a reverse transition. This tells us that the forwards transition cannot occur below the
+        # critical temperature of the reverse transition.
         for i in range(transitionEdge.index+1, len(phaseIndexedTransitions[transition.true_phase])):
             reverseTransition = phaseIndexedTransitions[transition.true_phase][i].transition
             if reverseTransition.Tc < transition.Tc and reverseTransition.true_phase == transition.false_phase:
@@ -525,17 +535,14 @@ class PhaseHistoryAnalyser:
 
         return max(Tmin, phases[transition.false_phase].T.min(), phases[transition.true_phase].T.min())
 
-
-    def printValidPaths(self, validPaths: list[TG.ProperPath]):
+    def printValidPaths(self, validPaths: list[ProperPath]) -> None:
         for i in range(len(validPaths)):
             pathStrings = validPaths[i].getAllPaths()
 
             for path in pathStrings:
                 print(path)
 
-
-    def calculateTmin(self, transition: PS.Transition, transitions: list[PS.Transition], phases: list[PS.Phase])\
-            -> float:
+    def calculateTmin(self, transition: Transition, transitions: list[Transition], phases: list[Phase]) -> float:
         Tmin = 0
 
         for i in range(len(transitions)):
@@ -543,8 +550,8 @@ class PhaseHistoryAnalyser:
                 continue
 
             # If this is the reverse transition.
-            if transitions[i].false_phase == transition.true_phase and transitions[i].true_phase == transition.false_phase\
-                    and transitions[i].Tc < transition.Tc:
+            if transitions[i].false_phase == transition.true_phase and transitions[i].true_phase ==\
+                    transition.false_phase and transitions[i].Tc < transition.Tc:
                 Tmin = max(Tmin, transitions[i].Tc)
 
         Tmin = max(Tmin, phases[transition.false_phase].T.min(), phases[transition.true_phase].T.min())

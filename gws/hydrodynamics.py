@@ -1,5 +1,5 @@
-from analysis.PhaseStructure import Phase
-from models.AnalysablePotential import AnalysablePotential
+from analysis.phase_structure import Phase
+from models.analysable_potential import AnalysablePotential
 
 
 class HydroVars:

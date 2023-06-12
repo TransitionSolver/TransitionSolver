@@ -4,8 +4,10 @@ import numpy as np
 from scipy import optimize
 import traceback
 if TYPE_CHECKING:
-    from models import AnalysablePotential
-    import TransitionAnalysis as TA
+#    from models import analysable_potential
+#    import transition_analysis as TA
+    from models.analysable_potential import AnalysablePotential
+    from analysis.transition_analysis import AnalysedTransition, InvalidTemperatureException
 
 
 class Phase:
@@ -26,7 +28,7 @@ class Phase:
     # and local optimisation from that interpolated point.
     def findPhaseAtT(self, T: float, potential: AnalysablePotential) -> np.ndarray:
         if T < self.T[0] or T > self.T[-1]:
-            raise TA.InvalidTemperatureException(f'Attempted to find phase {self.key} at T={T}, while defined only for'
+            raise InvalidTemperatureException(f'Attempted to find phase {self.key} at T={T}, while defined only for'
                 f'[{self.T[0]}, {self.T[-1]}]')
 
         minIndex = 0
@@ -69,7 +71,7 @@ class Phase:
 
 
 class Transition:
-    analysis: Optional[TA.AnalysedTransition]
+    analysis: Optional[AnalysedTransition]
     n_field: int
     Tc: float
     Tn: float

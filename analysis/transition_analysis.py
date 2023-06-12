@@ -2,8 +2,8 @@ from typing import Optional, Union
 
 from cosmoTransitions.tunneling1D import ThinWallError
 
-from gws import Hydrodynamics
-from util.PrintSuppressor import PrintSuppressor
+from gws import hydrodynamics
+from util.print_suppressor import PrintSuppressor
 import numpy as np
 import scipy.optimize
 
@@ -12,15 +12,15 @@ try:
 except ImportError:
     from io import StringIO  # for Python 3
 from cosmoTransitions import pathDeformation
-from models.AnalysablePotential import AnalysablePotential
+from models.analysable_potential import AnalysablePotential
 from scipy.interpolate import lagrange
 import matplotlib.pyplot as plt
-from util import IntegrationHelper
+from util import integration
 import time
 import json
 
-from analysis.PhaseStructure import Phase, Transition
-from util.NotifyHandler import notifyHandler
+from analysis.phase_structure import Phase, Transition
+from util.events import notifyHandler
 
 
 totalActionEvaluations = 0
@@ -359,9 +359,9 @@ class ActionSampler:
         # TODO: replace with quadratic interpolation.
         SonTList = np.linspace(self.SonT[-1], SonTnew, numPoints)
         GammaList = self.transitionAnalyser.calculateGamma(TList, SonTList)
-        energyStart = Hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential,
+        energyStart = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential,
             TList[0], forFromPhase=True) - self.transitionAnalyser.groundStateEnergyDensity
-        energyEnd = Hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential,
+        energyEnd = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential,
             TList[-1], forFromPhase=True) - self.transitionAnalyser.groundStateEnergyDensity
         # TODO: replace with quadratic interpolation.
         energyDensityList = np.linspace(energyStart, energyEnd, numPoints)
@@ -704,7 +704,7 @@ class TransitionAnalyser():
         #bCheckForTeq = (not transition.subcritical and Tmax == transition.Tc) or\
         #    calculateEnergyDensityAtT(Tmax)[0] <= radDensity*Tmax**4
 
-        rho0 = Hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential,
+        rho0 = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential,
             self.actionSampler.T[0], forFromPhase=True) - self.groundStateEnergyDensity
         bCheckForTeq = rho0 - 2*radDensity*self.actionSampler.T[0]**4 < 0
 
@@ -768,9 +768,9 @@ class TransitionAnalyser():
             else:
                 SonT = np.linspace(self.actionSampler.SonT[simIndex], self.actionSampler.SonT[simIndex+1], numSamples)
 
-            rhof1, rhot1 = Hydrodynamics.calculateEnergyDensityAtT(self.fromPhase, self.toPhase, self.potential,
+            rhof1, rhot1 = hydrodynamics.calculateEnergyDensityAtT(self.fromPhase, self.toPhase, self.potential,
                 self.actionSampler.T[simIndex])
-            rhof2, rhot2 = Hydrodynamics.calculateEnergyDensityAtT(self.fromPhase, self.toPhase, self.potential,
+            rhof2, rhot2 = hydrodynamics.calculateEnergyDensityAtT(self.fromPhase, self.toPhase, self.potential,
                 self.actionSampler.T[simIndex+1])
 
             rhof = np.linspace(rhof1, rhof2, len(T))
@@ -855,7 +855,7 @@ class TransitionAnalyser():
                 # additional point so that we can immediately integrate and add it to the true vacuum fraction and false
                 # vacuum probability arrays as usual below.
                 if integrationHelper_trueVacVol is None and len(self.actionSampler.subT) == 4:
-                    integrationHelper_trueVacVol = IntegrationHelper.CubedNestedIntegrationHelper([0, 1, 2],
+                    integrationHelper_trueVacVol = integration.CubedNestedIntegrationHelper([0, 1, 2],
                         outerFunction_trueVacVol, innerFunction_trueVacVol, sampleTransformationFunction)
 
                     # Don't add the first element since we have already stored Vext[0] = 0, Pf[0] = 1, etc.
@@ -869,7 +869,7 @@ class TransitionAnalyser():
 
                     # Do the same thing for the average bubble radius integration helper. This needs to be done after Pf
                     # has been filled with data because outerFunction_avgBubRad uses this data.
-                    integrationHelper_avgBubRad = IntegrationHelper.LinearNestedNormalisedIntegrationHelper([0, 1],
+                    integrationHelper_avgBubRad = integration.LinearNestedNormalisedIntegrationHelper([0, 1],
                         outerFunction_avgBubRad, innerFunction_avgBubRad, outerFunction_avgBubRad,
                         sampleTransformationFunction)
 
@@ -883,8 +883,7 @@ class TransitionAnalyser():
                         averageBubbleRadius.append(integrationHelper_avgBubRad.data[j])
 
                 #H.append(np.sqrt(self.calculateHubbleParameterSq(T[i])))
-                H.append(np.sqrt(calculateHubbleParameterSq_supplied(rhof[i] -
-                                                                     self.groundStateEnergyDensity)))
+                H.append(np.sqrt(calculateHubbleParameterSq_supplied(rhof[i] - self.groundStateEnergyDensity)))
 
                 Gamma.append(self.calculateGamma(T[i], SonT[i]))
 
@@ -1220,7 +1219,7 @@ class TransitionAnalyser():
             #transitionStrength, _, _ = calculateTransitionStrength(self.potential, self.fromPhase, self.toPhase,
             #    self.transition.Tp)
             # TODO: do this elsewhere, maybe a thermal params file.
-            hydroVars = Hydrodynamics.getHydroVars(self.fromPhase, self.toPhase, self.potential, Tp)
+            hydroVars = hydrodynamics.getHydroVars(self.fromPhase, self.toPhase, self.potential, Tp)
             thetaf = (hydroVars.energyDensityFalse - hydroVars.pressureFalse/hydroVars.soundSpeedSqTrue) / 4
             thetat = (hydroVars.energyDensityTrue - hydroVars.pressureTrue/hydroVars.soundSpeedSqTrue) / 4
             transitionStrength = 4*(thetaf - thetat) / (3*hydroVars.enthalpyDensityFalse)
@@ -2022,7 +2021,7 @@ class TransitionAnalyser():
     # TODO: We can optimise this for a list of input temperatures by reusing potential samples in adjacent derivatives.
     def calculateHubbleParameterSq(self, T: float) -> float:
         # Default is energy density for from phase.
-        rhof = Hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, T)
+        rhof = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, T)
         return 8*np.pi*GRAV_CONST/3*(rhof - self.groundStateEnergyDensity)
 
     # Ignore IDE warnings about type of return value, Teq. toms748 returns only a float if full_output=False as is default.
@@ -2032,7 +2031,7 @@ class TransitionAnalyser():
         # 0 at Teq, +ve for vacuum domination, -ve for radiation domination.
         def energyEra(T):
             # Can't use supplied version of energy density calculation because T is changing. Default is from phase.
-            return Hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, T)\
+            return hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, T)\
                 - self.groundStateEnergyDensity - 2*radDensity*T**4
 
         # If the transition is subcritical and the energy density already exceeds the radiation density at Tc, then there is
@@ -2186,9 +2185,9 @@ class TransitionAnalyser():
         #if self.Tmin == 0:
         #    self.Tmin = self.potential.minimumTemperature #0.001 #2*Tsep
         # Can't use supplied version of energy density calculation because T is changing. Default is from phase.
-        rhof = Hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, T)
+        rhof = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, T)
         def objective(t):
-            rhot = Hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, t,
+            rhot = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, t,
                 forFromPhase=False)
             # Conservation of energy => rhof = rhof*Pf + rhot*Pt which is equivalent to rhof = rhot (evaluated at
             # different temperatures, T and Tt (Treh), respectively).
@@ -2233,7 +2232,7 @@ class TransitionAnalyser():
 
 def calculateHubbleParameterSq(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float,
                                groundStateEnergyDensity: float) -> float:
-    rhof = Hydrodynamics.calculateEnergyDensityAtT_singlePhase(fromPhase, toPhase, potential, T, forFromPhase=True)
+    rhof = hydrodynamics.calculateEnergyDensityAtT_singlePhase(fromPhase, toPhase, potential, T, forFromPhase=True)
     return calculateHubbleParameterSq_supplied(rhof - groundStateEnergyDensity)
 
 

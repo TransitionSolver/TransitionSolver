@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import json
 from cosmoTransitions import pathDeformation
 
-from analysis import PhaseStructure
+from analysis import phase_structure
 
 
 # Various functions that may be useful for debugging an effective potential or a first-order phase transition.

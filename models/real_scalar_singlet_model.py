@@ -1,4 +1,4 @@
-from models.AnalysablePotential import AnalysablePotential
+from models.analysable_potential import AnalysablePotential
 import numpy as np
 
 
@@ -94,9 +94,14 @@ class RealScalarSingletModel(AnalysablePotential):
         self.g = e/sinWeinbergAngle
 
         self.vh = 2*mW/self.g
-        vhZ = 2*mZ/np.sqrt(self.g**2 + self.gp**2)
+        #vhZ = 2*mZ/np.sqrt(self.g**2 + self.gp**2)
 
         self.yt = np.sqrt(2)*mt/self.vh
+
+        # Avoid squaring in the future.
+        self.gp2 = self.gp**2
+        self.g2 = self.g**2
+        self.yt2 = self.yt**2
 
         self.renormScale = mZ
         self.renormScaleSq = mZ*mZ
@@ -114,11 +119,8 @@ class RealScalarSingletModel(AnalysablePotential):
         h = X[..., 0]
         s = X[..., 1]
 
-        try:
-            return self.muh*h**2 + self.mus*s**2 + self.lh*h**4 + self.ls*s**4 + self.c1*h**2*s + self.c2*h**2*s**2\
-                + self.b3*s**3
-        except FloatingPointError:
-            print('V0 underflow')
+        return self.muh*h**2 + self.mus*s**2 + self.lh*h**4 + self.ls*s**4 + self.c1*h**2*s + self.c2*h**2*s**2\
+            + self.b3*s**3
 
     # Purely for debugging, not actually called for standard evaluation of the potential.
     def VCW(self, X, T):
@@ -189,7 +191,7 @@ class RealScalarSingletModel(AnalysablePotential):
         return self.d2V0mdhds(vev)**2 / (self.d2V0mdh2(vev) * self.d2V0mds2(vev))
 
     def debyeCorrectionHiggs(self, T):
-        return (3/16*self.g**2 + self.gp**2/16 + self.yt**2/4 + 2*self.lh + self.c2/6)*T**2
+        return (3/16*self.g2 + self.gp2/16 + self.yt2/4 + 2*self.lh + self.c2/6)*T**2
 
     def debyeCorrectionSinglet(self, T):
         return (2*self.c2/3 + self.ls)*T**2
@@ -223,8 +225,8 @@ class RealScalarSingletModel(AnalysablePotential):
         mb_f, _, _ = self.boson_massSq(phi_f, T)
 
         # These have the form g^2 * Ni * \Delta Mi.
-        delta = 0.25*self.g**2 * dof[1] * (np.sqrt(mb_t[1]) - np.sqrt(mb_f[1]))  # W bosons
-        delta += 0.25*(self.g**2 + self.gp**2) * dof[2] * (np.sqrt(mb_t[2]) - np.sqrt(mb_f[2]))  # Z boson
+        delta = 0.25*self.g2 * dof[1] * (np.sqrt(mb_t[1]) - np.sqrt(mb_f[1]))  # W bosons
+        delta += 0.25*(self.g2 + self.gp2) * dof[2] * (np.sqrt(mb_t[2]) - np.sqrt(mb_f[2]))  # Z boson
 
         # NOTE: we assume the zero temperature coupling for the Z boson, neglecting mixing with the photon. In
         # https://arxiv.org/pdf/1703.08215.pdf they ignore thermal masses, so this is probably the best we can do.
@@ -235,8 +237,8 @@ class RealScalarSingletModel(AnalysablePotential):
     def gSq(self):
         # Field location and temperature don't matter.
         _, dof, _ = self.boson_massSq(self.approxZeroTMin(), 0.)
-        gsq = 0.25*self.g**2 * dof[1]
-        gsq += 0.25*(self.g**2 + self.gp**2) * dof[2]
+        gsq = 0.25*self.g2 * dof[1]
+        gsq += 0.25*(self.g2 + self.gp2) * dof[2]
 
         return gsq
 
@@ -703,24 +705,21 @@ class RealScalarSingletModel(AnalysablePotential):
         #s2 = s**2
         T2 = T**2
 
-        g2 = self.g**2
-        gp2 = self.gp**2
-
         # Thermal corrections.
-        mW_therm = 11/6*g2*T2
+        mW_therm = 11/6*self.g2*T2
         # The thermal corrections for mass eigenvalues, Z boson and photon are handled in their respective
         # eigenvalue equations.
 
         # Neutral gauge mass matrix eigenvalues (for Z boson and photon masses).
-        a = (g2 + gp2)*(3*h2 + 22*T2)
-        b = np.sqrt(9*(g2 + gp2)**2*h2**2 + 44*T2*(g2 - gp2)**2*(3*h2 + 11*T2))
+        a = (self.g2 + self.gp2)*(3*h2 + 22*T2)
+        b = np.sqrt(9*(self.g2 + self.gp2)**2*h2**2 + 44*T2*(self.g2 - self.gp2)**2*(3*h2 + 11*T2))
         mZ = (a + b)/24
         mPh = (a - b)/24
 
         # Scalar mass eigenvalues (for Higgs and singlet masses).
         m1, m2 = self.massEigenvalues(X, T, massMatrix)
 
-        mW = g2*h2/4 + mW_therm
+        mW = self.g2*h2/4 + mW_therm
 
         if ignoreGoldstone:
             mgb = 0.0
@@ -752,11 +751,8 @@ class RealScalarSingletModel(AnalysablePotential):
         X = np.array(X)
         h = X[..., 0]
 
-        g2 = self.g**2
-        gp2 = self.gp**2
-
-        mW = g2*h/2
-        mZ = (g2 + gp2)*h/2
+        mW = self.g2*h/2
+        mZ = (self.g2 + self.gp2)*h/2
         mPh = 0
 
         if ignoreGoldstone:
@@ -781,7 +777,7 @@ class RealScalarSingletModel(AnalysablePotential):
         Nboson = 4 + self.Ndim
 
         X = np.array(X)
-        s = X[..., 1]
+        #s = X[..., 1]
 
         mW = 0
         mZ = 0
@@ -808,11 +804,8 @@ class RealScalarSingletModel(AnalysablePotential):
     def d2_boson_massSq_dh2(self, X, massMatrix=None, ignoreGoldstone=False):
         Nboson = 4 + self.Ndim
 
-        g2 = self.g**2
-        gp2 = self.gp**2
-
-        mW = g2/2
-        mZ = (g2 + gp2)/2
+        mW = self.g2/2
+        mZ = (self.g2 + self.gp2)/2
         mPh = 0
 
         if ignoreGoldstone:
@@ -927,10 +920,8 @@ class RealScalarSingletModel(AnalysablePotential):
         h = X[..., 0]
         h2 = h**2
 
-        yt2 = self.yt**2
-
         # Top quark.
-        mt = yt2*h2/2
+        mt = self.yt2*h2/2
 
         massSq = np.empty(np.asarray(mt).shape + (Nfermions,))
 
@@ -946,10 +937,8 @@ class RealScalarSingletModel(AnalysablePotential):
         X = np.array(X)
         h = X[..., 0]
 
-        yt2 = self.yt**2
-
         # Top quark.
-        mt = yt2*h
+        mt = self.yt2*h
 
         massSq = np.empty(np.asarray(mt).shape + (Nfermions,))
 
@@ -971,10 +960,8 @@ class RealScalarSingletModel(AnalysablePotential):
     def d2_fermion_massSq_dh2(self, X):
         Nfermions = 1
 
-        yt2 = self.yt**2
-
         # Top quark.
-        mt = yt2
+        mt = self.yt2
 
         massSq = np.empty(shape=Nfermions)
 

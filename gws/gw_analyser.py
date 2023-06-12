@@ -7,16 +7,16 @@ from typing import Callable, Type, Optional
 
 import scipy.integrate
 
-from analysis.PhaseStructure import Phase
-from gws.Hydrodynamics import HydroVars
-from models.RealScalarSingletModel import RealScalarSingletModel
-from models.RealScalarSingletModel_HT import RealScalarSingletModel_HT
-from models.ToyModel import ToyModel
-from models.AnalysablePotential import AnalysablePotential
-from analysis import PhaseStructure
-from gws import GieseKappa, Hydrodynamics
-from gws.detectors.LISA import LISA
-from gws.detectors.GWDetector import GWDetector
+from analysis.phase_structure import Phase, PhaseStructure
+from gws.hydrodynamics import HydroVars
+from models.real_scalar_singlet_model import RealScalarSingletModel
+from models.real_scalar_singlet_model_ht import RealScalarSingletModel_HT
+from models.toy_model import ToyModel
+from models.analysable_potential import AnalysablePotential
+from analysis import phase_structure
+from gws import giese_kappa, hydrodynamics
+from gws.detectors.lisa import LISA
+from gws.detectors.gw_detector import GWDetector
 
 GRAV_CONST = 6.7088e-39
 
@@ -48,7 +48,7 @@ class GWAnalyser_InidividualTransition:
         # General form: Omega = redshift * H tau_sw * H tau_c * spectralShape
 
         T = self.determineTransitionTemperature()
-        self.hydroVars = Hydrodynamics.getHydroVars(self.fromPhase, self.toPhase, self.potential, T)
+        self.hydroVars = hydrodynamics.getHydroVars(self.fromPhase, self.toPhase, self.potential, T)
         Treh = self.determineReheatingTemperature()
         vw = self.determineBubbleWallVelocity()
         K = self.determineKineticEnergyFraction(vw)
@@ -153,7 +153,7 @@ class GWAnalyser_InidividualTransition:
 
         alpha = 4*(thetaf - thetat) / (3*self.hydroVars.enthalpyDensityFalse)
 
-        kappa = GieseKappa.kappaNuMuModel(self.hydroVars.soundSpeedSqTrue, self.hydroVars.soundSpeedSqFalse, alpha, vw)
+        kappa = giese_kappa.kappaNuMuModel(self.hydroVars.soundSpeedSqTrue, self.hydroVars.soundSpeedSqFalse, alpha, vw)
 
         totalEnergyDensity = self.hydroVars.energyDensityFalse - self.phaseStructure.groundStateEnergyDensity
 
@@ -189,7 +189,7 @@ class GWAnalyser:
             print('No relevant transition detected.')
             return
 
-        bSuccess, self.phaseStructure = PhaseStructure.load_data(outputFolder + 'phase_structure.dat')
+        bSuccess, self.phaseStructure = phase_structure.load_data(outputFolder + 'phase_structure.dat')
 
         if not bSuccess:
             print('Failed to load phase structure.')
@@ -235,7 +235,7 @@ def hydroTester(potentialClass: Type[AnalysablePotential], outputFolder: str):
         print('No relevant transition detected.')
         return
 
-    bSuccess, phaseStructure = PhaseStructure.load_data(outputFolder + 'phase_structure.dat')
+    bSuccess, phaseStructure = phase_structure.load_data(outputFolder + 'phase_structure.dat')
 
     if not bSuccess:
         print('Failed to load phase structure.')
@@ -261,7 +261,7 @@ def hydroTester(potentialClass: Type[AnalysablePotential], outputFolder: str):
         T = np.linspace(0, Tc*0.99, 100)
 
         for t in T:
-            hydroVars = Hydrodynamics.getHydroVars(fromPhase, toPhase, potential, t)
+            hydroVars = hydrodynamics.getHydroVars(fromPhase, toPhase, potential, t)
             pf.append(hydroVars.pressureFalse + phaseStructure.groundStateEnergyDensity)
             pt.append(hydroVars.pressureTrue + phaseStructure.groundStateEnergyDensity)
             ef.append(hydroVars.energyDensityFalse - phaseStructure.groundStateEnergyDensity)

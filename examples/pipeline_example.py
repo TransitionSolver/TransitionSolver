@@ -17,8 +17,6 @@ import shutil
 import warnings
 # For reading/writing JSON files (the phase history reports).
 import json
-# For monitoring running time.
-import time
 # For printing exceptions.
 import traceback
 # For getting the current function name.
@@ -26,11 +24,15 @@ import inspect
 # For exiting the program early if necessary.
 import sys
 
-from models.ToyModel import ToyModel
-from analysis.TransitionAnalysis import FailedActionCalculationException
-from analysis import PhaseStructure as PS, PhaseHistoryAnalysis as PHA, TransitionGraph as TG, TransitionAnalysis as TA
-from models.AnalysablePotential import AnalysablePotential
-from util.NotifyHandler import notifyHandler
+from models.toy_model import ToyModel
+from analysis.transition_analysis import FailedActionCalculationException
+from analysis.phase_structure import PhaseStructure
+from analysis.phase_history_analysis import PhaseHistoryAnalyser, AnalysisMetrics
+from analysis.transition_graph import ProperPath
+from analysis.transition_analysis import TransitionAnalyser, ActionSampler
+from analysis import phase_structure
+from models.analysable_potential import AnalysablePotential
+from util.events import notifyHandler
 
 
 class PipelineSettings:
@@ -50,7 +52,7 @@ class PipelineSettings:
     precomputedTransitionIDs: list[int] = []
     function_getParameterPoint: Optional[Callable[..., list[float]]]
     function_isValidPotential: Optional[Callable[[AnalysablePotential], bool]]
-    function_isPhaseStructureRelevant: Callable[[PS.PhaseStructure], bool]
+    function_isPhaseStructureRelevant: Callable[[PhaseStructure], bool]
     function_getWallVelocity: Callable[..., float]
     fileName_parameterPoint: str = ''
     fileName_phaseStructure: str = ''
@@ -59,7 +61,7 @@ class PipelineSettings:
     phaseStructureProgram_name: str = ''
     phaseStructureProgram_commands: list[str] = []
 
-    def fillPhaseHistoryAnalyserSettings(self, pha: PHA.PhaseHistoryAnalyser):
+    def fillPhaseHistoryAnalyserSettings(self, pha: PhaseHistoryAnalyser):
         pha.bDebug = self.bDebug
         pha.bPlot = self.bPlot
         pha.bReportAnalysis = self.bReportAnalysis
@@ -79,7 +81,7 @@ class PipelineSettings:
 
     def setFunctions(self, getParameterPoint: Optional[Callable[..., list[float]]], isValidPotential:
             Optional[Callable[[AnalysablePotential], bool]], isPhaseStructureRelevant:
-            Callable[[PS.PhaseStructure], bool], getWallVelocity: Callable[..., float]):
+            Callable[[PhaseStructure], bool], getWallVelocity: Callable[..., float]):
         self.function_getParameterPoint = getParameterPoint
         self.function_isValidPotential = isValidPotential
         self.function_isPhaseStructureRelevant = isPhaseStructureRelevant
@@ -242,7 +244,7 @@ def pipeline_getPhaseStructure(settings: PipelineSettings):
                 stderr=subprocess.STDOUT)
 
         # Check if the output file exists.
-        bFileExists, phaseStructure = PS.load_data(settings.fileName_phaseStructure, bExpectFile=False)
+        bFileExists, phaseStructure = phase_structure.load_data(settings.fileName_phaseStructure, bExpectFile=False)
 
         if not bFileExists:
             return 'Invalid phase structure', None
@@ -253,28 +255,25 @@ def pipeline_getPhaseStructure(settings: PipelineSettings):
 
 
 def pipeline_analysePhaseHistory(potential, phaseStructure, settings: PipelineSettings):
-    startTime = time.perf_counter()
-
-    analyser = PHA.PhaseHistoryAnalyser = PHA.PhaseHistoryAnalyser()
+    analyser = PhaseHistoryAnalyser()
     settings.fillPhaseHistoryAnalyserSettings(analyser)
 
     try:
         vw = settings.function_getWallVelocity()
-        paths, timedOut = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=vw)
+        paths, timedOut, analysisMetrics = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=vw)
 
         if timedOut:
             return 'Phase history analysis timed out'
 
-        analysisTime = time.perf_counter() - startTime
-        writePhaseHistoryReport(paths, phaseStructure, settings, analysisTime)
+        writePhaseHistoryReport(paths, phaseStructure, settings, analysisMetrics)
 
         return 'Success'
     except FailedActionCalculationException as e:
         return 'Failed action calculation'
 
 
-def writePhaseHistoryReport(paths: list[TG.ProperPath], phaseStructure: PS.PhaseStructure, settings: PipelineSettings,
-        analysisTime: float):
+def writePhaseHistoryReport(paths: list[ProperPath], phaseStructure: PhaseStructure, settings: PipelineSettings,
+        analysisMetrics: AnalysisMetrics):
     report = {}
     fileName = settings.fileName_phaseHistoryReport
 
@@ -283,7 +282,7 @@ def writePhaseHistoryReport(paths: list[TG.ProperPath], phaseStructure: PS.Phase
     if len(paths) > 0:
         report['paths'] = [p.getReport() for p in paths]
     report['valid'] = any([p.bValid for p in paths])
-    report['analysisTime'] = analysisTime
+    report['analysisTime'] = analysisMetrics.analysisElapsedTime
 
     if settings.bDebug:
         print('Writing report...')
@@ -294,11 +293,11 @@ def writePhaseHistoryReport(paths: list[TG.ProperPath], phaseStructure: PS.Phase
     except (json.decoder.JSONDecodeError, TypeError):
         print('We have a JSON serialisation error. The report is:')
         print(report)
-        print('Failed to write report')
+        print('Failed to write report.')
 
 
-def notify_ActionSampler_on_create(actionSampler: TA.ActionSampler):
-    if type(actionSampler) != TA.ActionSampler:
+def notify_ActionSampler_on_create(actionSampler: ActionSampler):
+    if type(actionSampler) != ActionSampler:
         raise Exception(f'<{inspect.currentframe().f_code.co_name}> Expected type: TransitionAnalysis.ActionSampler,'
             f' instead got type: {type(actionSampler).__name__}')
 
@@ -314,8 +313,8 @@ def notify_ActionSampler_on_create(actionSampler: TA.ActionSampler):
     actionSampler.bForcePhaseOnAxis = False
 
 
-def notify_TransitionAnalyser_on_create(transitionAnalyser: TA.TransitionAnalyser):
-    if type(transitionAnalyser) != TA.TransitionAnalyser:
+def notify_TransitionAnalyser_on_create(transitionAnalyser: TransitionAnalyser):
+    if type(transitionAnalyser) != TransitionAnalyser:
         raise Exception(f'<{inspect.currentframe().f_code.co_name}> Expected type: TransitionAnalysis.TransitionAnalyse'
                         f'r, instead got type: {type(transitionAnalyser).__name__}')
 
@@ -324,12 +323,12 @@ def notify_TransitionAnalyser_on_create(transitionAnalyser: TA.TransitionAnalyse
     transitionAnalyser.bAllowErrorsForTn = True
 
 
-def notify_PhaseHistoryAnalyser_on_create(phaseHistoryAnalyser: PHA.PhaseHistoryAnalyser):
-    if type(phaseHistoryAnalyser) != PHA.PhaseHistoryAnalyser:
+def notify_PhaseHistoryAnalyser_on_create(phaseHistoryAnalyser: PhaseHistoryAnalyser):
+    if type(phaseHistoryAnalyser) != PhaseHistoryAnalyser:
         raise Exception(f'<{inspect.currentframe().f_code.co_name}> Expected type: PhaseHistoryAnalysis.PhaseHistoryAna'
             f'lyser, instead got type: {type(phaseHistoryAnalyser).__name__}')
 
-    ...
+    pass
 
 
 def generateParameterPoint(fileName):
