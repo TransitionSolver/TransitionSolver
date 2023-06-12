@@ -698,9 +698,9 @@ class RealScalarSingletModel(AnalysablePotential):
 
         X = np.array(X)
         h = X[..., 0]
-        s = X[..., 1]
+        #s = X[..., 1]
         h2 = h**2
-        s2 = s**2
+        #s2 = s**2
         T2 = T**2
 
         g2 = self.g**2
@@ -708,42 +708,19 @@ class RealScalarSingletModel(AnalysablePotential):
 
         # Thermal corrections.
         mW_therm = 11/6*g2*T2
-        mgb_therm = self.debyeCorrectionHiggs(T)
-
         # The thermal corrections for mass eigenvalues, Z boson and photon are handled in their respective
         # eigenvalue equations.
 
-        vectorT = not np.isscalar(T) and len(T.shape) > 0 and T.shape[0] > 1
+        # Neutral gauge mass matrix eigenvalues (for Z boson and photon masses).
+        a = (g2 + gp2)*(3*h2 + 22*T2)
+        b = np.sqrt(9*(g2 + gp2)**2*h2**2 + 44*T2*(g2 - gp2)**2*(3*h2 + 11*T2))
+        mZ = (a + b)/24
+        mPh = (a - b)/24
 
-        if vectorT:
-            neutralGaugeMatrix = np.empty(shape=(T.shape[0], *X.shape[:-1], self.Ndim, self.Ndim))
-        else:
-            neutralGaugeMatrix = np.empty(shape=(*X.shape[:-1], self.Ndim, self.Ndim))
-
-        # TODO: speed this up with explicit equations for the eigenvalues.
-        if len(h2.shape) > 0 or vectorT:
-            neutralGaugeMatrix[..., 0, 0] = g2*h2/4 + 11/6*g2*T2
-            neutralGaugeMatrix[..., 0, 1] = -self.g*self.gp*h2/4
-            neutralGaugeMatrix[..., 1, 0] = -self.g*self.gp*h2/4
-            neutralGaugeMatrix[..., 1, 1] = gp2*h2/4 + 11/6*gp2*T2
-
-            neutralGaugeEigs = np.linalg.eigvals(neutralGaugeMatrix)
-            mZ_therm = neutralGaugeEigs[..., 0]
-            mPh = neutralGaugeEigs[..., 1]
-        else:
-            neutralGaugeMatrix[0, 0] = g2*h2/4 + 11/6*g2*T2
-            neutralGaugeMatrix[0, 1] = -self.g*self.gp*h2/4
-            neutralGaugeMatrix[1, 0] = -self.g*self.gp*h2/4
-            neutralGaugeMatrix[1, 1] = gp2*h2/4 + 11/6*gp2*T2
-
-            neutralGaugeEigs = np.linalg.eigvals(neutralGaugeMatrix)
-            mZ_therm = neutralGaugeEigs[0]
-            mPh = neutralGaugeEigs[1]
-
+        # Scalar mass eigenvalues (for Higgs and singlet masses).
         m1, m2 = self.massEigenvalues(X, T, massMatrix)
 
         mW = g2*h2/4 + mW_therm
-        mZ = mZ_therm  # mZ_therm also contains the zero-temperature part.
 
         if ignoreGoldstone:
             mgb = 0.0
@@ -1784,3 +1761,24 @@ class RealScalarSingletModel(AnalysablePotential):
 
         return T**2/(8*np.pi**2)*np.sum(n*dBosonsds*(np.pi**2/3 - np.pi/T*np.sign(bosons)*np.sqrt(np.abs(bosons))
             - 1/8*bosons/T**2*(np.log(np.abs(bosons)/T**2) - logab - 1)), axis=-1)
+
+
+# Benchmarking speed of Vtot evaluation.
+if __name__ == "__main__":
+    _H = np.linspace(0, 300, 100)
+    _S = np.linspace(0, 800, 100)
+    _T = np.linspace(0, 100, 10)
+
+    _params = np.loadtxt('../output/RSS/RSS_BP5/parameter_point.txt')
+    _pot = RealScalarSingletModel(*_params)
+
+    import time
+    startTime = time.perf_counter()
+
+    for _h in _H:
+        for _s in _S:
+            for _t in _T:
+                _V = _pot.Vtot(np.array([_h, _s]), _t)
+
+    endTime = time.perf_counter()
+    print('Elapsed time:', endTime - startTime)

@@ -38,16 +38,20 @@ class HydroVars:
         self.pseudotraceTrue = (self.energyDensityTrue - self.pressureTrue/self.soundSpeedSqTrue) / 4
 
 
-# Calculates all hydrodynamic variables using three samples of the potential. If more than one hydrodynamic variable is
-# required, this function is more efficient than using the function for individual hydrodynamic variables separately.
-def getHydroVars(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float) -> HydroVars:
+# TODO: this probably belongs elsewhere, maybe in PhaseStructure or AnalysablePotential.
+def getTstep(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float) -> float:
     Tmin = max(fromPhase.T[0], toPhase.T[0])
     Tmax = min(fromPhase.T[-1], toPhase.T[-1])
 
     # Make sure the step in either direction doesn't take us past Tmin or where one phase disappears. We don't care
     # about Tc because we can sample in the region Tc < T < Tmax for the purpose of differentiation.
-    Tstep = min(max(0.0005*Tmax, 0.0001*potential.temperatureScale), 0.5*(T - Tmin), 0.5*(Tmax - T))
+    return min(max(0.0005*Tmax, 0.0001*potential.temperatureScale), 0.5*(T - Tmin), 0.5*(Tmax - T))
 
+
+# Calculates all hydrodynamic variables using three samples of the potential. If more than one hydrodynamic variable is
+# required, this function is more efficient than using the function for individual hydrodynamic variables separately.
+def getHydroVars(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float) -> HydroVars:
+    Tstep = getTstep(fromPhase, toPhase, potential, T)
     Tl = T - Tstep
     Th = T + Tstep
 
@@ -115,14 +119,9 @@ def calculatePressureAtT(fromPhase: Phase, toPhase: Phase, potential: Analysable
     return pf, pt
 
 
-def calculateEnergyDensityAtT(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float) ->\
+"""def calculateEnergyDensityAtT_old(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float) ->\
         tuple[float, float]:
-    Tmin = max(fromPhase.T[0], toPhase.T[0])
-    Tmax = min(fromPhase.T[-1], toPhase.T[-1])
-
-    # Make sure the step in either direction doesn't take us past Tmin or where one phase disappears. We don't care
-    # about Tc because we can sample in the region Tc < T < Tmax for the purpose of differentiation.
-    Tstep = min(max(0.0005*Tmax, 0.0001*potential.temperatureScale), 0.5*(T - Tmin), 0.5*(Tmax - T))
+    Tstep = getTstep(fromPhase, toPhase, potential, T)
 
     Tl = T - Tstep
     Th = T + Tstep
@@ -151,18 +150,52 @@ def calculateEnergyDensityAtT(fromPhase: Phase, toPhase: Phase, potential: Analy
     ef = Ffm - T*dFfdT
     et = Ftm - T*dFtdT
 
+    return ef, et"""
+
+
+def calculateEnergyDensityAtT(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float) ->\
+        tuple[float, float]:
+    Tstep = getTstep(fromPhase, toPhase, potential, T)
+
+    ef = calculateEnergyDensityAtT_singlePhase_supplied(fromPhase, potential, T, Tstep)
+    et = calculateEnergyDensityAtT_singlePhase_supplied(toPhase, potential, T, Tstep)
+
     return ef, et
+
+
+def calculateEnergyDensityAtT_singlePhase(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float,
+        forFromPhase: bool = True) -> float:
+    Tstep = getTstep(fromPhase, toPhase, potential, T)
+    phase = fromPhase if forFromPhase else toPhase
+
+    return calculateEnergyDensityAtT_singlePhase_supplied(phase, potential, T, Tstep)
+
+
+def calculateEnergyDensityAtT_singlePhase_supplied(phase: Phase, potential: AnalysablePotential, T: float,
+        Tstep: float) -> float:
+    Tl = T - Tstep
+    Th = T + Tstep
+
+    # Field configuration for the phase at 3 temperatures.
+    phil = phase.findPhaseAtT(Tl, potential)
+    phim = phase.findPhaseAtT(T, potential)
+    phih = phase.findPhaseAtT(Th, potential)
+
+    # Free energy density of the phase at those 3 temperatures.
+    Fl = potential.freeEnergyDensity(phil, Tl)
+    Fm = potential.freeEnergyDensity(phim, T)
+    Fh = potential.freeEnergyDensity(phih, Th)
+
+    # Central difference method for the temperature derivative of the free energy density.
+    dFdT = (Fh - Fl) / (2*Tstep)
+
+    # Energy density.
+    return Fm - T*dFdT
 
 
 def calculateEnthalpyDensityAtT(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float) ->\
         tuple[float, float]:
-    Tmin = max(fromPhase.T[0], toPhase.T[0])
-    Tmax = min(fromPhase.T[-1], toPhase.T[-1])
-
-    # Make sure the step in either direction doesn't take us past Tmin or where one phase disappears. We don't care
-    # about Tc because we can sample in the region Tc < T < Tmax for the purpose of differentiation.
-    Tstep = min(max(0.0005*Tmax, 0.0001*potential.temperatureScale), 0.5*(T - Tmin), 0.5*(Tmax - T))
-
+    Tstep = getTstep(fromPhase, toPhase, potential, T)
     Tl = T - Tstep
     Th = T + Tstep
 
@@ -191,13 +224,7 @@ def calculateEnthalpyDensityAtT(fromPhase: Phase, toPhase: Phase, potential: Ana
 
 def calculateSoundSpeedSq(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float) -> tuple[float,
         float]:
-    Tmin = max(fromPhase.T[0], toPhase.T[0])
-    Tmax = min(fromPhase.T[-1], toPhase.T[-1])
-
-    # Make sure the step in either direction doesn't take us past Tmin or where one phase disappears. We don't care
-    # about Tc because we can sample in the region Tc < T < Tmax for the purpose of differentiation.
-    Tstep = min(max(0.0005*Tmax, 0.0001*potential.temperatureScale), 0.5*(T - Tmin), 0.5*(Tmax - T))
-
+    Tstep = getTstep(fromPhase, toPhase, potential, T)
     Tl = T - Tstep
     Th = T + Tstep
 
