@@ -1,9 +1,13 @@
 from cosmoTransitions.generic_potential import generic_potential
 import numpy as np
 from typing import List, Union
+from analysis.phase_structure import Phase
 
 
 class AnalysablePotential(generic_potential):
+    # NOTE: ndof and raddof are now basically default values for the number of degrees of freedom. Temperature- and
+    # field-dependence of the number of degrees of freedom can be specified in getDegreesOfFreedom.
+
     # The number of degrees of freedom that are included in one-loop corrections. E.g. If the top quark is the only
     # fermion included in the one-loop corrections, then ndof should not count the degrees of freedom from the other
     # fermions.
@@ -44,10 +48,27 @@ class AnalysablePotential(generic_potential):
     # Returns the free energy density, which is equal to the effective potential. However, the effective temperature
     # may neglect light degrees of freedom. These must be factored in here, hence the subtraction of radiation terms
     # for each of the raddof neglected degrees of freedom.
-    def freeEnergyDensity(self, X, T) -> Union[float, np.ndarray]:
-        return self.Vtot(X, T, include_radiation=False) - np.pi**2/90*self.raddof*T**4
+    def freeEnergyDensity(self, X: Union[float, list[float], np.ndarray], T: Union[float, list[float], np.ndarray])\
+            -> Union[float, np.ndarray]:
+        return self.Vtot(X, T, include_radiation=False) - np.pi**2/90*self.getRadiationDegreesOfFreedom(X, T)*T**4
 
     # Returns a list of values for each parameter that specifies the potential. E.g. if the tree-level potential is
     # V0 = a*phi^2 + b*phi^4, this function should return [a, b].
     def getParameterPoint(self) -> List[float]:
         return []
+
+    def getDegreesOfFreedom(self, X: Union[float, list[float], np.ndarray] = 0., T: Union[float, list[float],
+            np.ndarray] = 0.) -> Union[float, np.ndarray]:
+        return self.ndof
+
+    def getRadiationDegreesOfFreedom(self, X: Union[float, list[float], np.ndarray] = 0., T: Union[float, list[float],
+            np.ndarray] = 0.) -> Union[float, np.ndarray]:
+        return self.ndof
+
+    # This is used in transition analysis and gravitational wave prediction for the energy density. The 'from' phase is
+    # typically passed in.
+    def getDegreesOfFreedomInPhase(self, phase: Phase, T: Union[float, list[float],
+            np.ndarray] = 0.) -> Union[float, np.ndarray]:
+        # If the degrees of freedom depend on the field configuration, one could use:
+        # return self.getDegreesOfFreedom(phase.findPhaseAtT(T, self), T)
+        return self.ndof

@@ -648,7 +648,7 @@ class TransitionAnalyser():
         bubbleNumberDensity = [0.]
         averageBubbleRadius = [0.]
 
-        radDensity = np.pi**2/30*self.potential.ndof
+        radDensityPrefactor = np.pi**2/30
         fourPiOnThree = 4/3*np.pi
 
         # =================================================
@@ -706,7 +706,10 @@ class TransitionAnalyser():
 
         rho0 = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential,
             self.actionSampler.T[0], forFromPhase=True) - self.groundStateEnergyDensity
-        bCheckForTeq = rho0 - 2*radDensity*self.actionSampler.T[0]**4 < 0
+        Temp = self.actionSampler.T[0]
+        rhoR = radDensityPrefactor * self.potential.getDegreesOfFreedomInPhase(self.fromPhase, Temp) * Temp**4
+
+        bCheckForTeq = rho0 - 2*rhoR < 0
 
         if self.bDebug and not bCheckForTeq:
             print('Not checking for Teq since rho_V > rho_R at Tmax.')
@@ -775,28 +778,32 @@ class TransitionAnalyser():
 
             rhof = np.linspace(rhof1, rhof2, len(T))
             rhot = np.linspace(rhot1, rhot2, len(T))
-            rhoR = [radDensity*t**4 for t in T]
+            # TODO: could optimise this for field-dependent degrees of freedom by interpolating the field configuration.
+            rhoR = [radDensityPrefactor*self.potential.getDegreesOfFreedomInPhase(self.fromPhase, T[i])*T[i]**4
+                for i in range(len(T))]
             rhoV = rhof - rhoR - self.groundStateEnergyDensity
 
-            if bCheckForTeq and Teq == 0 and rhof2 - self.groundStateEnergyDensity >=\
-                    2*radDensity*self.actionSampler.T[simIndex+1]**4:
+            # rhoR[0] is evaluated at T[simIndex] and rhoR[-1] is evaluated at T[simIndex+1]
+            if bCheckForTeq and Teq == 0 and rhof2 - self.groundStateEnergyDensity >= 2*rhoR[-1]:
                 # The 1 suffix is for T[simIndex+1] and the 2 suffix is for T[simIndex] (noting that T[simIndex+1] is
                 # smaller than T[simIndex]). So these points are ordered with ascending temperature.
                 T1, T2 = self.actionSampler.T[simIndex+1], self.actionSampler.T[simIndex]
                 # Note that rhof1 and rhof2 suffixes are backwards!
-                rhoV1 = rhof2 - radDensity*self.actionSampler.T[simIndex+1]**4 - self.groundStateEnergyDensity
-                rhoV2 = rhof1 - radDensity*self.actionSampler.T[simIndex]**4 - self.groundStateEnergyDensity
+                rhoV1 = rhof2 - rhoR[-1] - self.groundStateEnergyDensity
+                rhoV2 = rhof1 - rhoR[0] - self.groundStateEnergyDensity
 
                 if self.bDebug:
                     print('Searching for Teq')
                     print('T:', T1, T2)
                     print('rhoV:', rhoV1, rhoV2)
-                    print('rhoR:', radDensity*T1**4, radDensity*T2**4)
+                    print('rhoR:', rhoR[-1], rhoR[0])
 
                 # We can use 'pseudo-quadratic' interpolation on rhoV to give a quadratic equation to solve for Teq^2.
-                #   rhoV(T) = rhoV1 + (rhoV2 - rhoV1)*(T^2 - T1^2)/(T2^2 - T1^2) == radDensity*T**4
+                #   rhoV(T) = rhoV1 + (rhoV2 - rhoV1)*(T^2 - T1^2)/(T2^2 - T1^2) == rhoR(T)
                 # This has two solutions for Teq^2:
-                a = radDensity
+                # TODO: averaging degrees of freedom between T1 and T2. Can use tomsolve (or just callcalculateTeq) to
+                #  solve this more generally. That would also avoid the need for interpolating rhoV here.
+                a = 0.5*(rhoR[-1]/T2**4 + rhoR[0]/T1**4)
                 b = -(rhoV2 - rhoV1)/(T2**2 - T1**2)
                 c = -rhoV1 + T1**2*(rhoV2 - rhoV1)/(T2**2 - T1**2)
                 TeqSq1 = (-b + np.sqrt(b*b - 4*a*c))/(2*a)
@@ -812,7 +819,6 @@ class TransitionAnalyser():
                     chosenTeq = np.sqrt(TeqSq2)
 
                 if chosenTeq < 0 and self.bDebug:
-
                     print(f'Failed to find Teq in temperature window [{T1}, {T2}], with solutions '
                           + (str(np.sqrt(TeqSq1)) if TeqSq1 > 0 else f'sqrt({TeqSq1})') + ' and '
                           + (str(np.sqrt(TeqSq2)) if TeqSq2 > 0 else f'sqrt({TeqSq2})'))
@@ -1118,7 +1124,10 @@ class TransitionAnalyser():
 
             textY = 0.1
             rhoV = self.actionSampler.subRhoV
-            rhoR = [radDensity*t**4 for t in self.actionSampler.subT]
+            # TODO: now that rhoR is more expensive to calculate if the degrees of freedom are field dependent, we
+            #  should store rhoR during analysis.
+            rhoR = [radDensityPrefactor*self.potential.getDegreesOfFreedomInPhase(self.fromPhase, t)*t**4 for t in
+                self.actionSampler.subT]
             rhoTot = [rhoR[i]+rhoV[i] for i in range(len(self.actionSampler.subT))]
             plt.plot(self.actionSampler.subT, rhoV)
             plt.plot(self.actionSampler.subT, rhoR)
@@ -1132,7 +1141,8 @@ class TransitionAnalyser():
             extrapRhoV = lambda x: rhoV[-1] + (x - self.actionSampler.subT[-1])*drhoVdT
             extraT = list(np.linspace(2*self.actionSampler.subT[-1]-self.actionSampler.subT[-2], 0, 100))
             fullT = self.actionSampler.subT + extraT
-            fullRhoR = rhoR + [radDensity*t**4 for t in extraT]
+            fullRhoR = rhoR + [radDensityPrefactor*self.potential.getDegreesOfFreedomInPhase(self.fromPhase, t)*t**4
+                for t in extraT]
             fullRhoV = rhoV + [extrapRhoV(t) for t in extraT]
             fullRhoTot = [fullRhoR[i] + fullRhoV[i] for i in range(len(fullT))]
             plt.plot(fullT, fullRhoV)
@@ -1241,7 +1251,7 @@ class TransitionAnalyser():
 
         # If the transition has completed before Teq was identified, predict the value of Teq through extrapolation.
         if Teq == 0 and len(self.actionSampler.T) > 2:
-            Teq = self.predictTeq(radDensity)
+            Teq = self.predictTeq()
             self.transition.Teq = Teq
             # Don't worry about SonTeq.
 
@@ -2025,14 +2035,17 @@ class TransitionAnalyser():
         return 8*np.pi*GRAV_CONST/3*(rhof - self.groundStateEnergyDensity)
 
     # Ignore IDE warnings about type of return value, Teq. toms748 returns only a float if full_output=False as is default.
-    def predictTeq(self, radDensity: float) -> float:
-        actualTmin = self.Tmin
+    def predictTeq(self) -> float:
+        radDensityPrefactor = np.pi**2/30
+
+        def radiationEnergyDensity(T: float) -> float:
+            return radDensityPrefactor*self.potential.getDegreesOfFreedomInPhase(self.fromPhase, T)*T**4
 
         # 0 at Teq, +ve for vacuum domination, -ve for radiation domination.
-        def energyEra(T):
+        def energyEra(T: float) -> float:
             # Can't use supplied version of energy density calculation because T is changing. Default is from phase.
             return hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, T)\
-                - self.groundStateEnergyDensity - 2*radDensity*T**4
+                - self.groundStateEnergyDensity - 2*radiationEnergyDensity(T)
 
         # If the transition is subcritical and the energy density already exceeds the radiation density at Tc, then there is
         # no Teq.
@@ -2045,18 +2058,19 @@ class TransitionAnalyser():
         # This could hold even for regular (non-subcritical) transitions, particularly those with a low Tc.
         energyAtTmax = energyEra(Tmax)
         if energyAtTmax > 0:
-            rhoVatTmax = energyAtTmax + radDensity*Tmax**4
+            rhoRatTmax = radiationEnergyDensity(Tmax)
+            rhoVatTmax = energyAtTmax + rhoRatTmax
 
             if self.bDebug:
                 print('Teq cannot be found, as the Universe is vacuum dominated when the \'to phase\' first appears.')
-                print(f'rho_V(Tmax) = {rhoVatTmax}, rho_R(Tmax) = {radDensity*Tmax**4}, and '
-                      f'rho_V/rho = {rhoVatTmax/(energyAtTmax + 2*radDensity*Tmax**4)}')
+                print(f'rho_V(Tmax) = {rhoVatTmax}, rho_R(Tmax) = {rhoRatTmax}, and '
+                      f'rho_V/rho = {rhoVatTmax/(energyAtTmax + 2*rhoRatTmax)}')
                 print('Extrapolating (with linear rho_V) to find Teq > Tmax...')
 
-            drhoV = (energyEra(Tmax-Tsep) + radDensity*(Tmax - Tsep)**4 - rhoVatTmax) / Tsep
+            drhoV = (energyEra(Tmax-Tsep) + radiationEnergyDensity(Tmax - Tsep) - rhoVatTmax) / Tsep
 
             # 0 at Teq, +ve for vacuum domination, -ve for radiation domination.
-            approxEnergyEra = lambda T: rhoVatTmax + (T - Tmax)*drhoV - radDensity*T**4
+            approxEnergyEra = lambda T: rhoVatTmax + (T - Tmax)*drhoV - radiationEnergyDensity(T)
 
             if drhoV < 0:
                 if self.bDebug:
@@ -2085,7 +2099,10 @@ class TransitionAnalyser():
 
                 # Find the temperature for which rhoR = rhoV(Tmax). We are guaranteed that rhoV > rhoR here since rhoV
                 # will have increased from rhoV(Tmax).
-                Tstar = (rhoVatTmax/radDensity)**(1/4)
+                # TODO: for now, assume the degrees of freedom are constant above Tmax. This allows us to treat rhoR
+                #  as a simple quartic function of T: rhoR = a*T^4.
+                a = radiationEnergyDensity(Tmax)/Tmax**4
+                Tstar = (rhoVatTmax / a)**(1/4)
                 Tstep = Tstar - Tmax
 
                 # Step forwards in temperature by progressively larger amounts until we have rhoR(T) > rhoV(T) using the
@@ -2131,12 +2148,13 @@ class TransitionAnalyser():
 
             # If we're still in the radiation dominated era at Tmin, then we cannot find Teq.
             if energyAtTmin < 0:
-                rhoVatTmin = energyAtTmin + radDensity*newTmin**4
+                rhoRatTmin = radiationEnergyDensity(newTmin)
+                rhoVatTmin = energyAtTmin + rhoRatTmin
 
                 if self.bDebug:
                     print('Teq cannot be found, as the Universe is radiation dominated at Tmin.')
-                    print(f'rho_V(Tmin) = {rhoVatTmin}, rho_R(Tmin) = {radDensity*newTmin**4}, and '
-                          f'rho_V/rho = {rhoVatTmin/(energyAtTmin + 2*radDensity*newTmin**4)}')
+                    print(f'rho_V(Tmin) = {rhoVatTmin}, rho_R(Tmin) = {rhoRatTmin}, and '
+                          f'rho_V/rho = {rhoVatTmin/(energyAtTmin + 2*rhoRatTmin)}')
                     print('Extrapolating (with linear rho_V) to find Teq < Tmin...')
 
                 # Tmin must be non-zero, otherwise we would have rhoR = 0 and therefore vacuum domination. So we can
@@ -2144,11 +2162,11 @@ class TransitionAnalyser():
 
                 #drhoV = (energyEra(Tmax-Tsep) + radDensity*(Tmax - Tsep)**4 - rhoVatTmin) / Tsep
                 Tsample = newTmin + Tsep
-                rhoVsample = energyEra(Tsample) + radDensity*Tsample**4
+                rhoVsample = energyEra(Tsample) + radiationEnergyDensity(Tsample)
                 drhoVdT = (rhoVsample - rhoVatTmin) / Tsep
 
                 # 0 at Teq, +ve for vacuum domination, -ve for radiation domination.
-                approxEnergyEra = lambda T: rhoVatTmin + (T - newTmin)*drhoVdT - radDensity*T**4
+                approxEnergyEra = lambda T: rhoVatTmin + (T - newTmin)*drhoVdT - radiationEnergyDensity(T)
 
                 if approxEnergyEra(0) < 0:  # => rhoV(0) < 0.
                     # We can't bracket a root, so use fsolve instead. There may not be a solution.

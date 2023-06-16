@@ -113,7 +113,6 @@ class Transition:
     totalNumBubbles: float
     totalNumBubblesCorrected: float
 
-    bFoundTeq: bool
     bFoundNucleationWindow: bool
 
     def __init__(self, transition: np.ndarray):
@@ -165,7 +164,6 @@ class Transition:
         self.totalNumBubbles = 0.
         self.totalNumBubblesCorrected = 0.
 
-        self.bFoundTeq = False
         self.bFoundNucleationWindow = False
 
     def starts(self) -> bool:
@@ -258,7 +256,6 @@ class Transition:
         if self.Tp > 0: report['decreasingVphysAtTp'] = self.decreasingVphysAtTp
         if self.Tf > 0: report['decreasingVphysAtTf'] = self.decreasingVphysAtTf
 
-        report['foundTeq'] = self.bFoundTeq
         report['foundNucleationWindow'] = self.bFoundNucleationWindow
 
         if self.Tp > 0:
