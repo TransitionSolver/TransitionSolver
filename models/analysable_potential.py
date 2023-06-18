@@ -1,7 +1,8 @@
 from cosmoTransitions.generic_potential import generic_potential
 import numpy as np
-from typing import List, Union
+from typing import List, Union, Callable
 from analysis.phase_structure import Phase
+from models.util import geff_handler
 
 
 class AnalysablePotential(generic_potential):
@@ -45,11 +46,29 @@ class AnalysablePotential(generic_potential):
     # particularly if one wishes the electroweak phase transition to complete before the QCD transition.
     minimumTemperature: float = 0.1
 
+    # If true, ndof will be used for the the degrees of freedom used in e.g. redshifting gravitational waves.
+    # If false, the degrees of freedom will be calculated from the field- and temperature-dependent mass spectrum.
+    bUseSimpleDOF: bool = True
+
+    geffFunc_boson: Callable[[float], float]
+    geffFunc_fermion: Callable[[float], float]
+
+    def __init__(self, *args, **dargs):
+        self.geffFunc_boson = lambda x: 1.
+        self.geffFunc_fermion = lambda x: 0.875
+
+        super().__init__(*args, **dargs)
+
+        if not self.bUseSimpleDOF:
+            self.geffFunc_boson = geff_handler.getGeffCurve_boson()
+            self.geffFunc_fermion = geff_handler.getGeffCurve_fermion()
+
     # Returns the free energy density, which is equal to the effective potential. However, the effective temperature
     # may neglect light degrees of freedom. These must be factored in here, hence the subtraction of radiation terms
     # for each of the raddof neglected degrees of freedom.
     def freeEnergyDensity(self, X: Union[float, list[float], np.ndarray], T: Union[float, list[float], np.ndarray])\
             -> Union[float, np.ndarray]:
+        # TODO: this form of the subtraction of missing radiation is only valid in the high-temperature limit, right?
         return self.Vtot(X, T, include_radiation=False) - np.pi**2/90*self.getRadiationDegreesOfFreedom(X, T)*T**4
 
     # Returns a list of values for each parameter that specifies the potential. E.g. if the tree-level potential is
@@ -59,16 +78,38 @@ class AnalysablePotential(generic_potential):
 
     def getDegreesOfFreedom(self, X: Union[float, list[float], np.ndarray] = 0., T: Union[float, list[float],
             np.ndarray] = 0.) -> Union[float, np.ndarray]:
-        return self.ndof
+        m2b, nb, _ = self.boson_massSq(X, T)
+        m2f, nf = self.fermion_massSq(X)
 
+        dof = self.raddof
+
+        for i in range(len(m2b)):
+            y = T/np.sqrt(m2b[i])
+            factor = self.geffFunc_boson(y)
+            dof += nb[i]*factor
+
+        for i in range(len(m2f)):
+            y = T/np.sqrt(m2f[i])
+            factor = self.geffFunc_fermion(y)
+            dof += nf[i]*factor
+
+        return dof
+
+    # Degrees of freedom not included in the one-loop corrections that should be treated as radiation.
     def getRadiationDegreesOfFreedom(self, X: Union[float, list[float], np.ndarray] = 0., T: Union[float, list[float],
             np.ndarray] = 0.) -> Union[float, np.ndarray]:
-        return self.ndof
+        return self.raddof
+
+    def getEntropicDegreesOfFreedom(self, X: Union[float, list[float], np.ndarray] = 0., T: Union[float, list[float],
+            np.ndarray] = 0.) -> Union[float, np.ndarray]:
+        # Make the approximation that g_s ~= g_eff for T > 0.1 MeV. See https://arxiv.org/pdf/1609.04979.pdf, Fig 1.
+        return self.getDegreesOfFreedom(X, T)
 
     # This is used in transition analysis and gravitational wave prediction for the energy density. The 'from' phase is
     # typically passed in.
     def getDegreesOfFreedomInPhase(self, phase: Phase, T: Union[float, list[float],
             np.ndarray] = 0.) -> Union[float, np.ndarray]:
-        # If the degrees of freedom depend on the field configuration, one could use:
-        # return self.getDegreesOfFreedom(phase.findPhaseAtT(T, self), T)
-        return self.ndof
+        if self.bUseSimpleDOF:
+            return self.ndof
+        else:
+            return self.getDegreesOfFreedom(phase.findPhaseAtT(T, self), T)

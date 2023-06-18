@@ -17,13 +17,14 @@ class MassMatrixData:
 
 class RealScalarSingletModel(AnalysablePotential):
     def init(self, c1, b3, theta, vs, ms, muh=0, mus=0, lh=0, ls=0, c2=0, muh0=0, mus0=0, bDebugIteration=False,
-        bStoreParameterEvolution=False, bSkipOneLoop=False):
+            bStoreParameterEvolution=False, bSkipOneLoop=False):
         # We have two fields: h and s.
         self.Ndim = 2
 
         self.ndof = 107.75
         self.raddof = 80.25  # The dof that we don't explicitly include in VT. These must be accounted for in the
         #                      radiation for the free energy density.
+        self.bUseSimpleDOF = False
 
         self.c1 = c1
         self.b3 = b3
