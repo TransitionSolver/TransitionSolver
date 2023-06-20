@@ -76,7 +76,7 @@ class GWAnalyser_InidividualTransition:
 
         # If no settings are supplied, use default settings.
         if settings is None:
-            settings = GWAnalysisSettings
+            settings = GWAnalysisSettings()
 
         if settings.sampleIndex >= 0 and (not ('TSubsample' in self.transitionReport) or settings.sampleIndex >=
                 len(self.transitionReport['TSubsample'])):
@@ -625,8 +625,11 @@ def extractRelevantTransitions(report: dict) -> list[dict]:
 
 
 def main(detectorClass, potentialClass, outputFolder):
-    gw = GWAnalyser(detectorClass, potentialClass, outputFolder)
-    gw.scanGWs()
+    gwa = GWAnalyser(detectorClass, potentialClass, outputFolder)
+    # Use this for scanning GWs and thermal params over temperature.
+    gwa.scanGWs()
+    # Use this for evaluating GWs using thermal params at the onset of percolation.
+    #gwa.determineGWs()
     #hydroTester(potentialClass, outputFolder)
 
 
