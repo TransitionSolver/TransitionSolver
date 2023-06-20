@@ -3,8 +3,8 @@ from typing import Optional, Union
  
 from cosmoTransitions.tunneling1D import ThinWallError
 
-from gws import Hydrodynamics
-from util.PrintSuppressor import PrintSuppressor
+from gws import hydrodynamics
+from util.print_suppressor import PrintSuppressor
 import numpy as np
 import scipy.optimize
 
@@ -13,15 +13,15 @@ try:
 except ImportError:
     from io import StringIO  # for Python 3
 from cosmoTransitions import pathDeformation
-from models.AnalysablePotential import AnalysablePotential
+from models.analysable_potential import AnalysablePotential
 from scipy.interpolate import lagrange
 import matplotlib.pyplot as plt
-from util import IntegrationHelper
+from util import integration
 import time
 import json
 
-from analysis.PhaseStructure import Phase, Transition
-from util.NotifyHandler import notifyHandler
+from analysis.phase_structure import Phase, Transition
+from util.events import notifyHandler
 
 
 totalActionEvaluations = 0
@@ -360,9 +360,9 @@ class ActionSampler:
         # TODO: replace with quadratic interpolation.
         SonTList = np.linspace(self.SonT[-1], SonTnew, numPoints)
         GammaList = self.transitionAnalyser.calculateGamma(TList, SonTList)
-        energyStart = Hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential,
+        energyStart = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential,
             TList[0], forFromPhase=True) - self.transitionAnalyser.groundStateEnergyDensity
-        energyEnd = Hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential,
+        energyEnd = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential,
             TList[-1], forFromPhase=True) - self.transitionAnalyser.groundStateEnergyDensity
         # TODO: replace with quadratic interpolation.
         energyDensityList = np.linspace(energyStart, energyEnd, numPoints)
@@ -534,6 +534,8 @@ class TransitionAnalyser():
 
     actionSampler: ActionSampler
 
+    bComputeSubsampledThermalParams: bool
+
     # TODO: make vw a function of this class that can be overriden. Currently it is obtained from the transition.
     def __init__(self, potential: AnalysablePotential, transition: Transition, fromPhase: Phase, toPhase: Phase,
             groundStateEnergyDensity: float, Tmin: float = 0., Tmax: float = 0.):
@@ -557,12 +559,15 @@ class TransitionAnalyser():
 
         self.Tstep = max(0.0005*min(self.fromPhase.T[-1], self.toPhase.T[-1]), 0.0001*self.potential.temperatureScale)
 
+        self.bComputeSubsampledThermalParams = False
+
         notifyHandler.handleEvent(self, 'on_create')
 
     # TODO: need to handle subcritical transitions better. Shouldn't use integration if the max sampled action is well
     #  below the nucleation threshold. Should treat the action as constant or linearise it and estimate transition
     #  temperatures under that approximation.
     def analyseTransition(self, startTime: float = -1.0, precomputedActionCurveFileName: str = ''):
+        # TODO: this should depend on the scale of the transition, so make it configurable.
         # Estimate the maximum significant value of S/T by finding where the instantaneous nucleation rate multiplied by
         # the maximum possible duration of the transition is O(1). This is highly conservative, but intentionally so
         # because we only sample maxSonTThreshold within some (loose) tolerance.
@@ -647,9 +652,12 @@ class TransitionAnalyser():
         H = [np.sqrt(self.calculateHubbleParameterSq(self.actionSampler.T[0]))]
         Gamma = [0.]
         bubbleNumberDensity = [0.]
-        averageBubbleRadius = [0.]
+        meanBubbleRadiusArray = [0.]
+        meanBubbleSeparationArray = [0.]
+        # TODO: need an initial value...
+        betaArray = [0.]
 
-        radDensity = np.pi**2/30*self.potential.ndof
+        radDensityPrefactor = np.pi**2/30
         fourPiOnThree = 4/3*np.pi
 
         # =================================================
@@ -705,9 +713,12 @@ class TransitionAnalyser():
         #bCheckForTeq = (not transition.subcritical and Tmax == transition.Tc) or\
         #    calculateEnergyDensityAtT(Tmax)[0] <= radDensity*Tmax**4
 
-        rho0 = Hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential,
+        rho0 = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential,
             self.actionSampler.T[0], forFromPhase=True) - self.groundStateEnergyDensity
-        bCheckForTeq = rho0 - 2*radDensity*self.actionSampler.T[0]**4 < 0
+        Temp = self.actionSampler.T[0]
+        rhoR = radDensityPrefactor * self.potential.getDegreesOfFreedomInPhase(self.fromPhase, Temp) * Temp**4
+
+        bCheckForTeq = rho0 - 2*rhoR < 0
 
         if self.bDebug and not bCheckForTeq:
             print('Not checking for Teq since rho_V > rho_R at Tmax.')
@@ -769,35 +780,39 @@ class TransitionAnalyser():
             else:
                 SonT = np.linspace(self.actionSampler.SonT[simIndex], self.actionSampler.SonT[simIndex+1], numSamples)
 
-            rhof1, rhot1 = Hydrodynamics.calculateEnergyDensityAtT(self.fromPhase, self.toPhase, self.potential,
+            rhof1, rhot1 = hydrodynamics.calculateEnergyDensityAtT(self.fromPhase, self.toPhase, self.potential,
                 self.actionSampler.T[simIndex])
-            rhof2, rhot2 = Hydrodynamics.calculateEnergyDensityAtT(self.fromPhase, self.toPhase, self.potential,
+            rhof2, rhot2 = hydrodynamics.calculateEnergyDensityAtT(self.fromPhase, self.toPhase, self.potential,
                 self.actionSampler.T[simIndex+1])
 
             rhof = np.linspace(rhof1, rhof2, len(T))
             rhot = np.linspace(rhot1, rhot2, len(T))
-            rhoR = [radDensity*t**4 for t in T]
+            # TODO: could optimise this for field-dependent degrees of freedom by interpolating the field configuration.
+            rhoR = [radDensityPrefactor*self.potential.getDegreesOfFreedomInPhase(self.fromPhase, T[i])*T[i]**4
+                for i in range(len(T))]
             rhoV = rhof - rhoR - self.groundStateEnergyDensity
 
-            if bCheckForTeq and Teq == 0 and rhof2 - self.groundStateEnergyDensity >=\
-                    2*radDensity*self.actionSampler.T[simIndex+1]**4:
+            # rhoR[0] is evaluated at T[simIndex] and rhoR[-1] is evaluated at T[simIndex+1]
+            if bCheckForTeq and Teq == 0 and rhof2 - self.groundStateEnergyDensity >= 2*rhoR[-1]:
                 # The 1 suffix is for T[simIndex+1] and the 2 suffix is for T[simIndex] (noting that T[simIndex+1] is
                 # smaller than T[simIndex]). So these points are ordered with ascending temperature.
                 T1, T2 = self.actionSampler.T[simIndex+1], self.actionSampler.T[simIndex]
                 # Note that rhof1 and rhof2 suffixes are backwards!
-                rhoV1 = rhof2 - radDensity*self.actionSampler.T[simIndex+1]**4 - self.groundStateEnergyDensity
-                rhoV2 = rhof1 - radDensity*self.actionSampler.T[simIndex]**4 - self.groundStateEnergyDensity
+                rhoV1 = rhof2 - rhoR[-1] - self.groundStateEnergyDensity
+                rhoV2 = rhof1 - rhoR[0] - self.groundStateEnergyDensity
 
                 if self.bDebug:
                     print('Searching for Teq')
                     print('T:', T1, T2)
                     print('rhoV:', rhoV1, rhoV2)
-                    print('rhoR:', radDensity*T1**4, radDensity*T2**4)
+                    print('rhoR:', rhoR[-1], rhoR[0])
 
                 # We can use 'pseudo-quadratic' interpolation on rhoV to give a quadratic equation to solve for Teq^2.
-                #   rhoV(T) = rhoV1 + (rhoV2 - rhoV1)*(T^2 - T1^2)/(T2^2 - T1^2) == radDensity*T**4
+                #   rhoV(T) = rhoV1 + (rhoV2 - rhoV1)*(T^2 - T1^2)/(T2^2 - T1^2) == rhoR(T)
                 # This has two solutions for Teq^2:
-                a = radDensity
+                # TODO: averaging degrees of freedom between T1 and T2. Can use tomsolve (or just callcalculateTeq) to
+                #  solve this more generally. That would also avoid the need for interpolating rhoV here.
+                a = 0.5*(rhoR[-1]/T2**4 + rhoR[0]/T1**4)
                 b = -(rhoV2 - rhoV1)/(T2**2 - T1**2)
                 c = -rhoV1 + T1**2*(rhoV2 - rhoV1)/(T2**2 - T1**2)
                 TeqSq1 = (-b + np.sqrt(b*b - 4*a*c))/(2*a)
@@ -813,7 +828,6 @@ class TransitionAnalyser():
                     chosenTeq = np.sqrt(TeqSq2)
 
                 if chosenTeq < 0 and self.bDebug:
-
                     print(f'Failed to find Teq in temperature window [{T1}, {T2}], with solutions '
                           + (str(np.sqrt(TeqSq1)) if TeqSq1 > 0 else f'sqrt({TeqSq1})') + ' and '
                           + (str(np.sqrt(TeqSq2)) if TeqSq2 > 0 else f'sqrt({TeqSq2})'))
@@ -856,7 +870,7 @@ class TransitionAnalyser():
                 # additional point so that we can immediately integrate and add it to the true vacuum fraction and false
                 # vacuum probability arrays as usual below.
                 if integrationHelper_trueVacVol is None and len(self.actionSampler.subT) == 4:
-                    integrationHelper_trueVacVol = IntegrationHelper.CubedNestedIntegrationHelper([0, 1, 2],
+                    integrationHelper_trueVacVol = integration.CubedNestedIntegrationHelper([0, 1, 2],
                         outerFunction_trueVacVol, innerFunction_trueVacVol, sampleTransformationFunction)
 
                     # Don't add the first element since we have already stored Vext[0] = 0, Pf[0] = 1, etc.
@@ -870,7 +884,7 @@ class TransitionAnalyser():
 
                     # Do the same thing for the average bubble radius integration helper. This needs to be done after Pf
                     # has been filled with data because outerFunction_avgBubRad uses this data.
-                    integrationHelper_avgBubRad = IntegrationHelper.LinearNestedNormalisedIntegrationHelper([0, 1],
+                    integrationHelper_avgBubRad = integration.LinearNestedNormalisedIntegrationHelper([0, 1],
                         outerFunction_avgBubRad, innerFunction_avgBubRad, outerFunction_avgBubRad,
                         sampleTransformationFunction)
 
@@ -881,11 +895,11 @@ class TransitionAnalyser():
                     integrationHelper_avgBubRad.integrate(len(self.actionSampler.subT)-2)
 
                     for j in range(1, len(integrationHelper_avgBubRad.data)):
-                        averageBubbleRadius.append(integrationHelper_avgBubRad.data[j])
+                        meanBubbleRadiusArray.append(integrationHelper_avgBubRad.data[j])
+                        meanBubbleSeparationArray.append((bubbleNumberDensity[j])**(-1/3))
 
                 #H.append(np.sqrt(self.calculateHubbleParameterSq(T[i])))
-                H.append(np.sqrt(calculateHubbleParameterSq_supplied(rhof[i] -
-                                                                     self.groundStateEnergyDensity)))
+                H.append(np.sqrt(calculateHubbleParameterSq_supplied(rhof[i] - self.groundStateEnergyDensity)))
 
                 Gamma.append(self.calculateGamma(T[i], SonT[i]))
 
@@ -906,12 +920,16 @@ class TransitionAnalyser():
                         + Gamma[-1]*Pf[-1] / (T[i]**4 * H[-1])))
                     # This needs to be done after the new Pf has been added because outerFunction_avgBubRad uses this data.
                     integrationHelper_avgBubRad.integrate(len(self.actionSampler.subT)-1)
-                    averageBubbleRadius.append(integrationHelper_avgBubRad.data[-1])
+                    meanBubbleRadiusArray.append(integrationHelper_avgBubRad.data[-1])
+                    meanBubbleSeparationArray.append((bubbleNumberDensity[-1])**(-1/3))
 
                 Tnew = self.actionSampler.subT[-1]
                 Tprev = self.actionSampler.subT[-2]
                 SonTnew = self.actionSampler.subSonT[-1]
                 SonTprev = self.actionSampler.subSonT[-2]
+
+                # TODO: not a great derivative, can do better.
+                betaArray.append(H[-1]*Tnew*(SonTprev - SonTnew)/dT)
 
                 # Check if we have reached any milestones (e.g. unit nucleation, percolation, etc.).
 
@@ -1120,7 +1138,10 @@ class TransitionAnalyser():
 
             textY = 0.1
             rhoV = self.actionSampler.subRhoV
-            rhoR = [radDensity*t**4 for t in self.actionSampler.subT]
+            # TODO: now that rhoR is more expensive to calculate if the degrees of freedom are field dependent, we
+            #  should store rhoR during analysis.
+            rhoR = [radDensityPrefactor*self.potential.getDegreesOfFreedomInPhase(self.fromPhase, t)*t**4 for t in
+                self.actionSampler.subT]
             rhoTot = [rhoR[i]+rhoV[i] for i in range(len(self.actionSampler.subT))]
             plt.plot(self.actionSampler.subT, rhoV)
             plt.plot(self.actionSampler.subT, rhoR)
@@ -1134,7 +1155,8 @@ class TransitionAnalyser():
             extrapRhoV = lambda x: rhoV[-1] + (x - self.actionSampler.subT[-1])*drhoVdT
             extraT = list(np.linspace(2*self.actionSampler.subT[-1]-self.actionSampler.subT[-2], 0, 100))
             fullT = self.actionSampler.subT + extraT
-            fullRhoR = rhoR + [radDensity*t**4 for t in extraT]
+            fullRhoR = rhoR + [radDensityPrefactor*self.potential.getDegreesOfFreedomInPhase(self.fromPhase, t)*t**4
+                for t in extraT]
             fullRhoV = rhoV + [extrapRhoV(t) for t in extraT]
             fullRhoTot = [fullRhoR[i] + fullRhoV[i] for i in range(len(fullT))]
             plt.plot(fullT, fullRhoV)
@@ -1221,7 +1243,7 @@ class TransitionAnalyser():
             #transitionStrength, _, _ = calculateTransitionStrength(self.potential, self.fromPhase, self.toPhase,
             #    self.transition.Tp)
             # TODO: do this elsewhere, maybe a thermal params file.
-            hydroVars = Hydrodynamics.getHydroVars(self.fromPhase, self.toPhase, self.potential, Tp)
+            hydroVars = hydrodynamics.getHydroVars(self.fromPhase, self.toPhase, self.potential, Tp)
             thetaf = (hydroVars.energyDensityFalse - hydroVars.pressureFalse/hydroVars.soundSpeedSqTrue) / 4
             thetat = (hydroVars.energyDensityTrue - hydroVars.pressureTrue/hydroVars.soundSpeedSqTrue) / 4
             transitionStrength = 4*(thetaf - thetat) / (3*hydroVars.enthalpyDensityFalse)
@@ -1231,7 +1253,7 @@ class TransitionAnalyser():
             #    bPlot=bPlot, bDebug=bDebug)
 
             self.transition.transitionStrength = transitionStrength
-            self.transition.meanBubbleRadius = averageBubbleRadius[indexTp]
+            self.transition.meanBubbleRadius = meanBubbleRadiusArray[indexTp]
             self.transition.meanBubbleSeparation = meanBubbleSeparation
             #transition.energyWeightedBubbleRadius = energyWeightedBubbleRadius
             #transition.volumeWeightedBubbleRadius = volumeWeightedBubbleRadius
@@ -1239,20 +1261,18 @@ class TransitionAnalyser():
             if self.bDebug:
                 print('Transition strength:', transitionStrength)
 
-        meanBubbleSeparationArray = np.array([nb**(-1/3) if nb > 0 else 0 for nb in bubbleNumberDensity])
-
         # If the transition has completed before Teq was identified, predict the value of Teq through extrapolation.
         if Teq == 0 and len(self.actionSampler.T) > 2:
-            Teq = self.predictTeq(radDensity)
+            Teq = self.predictTeq()
             self.transition.Teq = Teq
             # Don't worry about SonTeq.
 
         if self.bReportAnalysis:
             print('Mean bubble separation (Tp):', meanBubbleSeparationArray[indexTp])
-            print('Average bubble radius (Tp): ', averageBubbleRadius[indexTp])
+            print('Average bubble radius (Tp): ', meanBubbleRadiusArray[indexTp])
             print('Hubble radius (Tp):         ', 1/H[indexTp])
             print('Mean bubble separation (Tf):', meanBubbleSeparationArray[indexTf])
-            print('Average bubble radius (Tf): ', averageBubbleRadius[indexTf])
+            print('Average bubble radius (Tf): ', meanBubbleRadiusArray[indexTf])
             print('Hubble radius (Tf):         ', 1/H[indexTf])
 
         if self.bPlot:
@@ -1311,7 +1331,7 @@ class TransitionAnalyser():
                 highTempIndex = 0
 
             plt.figure(figsize=(12, 8))
-            plt.plot(self.actionSampler.subT, averageBubbleRadius, linewidth=2.5)
+            plt.plot(self.actionSampler.subT, meanBubbleRadiusArray, linewidth=2.5)
             plt.plot(self.actionSampler.subT, meanBubbleSeparationArray, linewidth=2.5)
             plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
             #plt.ylabel('$\\overline{R}_B(T)$', fontsize=24)
@@ -1321,7 +1341,7 @@ class TransitionAnalyser():
             if Te > 0: plt.axvline(Te, c='b', ls=':')
             if Tf > 0: plt.axvline(Tf, c='k', ls=':')
             plt.xlim(self.actionSampler.subT[-1], self.actionSampler.subT[highTempIndex])
-            plt.ylim(0, 1.2*max(meanBubbleSeparationArray[-1], averageBubbleRadius[-1]))
+            plt.ylim(0, 1.2*max(meanBubbleSeparationArray[-1], meanBubbleRadiusArray[-1]))
             plt.tick_params(size=5, labelsize=16)
             plt.margins(0, 0)
             plt.show()
@@ -1413,7 +1433,12 @@ class TransitionAnalyser():
         self.transition.totalNumBubbles = numBubblesIntegral[-1]
         self.transition.totalNumBubblesCorrected = numBubblesCorrectedIntegral[-1]
 
-        return
+        if self.bComputeSubsampledThermalParams:
+            self.transition.TSubampleArray = self.actionSampler.subT
+            self.transition.HArray = H
+            self.transition.betaArray = betaArray
+            self.transition.meanBubbleSeparationArray = meanBubbleSeparationArray
+            self.transition.meanBubbleRadiusArray = meanBubbleRadiusArray
 
     def primeTransitionAnalysis(self, startTime: float) -> (Optional[ActionSample], list[ActionSample]):
         TcData = ActionSample(self.transition.Tc)
@@ -2023,18 +2048,21 @@ class TransitionAnalyser():
     # TODO: We can optimise this for a list of input temperatures by reusing potential samples in adjacent derivatives.
     def calculateHubbleParameterSq(self, T: float) -> float:
         # Default is energy density for from phase.
-        rhof = Hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, T)
+        rhof = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, T)
         return 8*np.pi*GRAV_CONST/3*(rhof - self.groundStateEnergyDensity)
 
     # Ignore IDE warnings about type of return value, Teq. toms748 returns only a float if full_output=False as is default.
-    def predictTeq(self, radDensity: float) -> float:
-        actualTmin = self.Tmin
+    def predictTeq(self) -> float:
+        radDensityPrefactor = np.pi**2/30
+
+        def radiationEnergyDensity(T: float) -> float:
+            return radDensityPrefactor*self.potential.getDegreesOfFreedomInPhase(self.fromPhase, T)*T**4
 
         # 0 at Teq, +ve for vacuum domination, -ve for radiation domination.
-        def energyEra(T):
+        def energyEra(T: float) -> float:
             # Can't use supplied version of energy density calculation because T is changing. Default is from phase.
-            return Hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, T)\
-                - self.groundStateEnergyDensity - 2*radDensity*T**4
+            return hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, T)\
+                - self.groundStateEnergyDensity - 2*radiationEnergyDensity(T)
 
         # If the transition is subcritical and the energy density already exceeds the radiation density at Tc, then there is
         # no Teq.
@@ -2047,18 +2075,19 @@ class TransitionAnalyser():
         # This could hold even for regular (non-subcritical) transitions, particularly those with a low Tc.
         energyAtTmax = energyEra(Tmax)
         if energyAtTmax > 0:
-            rhoVatTmax = energyAtTmax + radDensity*Tmax**4
+            rhoRatTmax = radiationEnergyDensity(Tmax)
+            rhoVatTmax = energyAtTmax + rhoRatTmax
 
             if self.bDebug:
                 print('Teq cannot be found, as the Universe is vacuum dominated when the \'to phase\' first appears.')
-                print(f'rho_V(Tmax) = {rhoVatTmax}, rho_R(Tmax) = {radDensity*Tmax**4}, and '
-                      f'rho_V/rho = {rhoVatTmax/(energyAtTmax + 2*radDensity*Tmax**4)}')
+                print(f'rho_V(Tmax) = {rhoVatTmax}, rho_R(Tmax) = {rhoRatTmax}, and '
+                      f'rho_V/rho = {rhoVatTmax/(energyAtTmax + 2*rhoRatTmax)}')
                 print('Extrapolating (with linear rho_V) to find Teq > Tmax...')
 
-            drhoV = (energyEra(Tmax-Tsep) + radDensity*(Tmax - Tsep)**4 - rhoVatTmax) / Tsep
+            drhoV = (energyEra(Tmax-Tsep) + radiationEnergyDensity(Tmax - Tsep) - rhoVatTmax) / Tsep
 
             # 0 at Teq, +ve for vacuum domination, -ve for radiation domination.
-            approxEnergyEra = lambda T: rhoVatTmax + (T - Tmax)*drhoV - radDensity*T**4
+            approxEnergyEra = lambda T: rhoVatTmax + (T - Tmax)*drhoV - radiationEnergyDensity(T)
 
             if drhoV < 0:
                 if self.bDebug:
@@ -2087,7 +2116,10 @@ class TransitionAnalyser():
 
                 # Find the temperature for which rhoR = rhoV(Tmax). We are guaranteed that rhoV > rhoR here since rhoV
                 # will have increased from rhoV(Tmax).
-                Tstar = (rhoVatTmax/radDensity)**(1/4)
+                # TODO: for now, assume the degrees of freedom are constant above Tmax. This allows us to treat rhoR
+                #  as a simple quartic function of T: rhoR = a*T^4.
+                a = radiationEnergyDensity(Tmax)/Tmax**4
+                Tstar = (rhoVatTmax / a)**(1/4)
                 Tstep = Tstar - Tmax
 
                 # Step forwards in temperature by progressively larger amounts until we have rhoR(T) > rhoV(T) using the
@@ -2133,12 +2165,13 @@ class TransitionAnalyser():
 
             # If we're still in the radiation dominated era at Tmin, then we cannot find Teq.
             if energyAtTmin < 0:
-                rhoVatTmin = energyAtTmin + radDensity*newTmin**4
+                rhoRatTmin = radiationEnergyDensity(newTmin)
+                rhoVatTmin = energyAtTmin + rhoRatTmin
 
                 if self.bDebug:
                     print('Teq cannot be found, as the Universe is radiation dominated at Tmin.')
-                    print(f'rho_V(Tmin) = {rhoVatTmin}, rho_R(Tmin) = {radDensity*newTmin**4}, and '
-                          f'rho_V/rho = {rhoVatTmin/(energyAtTmin + 2*radDensity*newTmin**4)}')
+                    print(f'rho_V(Tmin) = {rhoVatTmin}, rho_R(Tmin) = {rhoRatTmin}, and '
+                          f'rho_V/rho = {rhoVatTmin/(energyAtTmin + 2*rhoRatTmin)}')
                     print('Extrapolating (with linear rho_V) to find Teq < Tmin...')
 
                 # Tmin must be non-zero, otherwise we would have rhoR = 0 and therefore vacuum domination. So we can
@@ -2146,11 +2179,11 @@ class TransitionAnalyser():
 
                 #drhoV = (energyEra(Tmax-Tsep) + radDensity*(Tmax - Tsep)**4 - rhoVatTmin) / Tsep
                 Tsample = newTmin + Tsep
-                rhoVsample = energyEra(Tsample) + radDensity*Tsample**4
+                rhoVsample = energyEra(Tsample) + radiationEnergyDensity(Tsample)
                 drhoVdT = (rhoVsample - rhoVatTmin) / Tsep
 
                 # 0 at Teq, +ve for vacuum domination, -ve for radiation domination.
-                approxEnergyEra = lambda T: rhoVatTmin + (T - newTmin)*drhoVdT - radDensity*T**4
+                approxEnergyEra = lambda T: rhoVatTmin + (T - newTmin)*drhoVdT - radiationEnergyDensity(T)
 
                 if approxEnergyEra(0) < 0:  # => rhoV(0) < 0.
                     # We can't bracket a root, so use fsolve instead. There may not be a solution.
@@ -2187,9 +2220,9 @@ class TransitionAnalyser():
         #if self.Tmin == 0:
         #    self.Tmin = self.potential.minimumTemperature #0.001 #2*Tsep
         # Can't use supplied version of energy density calculation because T is changing. Default is from phase.
-        rhof = Hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, T)
+        rhof = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, T)
         def objective(t):
-            rhot = Hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, t,
+            rhot = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, t,
                 forFromPhase=False)
             # Conservation of energy => rhof = rhof*Pf + rhot*Pt which is equivalent to rhof = rhot (evaluated at
             # different temperatures, T and Tt (Treh), respectively).
@@ -2234,7 +2267,7 @@ class TransitionAnalyser():
 
 def calculateHubbleParameterSq(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float,
                                groundStateEnergyDensity: float) -> float:
-    rhof = Hydrodynamics.calculateEnergyDensityAtT_singlePhase(fromPhase, toPhase, potential, T, forFromPhase=True)
+    rhof = hydrodynamics.calculateEnergyDensityAtT_singlePhase(fromPhase, toPhase, potential, T, forFromPhase=True)
     return calculateHubbleParameterSq_supplied(rhof - groundStateEnergyDensity)
 
 

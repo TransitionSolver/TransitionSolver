@@ -1,11 +1,12 @@
 from __future__ import annotations
-from typing import Optional, Union, TYPE_CHECKING
+from typing import Optional, Union, TYPE_CHECKING, List
 import numpy as np
 from scipy import optimize
 import traceback
+# Avoids circular import issue.
 if TYPE_CHECKING:
-    from models import AnalysablePotential
-    import TransitionAnalysis as TA
+    from models.analysable_potential import AnalysablePotential
+    from analysis.transition_analysis import AnalysedTransition, InvalidTemperatureException
 
 
 class Phase:
@@ -26,7 +27,7 @@ class Phase:
     # and local optimisation from that interpolated point.
     def findPhaseAtT(self, T: float, potential: AnalysablePotential) -> np.ndarray:
         if T < self.T[0] or T > self.T[-1]:
-            raise TA.InvalidTemperatureException(f'Attempted to find phase {self.key} at T={T}, while defined only for'
+            raise InvalidTemperatureException(f'Attempted to find phase {self.key} at T={T}, while defined only for'
                 f'[{self.T[0]}, {self.T[-1]}]')
 
         minIndex = 0
@@ -69,7 +70,7 @@ class Phase:
 
 
 class Transition:
-    analysis: Optional[TA.AnalysedTransition]
+    analysis: Optional[AnalysedTransition]
     n_field: int
     Tc: float
     Tn: float
@@ -106,12 +107,17 @@ class Transition:
     energyWeightedBubbleRadius: float
     volumeWeightedBubbleRadius: float
 
+    TSubampleArray: List[float]
+    betaArray: List[float]
+    meanBubbleSeparationArray: List[float]
+    meanBubbleRadiusArray: List[float]
+    HArray: List[float]
+
     transitionStrength: float
 
     totalNumBubbles: float
     totalNumBubblesCorrected: float
 
-    bFoundTeq: bool
     bFoundNucleationWindow: bool
 
     def __init__(self, transition: np.ndarray):
@@ -163,8 +169,13 @@ class Transition:
         self.totalNumBubbles = 0.
         self.totalNumBubblesCorrected = 0.
 
-        self.bFoundTeq = False
         self.bFoundNucleationWindow = False
+
+        self.TSubampleArray = []
+        self.betaArray = []
+        self.meanBubbleSeparationArray = []
+        self.meanBubbleRadiusArray = []
+        self.HArray = []
 
     def starts(self) -> bool:
         # Changed from Tn.
@@ -256,7 +267,6 @@ class Transition:
         if self.Tp > 0: report['decreasingVphysAtTp'] = self.decreasingVphysAtTp
         if self.Tf > 0: report['decreasingVphysAtTf'] = self.decreasingVphysAtTf
 
-        report['foundTeq'] = self.bFoundTeq
         report['foundNucleationWindow'] = self.bFoundNucleationWindow
 
         if self.Tp > 0:
@@ -265,6 +275,12 @@ class Transition:
             report['energyWeightedBubbleRadius'] = self.energyWeightedBubbleRadius
             report['volumeWeightedBubbleRadius'] = self.volumeWeightedBubbleRadius
             report['transitionStrength'] = self.transitionStrength
+
+        if len(self.TSubampleArray): report['TSubsample'] = self.TSubampleArray
+        if len(self.betaArray): report['beta'] = self.betaArray
+        if len(self.HArray): report['H'] = self.HArray
+        if len(self.meanBubbleSeparationArray): report['meanBubbleSeparationArray'] = self.meanBubbleSeparationArray
+        if len(self.meanBubbleRadiusArray): report['meanBubbleRadiusArray'] = self.meanBubbleRadiusArray
 
         return report
 

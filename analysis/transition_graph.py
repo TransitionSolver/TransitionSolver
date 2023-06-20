@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Optional, TYPE_CHECKING
 if TYPE_CHECKING:
-    import PhaseStructure as PS
+    import phase_structure as PS
 
 
 class Path:

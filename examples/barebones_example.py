@@ -1,12 +1,15 @@
 from __future__ import annotations
-from models.ToyModel import ToyModel
-from models.SingletModel import SingletModel
-from models.RealScalarSingletModel import RealScalarSingletModel
-from analysis import PhaseStructure, PhaseHistoryAnalysis, TransitionGraph
+from analysis.transition_analysis import TransitionAnalyser
+from models.toy_model import ToyModel
+from models.real_scalar_singlet_model import RealScalarSingletModel
+from analysis.phase_structure import PhaseStructure
+from analysis.phase_history_analysis import PhaseHistoryAnalyser, AnalysisMetrics
+from analysis.transition_graph import ProperPath
+from analysis import phase_structure
+
 import numpy as np
 import subprocess
 import json
-import time
 import pathlib
 
 
@@ -15,11 +18,13 @@ import pathlib
 
 import traceback
 import sys
+from util.events import notifyHandler
 
 
 
-def writePhaseHistoryReport(fileName: str, paths: list[TransitionGraph.ProperPath], phaseStructure:
-        PhaseStructure.PhaseStructure, analysisTime: float):
+def writePhaseHistoryReport(fileName: str, paths: list[ProperPath], phaseStructure: PhaseStructure, analysisMetrics:
+        AnalysisMetrics) -> None:
+
     report = {}
 
     if len(phaseStructure.transitions) > 0:
@@ -27,7 +32,7 @@ def writePhaseHistoryReport(fileName: str, paths: list[TransitionGraph.ProperPat
     if len(paths) > 0:
         report['paths'] = [p.getReport() for p in paths]
     report['valid'] = any([p.bValid for p in paths])
-    report['analysisTime'] = analysisTime
+    report['analysisTime'] = analysisMetrics.analysisElapsedTime
 
     print('Writing report...')
 
@@ -37,7 +42,7 @@ def writePhaseHistoryReport(fileName: str, paths: list[TransitionGraph.ProperPat
     except (json.decoder.JSONDecodeError, TypeError):
         print('We have a JSON serialisation error. The report is:')
         print(report)
-        print('Failed to write report')
+        print('Failed to write report.')
 
 
 def main():
@@ -99,7 +104,7 @@ def main():
 
 
     # Load the phase structure saved by PhaseTracer.
-    bFileExists, phaseStructure = PhaseStructure.load_data(outputFolder + '/phase_structure.dat', bExpectFile=True)
+    bFileExists, phaseStructure = phase_structure.load_data(outputFolder + '/phase_structure.dat', bExpectFile=True)
 
     # Validate the phase structure.
     if not bFileExists:
@@ -110,7 +115,7 @@ def main():
         return
 
     # Load and configure a PhaseHistoryAnalyser object.
-    analyser = PhaseHistoryAnalysis.PhaseHistoryAnalyser()
+    analyser = PhaseHistoryAnalyser()
     analyser.bDebug = True
     analyser.bPlot = True
     analyser.bReportAnalysis = True
@@ -122,15 +127,17 @@ def main():
     #potential = SingletModel(*parameterPoint)
     potential = RealScalarSingletModel(*parameterPoint)
 
-    # Analyse the phase history and track the execution time. The timing will be handled internally in a future version
-    # of the code.
-    startTime = time.perf_counter()
-    paths, _ = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=1.)
-    endTime = time.perf_counter()
+    def notify_TransitionAnalyser_on_create(transitionAnalyser: TransitionAnalyser):
+        transitionAnalyser.bComputeSubsampledThermalParams = True
+
+    notifyHandler.addEvent('TransitionAnalyser-on_create', notify_TransitionAnalyser_on_create)
+
+    # Analyse the phase history.
+    paths, _, analysisMetrics = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=1.)
 
     # Write the phase history report. Again, this will be handled within PhaseHistoryAnalysis in a future version of the
     # code.
-    writePhaseHistoryReport(outputFolder + '/phase_history.json', paths, phaseStructure, endTime - startTime)
+    writePhaseHistoryReport(outputFolder + '/phase_history.json', paths, phaseStructure, analysisMetrics)
 
 
 if __name__ == "__main__":
