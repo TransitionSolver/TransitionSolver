@@ -84,12 +84,12 @@ class AnalysablePotential(generic_potential):
         dof = self.raddof
 
         for i in range(len(m2b)):
-            y = T/np.sqrt(m2b[i])
+            y = T/np.sqrt(abs(m2b[i]))
             factor = self.geffFunc_boson(y)
             dof += nb[i]*factor
 
         for i in range(len(m2f)):
-            y = T/np.sqrt(m2f[i])
+            y = T/np.sqrt(abs(m2f[i]))
             factor = self.geffFunc_fermion(y)
             dof += nf[i]*factor
 

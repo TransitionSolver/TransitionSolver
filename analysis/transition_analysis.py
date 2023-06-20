@@ -533,6 +533,8 @@ class TransitionAnalyser():
 
     actionSampler: ActionSampler
 
+    bComputeSubsampledThermalParams: bool
+
     # TODO: make vw a function of this class that can be overriden. Currently it is obtained from the transition.
     def __init__(self, potential: AnalysablePotential, transition: Transition, fromPhase: Phase, toPhase: Phase,
             groundStateEnergyDensity: float, Tmin: float = 0., Tmax: float = 0.):
@@ -556,12 +558,15 @@ class TransitionAnalyser():
 
         self.Tstep = max(0.0005*min(self.fromPhase.T[-1], self.toPhase.T[-1]), 0.0001*self.potential.temperatureScale)
 
+        self.bComputeSubsampledThermalParams = False
+
         notifyHandler.handleEvent(self, 'on_create')
 
     # TODO: need to handle subcritical transitions better. Shouldn't use integration if the max sampled action is well
     #  below the nucleation threshold. Should treat the action as constant or linearise it and estimate transition
     #  temperatures under that approximation.
     def analyseTransition(self, startTime: float = -1.0, precomputedActionCurveFileName: str = ''):
+        # TODO: this should depend on the scale of the transition, so make it configurable.
         # Estimate the maximum significant value of S/T by finding where the instantaneous nucleation rate multiplied by
         # the maximum possible duration of the transition is O(1). This is highly conservative, but intentionally so
         # because we only sample maxSonTThreshold within some (loose) tolerance.
@@ -646,7 +651,10 @@ class TransitionAnalyser():
         H = [np.sqrt(self.calculateHubbleParameterSq(self.actionSampler.T[0]))]
         Gamma = [0.]
         bubbleNumberDensity = [0.]
-        averageBubbleRadius = [0.]
+        meanBubbleRadiusArray = [0.]
+        meanBubbleSeparationArray = [0.]
+        # TODO: need an initial value...
+        betaArray = [0.]
 
         radDensityPrefactor = np.pi**2/30
         fourPiOnThree = 4/3*np.pi
@@ -886,7 +894,8 @@ class TransitionAnalyser():
                     integrationHelper_avgBubRad.integrate(len(self.actionSampler.subT)-2)
 
                     for j in range(1, len(integrationHelper_avgBubRad.data)):
-                        averageBubbleRadius.append(integrationHelper_avgBubRad.data[j])
+                        meanBubbleRadiusArray.append(integrationHelper_avgBubRad.data[j])
+                        meanBubbleSeparationArray.append((bubbleNumberDensity[j])**(-1/3))
 
                 #H.append(np.sqrt(self.calculateHubbleParameterSq(T[i])))
                 H.append(np.sqrt(calculateHubbleParameterSq_supplied(rhof[i] - self.groundStateEnergyDensity)))
@@ -910,12 +919,16 @@ class TransitionAnalyser():
                         + Gamma[-1]*Pf[-1] / (T[i]**4 * H[-1])))
                     # This needs to be done after the new Pf has been added because outerFunction_avgBubRad uses this data.
                     integrationHelper_avgBubRad.integrate(len(self.actionSampler.subT)-1)
-                    averageBubbleRadius.append(integrationHelper_avgBubRad.data[-1])
+                    meanBubbleRadiusArray.append(integrationHelper_avgBubRad.data[-1])
+                    meanBubbleSeparationArray.append((bubbleNumberDensity[-1])**(-1/3))
 
                 Tnew = self.actionSampler.subT[-1]
                 Tprev = self.actionSampler.subT[-2]
                 SonTnew = self.actionSampler.subSonT[-1]
                 SonTprev = self.actionSampler.subSonT[-2]
+
+                # TODO: not a great derivative, can do better.
+                betaArray.append(H[-1]*Tnew*(SonTprev - SonTnew)/dT)
 
                 # Check if we have reached any milestones (e.g. unit nucleation, percolation, etc.).
 
@@ -1239,15 +1252,13 @@ class TransitionAnalyser():
             #    bPlot=bPlot, bDebug=bDebug)
 
             self.transition.transitionStrength = transitionStrength
-            self.transition.meanBubbleRadius = averageBubbleRadius[indexTp]
+            self.transition.meanBubbleRadius = meanBubbleRadiusArray[indexTp]
             self.transition.meanBubbleSeparation = meanBubbleSeparation
             #transition.energyWeightedBubbleRadius = energyWeightedBubbleRadius
             #transition.volumeWeightedBubbleRadius = volumeWeightedBubbleRadius
 
             if self.bDebug:
                 print('Transition strength:', transitionStrength)
-
-        meanBubbleSeparationArray = np.array([nb**(-1/3) if nb > 0 else 0 for nb in bubbleNumberDensity])
 
         # If the transition has completed before Teq was identified, predict the value of Teq through extrapolation.
         if Teq == 0 and len(self.actionSampler.T) > 2:
@@ -1257,10 +1268,10 @@ class TransitionAnalyser():
 
         if self.bReportAnalysis:
             print('Mean bubble separation (Tp):', meanBubbleSeparationArray[indexTp])
-            print('Average bubble radius (Tp): ', averageBubbleRadius[indexTp])
+            print('Average bubble radius (Tp): ', meanBubbleRadiusArray[indexTp])
             print('Hubble radius (Tp):         ', 1/H[indexTp])
             print('Mean bubble separation (Tf):', meanBubbleSeparationArray[indexTf])
-            print('Average bubble radius (Tf): ', averageBubbleRadius[indexTf])
+            print('Average bubble radius (Tf): ', meanBubbleRadiusArray[indexTf])
             print('Hubble radius (Tf):         ', 1/H[indexTf])
 
         if self.bPlot:
@@ -1319,7 +1330,7 @@ class TransitionAnalyser():
                 highTempIndex = 0
 
             plt.figure(figsize=(12, 8))
-            plt.plot(self.actionSampler.subT, averageBubbleRadius, linewidth=2.5)
+            plt.plot(self.actionSampler.subT, meanBubbleRadiusArray, linewidth=2.5)
             plt.plot(self.actionSampler.subT, meanBubbleSeparationArray, linewidth=2.5)
             plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
             #plt.ylabel('$\\overline{R}_B(T)$', fontsize=24)
@@ -1329,7 +1340,7 @@ class TransitionAnalyser():
             if Te > 0: plt.axvline(Te, c='b', ls=':')
             if Tf > 0: plt.axvline(Tf, c='k', ls=':')
             plt.xlim(self.actionSampler.subT[-1], self.actionSampler.subT[highTempIndex])
-            plt.ylim(0, 1.2*max(meanBubbleSeparationArray[-1], averageBubbleRadius[-1]))
+            plt.ylim(0, 1.2*max(meanBubbleSeparationArray[-1], meanBubbleRadiusArray[-1]))
             plt.tick_params(size=5, labelsize=16)
             plt.margins(0, 0)
             plt.show()
@@ -1421,7 +1432,12 @@ class TransitionAnalyser():
         self.transition.totalNumBubbles = numBubblesIntegral[-1]
         self.transition.totalNumBubblesCorrected = numBubblesCorrectedIntegral[-1]
 
-        return
+        if self.bComputeSubsampledThermalParams:
+            self.transition.TSubampleArray = self.actionSampler.subT
+            self.transition.HArray = H
+            self.transition.betaArray = betaArray
+            self.transition.meanBubbleSeparationArray = meanBubbleSeparationArray
+            self.transition.meanBubbleRadiusArray = meanBubbleRadiusArray
 
     def primeTransitionAnalysis(self, startTime: float) -> (Optional[ActionSample], list[ActionSample]):
         TcData = ActionSample(self.transition.Tc)

@@ -13,6 +13,6 @@ class NotifyHandler:
             self.events[fullName](caller)
 
 
-# Create a global singleton.
+# Create a global singleton when this module is imported.
 if not 'notifyHandler' in globals():
     notifyHandler = NotifyHandler()

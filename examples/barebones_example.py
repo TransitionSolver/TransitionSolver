@@ -1,3 +1,4 @@
+from analysis.transition_analysis import TransitionAnalyser
 from models.toy_model import ToyModel
 from models.real_scalar_singlet_model import RealScalarSingletModel
 from analysis.phase_structure import PhaseStructure
@@ -10,6 +11,7 @@ import json
 import pathlib
 import traceback
 import sys
+from util.events import notifyHandler
 
 
 def writePhaseHistoryReport(fileName: str, paths: list[ProperPath], phaseStructure: PhaseStructure, analysisMetrics:
@@ -104,6 +106,11 @@ def main():
     # Create the potential using the parameter point.
     #potential = ToyModel(*parameterPoint)
     potential = RealScalarSingletModel(*parameterPoint)
+
+    def notify_TransitionAnalyser_on_create(transitionAnalyser: TransitionAnalyser):
+        transitionAnalyser.bComputeSubsampledThermalParams = True
+
+    notifyHandler.addEvent('TransitionAnalyser-on_create', notify_TransitionAnalyser_on_create)
 
     # Analyse the phase history.
     paths, _, analysisMetrics = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=1.)

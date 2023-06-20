@@ -1,11 +1,10 @@
 from __future__ import annotations
-from typing import Optional, Union, TYPE_CHECKING
+from typing import Optional, Union, TYPE_CHECKING, List
 import numpy as np
 from scipy import optimize
 import traceback
+# Avoids circular import issue.
 if TYPE_CHECKING:
-#    from models import analysable_potential
-#    import transition_analysis as TA
     from models.analysable_potential import AnalysablePotential
     from analysis.transition_analysis import AnalysedTransition, InvalidTemperatureException
 
@@ -108,6 +107,12 @@ class Transition:
     energyWeightedBubbleRadius: float
     volumeWeightedBubbleRadius: float
 
+    TSubampleArray: List[float]
+    betaArray: List[float]
+    meanBubbleSeparationArray: List[float]
+    meanBubbleRadiusArray: List[float]
+    HArray: List[float]
+
     transitionStrength: float
 
     totalNumBubbles: float
@@ -165,6 +170,12 @@ class Transition:
         self.totalNumBubblesCorrected = 0.
 
         self.bFoundNucleationWindow = False
+
+        self.TSubampleArray = []
+        self.betaArray = []
+        self.meanBubbleSeparationArray = []
+        self.meanBubbleRadiusArray = []
+        self.HArray = []
 
     def starts(self) -> bool:
         # Changed from Tn.
@@ -264,6 +275,12 @@ class Transition:
             report['energyWeightedBubbleRadius'] = self.energyWeightedBubbleRadius
             report['volumeWeightedBubbleRadius'] = self.volumeWeightedBubbleRadius
             report['transitionStrength'] = self.transitionStrength
+
+        if len(self.TSubampleArray): report['TSubsample'] = self.TSubampleArray
+        if len(self.betaArray): report['beta'] = self.betaArray
+        if len(self.HArray): report['H'] = self.HArray
+        if len(self.meanBubbleSeparationArray): report['meanBubbleSeparationArray'] = self.meanBubbleSeparationArray
+        if len(self.meanBubbleRadiusArray): report['meanBubbleRadiusArray'] = self.meanBubbleRadiusArray
 
         return report
 
