@@ -5,7 +5,7 @@ from cosmoTransitions import generic_potential
 v2 = 246.**2
 
 
-class model1(generic_potential.generic_potential):
+class SMplusCubic(AnalysablePotential):
     """
     A sample model which makes use of the *generic_potential* class.
     This model doesn't have any physical significance. Instead, it is chosen
@@ -25,6 +25,22 @@ class model1(generic_potential.generic_potential):
         # This first line is absolutely essential in all subclasses.
         # It specifies the number of field-dimensions in the theory.
         self.Ndim = 1
+        self.ndof = 106.75
+        # this is correct for the dof included here where we don't give a photon T^2 mass in Parwani resummation
+        # we may need to adjust this but i think it will be replaced anyway by lach;lan's temp dependent dofs
+        self.raddof = 86.25
+         #  Don't do use simple dof, we'll calculate them via temp and field
+        self.bUseSimpleDOF = False
+
+        # setting gs energy via the potential at zero tem
+        self.groundStateEnergy = self.Vtot(np.sqrt(v2), 0.)
+
+        # Set the temp and field scale by the EW VEV
+        self.fieldScale = self.vh
+        self.temperatureScale = self.vh
+
+        # set this to zero since we do want to consider very low temps here
+        minimumTemperature = 0
 
         # self.renormScaleSq is the renormalization scale used in the
         # Coleman-Weinberg potential.
@@ -69,7 +85,7 @@ class model1(generic_potential.generic_potential):
         # shape (N,2), but it should NOT be a series of two arrays of length N
         # and have shape (2,N).)
         rho = X[...,0]
-        r = -.5*self.mu2*rho**2 + self.kappa*rho**3 /3 + .25*self.lam*rho**4
+        r = -.5*self.mu2*rho**2 + self.kap*rho**3 /3 + .25*self.lam*rho**4
         return r
 
     def boson_massSq(self, X, T):
