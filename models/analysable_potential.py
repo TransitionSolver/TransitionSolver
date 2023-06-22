@@ -1,3 +1,4 @@
+from __future__ import annotations
 from cosmoTransitions.generic_potential import generic_potential
 import numpy as np
 from typing import List, Union, Callable

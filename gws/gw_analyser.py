@@ -1,3 +1,4 @@
+from __future__ import annotations
 import time
 import traceback
 import json
@@ -634,6 +635,6 @@ def main(detectorClass, potentialClass, outputFolder):
 
 
 if __name__ == "__main__":
-    main(LISA, RealScalarSingletModel, 'output/RSS/RSS_BP5/')
+    main(LISA, RealScalarSingletModel, 'output/RSS/RSS_BP1/')
     #main(LISA, RealScalarSingletModel_HT, 'output/RSS_HT/RSS_HT_BP1/')
     #main(LISA, ToyModel, 'output/Toy/Toy_BP1/')
