@@ -43,9 +43,11 @@ class GWAnalyser_InidividualTransition:
     transitionReport: dict
     hydroVars: HydroVars
     detector: GWDetector
-    peakAmplitude: float = 0.
-    peakFrequency_primary: float = 0.
-    peakFrequency_secondary: float = 0.
+    peakAmplitude_sw: float = 0.
+    peakFrequency_sw_primary: float = 0.
+    peakFrequency_sw_secondary: float = 0.
+    peakAmplitude_turb: float = 0.
+    peakFrequency_turb: float = 0.
     SNR: float = 0.
     K: float = 0.
     vw: float = 0.
@@ -59,6 +61,8 @@ class GWAnalyser_InidividualTransition:
     soundSpeed: float = 0.
     ndof: float = 0.
     redshift: float = 0.
+    hStar: float = 0.
+    turbNormalisationFactor: float = 1.
 
     def __init__(self, phaseStructure: PhaseStructure, transitionReport: dict, potential: AnalysablePotential, detector:
             GWDetector):
@@ -122,7 +126,7 @@ class GWAnalyser_InidividualTransition:
             / self.vw
 
         self.ndof = self.potential.getDegreesOfFreedom(self.toPhase.findPhaseAtT(self.T, self.potential), self.T)
-        self.redshift = 1.67e-5 * (100/self.ndof)**(1./3.)
+        self.redshift = 1.67e-5 * (100/self.ndof)**(1/3)
 
         # General form:
         #Omega_peak = redshift * K*K * upsilon * H*tau_c
@@ -130,14 +134,29 @@ class GWAnalyser_InidividualTransition:
 
         # Fit from our GW review (but dividing length scale by soundSpeed in accordance with updated estimate of tau_c).
         #Omega_peak = 2.59e-6*(100/potential.ndof)**(1./3.) * K*K * H*(lenScale/(8*np.pi)**(1./3.))/soundSpeed * upsilon
-        self.peakAmplitude = 0.15509*self.redshift * self.K*self.K * H*(self.lenScale_primary/(8*np.pi)**(1./3.))\
+        self.peakAmplitude_sw = 0.15509*self.redshift * self.K*self.K * H*(self.lenScale_primary/(8*np.pi)**(1/3))\
             / self.soundSpeed * self.upsilon
         zp = 10.  # This assumes the peak frequency corresponds to 10*lenScale. This result comes from simulations
         # (https://arxiv.org/pdf/1704.05871.pdf) and is expected to change if vw ~ vCJ (specifically zp will increase).
-        self.peakFrequency_primary = 8.9e-6 * (self.ndof/100)**(1./6.) * (self.Treh/100)\
-            / (H*self.lenScale_primary/(8*np.pi)**(1./3.)) * (zp/10)
-        self.peakFrequency_secondary = 8.9e-6 * (self.ndof/100)**(1./6.) * (self.Treh/100)\
-            / (H*self.lenScale_secondary/(8*np.pi)**(1./3.)) * (zp/10)
+        self.peakFrequency_sw_primary = 8.9e-6 * (self.ndof/100)**(1/6) * (self.Treh/100)\
+            / (H*self.lenScale_primary/(8*np.pi)**(1/3)) * (zp/10)
+        self.peakFrequency_sw_secondary = 8.9e-6 * (self.ndof/100)**(1/6) * (self.Treh/100)\
+            / (H*self.lenScale_secondary/(8*np.pi)**(1/3)) * (zp/10)
+
+        turbEfficiency = 0.05  # (1 - min(1, H*tau_sw))  # (1 - self.upsilon)
+        self.hStar = 1.65e-5 * (self.Treh/100) * (self.ndof/100)**(1/6)
+
+        self.peakAmplitude_turb = 20.060 * self.redshift * (turbEfficiency*self.K)**(3/2) *\
+            H*(self.lenScale_primary/(8*np.pi)**(1/3))
+        self.peakFrequency_turb = 2.7e-5 * (self.ndof/100)**(1/6) * (self.Treh/100)\
+            / (H*self.lenScale_primary/(8*np.pi)**(1/3))
+
+        # The spectral shape is multiplied by this normalisation factor. However, the normalisation factor is initially
+        # set to 1 upon the construction of this instance of the class. Use the spectral shape at the peak frequency to
+        # determine the normalisation factor.
+        self.turbNormalisationFactor = 1 / self.spectralShape_turb(self.peakFrequency_turb)
+        # Then make sure the peak amplitude is corrected to match the peak amplitude of the GW signal.
+        self.peakAmplitude_turb /= self.turbNormalisationFactor
 
     def calculateSNR(self, gwFunc: Callable[[float], float]) -> float:
         frequencies = self.detector.sensitivityCurve[0]
@@ -154,27 +173,45 @@ class GWAnalyser_InidividualTransition:
 
         return self.SNR
 
-    def spectralShape(self, f: float) -> float:
-        x = f/self.peakFrequency_primary
+    def spectralShape_sw(self, f: float) -> float:
+        x = f / self.peakFrequency_sw_primary
         return x**3 * (7 / (4 + 3*x**2))**3.5
 
-    def spectralShape_doubleBroken(self, f: float):
+    def spectralShape_sw_doubleBroken(self, f: float):
         # From https://arxiv.org/pdf/2209.13551.pdf (Eq. 2.11), originally from https://arxiv.org/pdf/1909.10040.pdf
         # (Eq. # 5.7).
         b = 1
-        rb = self.peakFrequency_primary / self.peakFrequency_secondary
+        rb = self.peakFrequency_sw_primary / self.peakFrequency_sw_secondary
         m = (9*rb**4 + b) / (rb**4 + 1)
-        x = f/self.peakFrequency_secondary
+        x = f/self.peakFrequency_sw_secondary
         return x**9 * ((1 + rb**4) / (rb**4 + x**4))**((9 - b) / 4) * ((b + 4) / (b + 4 - m + m*x**2))**((b + 4) / 2)
 
-    def getGWfunc(self, doubleBroken: bool = True) -> Callable[[float], float]:
-        if self.peakAmplitude == 0. or self.peakFrequency_primary == 0.:
+    def spectralShape_turb(self, f: float) -> float:
+        x = f / self.peakFrequency_turb
+        return self.turbNormalisationFactor * x**3 / ((1 + x)**(11/3) * (1 + 8*np.pi*f/self.hStar))
+
+    def getGWfunc_total(self, doubleBroken_sw: bool = True) -> Callable[[float], float]:
+        if doubleBroken_sw:
+            return lambda f: self.peakAmplitude_sw*self.spectralShape_sw_doubleBroken(f)\
+                + self.peakAmplitude_turb*self.spectralShape_turb(f)
+        else:
+            return lambda f: self.peakAmplitude_sw*self.spectralShape_sw(f)\
+                + self.peakAmplitude_turb*self.spectralShape_turb(f)
+
+    def getGWfunc_sw(self, doubleBroken: bool = True) -> Callable[[float], float]:
+        if self.peakAmplitude_sw == 0. or self.peakFrequency_sw_primary == 0.:
             return lambda f: 0.
 
         if doubleBroken:
-            return lambda f: self.peakAmplitude*self.spectralShape_doubleBroken(f)
+            return lambda f: self.peakAmplitude_sw*self.spectralShape_sw_doubleBroken(f)
         else:
-            return lambda f: self.peakAmplitude*self.spectralShape(f)
+            return lambda f: self.peakAmplitude_sw*self.spectralShape_sw(f)
+
+    def getGWfunc_turb(self) -> Callable[[float], float]:
+        if self.peakAmplitude_turb == 0. or self.peakFrequency_turb == 0.:
+            return lambda f: 0.
+
+        return lambda f: self.peakAmplitude_turb*self.spectralShape_turb(f)
 
     def determineTransitionTemperature(self, settings: GWAnalysisSettings) -> float:
         if settings.sampleIndex < 0:
@@ -295,23 +332,36 @@ class GWAnalyser:
                 self.detector)
             # Determine GWs using default settings.
             gws.determineGWs(settings=None)
-            gwFunc_single = gws.getGWfunc(doubleBroken=False)
-            gwFunc_double = gws.getGWfunc(doubleBroken=True)
+            gwFunc_single = gws.getGWfunc_total(doubleBroken_sw=False)
+            gwFunc_double = gws.getGWfunc_total(doubleBroken_sw=True)
             SNR_single = gws.calculateSNR(gwFunc_single)
             SNR_double = gws.calculateSNR(gwFunc_double)
             print('Transition ID:', transitionReport['id'])
-            print('Peak amplitude:', gws.peakAmplitude)
-            print('Peak frequency (primary):', gws.peakFrequency_primary)
-            print('Peak frequency (secondary):', gws.peakFrequency_secondary)
+            print('Peak amplitude (sw):', gws.peakAmplitude_sw)
+            print('Peak frequency (sw, primary):', gws.peakFrequency_sw_primary)
+            print('Peak frequency (sw, secondary):', gws.peakFrequency_sw_secondary)
+            print('Peak amplitude (turb):', gws.peakAmplitude_turb)
+            print('Peak frequency (turb):', gws.peakFrequency_turb)
             print('SNR (single):', SNR_single)
             print('SNR (double):', SNR_double)
 
+            #gwFunc_sw_single = gws.getGWfunc_sw(doubleBroken=False)
+            gwFunc_sw_double = gws.getGWfunc_sw(doubleBroken=True)
+            gwFunc_turb = gws.getGWfunc_turb()
+
             plt.loglog(self.detector.sensitivityCurve[0], self.detector.sensitivityCurve[1])
-            plt.loglog(self.detector.sensitivityCurve[0], np.array([gwFunc_single(f) for f in
-                self.detector.sensitivityCurve[0]]))
+            #plt.loglog(self.detector.sensitivityCurve[0], np.array([gwFunc_single(f) for f in
+            #    self.detector.sensitivityCurve[0]]))
             plt.loglog(self.detector.sensitivityCurve[0], np.array([gwFunc_double(f) for f in
                 self.detector.sensitivityCurve[0]]))
-            plt.legend(['noise', 'single', 'double'])
+            #plt.loglog(self.detector.sensitivityCurve[0], np.array([gwFunc_sw_single(f) for f in
+            #    self.detector.sensitivityCurve[0]]))
+            plt.loglog(self.detector.sensitivityCurve[0], np.array([gwFunc_sw_double(f) for f in
+                self.detector.sensitivityCurve[0]]))
+            plt.loglog(self.detector.sensitivityCurve[0], np.array([gwFunc_turb(f) for f in
+                self.detector.sensitivityCurve[0]]))
+            #plt.legend(['noise', 'total (single)', 'total (double)', 'sw (single)', 'sw (double)', 'turb'])
+            plt.legend(['noise', 'total', 'sw', 'turb'])
             plt.margins(0, 0)
             plt.show()
 
@@ -341,11 +391,13 @@ class GWAnalyser:
             for i in range(min(len(allT)//skipFactor-1,len(allT))):
                 indices.append(1+i*skipFactor)
 
-            print('Sampling indices:', indices)
+            #print('Sampling indices:', indices)
 
-            peakAmp: List[float] = []
-            peakFreq_primary: List[float] = []
-            peakFreq_secondary: List[float] = []
+            peakAmp_sw: List[float] = []
+            peakFreq_sw_primary: List[float] = []
+            peakFreq_sw_secondary: List[float] = []
+            peakAmp_turb: List[float] = []
+            peakFreq_turb: List[float] = []
             SNR_single: List[float] = []
             SNR_double: List[float] = []
             K: List[float] = []
@@ -370,14 +422,16 @@ class GWAnalyser:
                 settings.sampleIndex = i
                 settings.suppliedRho_t = rhot_interp
                 gws.determineGWs(settings)
-                gwFunc_single = gws.getGWfunc(doubleBroken=False)
-                gwFunc_double = gws.getGWfunc(doubleBroken=True)
+                gwFunc_single = gws.getGWfunc_total(doubleBroken_sw=False)
+                gwFunc_double = gws.getGWfunc_total(doubleBroken_sw=True)
 
-                if gws.peakAmplitude > 0:
+                if gws.peakAmplitude_sw > 0 and gws.peakAmplitude_turb > 0:
                     T.append(allT[i])
-                    peakAmp.append(gws.peakAmplitude)
-                    peakFreq_primary.append(gws.peakFrequency_primary)
-                    peakFreq_secondary.append(gws.peakFrequency_secondary)
+                    peakAmp_sw.append(gws.peakAmplitude_sw)
+                    peakFreq_sw_primary.append(gws.peakFrequency_sw_primary)
+                    peakFreq_sw_secondary.append(gws.peakFrequency_sw_secondary)
+                    peakAmp_turb.append(gws.peakAmplitude_turb)
+                    peakFreq_turb.append(gws.peakFrequency_turb)
                     SNR_single.append(gws.calculateSNR(gwFunc_single))
                     SNR_double.append(gws.calculateSNR(gwFunc_double))
                     K.append(gws.K)
@@ -411,6 +465,25 @@ class GWAnalyser:
 
             plt.rcParams["text.usetex"] = True
 
+            #indices = range(len(peakFreq_sw_primary))
+            plt.figure(figsize=(12, 8))
+            plt.plot(self.detector.sensitivityCurve[0], self.detector.sensitivityCurve[1], lw=2.5)
+            plt.scatter(peakFreq_sw_primary, peakAmp_sw, c=T, marker='o')
+            plt.scatter(peakFreq_turb, peakAmp_turb, c=T, marker='x')
+            plt.xscale('log')
+            plt.yscale('log')
+            #plotMilestoneTemperatures()
+            plt.xlabel('$f_{\\mathrm{peak}}$', fontsize=24)
+            plt.ylabel('$\\Omega_{\\mathrm{peak}}$', fontsize=24)
+            plt.legend(['noise', 'sw', 'turb'], fontsize=20)
+            colorbar = plt.colorbar()
+            colorbar.set_label(label='$T$', fontsize=20)
+            colorbar.ax.tick_params(labelsize=16)
+            for i in range(1, len(plt.gca().get_legend().legendHandles)):
+                plt.gca().get_legend().legendHandles[i].set_color('k')
+                #handle.set_markeredgecolor('k')
+            finalisePlot()
+
             plt.figure(figsize=(12, 8))
             plt.plot(T, SNR_single, lw=2.5)
             plt.plot(T, SNR_double, lw=2.5)
@@ -421,11 +494,19 @@ class GWAnalyser:
             finalisePlot()
 
             plt.figure(figsize=(12, 8))
-            plt.plot(T, peakAmp, lw=2.5)
+            plt.plot(T, peakAmp_sw, lw=2.5)
             plotMilestoneTemperatures()
             plt.xlabel('$T$', fontsize=24)
-            plt.ylabel('$\\Omega_{\\mathrm{peak}}$', fontsize=24)
-            plt.ylim(bottom=0, top=peakAmp[-1])
+            plt.ylabel('$\\Omega_{\\mathrm{peak}}^{\\mathrm{sw}}$', fontsize=24)
+            plt.ylim(bottom=0, top=peakAmp_sw[-1])
+            finalisePlot()
+
+            plt.figure(figsize=(12, 8))
+            plt.plot(T, peakAmp_turb, lw=2.5)
+            plotMilestoneTemperatures()
+            plt.xlabel('$T$', fontsize=24)
+            plt.ylabel('$\\Omega_{\\mathrm{peak}}^{\\mathrm{turb}}$', fontsize=24)
+            plt.ylim(bottom=0, top=peakAmp_turb[-1])
             finalisePlot()
 
             plt.figure(figsize=(12, 8))
@@ -436,12 +517,19 @@ class GWAnalyser:
             finalisePlot()
 
             plt.figure(figsize=(12, 8))
-            plt.plot(T, peakFreq_primary, lw=2.5)
-            plt.plot(T, peakFreq_secondary, lw=2.5)
+            plt.plot(T, peakFreq_sw_primary, lw=2.5)
+            plt.plot(T, peakFreq_sw_secondary, lw=2.5)
             plotMilestoneTemperatures()
             plt.xlabel('$T$', fontsize=24)
-            plt.ylabel('$f_{\\mathrm{peak}}$', fontsize=24)
+            plt.ylabel('$f_{\\mathrm{peak}}^{\\mathrm{sw}}$', fontsize=24)
             plt.legend(['primary', 'secondary'], fontsize=20)
+            finalisePlot()
+
+            plt.figure(figsize=(12, 8))
+            plt.plot(T, peakFreq_turb, lw=2.5)
+            plotMilestoneTemperatures()
+            plt.xlabel('$T$', fontsize=24)
+            plt.ylabel('$f_{\\mathrm{peak}}^{\\mathrm{turb}}$', fontsize=24)
             finalisePlot()
 
             plt.figure(figsize=(12, 8))
