@@ -66,6 +66,7 @@ class ActionSample:
         return str(self)
 
 
+# TODO: either move this all to Transition, or move all analysis quantities from Transition to here.
 class AnalysedTransition:
     def __init__(self):
         self.SonTn = -1
@@ -79,6 +80,7 @@ class AnalysedTransition:
         self.betaTp = -1
         self.betaTe = -1
         self.betaTf = -1
+        self.betaV = -1
 
         self.Hn = -1
         self.Hnbar = -1
@@ -736,7 +738,8 @@ class TransitionAnalyser():
             # Check if S/T increases (with decreasing temperature) before percolation occurs. This is important for
             # determining the bubble number density at the percolation temperature.
             # TODO: why are we checking Te < 0? [2023]
-            if Te < 0 and TAtSonTmin == 0 and self.actionSampler.SonT[-1] > self.actionSampler.SonT[simIndex]:
+            # TODO: removed (and replaced with alternate version just below) on 23/06/2023.
+            """if Tp < 0 and TAtSonTmin == 0 and self.actionSampler.SonT[-1] > self.actionSampler.SonT[simIndex]:
                 TAtSonTmin = self.actionSampler.T[simIndex]
                 SonTmin = self.actionSampler.SonT[simIndex]
                 GammaAtSonTmin = Gamma[-1]
@@ -768,7 +771,15 @@ class TransitionAnalyser():
                     if self.timeout_phaseHistoryAnalysis > 0:
                         endTime = time.perf_counter()
                         if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                            return
+                            return"""
+
+            # If the action begins increasing with decreasing temperature.
+            if TAtSonTmin == 0 and self.actionSampler.SonT[simIndex+1] > self.actionSampler.SonT[simIndex]:
+                # TODO: do some form of interpolation.
+                TAtSonTmin = self.actionSampler.T[simIndex]
+                SonTmin = self.actionSampler.SonT[simIndex]
+                self.transition.Tmin = TAtSonTmin
+                self.transition.SonTmin = SonTmin
 
             numSamples = self.actionSampler.getNumSubsamples(minSonTThreshold, maxSonTThreshold)
             T = np.linspace(self.actionSampler.T[simIndex], self.actionSampler.T[simIndex+1], numSamples)
@@ -846,8 +857,8 @@ class TransitionAnalyser():
 
             # Since we skip the first element of the subsamples in the following loop, make sure to add the very first
             # subsample of the integration to the corresponding lists. This only needs to be done for the first sampling
-            # iteration, as the next iteration's first subsample is this iteration's last subsample (i.e. it will already
-            # have been added).
+            # iteration, as the next iteration's first subsample is this iteration's last subsample (i.e. it will
+            # already have been added).
             if bFirst:
                 self.actionSampler.subT.append(T[0])
                 self.actionSampler.subSonT.append(SonT[0])
@@ -855,6 +866,10 @@ class TransitionAnalyser():
                 self.actionSampler.subRhof.append(rhof[0])
                 self.actionSampler.subRhot.append(rhot[0])
                 bFirst = False
+
+            # ==========================================================================================================
+            # Begin subsampling.
+            # ==========================================================================================================
 
             # Don't handle the first element of the list, as it is either the boundary condition for the integration (if
             # this is the first integrated data point), or was handled as the last element of the previous data point.
@@ -1035,6 +1050,10 @@ class TransitionAnalyser():
                     Ts2 = Tprev + interpFactor*(Tnew - Tprev)
                     self.transition.TVphysDecr_low = Ts2
 
+            # ==========================================================================================================
+            # End subsampling.
+            # ==========================================================================================================
+
             if Tf > 0 and not self.bAnalyseTransitionPastCompletion:
                 if self.bDebug:
                     print('Found Tf, stopping sampling')
@@ -1076,6 +1095,16 @@ class TransitionAnalyser():
             gammaMaxIndex = np.argmax(Gamma)
             self.transition.TGammaMax = self.actionSampler.subT[gammaMaxIndex]
             self.transition.SonTGammaMax = self.actionSampler.subSonT[gammaMaxIndex]
+            self.transition.GammaMax = Gamma[gammaMaxIndex]
+            Tlow = self.actionSampler.subT[gammaMaxIndex+1]
+            #Tmid = self.actionSampler.subT[gammaMaxIndex]
+            Thigh = self.actionSampler.subT[gammaMaxIndex-1]
+            Slow = self.actionSampler.subSonT[gammaMaxIndex+1]
+            Smid = self.actionSampler.subSonT[gammaMaxIndex]
+            Shigh = self.actionSampler.subSonT[gammaMaxIndex-1]
+            # TODO: should use proper formula for second derivative with non-uniform grid.
+            d2SdT2 = (Shigh - 2*Smid + Slow) / (0.5*(Thigh - Tlow))**2
+            self.transition.analysis.betaV = H[gammaMaxIndex]*self.actionSampler.subT[gammaMaxIndex]*np.sqrt(d2SdT2)
 
         meanBubbleSeparation = (bubbleNumberDensity[indexTp])**(-1/3)
 

@@ -414,6 +414,9 @@ class GWAnalyser:
             redshift: List[float] = []
             beta: List[float] = []
             lenScale_beta: List[float] = []
+            betaV: float = transitionReport['betaV']
+            GammaMax: float = transitionReport['GammaMax']
+            lenScale_betaV: float = (np.sqrt(2*np.pi)*GammaMax/betaV)**(-1/3)
 
             for i in indices:
                 gws = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
@@ -536,10 +539,11 @@ class GWAnalyser:
             plt.plot(T, lenScale_primary, lw=2.5)
             plt.plot(T, lenScale_secondary, lw=2.5)
             plt.plot(T, lenScale_beta, lw=2.5)
+            plt.axhline(lenScale_betaV, lw=2, ls='--')
             plotMilestoneTemperatures()
             plt.xlabel('$T$', fontsize=24)
             plt.ylabel('$\\mathrm{Length \\;\\; scale}$', fontsize=24)
-            plt.legend(['primary', 'secondary', 'primary beta'], fontsize=20)
+            plt.legend(['primary', 'secondary', 'primary beta', 'primary betaV'], fontsize=20)
             plt.ylim(bottom=0, top=max(lenScale_primary[-1], lenScale_secondary[-1]))
             finalisePlot()
 

@@ -68,7 +68,6 @@ class AnalysablePotential(generic_potential):
     # for each of the raddof neglected degrees of freedom.
     def freeEnergyDensity(self, X: Union[float, list[float], np.ndarray], T: Union[float, list[float], np.ndarray])\
             -> Union[float, np.ndarray]:
-        # TODO: this form of the subtraction of missing radiation is only valid in the high-temperature limit, right?
         return self.Vtot(X, T, include_radiation=False) - np.pi**2/90*self.getRadiationDegreesOfFreedom(X, T)*T**4
 
     # Returns a list of values for each parameter that specifies the potential. E.g. if the tree-level potential is
