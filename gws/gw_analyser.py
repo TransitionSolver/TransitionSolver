@@ -43,9 +43,10 @@ class GWAnalyser_InidividualTransition:
     transitionReport: dict
     hydroVars: HydroVars
     detector: GWDetector
-    peakAmplitude_sw: float = 0.
-    peakFrequency_sw_primary: float = 0.
-    peakFrequency_sw_secondary: float = 0.
+    peakAmplitude_sw_regular: float = 0.
+    peakAmplitude_sw_soundShell: float = 0.
+    peakFrequency_sw_bubbleSeparation: float = 0.
+    peakFrequency_sw_shellThickness: float = 0.
     peakAmplitude_turb: float = 0.
     peakFrequency_turb: float = 0.
     SNR: float = 0.
@@ -53,8 +54,9 @@ class GWAnalyser_InidividualTransition:
     vw: float = 0.
     T: float = 0.
     Treh: float = 0.
-    lenScale_primary: float = 0.
-    lenScale_secondary: float = 0.
+    H: float = 0.
+    lengthScale_bubbleSeparation: float = 0.
+    lengthScale_shellThickness: float = 0.
     adiabaticIndex: float = 0.
     fluidVelocity: float = 0.
     upsilon: float = 0.
@@ -93,11 +95,11 @@ class GWAnalyser_InidividualTransition:
         self.K = self.determineKineticEnergyFraction()
         if self.K == 0:
             return 0., 0.
-        self.lenScale_primary = self.determineLengthScale(settings)
+        self.lengthScale_bubbleSeparation = self.determineLengthScale(settings)
 
         totalEnergyDensity = self.hydroVars.energyDensityFalse - self.phaseStructure.groundStateEnergyDensity
 
-        H = np.sqrt(8*np.pi*GRAV_CONST/3 * totalEnergyDensity)
+        self.H = np.sqrt(8*np.pi*GRAV_CONST/3 * totalEnergyDensity)
 
         # Weight the enthalpy by the fraction of the Universe in each phase. This will underestimate the enthalpy
         # because we neglect the reheated regions around the bubble wall.
@@ -117,13 +119,13 @@ class GWAnalyser_InidividualTransition:
         # Assume the rotational modes are negligible.
         fluidVelocityLong = self.fluidVelocity
 
-        tau_sw = self.lenScale_primary / fluidVelocityLong
-        self.upsilon = 1 - 1 / np.sqrt(1 + 2*H*tau_sw)
+        tau_sw = self.lengthScale_bubbleSeparation / fluidVelocityLong
+        self.upsilon = 1 - 1 / np.sqrt(1 + 2*self.H*tau_sw)
 
         self.soundSpeed = np.sqrt(self.hydroVars.soundSpeedSqFalse)
-        #tau_c = lenScale_primary / soundSpeed
-        self.lenScale_secondary = self.lenScale_primary * abs(self.vw - np.sqrt(self.hydroVars.soundSpeedSqFalse))\
-            / self.vw
+        #tau_c = lengthScale_bubbleSeparation / soundSpeed
+        self.lengthScale_shellThickness = self.lengthScale_bubbleSeparation\
+            * abs(self.vw - np.sqrt(self.hydroVars.soundSpeedSqFalse)) / self.vw
 
         self.ndof = self.potential.getDegreesOfFreedom(self.toPhase.findPhaseAtT(self.T, self.potential), self.T)
         self.redshift = 1.67e-5 * (100/self.ndof)**(1/3)
@@ -132,24 +134,24 @@ class GWAnalyser_InidividualTransition:
         #Omega_peak = redshift * K*K * upsilon * H*tau_c
         #print('Omega peak (general):', Omega_peak)
 
-        # Fit from our GW review (but dividing length scale by soundSpeed in accordance with updated estimate of tau_c).
         #Omega_peak = 2.59e-6*(100/potential.ndof)**(1./3.) * K*K * H*(lenScale/(8*np.pi)**(1./3.))/soundSpeed * upsilon
-        self.peakAmplitude_sw = 0.15509*self.redshift * self.K*self.K * H*(self.lenScale_primary/(8*np.pi)**(1/3))\
-            / self.soundSpeed * self.upsilon
+        self.peakAmplitude_sw_regular = self.getPeakAmplitude_regular()
         zp = 10.  # This assumes the peak frequency corresponds to 10*lenScale. This result comes from simulations
         # (https://arxiv.org/pdf/1704.05871.pdf) and is expected to change if vw ~ vCJ (specifically zp will increase).
-        self.peakFrequency_sw_primary = 8.9e-6 * (self.ndof/100)**(1/6) * (self.Treh/100)\
-            / (H*self.lenScale_primary/(8*np.pi)**(1/3)) * (zp/10)
-        self.peakFrequency_sw_secondary = 8.9e-6 * (self.ndof/100)**(1/6) * (self.Treh/100)\
-            / (H*self.lenScale_secondary/(8*np.pi)**(1/3)) * (zp/10)
+        self.peakFrequency_sw_bubbleSeparation = 8.9e-6 * (self.ndof/100)**(1/6) * (self.Treh/100)\
+            / (self.H*self.lengthScale_bubbleSeparation / (8*np.pi)**(1/3)) * (zp/10)
+        self.peakFrequency_sw_shellThickness = 8.9e-6 * (self.ndof/100)**(1/6) * (self.Treh/100)\
+            / (self.H*self.lengthScale_shellThickness / (8*np.pi)**(1/3)) * (zp/10)
+
+        self.peakAmplitude_sw_soundShell = self.getPeakAmplitude_soundShell()
 
         turbEfficiency = 0.05  # (1 - min(1, H*tau_sw))  # (1 - self.upsilon)
         self.hStar = 1.65e-5 * (self.Treh/100) * (self.ndof/100)**(1/6)
 
-        self.peakAmplitude_turb = 20.060 * self.redshift * (turbEfficiency*self.K)**(3/2) *\
-            H*(self.lenScale_primary/(8*np.pi)**(1/3))
+        self.peakAmplitude_turb = 20.060 * self.redshift * (turbEfficiency*self.K)**(3/2)\
+            * self.H*(self.lengthScale_bubbleSeparation / (8*np.pi)**(1/3))
         self.peakFrequency_turb = 2.7e-5 * (self.ndof/100)**(1/6) * (self.Treh/100)\
-            / (H*self.lenScale_primary/(8*np.pi)**(1/3))
+            / (self.H*self.lengthScale_bubbleSeparation / (8*np.pi)**(1/3))
 
         # The spectral shape is multiplied by this normalisation factor. However, the normalisation factor is initially
         # set to 1 upon the construction of this instance of the class. Use the spectral shape at the peak frequency to
@@ -157,6 +159,21 @@ class GWAnalyser_InidividualTransition:
         self.turbNormalisationFactor = 1 / self.spectralShape_turb(self.peakFrequency_turb)
         # Then make sure the peak amplitude is corrected to match the peak amplitude of the GW signal.
         self.peakAmplitude_turb /= self.turbNormalisationFactor
+
+    def getPeakAmplitude_regular(self):
+        # Fit from our GW review (but dividing length scale by soundSpeed in accordance with updated estimate of tau_c).
+        return 0.15509*self.redshift * self.K*self.K * self.H*(self.lengthScale_bubbleSeparation / (8*np.pi)**(1/3))\
+            / self.soundSpeed * self.upsilon
+
+    def getPeakAmplitude_soundShell(self):
+        # Based on https://arxiv.org/pdf/1909.10040.pdf.
+        Omega_gw = 0.01  # From https://arxiv.org/pdf/1704.05871.pdf TABLE IV.
+        rb = self.peakFrequency_sw_bubbleSeparation / self.peakFrequency_sw_shellThickness
+        mu_f = 4.78 - 6.27*rb + 3.34*rb**2
+        Am = 3*self.K**2*Omega_gw / mu_f
+        # Roughly a factor of 0.115 smaller than the regular sound wave peak amplitude. Coming from 3*Omega_gw/0.15509
+        # * (1/mu_f) * (8pi)^(1/3) * soundSpeed. For vw ~ 1 and soundSpeed ~ 1/sqrt(3), mu_f ~ 0.4.
+        return self.H*self.lengthScale_bubbleSeparation * Am * self.redshift * self.upsilon
 
     def calculateSNR(self, gwFunc: Callable[[float], float]) -> float:
         frequencies = self.detector.sensitivityCurve[0]
@@ -174,38 +191,38 @@ class GWAnalyser_InidividualTransition:
         return self.SNR
 
     def spectralShape_sw(self, f: float) -> float:
-        x = f / self.peakFrequency_sw_primary
+        x = f / self.peakFrequency_sw_bubbleSeparation
         return x**3 * (7 / (4 + 3*x**2))**3.5
 
     def spectralShape_sw_doubleBroken(self, f: float):
         # From https://arxiv.org/pdf/2209.13551.pdf (Eq. 2.11), originally from https://arxiv.org/pdf/1909.10040.pdf
         # (Eq. # 5.7).
         b = 1
-        rb = self.peakFrequency_sw_primary / self.peakFrequency_sw_secondary
+        rb = self.peakFrequency_sw_bubbleSeparation / self.peakFrequency_sw_shellThickness
         m = (9*rb**4 + b) / (rb**4 + 1)
-        x = f/self.peakFrequency_sw_secondary
+        x = f/self.peakFrequency_sw_shellThickness
         return x**9 * ((1 + rb**4) / (rb**4 + x**4))**((9 - b) / 4) * ((b + 4) / (b + 4 - m + m*x**2))**((b + 4) / 2)
 
     def spectralShape_turb(self, f: float) -> float:
         x = f / self.peakFrequency_turb
         return self.turbNormalisationFactor * x**3 / ((1 + x)**(11/3) * (1 + 8*np.pi*f/self.hStar))
 
-    def getGWfunc_total(self, doubleBroken_sw: bool = True) -> Callable[[float], float]:
-        if doubleBroken_sw:
-            return lambda f: self.peakAmplitude_sw*self.spectralShape_sw_doubleBroken(f)\
+    def getGWfunc_total(self, soundShell: bool = True) -> Callable[[float], float]:
+        if soundShell:
+            return lambda f: self.peakAmplitude_sw_soundShell*self.spectralShape_sw_doubleBroken(f)\
                 + self.peakAmplitude_turb*self.spectralShape_turb(f)
         else:
-            return lambda f: self.peakAmplitude_sw*self.spectralShape_sw(f)\
+            return lambda f: self.peakAmplitude_sw_regular*self.spectralShape_sw(f)\
                 + self.peakAmplitude_turb*self.spectralShape_turb(f)
 
-    def getGWfunc_sw(self, doubleBroken: bool = True) -> Callable[[float], float]:
-        if self.peakAmplitude_sw == 0. or self.peakFrequency_sw_primary == 0.:
-            return lambda f: 0.
+    def getGWfunc_sw(self, soundShell: bool = False) -> Callable[[float], float]:
+        #if self.peakAmplitude_sw == 0. or self.peakFrequency_sw_bubbleSeparation == 0.:
+        #    return lambda f: 0.
 
-        if doubleBroken:
-            return lambda f: self.peakAmplitude_sw*self.spectralShape_sw_doubleBroken(f)
+        if soundShell:
+            return lambda f: self.peakAmplitude_sw_soundShell*self.spectralShape_sw_doubleBroken(f)
         else:
-            return lambda f: self.peakAmplitude_sw*self.spectralShape_sw(f)
+            return lambda f: self.peakAmplitude_sw_regular*self.spectralShape_sw(f)
 
     def getGWfunc_turb(self) -> Callable[[float], float]:
         if self.peakAmplitude_turb == 0. or self.peakFrequency_turb == 0.:
@@ -289,20 +306,12 @@ class GWAnalyser_InidividualTransition:
 
 
 class GWAnalyser:
-    peakAmplitude: float
-    peakFrequency_primary: float
-    peakFrequency_secondary: float
-    SNR: float
     detector: Optional[GWDetector]
     potential: AnalysablePotential
     phaseHistoryReport: dict
     relevantTransitions: list[dict]
 
     def __init__(self, detectorClass: Type[GWDetector], potentialClass: Type[AnalysablePotential], outputFolder: str):
-        self.peakAmplitude = 0.
-        self.peakFrequency_primary = 0.
-        self.peakFrequency_secondary = 0.
-        self.SNR = 0.
         self.detector = detectorClass()
 
         with open(outputFolder + 'phase_history.json', 'r') as f:
@@ -332,36 +341,37 @@ class GWAnalyser:
                 self.detector)
             # Determine GWs using default settings.
             gws.determineGWs(settings=None)
-            gwFunc_single = gws.getGWfunc_total(doubleBroken_sw=False)
-            gwFunc_double = gws.getGWfunc_total(doubleBroken_sw=True)
-            SNR_single = gws.calculateSNR(gwFunc_single)
-            SNR_double = gws.calculateSNR(gwFunc_double)
+            gwFunc_regular = gws.getGWfunc_total(soundShell=False)
+            gwFunc_soundShell = gws.getGWfunc_total(soundShell=True)
+            SNR_single = gws.calculateSNR(gwFunc_regular)
+            SNR_double = gws.calculateSNR(gwFunc_soundShell)
             print('Transition ID:', transitionReport['id'])
-            print('Peak amplitude (sw):', gws.peakAmplitude_sw)
-            print('Peak frequency (sw, primary):', gws.peakFrequency_sw_primary)
-            print('Peak frequency (sw, secondary):', gws.peakFrequency_sw_secondary)
+            print('Peak amplitude (sw, regular):', gws.peakAmplitude_sw_regular)
+            print('Peak amplitude (sw, sound shell):', gws.peakAmplitude_sw_soundShell)
+            print('Peak frequency (sw, bubble separation):', gws.peakFrequency_sw_bubbleSeparation)
+            print('Peak frequency (sw, shell thickness):', gws.peakFrequency_sw_shellThickness)
             print('Peak amplitude (turb):', gws.peakAmplitude_turb)
             print('Peak frequency (turb):', gws.peakFrequency_turb)
             print('SNR (single):', SNR_single)
             print('SNR (double):', SNR_double)
 
-            #gwFunc_sw_single = gws.getGWfunc_sw(doubleBroken=False)
-            gwFunc_sw_double = gws.getGWfunc_sw(doubleBroken=True)
+            gwFunc_sw_regular = gws.getGWfunc_sw(soundShell=False)
+            gwFunc_sw_soundShell = gws.getGWfunc_sw(soundShell=True)
             gwFunc_turb = gws.getGWfunc_turb()
 
             plt.loglog(self.detector.sensitivityCurve[0], self.detector.sensitivityCurve[1])
-            #plt.loglog(self.detector.sensitivityCurve[0], np.array([gwFunc_single(f) for f in
-            #    self.detector.sensitivityCurve[0]]))
-            plt.loglog(self.detector.sensitivityCurve[0], np.array([gwFunc_double(f) for f in
+            plt.loglog(self.detector.sensitivityCurve[0], np.array([gwFunc_regular(f) for f in
                 self.detector.sensitivityCurve[0]]))
-            #plt.loglog(self.detector.sensitivityCurve[0], np.array([gwFunc_sw_single(f) for f in
-            #    self.detector.sensitivityCurve[0]]))
-            plt.loglog(self.detector.sensitivityCurve[0], np.array([gwFunc_sw_double(f) for f in
+            plt.loglog(self.detector.sensitivityCurve[0], np.array([gwFunc_soundShell(f) for f in
+                self.detector.sensitivityCurve[0]]))
+            plt.loglog(self.detector.sensitivityCurve[0], np.array([gwFunc_sw_regular(f) for f in
+                self.detector.sensitivityCurve[0]]))
+            plt.loglog(self.detector.sensitivityCurve[0], np.array([gwFunc_sw_soundShell(f) for f in
                 self.detector.sensitivityCurve[0]]))
             plt.loglog(self.detector.sensitivityCurve[0], np.array([gwFunc_turb(f) for f in
                 self.detector.sensitivityCurve[0]]))
-            #plt.legend(['noise', 'total (single)', 'total (double)', 'sw (single)', 'sw (double)', 'turb'])
-            plt.legend(['noise', 'total', 'sw', 'turb'])
+            plt.legend(['noise', 'total (single)', 'total (double)', 'sw (single)', 'sw (double)', 'turb'])
+            #plt.legend(['noise', 'total', 'sw', 'turb'])
             plt.margins(0, 0)
             plt.show()
 
@@ -393,18 +403,19 @@ class GWAnalyser:
 
             #print('Sampling indices:', indices)
 
-            peakAmp_sw: List[float] = []
-            peakFreq_sw_primary: List[float] = []
-            peakFreq_sw_secondary: List[float] = []
-            peakAmp_turb: List[float] = []
-            peakFreq_turb: List[float] = []
-            SNR_single: List[float] = []
-            SNR_double: List[float] = []
+            peakAmplitude_sw_regular: List[float] = []
+            peakAmplitude_sw_soundShell: List[float] = []
+            peakFrequency_sw_bubbleSeparation: List[float] = []
+            peakFrequency_sw_shellThickness: List[float] = []
+            peakAmplitude_turb: List[float] = []
+            peakFrequency_turb: List[float] = []
+            SNR_regular: List[float] = []
+            SNR_soundShell: List[float] = []
             K: List[float] = []
             vw: List[float] = []
             Treh: List[float] = []
-            lenScale_primary: List[float] = []
-            lenScale_secondary: List[float] = []
+            lengthScale_bubbleSeparation: List[float] = []
+            lengthScale_shellThickness: List[float] = []
             adiabaticIndex: List[float] = []
             fluidVelocity: List[float] = []
             upsilon: List[float] = []
@@ -413,10 +424,10 @@ class GWAnalyser:
             ndof: List[float] = []
             redshift: List[float] = []
             beta: List[float] = []
-            lenScale_beta: List[float] = []
+            lengthScale_beta: List[float] = []
             betaV: float = transitionReport['betaV']
             GammaMax: float = transitionReport['GammaMax']
-            lenScale_betaV: float = (np.sqrt(2*np.pi)*GammaMax/betaV)**(-1/3)
+            lengthScale_betaV: float = (np.sqrt(2*np.pi)*GammaMax/betaV)**(-1/3)
 
             for i in indices:
                 gws = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
@@ -425,23 +436,25 @@ class GWAnalyser:
                 settings.sampleIndex = i
                 settings.suppliedRho_t = rhot_interp
                 gws.determineGWs(settings)
-                gwFunc_single = gws.getGWfunc_total(doubleBroken_sw=False)
-                gwFunc_double = gws.getGWfunc_total(doubleBroken_sw=True)
 
-                if gws.peakAmplitude_sw > 0 and gws.peakAmplitude_turb > 0:
+                if gws.peakAmplitude_sw_regular > 0 and gws.peakAmplitude_turb > 0:
+                    gwFunc_regular = gws.getGWfunc_total(soundShell=False)
+                    gwFunc_soundShell = gws.getGWfunc_total(soundShell=True)
+
                     T.append(allT[i])
-                    peakAmp_sw.append(gws.peakAmplitude_sw)
-                    peakFreq_sw_primary.append(gws.peakFrequency_sw_primary)
-                    peakFreq_sw_secondary.append(gws.peakFrequency_sw_secondary)
-                    peakAmp_turb.append(gws.peakAmplitude_turb)
-                    peakFreq_turb.append(gws.peakFrequency_turb)
-                    SNR_single.append(gws.calculateSNR(gwFunc_single))
-                    SNR_double.append(gws.calculateSNR(gwFunc_double))
+                    peakAmplitude_sw_regular.append(gws.peakAmplitude_sw_regular)
+                    peakAmplitude_sw_soundShell.append(gws.peakAmplitude_sw_soundShell)
+                    peakFrequency_sw_bubbleSeparation.append(gws.peakFrequency_sw_bubbleSeparation)
+                    peakFrequency_sw_shellThickness.append(gws.peakFrequency_sw_shellThickness)
+                    peakAmplitude_turb.append(gws.peakAmplitude_turb)
+                    peakFrequency_turb.append(gws.peakFrequency_turb)
+                    SNR_regular.append(gws.calculateSNR(gwFunc_regular))
+                    SNR_soundShell.append(gws.calculateSNR(gwFunc_soundShell))
                     K.append(gws.K)
                     vw.append(gws.vw)
                     Treh.append(gws.Treh)
-                    lenScale_primary.append(gws.lenScale_primary)
-                    lenScale_secondary.append(gws.lenScale_secondary)
+                    lengthScale_bubbleSeparation.append(gws.lengthScale_bubbleSeparation)
+                    lengthScale_shellThickness.append(gws.lengthScale_shellThickness)
                     adiabaticIndex.append(gws.adiabaticIndex)
                     fluidVelocity.append(gws.fluidVelocity)
                     upsilon.append(gws.upsilon)
@@ -450,7 +463,7 @@ class GWAnalyser:
                     ndof.append(gws.ndof)
                     redshift.append(gws.redshift)
                     beta.append(transitionReport['beta'][i])
-                    lenScale_beta.append((8*np.pi)**(1/3) * vw[-1] / beta[-1])
+                    lengthScale_beta.append((8*np.pi)**(1/3) * vw[-1] / beta[-1])
 
             print('Analysis took:', time.perf_counter() - startTime, 'seconds')
 
@@ -468,17 +481,18 @@ class GWAnalyser:
 
             plt.rcParams["text.usetex"] = True
 
-            #indices = range(len(peakFreq_sw_primary))
+            #indices = range(len(peakFreq_sw_bubbleSeparation))
             plt.figure(figsize=(12, 8))
             plt.plot(self.detector.sensitivityCurve[0], self.detector.sensitivityCurve[1], lw=2.5)
-            plt.scatter(peakFreq_sw_primary, peakAmp_sw, c=T, marker='o')
-            plt.scatter(peakFreq_turb, peakAmp_turb, c=T, marker='x')
+            plt.scatter(peakFrequency_sw_bubbleSeparation, peakAmplitude_sw_regular, c=T, marker='o')
+            plt.scatter(peakFrequency_sw_shellThickness, peakAmplitude_sw_soundShell, c=T, marker='s')
+            plt.scatter(peakFrequency_turb, peakAmplitude_turb, c=T, marker='x')
             plt.xscale('log')
             plt.yscale('log')
             #plotMilestoneTemperatures()
             plt.xlabel('$f_{\\mathrm{peak}}$', fontsize=24)
             plt.ylabel('$\\Omega_{\\mathrm{peak}}$', fontsize=24)
-            plt.legend(['noise', 'sw', 'turb'], fontsize=20)
+            plt.legend(['noise', 'sw (regular)', 'sw (sound shell)', 'turb'], fontsize=20)
             colorbar = plt.colorbar()
             colorbar.set_label(label='$T$', fontsize=20)
             colorbar.ax.tick_params(labelsize=16)
@@ -488,28 +502,39 @@ class GWAnalyser:
             finalisePlot()
 
             plt.figure(figsize=(12, 8))
-            plt.plot(T, SNR_single, lw=2.5)
-            plt.plot(T, SNR_double, lw=2.5)
+            plt.plot(T, SNR_regular, lw=2.5)
+            plt.plot(T, SNR_soundShell, lw=2.5)
             plotMilestoneTemperatures()
             plt.xlabel('$T$', fontsize=24)
             plt.ylabel('$\\mathrm{SNR}$', fontsize=24)
-            plt.legend(['single', 'double'], fontsize=20)
+            plt.legend(['regular', 'sound shell'], fontsize=20)
+            plt.ylim(bottom=0, top=max(SNR_regular[-1], SNR_soundShell[-1]))
             finalisePlot()
 
             plt.figure(figsize=(12, 8))
-            plt.plot(T, peakAmp_sw, lw=2.5)
+            plt.plot(T, [peakAmplitude_sw_soundShell[i] / peakAmplitude_sw_regular[i] for i in range(len(T))], lw=2.5)
+            plotMilestoneTemperatures()
+            plt.xlabel('$T$', fontsize=24)
+            plt.ylabel('$\\Omega_{\\mathrm{peak}}^{\\mathrm{sw}} \\mathrm{\\;\\; sound shell \\; / \\; regular}$',
+                fontsize=24)
+            finalisePlot()
+
+            plt.figure(figsize=(12, 8))
+            plt.plot(T, peakAmplitude_sw_regular, lw=2.5)
+            plt.plot(T, peakAmplitude_sw_soundShell, lw=2.5)
             plotMilestoneTemperatures()
             plt.xlabel('$T$', fontsize=24)
             plt.ylabel('$\\Omega_{\\mathrm{peak}}^{\\mathrm{sw}}$', fontsize=24)
-            plt.ylim(bottom=0, top=peakAmp_sw[-1])
+            plt.ylim(bottom=0, top=max(peakAmplitude_sw_regular[-1], peakAmplitude_sw_soundShell[-1]))
+            plt.legend(['regular', 'sound shell'], fontsize=20)
             finalisePlot()
 
             plt.figure(figsize=(12, 8))
-            plt.plot(T, peakAmp_turb, lw=2.5)
+            plt.plot(T, peakAmplitude_turb, lw=2.5)
             plotMilestoneTemperatures()
             plt.xlabel('$T$', fontsize=24)
             plt.ylabel('$\\Omega_{\\mathrm{peak}}^{\\mathrm{turb}}$', fontsize=24)
-            plt.ylim(bottom=0, top=peakAmp_turb[-1])
+            plt.ylim(bottom=0, top=peakAmplitude_turb[-1])
             finalisePlot()
 
             plt.figure(figsize=(12, 8))
@@ -520,31 +545,32 @@ class GWAnalyser:
             finalisePlot()
 
             plt.figure(figsize=(12, 8))
-            plt.plot(T, peakFreq_sw_primary, lw=2.5)
-            plt.plot(T, peakFreq_sw_secondary, lw=2.5)
+            plt.plot(T, peakFrequency_sw_bubbleSeparation, lw=2.5)
+            plt.plot(T, peakFrequency_sw_shellThickness, lw=2.5)
             plotMilestoneTemperatures()
             plt.xlabel('$T$', fontsize=24)
             plt.ylabel('$f_{\\mathrm{peak}}^{\\mathrm{sw}}$', fontsize=24)
-            plt.legend(['primary', 'secondary'], fontsize=20)
+            plt.legend(['bubble separation', 'shell thickness'], fontsize=20)
             finalisePlot()
 
             plt.figure(figsize=(12, 8))
-            plt.plot(T, peakFreq_turb, lw=2.5)
+            plt.plot(T, peakFrequency_turb, lw=2.5)
             plotMilestoneTemperatures()
             plt.xlabel('$T$', fontsize=24)
             plt.ylabel('$f_{\\mathrm{peak}}^{\\mathrm{turb}}$', fontsize=24)
             finalisePlot()
 
             plt.figure(figsize=(12, 8))
-            plt.plot(T, lenScale_primary, lw=2.5)
-            plt.plot(T, lenScale_secondary, lw=2.5)
-            plt.plot(T, lenScale_beta, lw=2.5)
-            plt.axhline(lenScale_betaV, lw=2, ls='--')
+            plt.plot(T, lengthScale_bubbleSeparation, lw=2.5)
+            plt.plot(T, lengthScale_shellThickness, lw=2.5)
+            plt.plot(T, lengthScale_beta, lw=2.5)
+            plt.axhline(lengthScale_betaV, lw=2, ls='--')
             plotMilestoneTemperatures()
             plt.xlabel('$T$', fontsize=24)
             plt.ylabel('$\\mathrm{Length \\;\\; scale}$', fontsize=24)
-            plt.legend(['primary', 'secondary', 'primary beta', 'primary betaV'], fontsize=20)
-            plt.ylim(bottom=0, top=max(lenScale_primary[-1], lenScale_secondary[-1]))
+            plt.legend(['bubble separation', 'shell thickness', 'bubble separation (beta)', 'bubble separation (betaV)'],
+                fontsize=20)
+            plt.ylim(bottom=0, top=max(lengthScale_bubbleSeparation[-1], lengthScale_shellThickness[-1]))
             finalisePlot()
 
             plt.figure(figsize=(12, 8))
