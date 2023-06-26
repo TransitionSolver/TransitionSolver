@@ -171,9 +171,9 @@ class GWAnalyser_InidividualTransition:
         rb = self.peakFrequency_sw_bubbleSeparation / self.peakFrequency_sw_shellThickness
         mu_f = 4.78 - 6.27*rb + 3.34*rb**2
         Am = 3*self.K**2*Omega_gw / mu_f
-        # Roughly a factor of 0.115 smaller than the regular sound wave peak amplitude. Coming from 3*Omega_gw/0.15509
-        # * (1/mu_f) * (8pi)^(1/3) * soundSpeed. For vw ~ 1 and soundSpeed ~ 1/sqrt(3), mu_f ~ 0.4.
-        return self.H*self.lengthScale_bubbleSeparation * Am * self.redshift * self.upsilon
+        # Roughly a factor of 0.2 smaller than the regular sound wave peak amplitude. Coming from 3*Omega_gw/0.15509
+        # * (1/mu_f) * (8pi)^(1/3). For vw ~ 1 and soundSpeed ~ 1/sqrt(3), mu_f ~ 0.4.
+        return (self.H*self.lengthScale_bubbleSeparation / self.soundSpeed) * Am * self.redshift * self.upsilon
 
     def calculateSNR(self, gwFunc: Callable[[float], float]) -> float:
         frequencies = self.detector.sensitivityCurve[0]
@@ -515,7 +515,7 @@ class GWAnalyser:
             plt.plot(T, [peakAmplitude_sw_soundShell[i] / peakAmplitude_sw_regular[i] for i in range(len(T))], lw=2.5)
             plotMilestoneTemperatures()
             plt.xlabel('$T$', fontsize=24)
-            plt.ylabel('$\\Omega_{\\mathrm{peak}}^{\\mathrm{sw}} \\mathrm{\\;\\; sound shell \\; / \\; regular}$',
+            plt.ylabel('$\\Omega_{\\mathrm{peak}}^{\\mathrm{sw}} \\mathrm{\\;\\; sound \\; shell \\; / \\; regular}$',
                 fontsize=24)
             finalisePlot()
 
@@ -752,6 +752,6 @@ def main(detectorClass, potentialClass, outputFolder):
 
 
 if __name__ == "__main__":
-    main(LISA, RealScalarSingletModel, 'output/RSS/RSS_BP5/')
+    main(LISA, RealScalarSingletModel, 'output/RSS/RSS_BP1/')
     #main(LISA, RealScalarSingletModel_HT, 'output/RSS_HT/RSS_HT_BP1/')
     #main(LISA, ToyModel, 'output/Toy/Toy_BP1/')
