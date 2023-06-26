@@ -68,10 +68,16 @@ def getGeffCurve_fermion() -> Callable[[float], float]:
     return getGeffCurveFromFile('models/util/fermion_geff.csv')
 
 
+def getGeffCurve_total() -> Callable[[float], float]:
+    return getGeffCurveFromFile('models/util/SM_geff.csv')
+
+
 if __name__ == "__main__":
-    x_, y_ = getRawGeffCurveFromFile('models/util/fermion_geff.csv')
-    myFunc = getGeffCurve_fermion()
-    xSamples = np.linspace(x_[0], x_[-1], 1000)
+    x_, y_ = getRawGeffCurveFromFile('models/util/SM_geff.csv')
+    #myFunc = getGeffCurve_fermion()
+    myFunc = getGeffCurve_total()
+    #xSamples = np.linspace(x_[0], x_[-1], 1000)
+    xSamples = np.logspace(np.log10(x_[0]), np.log10(x_[-1]), 1000)
     ySamples = [myFunc(xSample) for xSample in xSamples]
     plt.scatter(x_, y_)
     plt.plot(xSamples, ySamples)

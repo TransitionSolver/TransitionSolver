@@ -95,6 +95,8 @@ class Transition:
     SonTGammaMax: float
     SonTeq: float
 
+    GammaMax: float
+
     decreasingVphysAtTp: bool
     decreasingVphysAtTf: bool
 
@@ -151,6 +153,8 @@ class Transition:
         self.SonTmin = -1.
         self.SonTGammaMax = -1.
         self.SonTeq = -1.
+
+        self.Gamma = -1.
 
         self.decreasingVphysAtTp = False
         self.decreasingVphysAtTf = False
@@ -247,6 +251,7 @@ class Transition:
         if self.Tp > 0: report['betaTp'] = self.analysis.betaTp
         if self.Te > 0: report['betaTe'] = self.analysis.betaTe
         if self.Tf > 0: report['betaTf'] = self.analysis.betaTf
+        if self.TGammaMax > 0: report['betaV'] = self.analysis.betaV
 
         if self.Tn > 0: report['Hn'] = self.analysis.Hn
         if self.Tnbar > 0: report['Hnbar'] = self.analysis.Hnbar
@@ -260,6 +265,7 @@ class Transition:
         if self.TGammaMax > 0:
             report['TGammaMax'] = self.TGammaMax
             report['SonTGammaMax'] = self.SonTGammaMax
+            report['GammaMax'] = self.GammaMax
         #if self.Teq > 0:
         report['Teq'] = self.Teq
         #report['SonTeq'] = self.SonTeq
