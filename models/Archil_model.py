@@ -78,17 +78,19 @@ class SMplusCubic(AnalysablePotential):
         g1Sq = self.g1**2
 
         h2 = 3*self.lam*rhoSq + 2*self.kap*rho - self.mu0Sq + TSq*(self.lam/4 + g2Sq + (g2Sq + g1Sq)/16 + self.yt**2/4)
-        W2 = g2Sq/4*rhoSq + 11/6*g2Sq*TSq
+        W2_L = g2Sq/4*rhoSq + 11/6*g2Sq*TSq
+        W2_T = g2Sq/4*rhoSq
         a = (g2Sq + g1Sq)/4*rho**2 + 11/6*(g2Sq + g1Sq)*TSq
         Delta = np.sqrt(a**2 - 11/3*g1Sq*g2Sq*(11/3 + rhoSq)*TSq)
-        Z2 = 0.5*(a + Delta)
-        ph2 = 0.5*(a - Delta)
+        Z2_L = 0.5*(a + Delta)
+        Z2_T = (g2Sq + g1Sq)/4*rho**2 
+        ph2_L = 0.5*(a - Delta)
 
-        M = np.array([h2, W2, Z2, ph2])
+        M = np.array([h2, W2_L, W2_T Z2_L, Z2_T, ph2_L])
         M = np.rollaxis(M, 0, len(M.shape))
 
-        dof = np.array([1, 6, 3, 3])
-        c = np.array([1.5, 5/6, 5/6, 5/6])
+        dof = np.array([1, 4, 2, 2,, 1, 2])
+        c = np.array([1.5, 5/6, 5/6, 5/6, 5/6, 5/6])
 
         return M, dof, c
 
