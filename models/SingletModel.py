@@ -1,5 +1,5 @@
 import numpy as np
-from models.AnalysablePotential import AnalysablePotential
+from models.analysable_potential import AnalysablePotential
 
 v2 = 246.**2
 
