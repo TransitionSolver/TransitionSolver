@@ -23,7 +23,6 @@ class SMplusCubic(AnalysablePotential):
         self.bUseSimpleDOF = False
 
         # Set the temp and field scale by the EW VEV
-        # TODO: these need to be set correctly. vh is copied from the real scalar singlet model but there is vh here.
         self.fieldScale = self.v
         # Reducing temperature scale because we want to consider hundreds of MeV too.
         self.temperatureScale = 0.1*self.v
@@ -44,6 +43,8 @@ class SMplusCubic(AnalysablePotential):
         # self.mu2 = .5*(self.mh**2 + self.v*self.kap)
         # self.lam = .5/self.v2 *(self.mh**2 - self.v*self.kap)
 
+        # Everything below here in this function is not necessary for the model in PhaseTracer.
+
         self.bValid = True
 
         if muSq != 0:
@@ -60,6 +61,60 @@ class SMplusCubic(AnalysablePotential):
 
         # setting gs energy via the potential at zero temp
         self.groundStateEnergy = self.Vtot(np.array([self.v]), 0.)
+
+    # Tree-level potential.
+    def V0(self, X):
+        X = np.asanyarray(X)
+        rho = X[...,0]
+        r = -.5*self.muSq*rho**2 + self.kap*rho**3 / 3 + .25*self.lam*rho**4
+        return r
+
+    def boson_massSq(self, X, T):
+        X = np.asanyarray(X)
+        rho = X[...,0]
+        rhoSq = rho**2
+        TSq = T**2
+        g2Sq = self.g**2
+        g1Sq = self.g1**2
+
+        h2 = 3*self.lam*rhoSq + 2*self.kap*rho - self.mu0Sq + TSq*(self.lam/4 + g2Sq + (g2Sq + g1Sq)/16 + self.yt**2/4)
+        W2 = g2Sq/4*rhoSq + 11/6*g2Sq*TSq
+        a = (g2Sq + g1Sq)/4*rho**2 + 11/6*(g2Sq + g1Sq)*TSq
+        Delta = np.sqrt(a**2 - 11/3*g1Sq*g2Sq*(11/3 + rhoSq)*TSq)
+        Z2 = 0.5*(a + Delta)
+        ph2 = 0.5*(a - Delta)
+
+        M = np.array([h2, W2, Z2, ph2])
+        M = np.rollaxis(M, 0, len(M.shape))
+
+        dof = np.array([1, 6, 3, 3])
+        c = np.array([1.5, 5/6, 5/6, 5/6])
+
+        return M, dof, c
+
+    def fermion_massSq(self, X):
+        X = np.array(X)
+        rho = X[...,0]
+
+        m12 = self.yt**2/2 * rho**2
+
+        massSq = np.array([m12])
+        massSq = np.rollaxis(massSq, 0, len(massSq.shape))
+
+        dof = np.array([12])
+
+        return massSq, dof
+
+    def approxZeroTMin(self):
+        # There are generically two minima at zero temperature in this model, and we want to include both of them.
+        return [np.array([0]), np.array([self.v])]
+
+    """
+    ====================================================================================================================
+    One-loop extraction of Lagrangian parameters using EWSB and Higgs mass.
+    Not necessary in PhaseTracer because there we take all parameters as input.
+    ====================================================================================================================
+    """
 
     def calculateQuadraticsForMasses(self):
         # Tree-level extraction.
@@ -159,12 +214,6 @@ class SMplusCubic(AnalysablePotential):
     def forbidPhaseCrit(self, X):
         return (np.array([X])[...,0] < -5.0).any()
 
-    def V0(self, X):
-        X = np.asanyarray(X)
-        rho = X[...,0]
-        r = -.5*self.muSq*rho**2 + self.kap*rho**3 / 3 + .25*self.lam*rho**4
-        return r
-
     def dVCW(self, X, T=0):
         m, n, c = self.boson_massSq(X, T)
         dm = self.d_boson_massSq(X)
@@ -257,46 +306,6 @@ class SMplusCubic(AnalysablePotential):
         massSq = np.rollaxis(massSq, 0, len(massSq.shape))
 
         return massSq
-
-    def boson_massSq(self, X, T):
-        X = np.asanyarray(X)
-        rho = X[...,0]
-        rhoSq = rho**2
-        TSq = T**2
-        g2Sq = self.g**2
-        g1Sq = self.g1**2
-
-        h2 = 3*self.lam*rhoSq + 2*self.kap*rho - self.mu0Sq + TSq*(self.lam/4 + g2Sq + (g2Sq + g1Sq)/16 + self.yt**2/4)
-        W2 = g2Sq/4*rhoSq + 11/6*g2Sq*TSq
-        a = (g2Sq + g1Sq)/4*rho**2 + 11/6*(g2Sq + g1Sq)*TSq
-        Delta = np.sqrt(a**2 - 11/3*g1Sq*g2Sq*(11/3 + rhoSq)*TSq)
-        Z2 = 0.5*(a + Delta)
-        ph2 = 0.5*(a - Delta)
-
-        M = np.array([h2, W2, Z2, ph2])
-        M = np.rollaxis(M, 0, len(M.shape))
-
-        dof = np.array([1, 6, 3, 3])
-        c = np.array([1.5, 5/6, 5/6, 5/6])
-
-        return M, dof, c
-
-    def fermion_massSq(self, X):
-        X = np.array(X)
-        rho = X[...,0]
-
-        m12 = self.yt**2/2 * rho**2
-
-        massSq = np.array([m12])
-        massSq = np.rollaxis(massSq, 0, len(massSq.shape))
-
-        dof = np.array([12])
-
-        return massSq, dof
-
-    def approxZeroTMin(self):
-        # There are generically two minima at zero temperature in this model, and we want to include both of them.
-        return [np.array([0]), np.array([self.v])]
 
 
 if __name__ == "__main__":
