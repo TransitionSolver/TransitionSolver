@@ -16,9 +16,9 @@ class SMplusCubic(AnalysablePotential):
         # The number of scalar fields in the model.
         self.Ndim = 1
         self.ndof = 106.75
-        # We account for 23.5 dof in the one-loop corrections, so 106.75-23.5 = 83.25 of them needed to be accounted for
+        # We account for 21.5 dof in the one-loop corrections, so 106.75-21.5 = 85.25 of them need to be accounted for
         # in the radiation term.
-        self.raddof = 83.25
+        self.raddof = 85.25
         # Don't do use simple dof, we'll calculate them via temp and field
         self.bUseSimpleDOF = False
 
@@ -89,7 +89,7 @@ class SMplusCubic(AnalysablePotential):
         M = np.array([h2, W2_L, W2_T, Z2_L, Z2_T, ph2_L])
         M = np.rollaxis(M, 0, len(M.shape))
 
-        dof = np.array([1, 4, 2, 2, 1, 2])
+        dof = np.array([1, 2, 4, 1, 2, 1])
         c = np.array([1.5, 5/6, 5/6, 5/6, 5/6, 5/6])
 
         return M, dof, c
@@ -267,11 +267,11 @@ class SMplusCubic(AnalysablePotential):
         g1Sq = self.g1**2
 
         h2 = 6*self.lam*rho + 2*self.kap
-        W2 = g2Sq/2*rho
-        Z2 = (g2Sq + g1Sq)/2*rho
-        ph2 = 0
+        W2_L = W2_T = g2Sq/2*rho
+        Z2_L = Z2_T = (g2Sq + g1Sq)/2*rho
+        ph2_L = 0
 
-        M = np.array([h2, W2, Z2, ph2])
+        M = np.array([h2, W2_L, W2_T, Z2_L, Z2_T, ph2_L])
         M = np.rollaxis(M, 0, len(M.shape))
 
         return M
@@ -281,11 +281,11 @@ class SMplusCubic(AnalysablePotential):
         g1Sq = self.g1**2
 
         h2 = 6*self.lam
-        W2 = g2Sq/2
-        Z2 = (g2Sq + g1Sq)/2
-        ph2 = 0
+        W2_L = W2_T = g2Sq/2
+        Z2_L = Z2_T = (g2Sq + g1Sq)/2
+        ph2_L = 0
 
-        M = np.array([h2, W2, Z2, ph2])
+        M = np.array([h2, W2_L, W2_T, Z2_L, Z2_T, ph2_L])
         M = np.rollaxis(M, 0, len(M.shape))
 
         return M
