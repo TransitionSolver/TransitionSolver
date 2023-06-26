@@ -1,6 +1,7 @@
 import traceback
 
 from analysis.transition_analysis import TransitionAnalyser
+from models.Archil_model import SMplusCubic
 from models.analysable_potential import AnalysablePotential
 from models.toy_model import ToyModel
 from models.real_scalar_singlet_model import RealScalarSingletModel
@@ -129,13 +130,13 @@ if __name__ == "__main__":
     modelLabel = sys.argv[1].lower()
 
     # Support model labels.
-    modelLabels = ['toy', 'rss', 'rss_ht']
+    modelLabels = ['toy', 'rss', 'rss_ht', 'archil']
     # The AnalysablePotential subclass corresponding to a particular model label.
-    models = [ToyModel, RealScalarSingletModel, RealScalarSingletModel_HT]
+    models = [ToyModel, RealScalarSingletModel, RealScalarSingletModel_HT, SMplusCubic]
     # PhaseTracer script to run, specific to a particular model label.
-    PT_scripts = ['run_ToyModel', 'run_RSS', 'run_RSS']
+    PT_scripts = ['run_ToyModel', 'run_RSS', 'run_RSS', 'run_Archil']
     # Extra arguments to pass to PhaseTracer, specific to a particular model label.
-    PT_paramArrays = [[], [], ['-ht']]
+    PT_paramArrays = [[], [], ['-ht'], []]
     _potentialClass = None
     _PT_script = ''
     _PT_params = []
