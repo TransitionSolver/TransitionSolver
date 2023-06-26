@@ -1,18 +1,16 @@
 from __future__ import annotations
-from models.ToyModel import ToyModel
-from models.SingletModel import SingletModel
-from models.RealScalarSingletModel import RealScalarSingletModel
-from analysis import PhaseStructure, PhaseHistoryAnalysis, TransitionGraph
+from analysis.transition_analysis import TransitionAnalyser
+from models.toy_model import ToyModel
+from models.real_scalar_singlet_model import RealScalarSingletModel
+from analysis.phase_structure import PhaseStructure
+from analysis.phase_history_analysis import PhaseHistoryAnalyser, AnalysisMetrics
+from analysis.transition_graph import ProperPath
+from analysis import phase_structure
+
 import numpy as np
 import subprocess
 import json
-import time
 import pathlib
-from gws import GieseKappa, Hydrodynamics
-from gws.Hydrodynamics import HydroVars
-import math
-import matplotlib.pyplot as plt
-
 
 
 # The file path to PhaseTracer. This is user specific.
@@ -20,6 +18,10 @@ import matplotlib.pyplot as plt
 
 import traceback
 import sys
+from util.events import notifyHandler
+import math
+import matplotlib.pyplot as plt
+
 
 
 Treh_p =  42.920478890565676
@@ -55,10 +57,10 @@ def h(T, g):
     return h
 
 def Omegaturbh2(H, mbs, alpha, g, T, kappa, f):
-    Omegaturbh2 = 3.35 * 10**(-4) * (100/g)**(1/3) * (H * mbs / (8 * np.pi)**(1/3)) * ((0.1 * kappa * alpha) / (1 + alpha))**(3/2) * ((f/fturb(mbs, H, T, g))**3) / (((1 + (f/fturb(mbs, H, T, g)))**(11/3)) * (1 + (8 * math.pi * f/H)))
+    #Omegaturbh2 = 3.35 * 10**(-4) * (100/g)**(1/3) * (H * mbs / (8 * np.pi)**(1/3)) * ((0.1 * kappa * alpha) / (1 + alpha))**(3/2) * ((f/fturb(mbs, H, T, g))**3) / (((1 + (f/fturb(mbs, H, T, g)))**(11/3)) * (1 + (8 * math.pi * f/H)))
     #Omegaturbh2 = 3.35*10**(-4)*(100/g)**(1/3)*(H*mbs/(8*np.pi)**(1/3))*((0.05*kappa*alpha)/(1+alpha))**(3/2)*((f/fturb(mbs,H,T,g))**3)/(((1+(f/fturb(mbs,H,T,g)))**(11/3)) * (1+(8*math.pi*f/H)))
     #Omegaturbh2 = 3.35*10**(-4)*(100/g)**(1/3)*(H*mbs/(8*np.pi)**(1/3))*((epsilon_old * kappa*alpha)/(1+alpha))**(3/2)*((f/fturb(mbs,H,T,g))**3)/(((1+(f/fturb(mbs,H,T,g)))**(11/3)) * (1+(8*math.pi*f/H)))
-    #Omegaturbh2 = 3.35*10**(-4)*(100/g)**(1/3)*(H*mbs/(8*np.pi)**(1/3))*((epsilon_new * kappa*alpha)/(1+alpha))**(3/2)*((f/fturb(mbs,H,T,g))**3)/(((1+(f/fturb(mbs,H,T,g)))**(11/3)) * (1+(8*math.pi*f/H)))
+    Omegaturbh2 = 3.35*10**(-4)*(100/g)**(1/3)*(H*mbs/(8*np.pi)**(1/3))*((epsilon_new * kappa*alpha)/(1+alpha))**(3/2)*((f/fturb(mbs,H,T,g))**3)/(((1+(f/fturb(mbs,H,T,g)))**(11/3)) * (1+(8*math.pi*f/H)))
     return Omegaturbh2
 
 def Omegatotalh2(H, mbs, alpha, g, T, kappa, f):
