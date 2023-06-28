@@ -63,6 +63,9 @@ class SMplusCubic(AnalysablePotential):
         # setting gs energy via the potential at zero temp
         self.groundStateEnergy = self.Vtot(np.array([self.v]), 0.)
 
+    def getParameterPoint(self):
+        return [self.kap, self.muSq, self.lam, self.mu0Sq]
+
     # Tree-level potential.
     def V0(self, X):
         X = np.asanyarray(X)

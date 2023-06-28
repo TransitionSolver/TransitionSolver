@@ -78,9 +78,12 @@ def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script
     # program name. The remaining elements are the input parameters for the specified program. The timeout (in seconds)
     # ensures that PhaseTracer cannot run indefinitely. stdout is routed to DEVNULL to suppress any print statements
     # from PhaseTracer. stderr is routed to STDOUT so that errors in PhaseTracer are printed here.
+    #subprocess.call(['wsl', PhaseTracer_directory + 'bin', 'ls'])
+    #subprocess.call([PhaseTracer_directory + 'bin', 'ls'])
     command = (['wsl'] if windows else []) + [PhaseTracer_directory + f'bin/{PT_script}', outputFolder +
         '/parameter_point.txt', outputFolder] + PT_params
-    subprocess.call(command, timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    print(command)
+    subprocess.call(command, timeout=60)#, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
     # Load the phase structure saved by PhaseTracer.
     bFileExists, phaseStructure = phase_structure.load_data(outputFolder + '/phase_structure.dat', bExpectFile=True)
@@ -134,7 +137,7 @@ if __name__ == "__main__":
     # The AnalysablePotential subclass corresponding to a particular model label.
     models = [ToyModel, RealScalarSingletModel, RealScalarSingletModel_HT, SMplusCubic]
     # PhaseTracer script to run, specific to a particular model label.
-    PT_scripts = ['run_ToyModel', 'run_RSS', 'run_RSS', 'run_Archil']
+    PT_scripts = ['run_ToyModel', 'run_RSS', 'run_RSS', 'run_supercool']
     # Extra arguments to pass to PhaseTracer, specific to a particular model label.
     PT_paramArrays = [[], [], ['-ht'], []]
     _potentialClass = None
