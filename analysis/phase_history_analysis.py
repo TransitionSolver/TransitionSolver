@@ -52,7 +52,7 @@ class PhaseHistoryAnalyser:
     # Second return value is whether we timed out.
     def analysePhaseHistory_supplied(self, potential: AnalysablePotential, phaseStructure: PhaseStructure, vw: float =
             1.) -> tuple[list[ProperPath], bool, Optional[AnalysisMetrics]]:
-        # We need startTime even if timeout <= 0 since we pass it to analyseTransition.
+        # Time how long the analysis takes.
         self.analysisMetrics.analysisStartTime = time.perf_counter()
 
         if self.bDebug:
