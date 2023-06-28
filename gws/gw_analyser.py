@@ -103,6 +103,7 @@ class GWAnalyser_InidividualTransition:
             return 0., 0.
         self.lengthScale_bubbleSeparation = self.determineLengthScale(settings)
         self.beta = self.determinebeta()
+        print('beta = ',self.beta )
         #print("mbs1 = ",self.lengthScale_bubbleSeparation)
         print('mbs = ',self.transitionReport['meanBubbleSeparation'])
 
@@ -164,6 +165,8 @@ class GWAnalyser_InidividualTransition:
             
         self.peakAmplitude_coll = self.getPeakAmplitude_coll()
         self.peakFrequency_coll = (0.77*self.beta/(2*np.pi))/self.beta * (self.beta/self.H) * self.hStar
+        print("peakFrequency_turb = ",self.peakFrequency_turb)
+        print("peakFrequency_coll = ",self.peakFrequency_coll)
         
 
         # The spectral shape is multiplied by this normalisation factor. However, the normalisation factor is initially
@@ -239,8 +242,8 @@ class GWAnalyser_InidividualTransition:
         a = 2.41
         b = 2.42
         c = 4.08
-        fp = 0.77*self.beta/(2*np.pi)
-        spectralShape_coll = A*(a+b)**c/(b*(f/fp)**(-a/c) + a*(f/fp)**(b/c))**c
+        fp0 = (0.77*self.beta/(2*np.pi)/self.beta) * self.hStar * (self.beta/self.H)
+        spectralShape_coll = A*(a+b)**c/(b*(f/fp0)**(-a/c) + a*(f/fp0)**(b/c))**c
         return spectralShape_coll
     
 
@@ -392,7 +395,7 @@ class GWAnalyser:
         self.potential = potentialClass(*np.loadtxt(outputFolder + 'parameter_point.txt'))
 
         if len(self.detector.sensitivityCurve) == 0:
-            frequencies = np.logspace(-8, 3, 1000)
+            frequencies = np.logspace(-18, 3, 1000)
             self.detector.constructSensitivityCurve(frequencies)
 
     def determineGWs(self):
