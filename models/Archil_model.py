@@ -89,8 +89,8 @@ class SMplusCubic(AnalysablePotential):
         #Z2_L = 0.5*(a + Delta)
         #Z2_T = (g2Sq + g1Sq)/4*rho**2
         #ph2_L = 0.5*(a - Delta)
-        a = (g2Sq + g1Sq)*(3*h2 + 22*TSq)
-        b = np.sqrt(9*(g2Sq + g1Sq)**2*h2**2 + 44*TSq*(g2Sq - g1Sq)**2*(3*h2 + 11*TSq))
+        a = (g2Sq + g1Sq)*(3*rhoSq + 22*TSq)
+        b = np.sqrt(9*(g2Sq + g1Sq)**2*rhoSq**2 + 44*TSq*(g2Sq - g1Sq)**2*(3*rhoSq + 11*TSq))
         Z2_L = (a + b)/24
         ph2_L = (a - b)/24
         Z2_T = (g2Sq + g1Sq)/4*rho**2
@@ -344,8 +344,14 @@ class SMplusCubic(AnalysablePotential):
 
 
 if __name__ == "__main__":
-    potential = SMplusCubic(-1.9*125**2/246, bDebugIteration=True)
-    temps = np.logspace(-4, 3, 1000)
+    #potential = SMplusCubic(*np.loadtxt('input/archil/archil_BP1.txt'))
+    #print(potential.Vtot(np.array([0]), 0))
+    #print(potential.Vtot(np.array([potential.v]), 0))
+    #print(potential.Vtot(np.array([10.]), 10.))
+
+    potential = SMplusCubic(-1.845*125**2/246, bDebugIteration=True)
+    print(potential.getParameterPoint())
+    """temps = np.logspace(-4, 3, 1000)
     dofFalse = []
     dofTrue = []
     falseVac = np.array([0])
@@ -360,5 +366,5 @@ if __name__ == "__main__":
     plt.legend(['false', 'true'])
     plt.xscale('log')
     #plt.margins(0., 0.)
-    plt.show()
+    plt.show()"""
 

@@ -83,7 +83,7 @@ def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script
     command = (['wsl'] if windows else []) + [PhaseTracer_directory + f'bin/{PT_script}', outputFolder +
         '/parameter_point.txt', outputFolder] + PT_params
     print(command)
-    subprocess.call(command, timeout=60)#, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    subprocess.call(command, timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
     # Load the phase structure saved by PhaseTracer.
     bFileExists, phaseStructure = phase_structure.load_data(outputFolder + '/phase_structure.dat', bExpectFile=True)
@@ -99,7 +99,7 @@ def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script
     # Load and configure a PhaseHistoryAnalyser object.
     analyser = PhaseHistoryAnalyser()
     analyser.bDebug = True
-    analyser.bPlot = False
+    analyser.bPlot = True
     analyser.bReportAnalysis = True
     analyser.bReportPaths = True
     analyser.timeout_phaseHistoryAnalysis = 100
