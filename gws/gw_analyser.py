@@ -274,7 +274,7 @@ class GWAnalyser_InidividualTransition:
     # TODO: Just pick a value for now. Should really read from the transition report but we can't trust that result
     #  anyway. We can't use vw = 1 because it breaks Giese's code for kappa.
     def determineBubbleWallVelocity(self) -> float:
-        return 0.95
+        return 0.99999
 
     def determineKineticEnergyFraction(self) -> float:
         if self.hydroVars.soundSpeedSqTrue <= 0:
@@ -312,13 +312,15 @@ class GWAnalyser:
     phaseHistoryReport: dict
     relevantTransitions: list[dict]
 
-    def __init__(self, detectorClass: Type[GWDetector], potentialClass: Type[AnalysablePotential], outputFolder: str):
+    def __init__(self, detectorClass: Type[GWDetector], potentialClass: Type[AnalysablePotential], outputFolder: str,
+            bForceAllTransitionsRelevant: bool = False):
         self.detector = detectorClass()
 
         with open(outputFolder + 'phase_history.json', 'r') as f:
             self.phaseHistoryReport = json.load(f)
 
-        self.relevantTransitions = extractRelevantTransitions(self.phaseHistoryReport)
+        self.relevantTransitions = extractRelevantTransitions(self.phaseHistoryReport,
+            bForceAllTransitionsRelevant=bForceAllTransitionsRelevant)
 
         if len(self.relevantTransitions) == 0:
             print('No relevant transition detected.')
@@ -723,15 +725,16 @@ def hydroTester(potentialClass: Type[AnalysablePotential], outputFolder: str):
 
 
 # Find all transitions that are part of valid transition paths.
-def extractRelevantTransitions(report: dict) -> list[dict]:
+def extractRelevantTransitions(report: dict, bForceAllTransitionsRelevant: bool = False) -> list[dict]:
     relevantTransitions = []
 
     try:
-        isTransitionRelevant = [False] * len(report['transitions'])
+        isTransitionRelevant = [bForceAllTransitionsRelevant] * len(report['transitions'])
 
-        for transitionSequence in report['paths']:
-            for transitionID in transitionSequence['transitions']:
-                isTransitionRelevant[transitionID] = True
+        if not bForceAllTransitionsRelevant:
+            for transitionSequence in report['paths']:
+                for transitionID in transitionSequence['transitions']:
+                    isTransitionRelevant[transitionID] = True
 
         for transition in report['transitions']:
             if isTransitionRelevant[transition['id']]:
@@ -744,16 +747,19 @@ def extractRelevantTransitions(report: dict) -> list[dict]:
 
 
 def main(detectorClass, potentialClass, outputFolder):
-    gwa = GWAnalyser(detectorClass, potentialClass, outputFolder)
+    gwa = GWAnalyser(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=True)
     # Use this for scanning GWs and thermal params over temperature.
-    #gwa.scanGWs()
+    gwa.scanGWs()
     # Use this for evaluating GWs using thermal params at the onset of percolation.
-    gwa.determineGWs()
-    #hydroTester(potentialClass, outputFolder)
+    #gwa.determineGWs()
+    hydroTester(potentialClass, outputFolder)
 
 
 if __name__ == "__main__":
     #main(LISA, RealScalarSingletModel, 'output/RSS/RSS_BP1/')
-    main(LISA, SMplusCubic, 'output/archil/archil_BP5/')
+    #main(LISA, SMplusCubic, 'output/archil/archil_BP5/')
+    #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/3/40/')
+    #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/1/13/')
+    main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/1/14/')
     #main(LISA, RealScalarSingletModel_HT, 'output/RSS_HT/RSS_HT_BP1/')
     #main(LISA, ToyModel, 'output/Toy/Toy_BP1/')

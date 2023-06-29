@@ -29,7 +29,7 @@ class SMplusCubic(AnalysablePotential):
         self.temperatureScale = 0.1*self.v
 
         # set this to zero since we do want to consider very low temps here
-        self.minimumTemperature = 0
+        self.minimumTemperature = 0.0001
 
         # self.renormScaleSq is the renormalization scale used in the
         # Coleman-Weinberg potential.

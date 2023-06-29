@@ -1179,7 +1179,7 @@ class TransitionAnalyser():
             plt.legend(['$\\rho_V$', '$\\rho_R$', '$\\rho_{\\mathrm{tot}}$'])
             plt.show()
 
-            drhoVdT = (rhoV[-2] - rhoV[-1]) / (self.actionSampler.subT[-2] - self.actionSampler.subT[-1])
+            """drhoVdT = (rhoV[-2] - rhoV[-1]) / (self.actionSampler.subT[-2] - self.actionSampler.subT[-1])
             extrapRhoV = lambda x: rhoV[-1] + (x - self.actionSampler.subT[-1])*drhoVdT
             extraT = list(np.linspace(2*self.actionSampler.subT[-1]-self.actionSampler.subT[-2], 0, 100))
             fullT = self.actionSampler.subT + extraT
@@ -1194,7 +1194,7 @@ class TransitionAnalyser():
             plt.xlabel('$T$')
             plt.ylabel('$\\rho$')
             plt.legend(['$\\rho_V$', '$\\rho_R$', '$\\rho_{\\mathrm{tot}}$'])
-            plt.show()
+            plt.show()"""
 
             if Tf > 0:
                 maxIndex = len(self.actionSampler.subT)

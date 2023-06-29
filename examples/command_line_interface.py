@@ -83,7 +83,7 @@ def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script
     command = (['wsl'] if windows else []) + [PhaseTracer_directory + f'bin/{PT_script}', outputFolder +
         '/parameter_point.txt', outputFolder] + PT_params
     print(command)
-    subprocess.call(command, timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    subprocess.call(command, timeout=60)#, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
     # Load the phase structure saved by PhaseTracer.
     bFileExists, phaseStructure = phase_structure.load_data(outputFolder + '/phase_structure.dat', bExpectFile=True)
@@ -109,6 +109,7 @@ def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script
 
     def notify_TransitionAnalyser_on_create(transitionAnalyser: TransitionAnalyser):
         transitionAnalyser.bComputeSubsampledThermalParams = True
+        transitionAnalyser.bCheckPossibleCompletion = False
 
     notifyHandler.addEvent('TransitionAnalyser-on_create', notify_TransitionAnalyser_on_create)
 
