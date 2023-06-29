@@ -14,6 +14,7 @@ from gws.hydrodynamics import HydroVars
 from models.real_scalar_singlet_model import RealScalarSingletModel
 from models.real_scalar_singlet_model_ht import RealScalarSingletModel_HT
 from models.toy_model import ToyModel
+from models.Archil_model import SMplusCubic
 from models.analysable_potential import AnalysablePotential
 from analysis import phase_structure
 from gws import giese_kappa, hydrodynamics
@@ -745,13 +746,14 @@ def extractRelevantTransitions(report: dict) -> list[dict]:
 def main(detectorClass, potentialClass, outputFolder):
     gwa = GWAnalyser(detectorClass, potentialClass, outputFolder)
     # Use this for scanning GWs and thermal params over temperature.
-    gwa.scanGWs()
+    #gwa.scanGWs()
     # Use this for evaluating GWs using thermal params at the onset of percolation.
-    #gwa.determineGWs()
+    gwa.determineGWs()
     #hydroTester(potentialClass, outputFolder)
 
 
 if __name__ == "__main__":
-    main(LISA, RealScalarSingletModel, 'output/RSS/RSS_BP1/')
+    #main(LISA, RealScalarSingletModel, 'output/RSS/RSS_BP1/')
+    main(LISA, SMplusCubic, 'output/archil/archil_BP5/')
     #main(LISA, RealScalarSingletModel_HT, 'output/RSS_HT/RSS_HT_BP1/')
     #main(LISA, ToyModel, 'output/Toy/Toy_BP1/')

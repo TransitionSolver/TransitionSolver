@@ -349,7 +349,7 @@ if __name__ == "__main__":
     #print(potential.Vtot(np.array([potential.v]), 0))
     #print(potential.Vtot(np.array([10.]), 10.))
 
-    potential = SMplusCubic(-1.845*125**2/246, bDebugIteration=True)
+    potential = SMplusCubic(-1.87*125**2/246, bDebugIteration=True)
     print(potential.getParameterPoint())
     """temps = np.logspace(-4, 3, 1000)
     dofFalse = []
