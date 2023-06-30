@@ -1446,11 +1446,13 @@ class TransitionAnalyser():
             if Tp > 0: plt.axvline(Tp, c='g', ls=':')
             if Te > 0: plt.axvline(Te, c='b', ls=':')
             if Tf > 0: plt.axvline(Tf, c='k', ls=':')
-            plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
-            plt.ylabel('$P(T)$', fontsize=24)
-            plt.tick_params(size=5, labelsize=16)
+            plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=40)
+            plt.ylabel('$P_f(T)$', fontsize=40)
+            plt.tick_params(size=8, labelsize=28)
             plt.margins(0,0)
-            plt.show()
+            #plt.show()
+            plt.tight_layout()
+            plt.savefig("output/plots/Pf_vs_T_BP2.pdf")
             #plt.savefig('E:/Monash/PhD/Milestones/Confirmation Review/images/xSM P(T) vs T.png', bbox_inches='tight',
             #    pad_inches=0.05)
 

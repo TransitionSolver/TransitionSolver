@@ -16,7 +16,7 @@ class SMplusCubic(AnalysablePotential):
         # The number of scalar fields in the model.
         self.Ndim = 1
         self.ndof = 106.75
-        # We account for 11+70=81 dof in the one-loop corrections, so 106.75-70 = 25.75 dof need to be accounted for in
+        # We account for 11+70=81 dof in the one-loop corrections, so 106.75-81 = 25.75 dof need to be accounted for in
         # the radiation term.
         # The dof missing are: electron (4*7/8=3.5), neutrinos (3*2*7/8=5.25), gluon (16), photon transverse (1).
         self.raddof = 25.75
