@@ -877,17 +877,17 @@ def extractRelevantTransitions(report: dict, bForceAllTransitionsRelevant: bool 
 def main(detectorClass, potentialClass, outputFolder):
     gwa = GWAnalyser(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=True)
     # Use this for scanning GWs and thermal params over temperature.
-    gwa.scanGWs()
+    #gwa.scanGWs()
     # Use this for evaluating GWs using thermal params at the onset of percolation.
-    #gwa.determineGWs_withColl()
+    gwa.determineGWs_withColl()
     #hydroTester(potentialClass, outputFolder)
 
 
 if __name__ == "__main__":
     #main(LISA, RealScalarSingletModel, 'output/RSS/RSS_BP1/')
     #main(LISA, SMplusCubic, 'output/archil/archil_BP5/')
-    #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/3/40/')
+    main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/3/40/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/1/13/')
-    main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/1/14/')
+    #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/1/14/')
     #main(LISA, RealScalarSingletModel_HT, 'output/RSS_HT/RSS_HT_BP1/')
     #main(LISA, ToyModel, 'output/Toy/Toy_BP1/')

@@ -99,7 +99,7 @@ def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script
     # Load and configure a PhaseHistoryAnalyser object.
     analyser = PhaseHistoryAnalyser()
     analyser.bDebug = True
-    analyser.bPlot = True
+    analyser.bPlot = False
     analyser.bReportAnalysis = True
     analyser.bReportPaths = True
     analyser.timeout_phaseHistoryAnalysis = 100
@@ -166,9 +166,8 @@ if __name__ == "__main__":
     if len(_parameterPoint) > 3:
         if _parameterPoint[-4:] == '.txt':
             try:
-                with open(_parameterPoint, 'r') as f:
-                    _parameterPoint = np.loadtxt(_parameterPoint)
-                    loadedParameterPoint = True
+                _parameterPoint = np.loadtxt(_parameterPoint)
+                loadedParameterPoint = True
             except:
                 pass
 

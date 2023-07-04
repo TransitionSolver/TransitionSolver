@@ -114,6 +114,7 @@ class Transition:
     meanBubbleSeparationArray: List[float]
     meanBubbleRadiusArray: List[float]
     HArray: List[float]
+    Pf: List[float]
 
     transitionStrength: float
 
@@ -180,6 +181,7 @@ class Transition:
         self.meanBubbleSeparationArray = []
         self.meanBubbleRadiusArray = []
         self.HArray = []
+        self.Pf = []
 
     def starts(self) -> bool:
         # Changed from Tn.
@@ -282,11 +284,12 @@ class Transition:
             report['volumeWeightedBubbleRadius'] = self.volumeWeightedBubbleRadius
             report['transitionStrength'] = self.transitionStrength
 
-        if len(self.TSubampleArray): report['TSubsample'] = self.TSubampleArray
-        if len(self.betaArray): report['beta'] = self.betaArray
-        if len(self.HArray): report['H'] = self.HArray
-        if len(self.meanBubbleSeparationArray): report['meanBubbleSeparationArray'] = self.meanBubbleSeparationArray
-        if len(self.meanBubbleRadiusArray): report['meanBubbleRadiusArray'] = self.meanBubbleRadiusArray
+        if len(self.TSubampleArray) > 0: report['TSubsample'] = self.TSubampleArray
+        if len(self.betaArray) > 0: report['beta'] = self.betaArray
+        if len(self.HArray) > 0: report['H'] = self.HArray
+        if len(self.meanBubbleSeparationArray) > 0: report['meanBubbleSeparationArray'] = self.meanBubbleSeparationArray
+        if len(self.meanBubbleRadiusArray) > 0: report['meanBubbleRadiusArray'] = self.meanBubbleRadiusArray
+        if len(self.Pf) > 0: report['Pf'] = self.Pf
 
         return report
 

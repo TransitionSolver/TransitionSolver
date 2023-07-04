@@ -1469,6 +1469,7 @@ class TransitionAnalyser():
             self.transition.betaArray = betaArray
             self.transition.meanBubbleSeparationArray = meanBubbleSeparationArray
             self.transition.meanBubbleRadiusArray = meanBubbleRadiusArray
+            self.transition.Pf = Pf
 
     def primeTransitionAnalysis(self, startTime: float) -> (Optional[ActionSample], list[ActionSample]):
         TcData = ActionSample(self.transition.Tc)
