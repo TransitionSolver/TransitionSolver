@@ -110,8 +110,8 @@ class ActionSampler:
     maxIter: int = 20
     numSplineSamples: int = 100
     # Make these smaller to increase the precision of CosmoTransitions' bounce action calculation.
-    phitol: float = 1e-6
-    xtol: float = 1e-6
+    phitol: float = 1e-8
+    xtol: float = 1e-8
 
     # precomputedT and precomputedSonT are lists of values for the S/T curve. These can be used to avoid sampling the
     # action curve explicitly, until the samples run out.
@@ -1177,6 +1177,9 @@ class TransitionAnalyser():
             plt.xlabel('$T$')
             plt.ylabel('$\\rho$')
             plt.legend(['$\\rho_V$', '$\\rho_R$', '$\\rho_{\\mathrm{tot}}$'])
+            plt.ylim(bottom=0)
+            plt.margins(0, 0)
+            plt.tight_layout()
             plt.show()
 
             """drhoVdT = (rhoV[-2] - rhoV[-1]) / (self.actionSampler.subT[-2] - self.actionSampler.subT[-1])
@@ -1228,6 +1231,7 @@ class TransitionAnalyser():
                 plt.ylim(0, ylim)
                 plt.tick_params(size=10, labelsize=40)
                 plt.margins(0, 0)
+                plt.tight_layout()
                 plt.show()
                 #saveFolder = 'C:/Work/Monash/PhD/Documents/Subtleties of supercooled cosmological first-order phase transitions/images/'
                 #plt.savefig(saveFolder + 'Relative physical volume.png', bbox_inches='tight', pad_inches=0.1)
@@ -1263,6 +1267,7 @@ class TransitionAnalyser():
             plt.ylim(ylim, 3.5)
             plt.tick_params(size=10, labelsize=40)
             plt.margins(0, 0)
+            plt.tight_layout()
             plt.show()
             #saveFolder = 'C:/Work/Monash/PhD/Documents/Subtleties of supercooled cosmological first-order phase transitions/images/'
             #plt.savefig(saveFolder + 'Decreasing physical volume.png', bbox_inches='tight', pad_inches=0.1)
@@ -1330,6 +1335,7 @@ class TransitionAnalyser():
             plt.legend(['$\\mathrm{standard}$', '$\\mathrm{effective}$'], fontsize=24)
             plt.tick_params(size=5, labelsize=16)
             plt.margins(0, 0)
+            plt.tight_layout()
             plt.show()
 
             plt.figure(figsize=(12, 8))
@@ -1342,6 +1348,7 @@ class TransitionAnalyser():
             if Tf > 0: plt.axvline(Tf, c='k', ls=':')
             plt.tick_params(size=5, labelsize=16)
             plt.margins(0, 0)
+            plt.tight_layout()
             plt.show()
 
             highTempIndex = 1
@@ -1372,6 +1379,7 @@ class TransitionAnalyser():
             plt.ylim(0, 1.2*max(meanBubbleSeparationArray[-1], meanBubbleRadiusArray[-1]))
             plt.tick_params(size=5, labelsize=16)
             plt.margins(0, 0)
+            plt.tight_layout()
             plt.show()
 
             highTempIndex = 0
@@ -1414,12 +1422,13 @@ class TransitionAnalyser():
             plt.grid(visible=True, which='major', color='k', linestyle='--')
             plt.grid(visible=True, which='minor', color='gray', linestyle=':')
             plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
-            plt.ylabel('$\\frac{S_3}{T}$', fontsize=24)
+            plt.ylabel('$S(T)$', fontsize=24)
             #plt.legend(['precise', 'approx'])
             plt.xlim(self.actionSampler.T[lowTempIndex], self.actionSampler.T[highTempIndex])
             plt.ylim(minAction - 0.05*(maxAction - minAction), maxAction)
             plt.tick_params(size=5, labelsize=16)
             plt.margins(0, 0)
+            plt.tight_layout()
             plt.show()
 
             # Number of bubbles plotted over entire sampled temperature range, using log scale for number of bubbles.
@@ -1438,6 +1447,7 @@ class TransitionAnalyser():
             plt.legend(['$N(T)$', '$N^{\\mathrm{ext}}(T)$'], fontsize=24)
             plt.tick_params(size=5, labelsize=16)
             plt.margins(0, 0)
+            plt.tight_layout()
             plt.show()
 
             plt.figure(figsize=(12, 8))
@@ -1450,9 +1460,9 @@ class TransitionAnalyser():
             plt.ylabel('$P_f(T)$', fontsize=40)
             plt.tick_params(size=8, labelsize=28)
             plt.margins(0,0)
-            #plt.show()
             plt.tight_layout()
-            plt.savefig("output/plots/Pf_vs_T_BP2.pdf")
+            plt.show()
+            #plt.savefig("output/plots/Pf_vs_T_BP2.pdf")
             #plt.savefig('E:/Monash/PhD/Milestones/Confirmation Review/images/xSM P(T) vs T.png', bbox_inches='tight',
             #    pad_inches=0.05)
 

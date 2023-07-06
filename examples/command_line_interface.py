@@ -42,7 +42,7 @@ def writePhaseHistoryReport(fileName: str, paths: list[ProperPath], phaseStructu
 
 
 def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script: str, PT_params: list[str],
-         parameterPoint: list[float]) -> None:
+         parameterPoint: list[float], bDebug: bool = False, bPlot: bool = False) -> None:
     # Create the output folder if it doesn't exist already.
     pathlib.Path(str(pathlib.Path(outputFolder))).mkdir(parents=True, exist_ok=True)
 
@@ -98,10 +98,10 @@ def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script
 
     # Load and configure a PhaseHistoryAnalyser object.
     analyser = PhaseHistoryAnalyser()
-    analyser.bDebug = True
-    analyser.bPlot = False
-    analyser.bReportAnalysis = True
-    analyser.bReportPaths = True
+    analyser.bDebug = bDebug
+    analyser.bPlot = bPlot
+    analyser.bReportAnalysis = bDebug
+    analyser.bReportPaths = bDebug
     analyser.timeout_phaseHistoryAnalysis = 100
 
     # Create the potential using the parameter point.
@@ -182,4 +182,4 @@ if __name__ == "__main__":
             print('Failed to load parameter point defined by:', ' '.join(sys.argv[2:]))
             sys.exit(1)
 
-    main(_potentialClass, outputFolder, _PT_script, _PT_params, _parameterPoint)
+    main(_potentialClass, outputFolder, _PT_script, _PT_params, _parameterPoint, bDebug=True)

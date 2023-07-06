@@ -1,3 +1,4 @@
+import pathlib
 from typing import Callable, List
 
 import matplotlib.pyplot as plt
@@ -38,7 +39,7 @@ def getReport(inputFileName: str, outputFolderName: str, generateIfNotExist: boo
 def makePfPlot():
     BP = 1
     reportBP1 = getReport(f'input/nanograv/nanograv_BP{BP}.txt', f'output/nanograv/BP{BP}/')
-    BP = 2
+    BP = 3
     reportBP2 = getReport(f'input/nanograv/nanograv_BP{BP}.txt', f'output/nanograv/BP{BP}/')
 
     if reportBP1 is None:
@@ -70,10 +71,20 @@ def makePfPlot():
     legendHandles.append(line)
     if Tn1 > 0: plt.axvline(Tn1, ymax=1., lw=2, c=colourCycle[0], ls=':', label='$T_n$')
     if Tn2 > 0: plt.axvline(Tn2, ymax=1, lw=2, c=colourCycle[1], ls=':', label='_nolegend_')
-    if Tp1 > 0: plt.axvline(Tp1, ymax=0.71, lw=2, c=colourCycle[0], ls='--', label='$T_p$')
-    if Tp2 > 0: plt.axvline(Tp2, ymax=0.71, lw=2, c=colourCycle[1], ls='--', label='_nolegend_')
-    if Tf1 > 0: plt.axvline(Tf1, ymax=0.01, lw=2, c=colourCycle[0], ls='-.', label='$T_f$')
-    if Tf2 > 0: plt.axvline(Tf2, ymax=0.01, lw=2, c=colourCycle[1], ls='-.', label='_nolegend_')
+    if Tp1 > 0:
+        plt.axvline(Tp1, ymax=0.71, lw=2, c=colourCycle[0], ls='--', label='$T_p$')
+        plt.axhline(0.71, xmin=0, xmax=Tp1/max(T1[0], T2[0]), lw=2, c=colourCycle[0], ls='--', label='_nolegend_',
+            zorder=(1 if Tp2 > Tp1 else 0))
+    if Tp2 > 0:
+        plt.axvline(Tp2, ymax=0.71, lw=2, c=colourCycle[1], ls='--', label='_nolegend_')
+        plt.axhline(0.71, xmin=0, xmax=Tp2/max(T1[0], T2[0]), lw=2, c=colourCycle[1], ls='--', label='_nolegend_',
+            zorder=(1 if Tp1 > Tp2 else 0))
+    if Tf1 > 0:
+        plt.axvline(Tf1, ymax=0.01, lw=2, c=colourCycle[0], ls='-.', label='$T_f$')
+        plt.axhline(0.01, xmin=0, xmax=Tf1/max(T1[0], T2[0]), lw=2, c=colourCycle[0], label='_nolegend_', ls='-.')
+    if Tf2 > 0:
+        plt.axvline(Tf2, ymax=0.01, lw=2, c=colourCycle[1], ls='-.', label='_nolegend_')
+        plt.axhline(0.01, xmin=0, xmax=Tf2/max(T1[0], T2[0]), lw=2, c=colourCycle[1], label='_nolegend_', ls='-.')
     plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=40)
     plt.ylabel('$P_{\\! f}(T)$', fontsize=40)
     plt.tick_params(size=8, labelsize=28)
@@ -88,6 +99,7 @@ def makePfPlot():
     plt.margins(0, 0)
     plt.tight_layout()
     #plt.show()
+    pathlib.Path(str(pathlib.Path('output/nanograv'))).mkdir(parents=True, exist_ok=True)
     plt.savefig("output/nanograv/Pf_combined.pdf")
 
 
@@ -109,7 +121,7 @@ def calculateReheatingTemperature(T: float, Tc: float, rho_f: float, rho_t_func:
 
 
 def makeTrehPlot():
-    BP = 2
+    BP = 3
     reportBP2 = getReport(f'input/nanograv/nanograv_BP{BP}.txt', f'output/nanograv/BP{BP}/')
 
     if reportBP2 is None:
@@ -159,6 +171,7 @@ def makeTrehPlot():
     plt.tick_params(size=8, labelsize=28)
     plt.tight_layout()
     #plt.show()
+    pathlib.Path(str(pathlib.Path('output/nanograv'))).mkdir(parents=True, exist_ok=True)
     plt.savefig("output/nanograv/Treh_vs_Tp.pdf")
 
 
@@ -250,5 +263,5 @@ def makeCombinedTrehPlot():
 
 
 if __name__ == "__main__":
-    makePfPlot()
-    #makeTrehPlot()
+    #makePfPlot()
+    makeTrehPlot()

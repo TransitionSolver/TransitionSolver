@@ -1,3 +1,4 @@
+import pathlib
 import time
 import traceback
 import json
@@ -100,6 +101,7 @@ class GWAnalyser_InidividualTransition:
         self.vw = self.determineBubbleWallVelocity()
         self.kappacoll = settings.kappaColl
         self.K = self.determineKineticEnergyFraction()
+        print('K:', self.K)
         if self.K == 0:
             return 0., 0.
         self.lengthScale_bubbleSeparation = self.determineLengthScale(settings)
@@ -218,6 +220,9 @@ class GWAnalyser_InidividualTransition:
         return x**3 * (7 / (4 + 3*x**2))**3.5
 
     def spectralShape_sw_doubleBroken(self, f: float):
+        if self.K == 0:
+            return 0.
+
         # From https://arxiv.org/pdf/2209.13551.pdf (Eq. 2.11), originally from https://arxiv.org/pdf/1909.10040.pdf
         # (Eq. # 5.7).
         b = 1
@@ -231,6 +236,9 @@ class GWAnalyser_InidividualTransition:
         return self.turbNormalisationFactor * x**3 / ((1 + x)**(11/3) * (1 + 8*np.pi*f/self.hStar))
 
     def spectralShape_coll(self, f: float) -> float:
+        if self.K == 0:
+            return 0.
+
         A = 5.13e-2
         a = 2.41
         b = 2.42
@@ -246,6 +254,9 @@ class GWAnalyser_InidividualTransition:
     def getGWfunc_total(self, soundShell: bool = True) -> Callable[[float], float]:
         if self.kappacoll > 0:
             return lambda f: self.peakAmplitude_coll*self.spectralShape_coll(f)
+
+        if self.K == 0:
+            return lambda f: 0.
 
         if soundShell:
             return lambda f: self.peakAmplitude_sw_soundShell*self.spectralShape_sw_doubleBroken(f)\
@@ -324,7 +335,11 @@ class GWAnalyser_InidividualTransition:
     # TODO: Just pick a value for now. Should really read from the transition report but we can't trust that result
     #  anyway. We can't use vw = 1 because it breaks Giese's code for kappa.
     def determineBubbleWallVelocity(self) -> float:
-        return 0.99995
+        #return 0.99995
+        #return 0.999999988
+        #return 0.99993
+        #return 0.99
+        return 0.995
 
     def determineKineticEnergyFraction(self) -> float:
         if self.hydroVars.soundSpeedSqTrue <= 0:
@@ -336,8 +351,12 @@ class GWAnalyser_InidividualTransition:
 
         alpha = 4*(thetaf - thetat) / (3*self.hydroVars.enthalpyDensityFalse)
 
-        kappa = giese_kappa.kappaNuMuModel(self.hydroVars.soundSpeedSqTrue, self.hydroVars.soundSpeedSqFalse, alpha,
-            self.vw)
+        #kappa = giese_kappa.kappaNuMuModel(self.hydroVars.soundSpeedSqTrue, self.hydroVars.soundSpeedSqFalse, alpha,
+        #    self.vw)
+        kappa = giese_kappa.kappaNuModel(self.hydroVars.soundSpeedSqFalse, alpha, self.vw)
+
+        if kappa <= 0:
+            return 0
 
         totalEnergyDensity = self.hydroVars.energyDensityFalse - self.phaseStructure.groundStateEnergyDensity
 
@@ -497,7 +516,8 @@ class GWAnalyser:
             plt.ylim(bottom=1e-20)
             plt.tick_params(size=8, labelsize=28)
             plt.margins(0, 0)
-            plt.tight_layout()
+            plt.tight_layout(pad=1.8)
+            pathlib.Path(str(pathlib.Path('output/plots'))).mkdir(parents=True, exist_ok=True)
             plt.savefig('output/plots/GWs_BP1.pdf')
             #plt.show()
 
@@ -709,6 +729,7 @@ class GWAnalyser:
             plt.tick_params(size=8, labelsize=28)
             plt.margins(0, 0)
             plt.tight_layout()
+            pathlib.Path(str(pathlib.Path('output/plots'))).mkdir(parents=True, exist_ok=True)
             plt.savefig("output/plots/Treh_vs_T_BP1.pdf")
             #plt.show()
             #finalisePlot()
@@ -886,7 +907,8 @@ def main(detectorClass, potentialClass, outputFolder):
 if __name__ == "__main__":
     #main(LISA, RealScalarSingletModel, 'output/RSS/RSS_BP1/')
     #main(LISA, SMplusCubic, 'output/archil/archil_BP5/')
-    main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/3/40/')
+    #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/3/40/')
+    main(LISA, SMplusCubic, 'output/nanograv/BP3/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/1/13/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/1/14/')
     #main(LISA, RealScalarSingletModel_HT, 'output/RSS_HT/RSS_HT_BP1/')

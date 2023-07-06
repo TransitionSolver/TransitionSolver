@@ -51,6 +51,14 @@ def getPipelineParameterPoint(pointIndex: int, numSamples: int, scanIndex: int):
     elif scanIndex == 3:
         low = -117.49
         high = -117.475
+    # Narrowed in on Tp -> 0.
+    elif scanIndex == 4:
+        low = -117.526
+        high = -117.516
+    # Narrowing in on d/dt Vphys(Tp) -> 0.
+    elif scanIndex == 5:
+        low = -116.825
+        high = -116.795
     else:
         low = -2.5
         high = 0
@@ -127,7 +135,7 @@ def pipeline_workerProcess(pointIndex: int, numSamples: int, scanIndex: int, out
     writePhaseHistoryReport(outputFolderName + '/phase_history.json', paths, phaseStructure, analysisMetrics)
 
 
-def scanWithPipeline(outputFolderName: str, scanIndex: int = 1):
+def scanWithPipeline(outputFolderName: str, scanIndex: int):
     numSamples = 100
     def parameterPointFunction(index: int):
         return getPipelineParameterPoint(index, numSamples,  scanIndex)
@@ -167,12 +175,26 @@ def plotPipeline(outputFolderName: str, scanIndex: int, numSamples: int):
             traceback.print_exc()
             continue
 
-    plt.plot(kappa, Tp)
-    plt.plot(kappa, Tf)
-    plt.plot(kappa, TVphysDecr_high)
+    plt.figure(figsize=(12, 8))
+    plt.plot(kappa, Tp, lw=2.5)
+    plt.plot(kappa, Tf, lw=2.5)
+    plt.plot(kappa, TVphysDecr_high, lw=2.5)
+    plt.legend(['$T_p$', '$T_f$', '$T_d$'])
+    plt.xlabel('$\\kappa \,\, \\mathrm{[GeV]}$', fontsize=40)
+    plt.ylabel('$T \,\, \\mathrm{[GeV]}$', fontsize=40)
+    plt.tick_params(size=10, labelsize=24)
+    plt.margins(0, 0)
+    plt.tight_layout()
     plt.show()
 
 
+def debugScanPoint(outputFolderName: str, scanIndex: int, pointIndex: int):
+    import command_line_interface as cli
+    parameterPoint = list(np.loadtxt(f'{outputFolderName}/{scanIndex}/{pointIndex}/parameter_point.txt'))
+    cli.main(SMplusCubic, outputFolderName, 'run_supercool', [], parameterPoint, bDebug=True, bPlot=True)
+
+
 if __name__ == "__main__":
-    #scanWithPipeline('output/pipeline/archil', scanIndex=3)
-    plotPipeline('output/pipeline/archil', 1, 100)
+    scanWithPipeline('output/pipeline/archil', scanIndex=5)
+    plotPipeline('output/pipeline/archil', 5, 100)
+    #debugScanPoint('output/pipeline/archil', 3, 0)
