@@ -137,6 +137,11 @@ class GWAnalyser_InidividualTransition:
             * abs(self.vw - np.sqrt(self.hydroVars.soundSpeedSqFalse)) / self.vw
 
         self.ndof = self.potential.getDegreesOfFreedom(self.toPhase.findPhaseAtT(self.T, self.potential), self.T)
+        ndofReh = self.potential.getDegreesOfFreedom(self.toPhase.findPhaseAtT(self.Treh, self.potential), self.Treh)
+        print('T_p:', self.T)
+        print('T_reh:', self.Treh)
+        print('g_*(T_p):', self.ndof)
+        print('g_*(T_reh):', ndofReh)
         self.redshift = 1.67e-5 * (100/self.ndof)**(1/3)
 
         # General form:
@@ -518,8 +523,8 @@ class GWAnalyser:
             plt.margins(0, 0)
             plt.tight_layout(pad=1.8)
             pathlib.Path(str(pathlib.Path('output/plots'))).mkdir(parents=True, exist_ok=True)
-            plt.savefig('output/plots/GWs_BP1.pdf')
-            #plt.show()
+            #plt.savefig('output/plots/GWs_BP1.pdf')
+            plt.show()
 
     def scanGWs(self):
         for transitionReport in self.relevantTransitions:
@@ -730,9 +735,9 @@ class GWAnalyser:
             plt.margins(0, 0)
             plt.tight_layout()
             pathlib.Path(str(pathlib.Path('output/plots'))).mkdir(parents=True, exist_ok=True)
-            plt.savefig("output/plots/Treh_vs_T_BP1.pdf")
+            #plt.savefig("output/plots/Treh_vs_T_BP1.pdf")
             #plt.show()
-            #finalisePlot()
+            finalisePlot()
 
             plt.figure(figsize=(12, 8))
             plt.plot(T, fluidVelocity, lw=2.5)
@@ -896,7 +901,7 @@ def extractRelevantTransitions(report: dict, bForceAllTransitionsRelevant: bool 
 
 
 def main(detectorClass, potentialClass, outputFolder):
-    gwa = GWAnalyser(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=True)
+    gwa = GWAnalyser(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=False)
     # Use this for scanning GWs and thermal params over temperature.
     #gwa.scanGWs()
     # Use this for evaluating GWs using thermal params at the onset of percolation.
@@ -905,10 +910,10 @@ def main(detectorClass, potentialClass, outputFolder):
 
 
 if __name__ == "__main__":
-    #main(LISA, RealScalarSingletModel, 'output/RSS/RSS_BP1/')
+    main(LISA, RealScalarSingletModel, 'output/RSS/RSS_BP1/')
     #main(LISA, SMplusCubic, 'output/archil/archil_BP5/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/3/40/')
-    main(LISA, SMplusCubic, 'output/nanograv/BP3/')
+    #main(LISA, SMplusCubic, 'output/nanograv/BP3/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/1/13/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/1/14/')
     #main(LISA, RealScalarSingletModel_HT, 'output/RSS_HT/RSS_HT_BP1/')
