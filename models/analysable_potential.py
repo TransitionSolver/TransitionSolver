@@ -63,6 +63,12 @@ class AnalysablePotential(generic_potential):
             self.geffFunc_boson = geff_handler.getGeffCurve_boson()
             self.geffFunc_fermion = geff_handler.getGeffCurve_fermion()
 
+    def V1T(self, bosons, fermions, T, include_radiation=True):
+        if T == 0.:
+            return 0.
+        else:
+            return super().V1T(bosons, fermions, T, include_radiation)
+
     # Returns the free energy density, which is equal to the effective potential. However, the effective temperature
     # may neglect light degrees of freedom. These must be factored in here, hence the subtraction of radiation terms
     # for each of the raddof neglected degrees of freedom.

@@ -59,6 +59,14 @@ def getPipelineParameterPoint(pointIndex: int, numSamples: int, scanIndex: int):
     elif scanIndex == 5:
         low = -116.825
         high = -116.795
+    # Boltzmann educated guess from non-Boltzmann.
+    elif scanIndex == 6:
+        low = -117.8
+        high = -116.8
+    # Boltzmann narrowing in on Tp -> 0.
+    elif scanIndex == 7:
+        low = -117.561
+        high = -117.555
     else:
         low = -2.5
         high = 0
@@ -94,7 +102,7 @@ def pipeline_workerProcess(pointIndex: int, numSamples: int, scanIndex: int, out
     if PhaseTracer_directory == '':
         sys.exit(1)
 
-    potential = SMplusCubic(parameterPointFunction(pointIndex))
+    potential = SMplusCubic(parameterPointFunction(pointIndex), bUseBoltzmannSuppression=True)
     pathlib.Path(outputFolderName).mkdir(parents=True, exist_ok=True)
     #np.savetxt(outputFolderName + '/parameter_point.txt', np.array(potential.getParameterPoint()), delimiter=' ')
     with open(outputFolderName + '/parameter_point.txt', 'w') as f:
@@ -160,6 +168,7 @@ def plotPipeline(outputFolderName: str, scanIndex: int, numSamples: int):
     Tp = []
     Tf = []
     TVphysDecr_high = []
+    meanBubSep = []
 
     for i in range(numSamples):
         try:
@@ -171,14 +180,18 @@ def plotPipeline(outputFolderName: str, scanIndex: int, numSamples: int):
             Tp.append(report['transitions'][0].get('Tp', 0))
             Tf.append(report['transitions'][0].get('Tf', 0))
             TVphysDecr_high.append(report['transitions'][0].get('TVphysDecr_high', 0))
+            meanBubSep.append(report['transitions'][0].get('meanBubbleSeparation', 0))
         except:
             traceback.print_exc()
             continue
 
+    Tp = np.array(Tp)
+    meanBubSep = np.array(meanBubSep)
+
     plt.figure(figsize=(12, 8))
-    plt.plot(kappa, Tp, lw=2.5)
-    plt.plot(kappa, Tf, lw=2.5)
-    plt.plot(kappa, TVphysDecr_high, lw=2.5)
+    plt.plot(kappa, Tp, lw=2.5, marker='.')
+    plt.plot(kappa, Tf, lw=2.5, marker='.')
+    plt.plot(kappa, TVphysDecr_high, lw=2.5, marker='.')
     plt.legend(['$T_p$', '$T_f$', '$T_d$'])
     plt.xlabel('$\\kappa \,\, \\mathrm{[GeV]}$', fontsize=40)
     plt.ylabel('$T \,\, \\mathrm{[GeV]}$', fontsize=40)
@@ -187,14 +200,48 @@ def plotPipeline(outputFolderName: str, scanIndex: int, numSamples: int):
     plt.tight_layout()
     plt.show()
 
+    #xdat = np.linspace(1, 10, 100)
+    #ydat = np.array([1/x+0.001*x for x in xdat])
+
+    from scipy.optimize import curve_fit
+    #def recip(x, a, b, c):
+    #    return a/(b*x*x*x + c)
+    #popt, pcov = curve_fit(recip, Tp[1:], meanBubSep[1:])
+    #popt, pcov = curve_fit(recip, xdat, ydat)
+
+    #plt.plot(xdat, ydat, marker='.')
+    #plt.plot(xdat, recip(xdat, *popt), marker='.')
+    #plt.show()
+
+    plt.figure(figsize=(12, 8))
+    plt.plot(Tp, meanBubSep, lw=2.5, marker='.')
+    #plt.plot(Tp, recip(Tp, 1e18, 1, 0), lw=2.5, marker='.')
+    plt.xlabel('$T_p \,\, \\mathrm{[GeV]}$', fontsize=40)
+    plt.ylabel('$R_* \,\, \\mathrm{[GeV]}$', fontsize=40)
+    plt.tick_params(size=10, labelsize=24)
+    plt.margins(0, 0)
+    plt.tight_layout()
+    plt.show()
+
+    plt.figure()
+
 
 def debugScanPoint(outputFolderName: str, scanIndex: int, pointIndex: int):
     import command_line_interface as cli
     parameterPoint = list(np.loadtxt(f'{outputFolderName}/{scanIndex}/{pointIndex}/parameter_point.txt'))
-    cli.main(SMplusCubic, outputFolderName, 'run_supercool', [], parameterPoint, bDebug=True, bPlot=True)
+    cli.main(SMplusCubic, outputFolderName, 'run_supercool', [], parameterPoint, bDebug=True, bPlot=True,
+        bUseBoltzmannSuppression=True)
+
+
+def checkPotentialAtZeroT():
+    potential = SMplusCubic(*np.loadtxt('output/pipeline/archilBoltz/7/32/parameter_point.txt'), bUseBoltzmannSuppression=True)
+    x = np.linspace(-10, 260, 1000)
+    V = potential.Vtot([[X] for X in x], 0., include_radiation=False)
+    plt.plot(x, V)
+    plt.show()
 
 
 if __name__ == "__main__":
-    scanWithPipeline('output/pipeline/archil', scanIndex=5)
-    plotPipeline('output/pipeline/archil', 5, 100)
+    #scanWithPipeline('output/pipeline/archilBoltz', scanIndex=7)
+    plotPipeline('output/pipeline/archilBoltz', 6, 100)
     #debugScanPoint('output/pipeline/archil', 3, 0)

@@ -16,13 +16,14 @@ from models.Archil_model import SMplusCubic
 
 def runPoint(inputFileName: str, outputFolderName: str) -> None:
     parameterPoint = list(np.loadtxt(inputFileName))
-    cli.main(SMplusCubic, outputFolderName, 'run_supercool', [], parameterPoint)
+    cli.main(SMplusCubic, outputFolderName, 'run_supercool', ['-boltz', '-debug'], parameterPoint, bDebug=True,
+        bUseBoltzmannSuppression=True)
 
 
 def getReport(inputFileName: str, outputFolderName: str, generateIfNotExist: bool = True):
     report = None
     try:
-        with open(outputFolderName+'phase_history.json', 'r') as f:
+        with open(outputFolderName+'/phase_history.json', 'r') as f:
             report = json.load(f)
     except FileNotFoundError:
         if generateIfNotExist:
@@ -38,9 +39,9 @@ def getReport(inputFileName: str, outputFolderName: str, generateIfNotExist: boo
 
 def makePfPlot():
     BP = 1
-    reportBP1 = getReport(f'input/nanograv/nanograv_BP{BP}.txt', f'output/nanograv/BP{BP}/')
-    BP = 3
-    reportBP2 = getReport(f'input/nanograv/nanograv_BP{BP}.txt', f'output/nanograv/BP{BP}/')
+    reportBP1 = getReport(f'input/nanograv/nanograv_BP{BP}.txt', f'output/nanograv/BP{BP}')
+    BP = 2
+    reportBP2 = getReport(f'input/nanograv/nanograv_BP{BP}.txt', f'output/nanograv/BP{BP}')
 
     if reportBP1 is None:
         print('Phase history report was not obtained successfully for BP1, cannot generate plots.')
@@ -121,7 +122,7 @@ def calculateReheatingTemperature(T: float, Tc: float, rho_f: float, rho_t_func:
 
 
 def makeTrehPlot():
-    BP = 3
+    BP = 2
     reportBP2 = getReport(f'input/nanograv/nanograv_BP{BP}.txt', f'output/nanograv/BP{BP}/')
 
     if reportBP2 is None:

@@ -42,7 +42,8 @@ def writePhaseHistoryReport(fileName: str, paths: list[ProperPath], phaseStructu
 
 
 def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script: str, PT_params: list[str],
-         parameterPoint: list[float], bDebug: bool = False, bPlot: bool = False) -> None:
+        parameterPoint: list[float], bDebug: bool = False, bPlot: bool = False, bUseBoltzmannSuppression: bool =
+        False) -> None:
     # Create the output folder if it doesn't exist already.
     pathlib.Path(str(pathlib.Path(outputFolder))).mkdir(parents=True, exist_ok=True)
 
@@ -105,7 +106,10 @@ def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script
     analyser.timeout_phaseHistoryAnalysis = 100
 
     # Create the potential using the parameter point.
-    potential = potentialClass(*parameterPoint)
+    if potentialClass == SMplusCubic:
+        potential = potentialClass(*parameterPoint, bUseBoltzmannSuppression=bUseBoltzmannSuppression)
+    else:
+        potential = potentialClass(*parameterPoint)
 
     def notify_TransitionAnalyser_on_create(transitionAnalyser: TransitionAnalyser):
         transitionAnalyser.bComputeSubsampledThermalParams = True
@@ -140,7 +144,7 @@ if __name__ == "__main__":
     # PhaseTracer script to run, specific to a particular model label.
     PT_scripts = ['run_ToyModel', 'run_RSS', 'run_RSS', 'run_supercool']
     # Extra arguments to pass to PhaseTracer, specific to a particular model label.
-    PT_paramArrays = [[], [], ['-ht'], []]
+    PT_paramArrays = [[], [], ['-ht'], ['-boltz']]
     _potentialClass = None
     _PT_script = ''
     _PT_params = []
