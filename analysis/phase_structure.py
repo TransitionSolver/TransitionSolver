@@ -84,6 +84,9 @@ class Transition:
     TVphysDecr_high: float
     # The temperature at which the physical volume of the false vacuum stops shrinking.
     TVphysDecr_low: float
+    # Reheating temperature evaluated at different original temperatures.
+    Treh_n: float
+    Treh_nbar: float
     Treh_p: float
     Treh_e: float
     Treh_f: float
@@ -144,6 +147,8 @@ class Transition:
         self.Tf = -1.
         self.TVphysDecr_high = -1.
         self.TVphysDecr_low = -1.
+        self.Treh_n = -1
+        self.Treh_nbar = -1
         self.Treh_p = -1
         self.Treh_e = -1
         self.Treh_f = -1
@@ -244,6 +249,8 @@ class Transition:
         if self.TVphysDecr_high > 0: report['TVphysDecr_high'] = self.TVphysDecr_high
         if self.TVphysDecr_low > 0: report['TVphysDecr_low'] = self.TVphysDecr_low
 
+        if self.Treh_n > 0: report['Treh_n'] = self.Treh_n
+        if self.Treh_nbar > 0: report['Treh_nbar'] = self.Treh_nbar
         if self.Treh_p > 0: report['Treh_p'] = self.Treh_p
         if self.Treh_e > 0: report['Treh_e'] = self.Treh_e
         if self.Treh_f > 0: report['Treh_f'] = self.Treh_f

@@ -957,6 +957,9 @@ class TransitionAnalyser():
                     self.transition.Tn = Tn
                     self.transition.analysis.Hn = Hn
                     self.transition.analysis.betaTn = Hn*Tn*(SonTprev - SonTnew)/dT
+                    # Store the reheating temperature from this point, using conservation of energy.
+                    Tn_reh = self.calculateReheatTemperature(Tn)
+                    self.transition.Treh_n = Tn_reh
 
                 # Unit nucleation (excluding phantom bubbles).
                 if Tnbar < 0 and numBubblesCorrectedIntegral[-1] >= 1:
@@ -970,6 +973,9 @@ class TransitionAnalyser():
                     self.transition.Tnbar = Tnbar
                     self.transition.analysis.Hnbar = Hnbar
                     self.transition.analysis.betaTnbar = Hnbar*Tnbar*(SonTprev - SonTnew)/dT
+                    # Store the reheating temperature from this point, using conservation of energy.
+                    Tnbar_reh = self.calculateReheatTemperature(Tnbar)
+                    self.transition.Treh_nbar = Tnbar_reh
 
                 # Percolation.
                 if Tp < 0 and Vext[-1] >= percolationThreshold_Vext:
@@ -1145,6 +1151,8 @@ class TransitionAnalyser():
                     print('Physical volume of the false vacuum decreases between', Ts2, 'and', Ts1)
                 else:
                     print('Physical volume of the false vacuum decreases below', Ts1)
+            if Tn > 0:
+                print(f'Reheating from percolation: Tr(Tn): {Tn} -> {Tn_reh}')
             if Tp > 0:
                 print(f'Reheating from percolation: Tr(Tp): {Tp} -> {Tp_reh}')
             if Te > 0:
