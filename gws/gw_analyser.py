@@ -243,12 +243,13 @@ class GWAnalyser_InidividualTransition:
     def getPeakAmplitude_coll(self) -> float:
         # Based on https://arxiv.org/pdf/2208.11697.pdf
         #kappa = giese_kappa.kappaNuMuModel(self.hydroVars.soundSpeedSqTrue, self.hydroVars.soundSpeedSqFalse, alpha, self.vw)
-        return self.redshiftAmp * (self.H*self.lengthScale_bubbleSeparation / ((8*np.pi)**(1/3) * self.vw))**2\
+        A = 5.13e-2
+        return A * self.redshiftAmp * (self.H*self.lengthScale_bubbleSeparation / ((8*np.pi)**(1/3) * self.vw))**2\
             * self.K**2
         #    * ((self.kappaColl*alpha)/(1+alpha))**2
 
     def getPeakAmplitude_turb(self) -> float:
-        return 2*self.redshiftAmp * (self.H*self.lengthScale_bubbleSeparation / ((8*np.pi)**(1/3) * self.vw))\
+        return 20*self.redshiftAmp * (self.H*self.lengthScale_bubbleSeparation / (8*np.pi)**(1/3))\
             * (self.kappaTurb*self.K)**(3/2)
 
     def calculateSNR(self, gwFunc: Callable[[float], float]) -> float:
@@ -291,12 +292,12 @@ class GWAnalyser_InidividualTransition:
         if self.K == 0:
             return 0.
 
-        A = 5.13e-2
         a = 2.41
         b = 2.42
         c = 4.08
         fp0 = self.peakFrequency_coll
-        spectralShape_coll = A*(a+b)**c/(b*(f/fp0)**(-a/c) + a*(f/fp0)**(b/c))**c
+        # Using normalised spectral shape, so A = 5.13e-2 is moved to the amplitude calculation.
+        spectralShape_coll = (a+b)**c/(b*(f/fp0)**(-a/c) + a*(f/fp0)**(b/c))**c
         return spectralShape_coll
 
     def getGWfunc_total(self, soundShell: bool = True) -> Callable[[float], float]:
@@ -401,8 +402,11 @@ class GWAnalyser_InidividualTransition:
         alpha = 4*(thetaf - thetat) / (3*self.hydroVars.enthalpyDensityFalse)
         self.alpha = alpha
 
+        totalEnergyDensity = self.hydroVars.energyDensityFalse - self.phaseStructure.groundStateEnergyDensity
+
         if self.kappaColl > 0:
-            return self.kappaColl * alpha / (1 + alpha)
+            #return self.kappaColl * alpha / (1 + alpha)
+            return (thetaf - thetat) / totalEnergyDensity * self.kappaColl
 
         #kappa = giese_kappa.kappaNuMuModel(self.hydroVars.soundSpeedSqTrue, self.hydroVars.soundSpeedSqFalse, alpha,
         #    self.vw)
@@ -410,7 +414,7 @@ class GWAnalyser_InidividualTransition:
         csf = np.sqrt(csfSq)
         vcj = (1 + np.sqrt(3*alpha*(1 - csfSq + 3*csfSq*alpha))) / (1/csf + 3*csf*alpha)
         # Set the bubble wall velocity to the Chapman-Jouguet velocity.
-        self.vw = vcj+1e-10
+        self.vw = min(vcj+1e-10, 0.9*vcj + 0.1)
         kappa = giese_kappa.kappaNuModel(csfSq, alpha, self.vw)
 
         if kappa <= 0:
@@ -419,14 +423,14 @@ class GWAnalyser_InidividualTransition:
         if kappa > 1 or np.isnan(kappa):
             kappa = 1
 
-        totalEnergyDensity = self.hydroVars.energyDensityFalse - self.phaseStructure.groundStateEnergyDensity
-
         rho_gs = self.phaseStructure.groundStateEnergyDensity
         delta = 4*(thetat - rho_gs) / (3*self.hydroVars.enthalpyDensityFalse)
         alternativeK = kappa * alpha / (1 + alpha + delta)
         denom = (1 + alpha + delta)*(3*self.hydroVars.enthalpyDensityFalse)
 
         print('alpha:  ', alpha)
+        print('vw:     ', self.vw)
+        print('cs_f:   ', csf)
         print('K:      ', (thetaf - thetat) / totalEnergyDensity * kappa)
         print('Kalt:   ', alternativeK)
         print('denom:  ', denom)
@@ -648,9 +652,9 @@ class GWAnalyser:
             redshiftFreq: List[float] = []
             beta: List[float] = []
             lengthScale_beta: List[float] = []
-            betaV: float = transitionReport['betaV']
-            GammaMax: float = transitionReport['GammaMax']
-            lengthScale_betaV: float = (np.sqrt(2*np.pi)*GammaMax/betaV)**(-1/3)
+            betaV: float = transitionReport.get('betaV', 0.)
+            GammaMax: float = transitionReport.get('GammaMax', 0.)
+            lengthScale_betaV: float = (np.sqrt(2*np.pi)*GammaMax/betaV)**(-1/3) if betaV > 0. else 0.
 
             for i in indices:
                 gws = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
@@ -793,12 +797,12 @@ class GWAnalyser:
             plt.plot(T, lengthScale_bubbleSeparation, lw=2.5)
             plt.plot(T, lengthScale_shellThickness, lw=2.5)
             plt.plot(T, lengthScale_beta, lw=2.5)
-            plt.axhline(lengthScale_betaV, lw=2, ls='--')
+            if betaV > 0.: plt.axhline(lengthScale_betaV, lw=2, ls='--')
             plotMilestoneTemperatures()
             plt.xlabel('$T$', fontsize=24)
             plt.ylabel('$\\mathrm{Length \\;\\; scale}$', fontsize=24)
-            plt.legend(['bubble separation', 'shell thickness', 'bubble separation (beta)', 'bubble separation (betaV)'],
-                fontsize=20)
+            plt.legend(['bubble separation', 'shell thickness', 'bubble separation (beta)'] +
+                ['bubble separation (betaV)'] if betaV > 0. else [], fontsize=20)
             plt.ylim(bottom=0, top=max(lengthScale_bubbleSeparation[-1], lengthScale_shellThickness[-1]))
             finalisePlot()
 
@@ -971,6 +975,15 @@ def scanGWsWithParam(detectorClass, potentialClass, outputFolder, bForceAllTrans
         plt.show()
 
     plt.rcParams["text.usetex"] = True
+
+    HR = [H[i]*lengthScale_bubbleSeparation[i] for i in range(len(Tp))]
+    plt.figure(figsize=(12, 8))
+    plt.scatter(Tp, HR, lw=2.5)
+    plt.xlabel('$T_p$', fontsize=24)
+    plt.ylabel('$H_* R_*$', fontsize=24)
+    # plt.ylim(bottom=0.8, top=1.)
+    plt.margins(0, 0)
+    finalisePlot()
 
     Nthird = [n**(1/3) for n in N]
     invHRapprox = [TGamma[i]*Tp[i]*Nthird[i]/Treh[i]**2*(lengthScale_bubbleSeparation[i]*H[i]) for i in range(len(Tp))]
@@ -1284,10 +1297,10 @@ def main(detectorClass, potentialClass, outputFolder):
 
 
 if __name__ == "__main__":
-    #main(LISA, RealScalarSingletModel, 'output/RSS/RSS_BP2/')
+    main(LISA, RealScalarSingletModel, 'output/RSS/RSS_BP6/')
     #main(LISA, SMplusCubic, 'output/archil/archil_BP5/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/3/40/')
-    main(LISA, SMplusCubic, 'output/nanograv/BP2/')
+    #main(LISA, SMplusCubic, 'output/nanograv/BP1/')
     #main(LISA, SMplusCubic, 'output/pipeline/archilBoltz/6/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/1/13/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/1/14/')
