@@ -208,7 +208,7 @@ class GWAnalyser_InidividualTransition:
             # I don't know where 2.7 comes from, it should be 2.9 (1.65 * 3.5/2).
             #self.peakFrequency_turb = 2.7e-5 * (self.ndof/100)**(1/6) * (self.Treh/100)\
             #    / (self.H*self.lengthScale_bubbleSeparation / (8*np.pi)**(1/3))
-            self.peakFrequency_turb = 3.5/2*self.redshiftFreq / self.lengthScale_bubbleSeparation
+            self.peakFrequency_turb = 3.5*self.redshiftFreq / self.lengthScale_bubbleSeparation
 
             # The spectral shape is multiplied by this normalisation factor. However, the normalisation factor is initially
             # set to 1 upon the construction of this instance of the class. Use the spectral shape at the peak frequency to
@@ -249,8 +249,9 @@ class GWAnalyser_InidividualTransition:
         #    * ((self.kappaColl*alpha)/(1+alpha))**2
 
     def getPeakAmplitude_turb(self) -> float:
-        return 20*self.redshiftAmp * (self.H*self.lengthScale_bubbleSeparation / (8*np.pi)**(1/3))\
-            * (self.kappaTurb*self.K)**(3/2)
+        #return 20*self.redshiftAmp * (self.H*self.lengthScale_bubbleSeparation / (8*np.pi)**(1/3))\
+        #    * (self.kappaTurb*self.K)**(3/2)
+        return 9.0*self.redshiftAmp * (self.H*self.lengthScale_bubbleSeparation) * (self.kappaTurb*self.K)**(3/2)
 
     def calculateSNR(self, gwFunc: Callable[[float], float]) -> float:
         frequencies = self.detector.sensitivityCurve[0]
@@ -430,6 +431,7 @@ class GWAnalyser_InidividualTransition:
 
         print('alpha:  ', alpha)
         print('vw:     ', self.vw)
+        print('vcj:    ', vcj)
         print('cs_f:   ', csf)
         print('K:      ', (thetaf - thetat) / totalEnergyDensity * kappa)
         print('Kalt:   ', alternativeK)
@@ -1289,9 +1291,9 @@ def extractRelevantTransitions(report: dict, bForceAllTransitionsRelevant: bool 
 def main(detectorClass, potentialClass, outputFolder):
     gwa = GWAnalyser(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=False)
     # Use this for scanning GWs and thermal params over temperature.
-    gwa.scanGWs()
+    #gwa.scanGWs()
     # Use this for evaluating GWs using thermal params at the onset of percolation.
-    #gwa.determineGWs_withColl()
+    gwa.determineGWs_withColl()
     #scanGWsWithParam(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=True)
     #hydroTester(potentialClass, outputFolder)
 
@@ -1300,7 +1302,7 @@ if __name__ == "__main__":
     main(LISA, RealScalarSingletModel, 'output/RSS/RSS_BP6/')
     #main(LISA, SMplusCubic, 'output/archil/archil_BP5/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/3/40/')
-    #main(LISA, SMplusCubic, 'output/nanograv/BP1/')
+    #main(LISA, SMplusCubic, 'output/nanograv/BP2/')
     #main(LISA, SMplusCubic, 'output/pipeline/archilBoltz/6/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/1/13/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/1/14/')
