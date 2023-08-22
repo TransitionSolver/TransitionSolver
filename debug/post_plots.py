@@ -7,6 +7,7 @@ import json
 from cosmoTransitions import pathDeformation
 
 from analysis import phase_structure
+from analysis.phase_structure import Transition, Phase
 
 
 # Various functions that may be useful for debugging an effective potential or a first-order phase transition.
@@ -245,7 +246,7 @@ def plotPotentialBetweenPhases(potentialClass, folderName, transitionID, deltaT,
         return
 
     potential: potentialClass = potentialClass(*scanPoint)
-    bFileExists, phaseHistory = PhaseStructure.load_data(folderName + '/0.dat', bExpectFile=False)
+    bFileExists, phaseHistory = phase_structure.load_data(folderName + '/0.dat', bExpectFile=False)
 
     if not bFileExists:
         print('Phase history data file does not exist:', folderName+'/0.dat')
@@ -270,7 +271,7 @@ def plotPotentialBetweenPhases(potentialClass, folderName, transitionID, deltaT,
         print(f'Failed to find transition ID {transitionID} in JSON report.')
         return
 
-    transition: typing.Optional[PhaseStructure.Transition] = None
+    transition: typing.Optional[Transition] = None
 
     for tr in phaseHistory.transitions:
         if tr.ID == transitionID:
@@ -281,8 +282,8 @@ def plotPotentialBetweenPhases(potentialClass, folderName, transitionID, deltaT,
         print(f'Failed to find transition ID {transitionID} in phase history data.')
         return
 
-    fromPhase: PhaseStructure.Phase = phaseHistory.phases[transition.false_phase]
-    toPhase: PhaseStructure.Phase = phaseHistory.phases[transition.true_phase]
+    fromPhase: Phase = phaseHistory.phases[transition.false_phase]
+    toPhase: Phase = phaseHistory.phases[transition.true_phase]
 
     try:
         Tn = transitionReport['Tn']

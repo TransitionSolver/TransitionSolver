@@ -12,7 +12,7 @@ import scipy.optimize
 
 from analysis.phase_structure import Phase, PhaseStructure
 from gws.hydrodynamics import HydroVars
-from models.real_scalar_singlet_model import RealScalarSingletModel
+from models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz
 from models.real_scalar_singlet_model_ht import RealScalarSingletModel_HT
 from models.toy_model import ToyModel
 from models.Archil_model import SMplusCubic
@@ -77,6 +77,7 @@ class GWAnalyser_InidividualTransition:
     beta: float = 0.
     kappaColl: float = 0.
     kappaTurb: float = 0.
+    kappaSound: float = 0.
     alpha: float = 0.
 
     def __init__(self, phaseStructure: PhaseStructure, transitionReport: dict, potential: AnalysablePotential, detector:
@@ -103,18 +104,21 @@ class GWAnalyser_InidividualTransition:
 
         self.T = self.determineTransitionTemperature(settings)
         self.Treh = self.determineReheatingTemperature(settings)
-        self.hydroVars = hydrodynamics.getHydroVars(self.fromPhase, self.toPhase, self.potential, self.T)
+        #self.hydroVars = hydrodynamics.getHydroVars(self.fromPhase, self.toPhase, self.potential, self.T)
+        self.hydroVars = hydrodynamics.getHydroVars_new(self.fromPhase, self.toPhase, self.potential, self.T,
+            self.phaseStructure.groundStateEnergyDensity)
         self.hydroVarsReh = hydrodynamics.getHydroVars(self.fromPhase, self.toPhase, self.potential, self.Treh)
         self.vw = self.determineBubbleWallVelocity()
         self.kappaColl = settings.kappaColl
         self.kappaTurb = settings.kappaTurb
+        self.kappaSound = 0.  # Calculated in determineKineticEnergyFraction.
         self.K = self.determineKineticEnergyFraction()
-        print('K:', self.K)
+        #print('K:', self.K)
         if self.K == 0:
             return 0., 0.
         self.lengthScale_bubbleSeparation = self.determineLengthScale(settings)
 
-        totalEnergyDensity = self.hydroVars.energyDensityFalse - self.phaseStructure.groundStateEnergyDensity
+        totalEnergyDensity = self.hydroVars.energyDensityFalse# - self.phaseStructure.groundStateEnergyDensity
 
         self.H = np.sqrt(8*np.pi*GRAV_CONST/3 * totalEnergyDensity)
 
@@ -147,10 +151,10 @@ class GWAnalyser_InidividualTransition:
 
         self.ndof = self.potential.getDegreesOfFreedom(self.toPhase.findPhaseAtT(self.T, self.potential), self.T)
         ndofReh = self.potential.getDegreesOfFreedom(self.toPhase.findPhaseAtT(self.Treh, self.potential), self.Treh)
-        print('T_p:', self.T)
-        print('T_reh:', self.Treh)
-        print('g_*(T_p):', self.ndof)
-        print('g_*(T_reh):', ndofReh)
+        #print('T_p:', self.T)
+        #print('T_reh:', self.Treh)
+        #print('g_*(T_p):', self.ndof)
+        #print('g_*(T_reh):', ndofReh)
         self.redshiftAmp_radDom = 1.67e-5 * (100/self.ndof)**(1/3)
 
         # General form:
@@ -177,8 +181,8 @@ class GWAnalyser_InidividualTransition:
         # (a1/a0)^4 (H0/H1)^2 = (s0/s1)^(4/3) * (H0/H1)^2, and absorb h^2 factor.
         self.redshiftAmp = (s0/s1)**(4/3) * (H1/H0)**2 * h**2
 
-        print('Redshift ratio (amp):', self.redshiftAmp / self.redshiftAmp_radDom)
-        print('Redshift ratio (freq):', self.redshiftFreq*self.H / self.redshiftFreq_radDom)
+        #print('Redshift ratio (amp):', self.redshiftAmp / self.redshiftAmp_radDom)
+        #print('Redshift ratio (freq):', self.redshiftFreq*self.H / self.redshiftFreq_radDom)
 
         #Omega_peak = 2.59e-6*(100/potential.ndof)**(1./3.) * K*K * H*(lenScale/(8*np.pi)**(1./3.))/soundSpeed * upsilon
         if self.kappaColl == 0:
@@ -403,7 +407,7 @@ class GWAnalyser_InidividualTransition:
         alpha = 4*(thetaf - thetat) / (3*self.hydroVars.enthalpyDensityFalse)
         self.alpha = alpha
 
-        totalEnergyDensity = self.hydroVars.energyDensityFalse - self.phaseStructure.groundStateEnergyDensity
+        totalEnergyDensity = self.hydroVars.energyDensityFalse# - self.phaseStructure.groundStateEnergyDensity
 
         if self.kappaColl > 0:
             #return self.kappaColl * alpha / (1 + alpha)
@@ -416,30 +420,45 @@ class GWAnalyser_InidividualTransition:
         vcj = (1 + np.sqrt(3*alpha*(1 - csfSq + 3*csfSq*alpha))) / (1/csf + 3*csf*alpha)
         # Set the bubble wall velocity to the Chapman-Jouguet velocity.
         self.vw = min(vcj+1e-10, 0.9*vcj + 0.1)
-        kappa = giese_kappa.kappaNuModel(csfSq, alpha, self.vw)
+        self.kappaSound = giese_kappa.kappaNuModel(csfSq, alpha, self.vw)
 
-        if kappa <= 0:
+        if self.kappaSound <= 0:
             return 0
 
-        if kappa > 1 or np.isnan(kappa):
-            kappa = 1
+        #if kappa > 1 or np.isnan(kappa):
+        #    kappa = 1
 
-        rho_gs = self.phaseStructure.groundStateEnergyDensity
-        delta = 4*(thetat - rho_gs) / (3*self.hydroVars.enthalpyDensityFalse)
-        alternativeK = kappa * alpha / (1 + alpha + delta)
-        denom = (1 + alpha + delta)*(3*self.hydroVars.enthalpyDensityFalse)
+        #rho_gs = self.phaseStructure.groundStateEnergyDensity
+        #delta = 4*(thetat - rho_gs) / (3*self.hydroVars.enthalpyDensityFalse)
+        #delta = 4/(3*self.hydroVars.enthalpyDensityFalse) * (totalEnergyDensity - thetaf + thetat) - 1
+        #alternativeK = kappa * alpha / (1 + alpha + delta)
+        #denom = (1 + alpha + delta)*(3*self.hydroVars.enthalpyDensityFalse)
 
+        K = (thetaf - thetat) / totalEnergyDensity * self.kappaSound
+
+        print('---------------------------------------------')
         print('alpha:  ', alpha)
-        print('vw:     ', self.vw)
-        print('vcj:    ', vcj)
-        print('cs_f:   ', csf)
-        print('K:      ', (thetaf - thetat) / totalEnergyDensity * kappa)
-        print('Kalt:   ', alternativeK)
-        print('denom:  ', denom)
+        print('v_w:    ', self.vw)
+        print('v_cj:   ', vcj)
+        print('c_sf:   ', csf)
+        print('c2_st:  ', self.hydroVars.soundSpeedSqTrue)
+        print('K:      ', K)
+        #print('Kalt:   ', alternativeK)
+        #print('denom:  ', denom)
+        print('kappa:  ', self.kappaSound)
+        #print('delta:  ', delta)
         print('rho_f:  ', self.hydroVars.energyDensityFalse)
         print('rho_tot:', totalEnergyDensity)
+        print('theta_f:', thetaf)
+        print('theta_t:', thetat)
+        print('w_f    :', self.hydroVars.enthalpyDensityFalse)
+        if K > 1:
+            print('p_f:    ', self.hydroVars.pressureFalse)
+            print('p_t:    ', self.hydroVars.pressureTrue)
+            print('rho_f:  ', self.hydroVars.energyDensityFalse)
+            print('rho_t:  ', self.hydroVars.energyDensityTrue)
 
-        return (thetaf - thetat) / totalEnergyDensity * kappa
+        return K
 
     def determineLengthScale(self, settings) -> float:
         if settings.sampleIndex < 0:
@@ -640,13 +659,18 @@ class GWAnalyser:
             SNR_regular: List[float] = []
             SNR_soundShell: List[float] = []
             K: List[float] = []
+            kappa: List[float] = []
+            alpha: List[float] = []
             vw: List[float] = []
             Treh: List[float] = []
+            TrehApprox: List[float] = []
             lengthScale_bubbleSeparation: List[float] = []
             lengthScale_shellThickness: List[float] = []
             adiabaticIndex: List[float] = []
             fluidVelocity: List[float] = []
             upsilon: List[float] = []
+            csfSq: List[float] = []
+            cstSq: List[float] = []
             csf: List[float] = []
             cst: List[float] = []
             ndof: List[float] = []
@@ -685,15 +709,20 @@ class GWAnalyser:
                     SNR_regular.append(gws.calculateSNR(gwFunc_regular))
                     SNR_soundShell.append(gws.calculateSNR(gwFunc_soundShell))
                     K.append(gws.K)
+                    kappa.append(gws.kappaSound)
+                    alpha.append(gws.alpha)
                     vw.append(gws.vw)
                     Treh.append(gws.Treh)
+                    TrehApprox.append(T[-1]*(1+alpha[-1])**(1/4))
                     lengthScale_bubbleSeparation.append(gws.lengthScale_bubbleSeparation)
                     lengthScale_shellThickness.append(gws.lengthScale_shellThickness)
                     adiabaticIndex.append(gws.adiabaticIndex)
                     fluidVelocity.append(gws.fluidVelocity)
                     upsilon.append(gws.upsilon)
-                    csf.append(np.sqrt(gws.hydroVars.soundSpeedSqFalse))
-                    cst.append(np.sqrt(gws.hydroVars.soundSpeedSqTrue))
+                    csfSq.append(gws.hydroVars.soundSpeedSqFalse)
+                    cstSq.append(gws.hydroVars.soundSpeedSqTrue)
+                    csf.append(np.sqrt(csfSq[-1]))
+                    cst.append(np.sqrt(cstSq[-1]))
                     ndof.append(gws.ndof)
                     redshiftAmp.append(gws.redshiftAmp)
                     redshiftFreq.append(gws.redshiftFreq)
@@ -780,6 +809,20 @@ class GWAnalyser:
             finalisePlot()
 
             plt.figure(figsize=(12, 8))
+            plt.plot(T, kappa, lw=2.5)
+            plotMilestoneTemperatures()
+            plt.xlabel('$T$', fontsize=24)
+            plt.ylabel('$\\kappa$', fontsize=24)
+            finalisePlot()
+
+            plt.figure(figsize=(12, 8))
+            plt.plot(T, alpha, lw=2.5)
+            plotMilestoneTemperatures()
+            plt.xlabel('$T$', fontsize=24)
+            plt.ylabel('$\\alpha$', fontsize=24)
+            finalisePlot()
+
+            plt.figure(figsize=(12, 8))
             plt.plot(T, peakFrequency_sw_bubbleSeparation, lw=2.5)
             plt.plot(T, peakFrequency_sw_shellThickness, lw=2.5)
             plotMilestoneTemperatures()
@@ -810,7 +853,8 @@ class GWAnalyser:
 
             plt.figure(figsize=(12, 8))
             plt.plot(T, Treh, lw=2.5)
-            plt.plot(T, T, lw=2, ls='--')
+            plt.plot(T, TrehApprox, lw=2.5, ls='--')
+            plt.plot(T, T, lw=2, ls=':')
             #plotMilestoneTemperatures()
             plt.xlabel('$T_p \\;\\; \\mathrm{[GeV]}$', fontsize=40)
             plt.ylabel('$T_{\\mathrm{reh}} \\;\\; \\mathrm{[GeV]}$', fontsize=40)
@@ -844,6 +888,16 @@ class GWAnalyser:
             plotMilestoneTemperatures()
             plt.xlabel('$T$', fontsize=24)
             plt.ylabel('$\\Gamma$', fontsize=24)
+            finalisePlot()
+
+            plt.figure(figsize=(12, 8))
+            plt.plot(T, csfSq, lw=2.5)
+            plt.plot(T, cstSq, lw=2.5)
+            plt.axhline(1/3, lw=2, ls='--')
+            plotMilestoneTemperatures()
+            plt.xlabel('$T$', fontsize=24)
+            plt.ylabel('$c_s^2$', fontsize=24)
+            plt.legend(['false', 'true'], fontsize=20)
             finalisePlot()
 
             plt.figure(figsize=(12, 8))
@@ -1210,11 +1264,12 @@ def hydroTester(potentialClass: Type[AnalysablePotential], outputFolder: str):
         T = np.logspace(-3, np.log10(Tc*0.99), 100)
 
         for t in T:
-            hydroVars = hydrodynamics.getHydroVars(fromPhase, toPhase, potential, t)
-            pf.append(hydroVars.pressureFalse + phaseStructure.groundStateEnergyDensity)
-            pt.append(hydroVars.pressureTrue + phaseStructure.groundStateEnergyDensity)
-            ef.append(hydroVars.energyDensityFalse - phaseStructure.groundStateEnergyDensity)
-            et.append(hydroVars.energyDensityTrue - phaseStructure.groundStateEnergyDensity)
+            hydroVars = hydrodynamics.getHydroVars_new(fromPhase, toPhase, potential, t,
+                phaseStructure.groundStateEnergyDensity)
+            pf.append(hydroVars.pressureFalse)
+            pt.append(hydroVars.pressureTrue)
+            ef.append(hydroVars.energyDensityFalse)
+            et.append(hydroVars.energyDensityTrue)
             wf.append(hydroVars.enthalpyDensityFalse)
             wt.append(hydroVars.enthalpyDensityTrue)
             csfSq.append(hydroVars.soundSpeedSqFalse)
@@ -1275,8 +1330,9 @@ def extractRelevantTransitions(report: dict, bForceAllTransitionsRelevant: bool 
 
         if not bForceAllTransitionsRelevant:
             for transitionSequence in report['paths']:
-                for transitionID in transitionSequence['transitions']:
-                    isTransitionRelevant[transitionID] = True
+                if transitionSequence['valid']:
+                    for transitionID in transitionSequence['transitions']:
+                        isTransitionRelevant[transitionID] = True
 
         for transition in report['transitions']:
             if isTransitionRelevant[transition['id']]:
@@ -1291,18 +1347,18 @@ def extractRelevantTransitions(report: dict, bForceAllTransitionsRelevant: bool 
 def main(detectorClass, potentialClass, outputFolder):
     gwa = GWAnalyser(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=False)
     # Use this for scanning GWs and thermal params over temperature.
-    #gwa.scanGWs()
+    gwa.scanGWs()
     # Use this for evaluating GWs using thermal params at the onset of percolation.
-    gwa.determineGWs_withColl()
+    #gwa.determineGWs_withColl()
     #scanGWsWithParam(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=True)
     #hydroTester(potentialClass, outputFolder)
 
 
 if __name__ == "__main__":
-    main(LISA, RealScalarSingletModel, 'output/RSS/RSS_BP6/')
+    main(LISA, RealScalarSingletModel_Boltz, 'output/RSS/RSS_BP7/')
     #main(LISA, SMplusCubic, 'output/archil/archil_BP5/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/3/40/')
-    #main(LISA, SMplusCubic, 'output/nanograv/BP2/')
+    #main(LISA, SMplusCubic, 'output/nanograv/BP1/')
     #main(LISA, SMplusCubic, 'output/pipeline/archilBoltz/6/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/1/13/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/1/14/')

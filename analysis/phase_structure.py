@@ -6,7 +6,11 @@ import traceback
 # Avoids circular import issue.
 if TYPE_CHECKING:
     from models.analysable_potential import AnalysablePotential
-    from analysis.transition_analysis import AnalysedTransition, InvalidTemperatureException
+    from analysis.transition_analysis import AnalysedTransition
+
+
+class InvalidTemperatureException(Exception):
+    pass
 
 
 class Phase:

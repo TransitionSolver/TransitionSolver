@@ -1,3 +1,4 @@
+import traceback
 from typing import Optional, Union
 
 from cosmoTransitions.tunneling1D import ThinWallError
@@ -31,10 +32,6 @@ GRAV_CONST = 6.7088e-39
 
 # TODO: not currently thrown anywhere. Replace fail flags and messages with exceptions.
 class FailedActionCalculationException(Exception):
-    pass
-
-
-class InvalidTemperatureException(Exception):
     pass
 
 
@@ -2232,14 +2229,20 @@ class TransitionAnalyser():
                 drhoVdT = (rhoVsample - rhoVatTmin) / Tsep
 
                 # 0 at Teq, +ve for vacuum domination, -ve for radiation domination.
-                approxEnergyEra = lambda T: rhoVatTmin + (T - newTmin)*drhoVdT - radiationEnergyDensity(T)
+                # TODO: after an issue where we tried to evalute the dof below Tmin, make it so that dof remains
+                #  constant below Tmin. The calculation of dof requires the phase, which ceases to exist below Tmin.
+                approxEnergyEra = lambda T: rhoVatTmin + (T - newTmin)*drhoVdT - radiationEnergyDensity(max(T, newTmin))
 
                 if approxEnergyEra(0) < 0:  # => rhoV(0) < 0.
                     # We can't bracket a root, so use fsolve instead. There may not be a solution.
-                    root = scipy.optimize.fsolve(energyEra, newTmin)
+                    try:
+                        root = scipy.optimize.fsolve(approxEnergyEra, newTmin)
+                    except:
+                        traceback.print_exc()
+                        print('Here')
 
                     # If there is a solution.
-                    if len(root) > 0 and energyEra(root[0]) >= 1e-10:
+                    if len(root) > 0 and approxEnergyEra(root[0]) >= 1e-10:
                         if self.bDebug:
                             print('Found Teq using unbracketed root finding.')
                         # Negate the result to indicate this value is obtained via extrapolation.
@@ -2285,7 +2288,32 @@ class TransitionAnalyser():
             if self.toPhase.T[-1]-2*Tsep > self.transition.Tc and objective(self.toPhase.T[-1]-2*Tsep) < 0:
                 return -1
             else:
-                return scipy.optimize.toms748(objective, T, self.toPhase.T[-1]-2*Tsep)
+                #return scipy.optimize.toms748(objective, T, self.toPhase.T[-1]-2*Tsep)
+                # TODO: something broke when introducing Boltzmann suppression, can no longer use toms748 due to:
+                #  zeros.py, line 959, in _compute_divided_differences
+                #    row = np.diff(row)[:] / denom
+                #  ValueError: operands could not be broadcast together with shapes (3,0) (2,)
+                #  So, bisect instead...
+                # We know that objective is negative at T and positive at sufficiently high temperature.
+                # Pick the midpoint.
+                low = T
+                high = self.toPhase.T[-1]-2*Tsep
+                mid = 0.5*(low + high)
+                while (high - low) > 0.0001*self.potential.temperatureScale:
+                    try:
+                        result = objective(mid)
+                    except:
+                        traceback.print_exc()
+                        print('Oops')
+                    if result > 0:
+                        high = mid
+                    elif result < 0:
+                        low = mid
+                    else:
+                        break
+                    mid = 0.5*(low + high)
+                return mid
+
         return scipy.optimize.toms748(objective, T, self.transition.Tc)
 
     def transitionCouldComplete(self, maxAction: float, Pf: list[float]) -> bool:

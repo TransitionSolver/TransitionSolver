@@ -4,7 +4,7 @@ from analysis.transition_analysis import TransitionAnalyser
 from models.Archil_model import SMplusCubic
 from models.analysable_potential import AnalysablePotential
 from models.toy_model import ToyModel
-from models.real_scalar_singlet_model import RealScalarSingletModel
+from models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz
 from models.real_scalar_singlet_model_ht import RealScalarSingletModel_HT
 from analysis.phase_structure import PhaseStructure
 from analysis.phase_history_analysis import AnalysisMetrics, PhaseHistoryAnalyser
@@ -109,7 +109,7 @@ def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script
     if potentialClass == SMplusCubic:
         potential = potentialClass(*parameterPoint, bUseBoltzmannSuppression=bUseBoltzmannSuppression)
     else:
-        potential = potentialClass(*parameterPoint)
+        potential = potentialClass(*parameterPoint[:5])
 
     def notify_TransitionAnalyser_on_create(transitionAnalyser: TransitionAnalyser):
         transitionAnalyser.bComputeSubsampledThermalParams = True
@@ -140,11 +140,11 @@ if __name__ == "__main__":
     # Support model labels.
     modelLabels = ['toy', 'rss', 'rss_ht', 'archil']
     # The AnalysablePotential subclass corresponding to a particular model label.
-    models = [ToyModel, RealScalarSingletModel, RealScalarSingletModel_HT, SMplusCubic]
+    models = [ToyModel, RealScalarSingletModel_Boltz, RealScalarSingletModel_HT, SMplusCubic]
     # PhaseTracer script to run, specific to a particular model label.
     PT_scripts = ['run_ToyModel', 'run_RSS', 'run_RSS', 'run_supercool']
     # Extra arguments to pass to PhaseTracer, specific to a particular model label.
-    PT_paramArrays = [[], [], ['-ht'], ['-boltz']]
+    PT_paramArrays = [[], ['-boltz'], ['-ht'], ['-boltz']]
     _potentialClass = None
     _PT_script = ''
     _PT_params = []

@@ -2,6 +2,11 @@ import numpy as np
 from models.analysable_potential import AnalysablePotential
 
 
+# The maximum value for the ratio (mass / temperature)^2 that appears in the Boltzmann suppression exponent. Above this,
+# we treat the suppression factor as zero to avoid underflow.
+BOLTZ_EXP_MAX: float = 12.
+
+
 class SMplusCubic(AnalysablePotential):
     # kap = [-1.87,-1.88,-1.89,-1.9,-1.91,-1.92]*125.**2 /246.
     # Previously, default value for kap was -121.95. Now no default value.
@@ -81,25 +86,16 @@ class SMplusCubic(AnalysablePotential):
         rho = X[...,0]
         rhoSq = rho**2
         TSq = T**2
-        #print('T:', T)
         g2Sq = self.g**2
         g1Sq = self.g1**2
 
         h20 = 3*self.lam*rhoSq + 2*self.kap*rho - self.mu0Sq
-        try:
-            TSqforH = (0. if TSq == 0. or h20/TSq > 12 else TSq*np.exp(-h20/TSq)) if self.bUseBoltzmannSuppression else TSq
-        except ValueError:
-            TSqforH = TSq
-            print('Getting value error for T:', T)
-            print(T)
+        TSqforH = (0. if TSq == 0. or h20/TSq > BOLTZ_EXP_MAX else TSq*np.exp(-h20/TSq))\
+            if self.bUseBoltzmannSuppression else TSq
         h2 = h20 + TSqforH*(self.lam/4 + g2Sq + (g2Sq + g1Sq)/16 + self.yt**2/4)
         W2_T = g2Sq/4*rhoSq
-        try:
-            TSqforW = (0. if TSq == 0. or W2_T/TSq > 12 else TSq*np.exp(-W2_T/TSq)) if self.bUseBoltzmannSuppression else TSq
-        except ValueError:
-            TSqforW = TSq
-            print('Getting value error for T:', T)
-            print(T)
+        TSqforW = (0. if TSq == 0. or W2_T/TSq > BOLTZ_EXP_MAX else TSq*np.exp(-W2_T/TSq))\
+            if self.bUseBoltzmannSuppression else TSq
         W2_L = W2_T + 11/6*g2Sq*TSqforW
 
         #a = (g2Sq + g1Sq)/4*rho**2 + 11/6*(g2Sq + g1Sq)*TSq
@@ -110,16 +106,11 @@ class SMplusCubic(AnalysablePotential):
         if self.bUseBoltzmannSuppression and TSq > 0:
             a0 = b0 = (g2Sq + g1Sq)*3*rhoSq
             Z2_T = (a0 + b0)/24
-            ph2_T = (a0 - b0)/24
-            try:
-                TSqforZ = (0. if TSq == 0. or Z2_T/TSq > 12 else TSq*np.exp(-Z2_T/TSq)) if self.bUseBoltzmannSuppression else TSq
-            except ValueError:
-                TSqforZ = TSq
-                print('Getting value error for T:', T)
-                print(T)
+            #ph2_T = (a0 - b0)/24
+            TSqforZ = (0. if Z2_T/TSq > BOLTZ_EXP_MAX else TSq*np.exp(-Z2_T/TSq))\
+                if self.bUseBoltzmannSuppression else TSq
             a = (g2Sq + g1Sq)*(3*rhoSq + 22*TSqforZ)
-            b = np.sqrt(9*(g2Sq + g1Sq)**2*rhoSq**2 + 44*TSqforZ*(g2Sq - g1Sq)**2
-                * (3*rhoSq + 11*TSqforZ))
+            b = np.sqrt(9*(g2Sq + g1Sq)**2*rhoSq**2 + 44*TSqforZ*(g2Sq - g1Sq)**2 * (3*rhoSq + 11*TSqforZ))
             Z2_L = (a + b)/24
             ph2_L = (a - b)/24
         else:
@@ -127,7 +118,7 @@ class SMplusCubic(AnalysablePotential):
             b = np.sqrt(9*(g2Sq + g1Sq)**2*rhoSq**2 + 44*TSq*(g2Sq - g1Sq)**2*(3*rhoSq + 11*TSq))
             Z2_L = (a + b)/24
             ph2_L = (a - b)/24
-            Z2_T = (g2Sq + g1Sq)/4*rho**2
+            Z2_T = (g2Sq + g1Sq)/4*rhoSq
 
         M = np.array([h2, W2_L, W2_T, Z2_L, Z2_T, ph2_L])
         M = np.rollaxis(M, 0, len(M.shape))

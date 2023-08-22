@@ -1,3 +1,5 @@
+from typing import Callable
+
 from analysis.phase_structure import Phase
 from models.analysable_potential import AnalysablePotential
 
@@ -47,8 +49,97 @@ def getTstep(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T
     return min(max(0.0005*Tmax, 0.0001*potential.temperatureScale), 0.5*(T - Tmin), 0.5*(Tmax - T))
 
 
+def dfdx(f: Callable[[float], float], x: float, dx: float, order=4) -> float:
+    if order < 4:
+        return (f(x+dx) - f(x-dx)) / (2*dx)
+    else:
+        return (-f(x+2*dx) + 8*f(x+dx) - 8*f(x-dx) + f(x-2*dx)) / (12*dx)
+
+
+def d2fdx2(f: Callable[[float], float], x: float, dx: float, order=4) -> float:
+    if order < 4:
+        return (f(x+dx) - 2*f(x) + f(x-dx)) / (dx*dx)
+    else:
+        return (-f(x+2*dx) + 16*f(x+dx) - 30*f(x) + 16*f(x-dx) - f(x-2*dx)) / (12*dx*dx)
+
+
 # Calculates all hydrodynamic variables using three samples of the potential. If more than one hydrodynamic variable is
 # required, this function is more efficient than using the function for individual hydrodynamic variables separately.
+#def getHydroVars(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float, order=4) -> HydroVars:
+#    if order <= 4:
+#        return getHydroVars_secondOrder(fromPhase, toPhase, potential, T)
+#    else:
+#        return getHydroVars_fourthOrder(fromPhase, toPhase, potential, T)
+
+
+def getHydroVars_new(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float,
+        groundStateEnergyDensity: float, order=4) -> HydroVars:
+    Tstep = getTstep(fromPhase, toPhase, potential, T)
+
+    def FED_f(x: float) -> float:
+        phi = fromPhase.findPhaseAtT(x, potential)
+        return potential.freeEnergyDensity(phi, x) - groundStateEnergyDensity
+
+    def FED_t(x: float) -> float:
+        phi = toPhase.findPhaseAtT(x, potential)
+        return potential.freeEnergyDensity(phi, x) - groundStateEnergyDensity
+
+    # Field configuration for the two phases at 3 temperatures.
+    """phifl = fromPhase.findPhaseAtT(Tl, potential)
+    phifm = fromPhase.findPhaseAtT(T, potential)
+    phifh = fromPhase.findPhaseAtT(Th, potential)
+    phitl = toPhase.findPhaseAtT(Tl, potential)
+    phitm = toPhase.findPhaseAtT(T, potential)
+    phith = toPhase.findPhaseAtT(Th, potential)
+
+    # Free energy density of the two phases at those 3 temperatures.
+    Ffl = potential.freeEnergyDensity(phifl, Tl)
+    Ffm = potential.freeEnergyDensity(phifm, T)
+    Ffh = potential.freeEnergyDensity(phifh, Th)
+    Ftl = potential.freeEnergyDensity(phitl, Tl)
+    Ftm = potential.freeEnergyDensity(phitm, T)
+    Fth = potential.freeEnergyDensity(phith, Th)"""
+
+    dFfdT = dfdx(FED_f, T, Tstep, order)
+    dFtdT = dfdx(FED_t, T, Tstep, order)
+
+    d2FfdT2 = d2fdx2(FED_f, T, Tstep, order)
+    d2FtdT2 = d2fdx2(FED_t, T, Tstep, order)
+
+    # Central difference method for the temperature derivative of the free energy density.
+    """dFfdT = (Ffh - Ffl) / (2*Tstep)
+    dFtdT = (Fth - Ftl) / (2*Tstep)
+
+    # Central difference method for the second temperature derivative of the free energy density.
+    d2FfdT2 = (Ffh - 2*Ffm + Ffl) / Tstep**2
+    d2FtdT2 = (Fth - 2*Ftm + Ftl) / Tstep**2"""
+
+    Ffm = FED_f(T)
+    Ftm = FED_t(T)
+
+    # Pressure.
+    pf = -Ffm
+    pt = -Ftm
+
+    # Energy density.
+    ef = Ffm - T*dFfdT
+    et = Ftm - T*dFtdT
+
+    # Enthalpy density.
+    wf = -T*dFfdT
+    wt = -T*dFtdT
+
+    # Entropy density.
+    sf = -dFfdT
+    st = -dFtdT
+
+    # Sound speed squared.
+    csfSq = dFfdT / (T*d2FfdT2)
+    cstSq = dFtdT / (T*d2FtdT2)
+
+    return HydroVars(pf, pt, ef, et, wf, wt, sf, st, csfSq, cstSq)
+
+
 def getHydroVars(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float) -> HydroVars:
     Tstep = getTstep(fromPhase, toPhase, potential, T)
     Tl = T - Tstep

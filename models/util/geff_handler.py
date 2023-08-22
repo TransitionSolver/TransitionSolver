@@ -51,11 +51,22 @@ def getGeffCurveFromFile(filename: str) -> Callable[[float], float]:
     yMax = y[-1]
 
     def clampedInterpolator(z: float):
-        if z <= xMin:
-            return yMin
-        if z >= xMax:
-            return yMax
-        return max(0., interpolator(z))
+        z = np.array(z)
+        mask_underflow = z <= xMin
+        mask_overflow = z >= xMax
+        mask_inrange = np.logical_and(z > xMin, z < xMax)
+        result = np.zeros(shape=z.shape)
+        result[mask_underflow] = yMin
+        result[mask_overflow] = yMax
+        result[mask_inrange] = interpolator(z[mask_inrange])
+        mask_negative = np.logical_and(mask_inrange, result < 0.)
+        result[mask_negative] = 0.
+        return result
+        #if z <= xMin:
+        #    return yMin
+        #if z >= xMax:
+        #    return yMax
+        #return max(0., interpolator(z))
 
     return clampedInterpolator
 

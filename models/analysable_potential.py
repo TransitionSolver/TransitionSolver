@@ -1,3 +1,5 @@
+import traceback
+
 from cosmoTransitions.generic_potential import generic_potential
 import numpy as np
 from typing import List, Union, Callable
@@ -87,20 +89,34 @@ class AnalysablePotential(generic_potential):
         m2f, nf = self.fermion_massSq(X)
 
         dof = self.raddof
+        newMethod = True
 
+        #for i in range(m2b.shape[1]):
         for i in range(len(m2b)):
-            if abs(m2b[i]) < 1e-10:
-                y = np.inf
+            if newMethod:
+                mask = m2b[..., i] < 1e-10
+                y = np.zeros(shape=m2b[..., i].shape)
+                y[..., mask] = np.inf
+                y[..., ~mask] = T/np.sqrt(np.abs(m2b[..., i][~mask]))
             else:
-                y = T/np.sqrt(abs(m2b[i]))
+                if abs(m2b[i]) < 1e-10:
+                    y = np.inf
+                else:
+                    y = T/np.sqrt(abs(m2b[i]))
             factor = self.geffFunc_boson(y)
             dof += nb[i]*factor
 
         for i in range(len(m2f)):
-            if abs(m2f[i]) < 1e-10:
-                y = np.inf
+            if newMethod:
+                mask = m2f[i] < 1e-10
+                y = np.zeros(shape=m2f[i].shape)
+                y[mask] = np.inf
+                y[~mask] = T/np.sqrt(np.abs(m2f[i][~mask]))
             else:
-                y = T/np.sqrt(abs(m2f[i]))
+                if abs(m2f[i]) < 1e-10:
+                    y = np.inf
+                else:
+                    y = T/np.sqrt(abs(m2f[i]))
             factor = self.geffFunc_fermion(y)
             dof += nf[i]*factor
 
