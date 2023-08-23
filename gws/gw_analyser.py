@@ -60,6 +60,7 @@ class GWAnalyser_InidividualTransition:
     peakFrequency_coll: float = 0.
     SNR: float = 0.
     K: float = 0.
+    Kunbounded: float = 0.
     vw: float = 0.
     T: float = 0.
     Treh: float = 0.
@@ -112,6 +113,7 @@ class GWAnalyser_InidividualTransition:
         self.kappaColl = settings.kappaColl
         self.kappaTurb = settings.kappaTurb
         self.kappaSound = 0.  # Calculated in determineKineticEnergyFraction.
+        self.Kunbounded = 0.
         self.K = self.determineKineticEnergyFraction()
         #print('K:', self.K)
         if self.K == 0:
@@ -434,7 +436,10 @@ class GWAnalyser_InidividualTransition:
         #alternativeK = kappa * alpha / (1 + alpha + delta)
         #denom = (1 + alpha + delta)*(3*self.hydroVars.enthalpyDensityFalse)
 
-        K = (thetaf - thetat) / totalEnergyDensity * self.kappaSound
+        oldK = (thetaf - thetat) / totalEnergyDensity * self.kappaSound
+        K = self.kappaSound*(thetaf - thetat) / (totalEnergyDensity + self.kappaSound*(thetaf - thetat))
+
+        self.Kunbounded = oldK
 
         print('---------------------------------------------')
         print('alpha:  ', alpha)
@@ -443,6 +448,7 @@ class GWAnalyser_InidividualTransition:
         print('c_sf:   ', csf)
         print('c2_st:  ', self.hydroVars.soundSpeedSqTrue)
         print('K:      ', K)
+        print('K (old):', oldK)
         #print('Kalt:   ', alternativeK)
         #print('denom:  ', denom)
         print('kappa:  ', self.kappaSound)
@@ -644,6 +650,8 @@ class GWAnalyser:
 
             print('Num subsamples:', len(allT))
 
+            # Increase this to reduce the number of samples used in the plots (to improve runtime while getting the
+            # general form of the results). If skipFactor=3 (for example), every third sample will be used.
             skipFactor = 1
             for i in range(min(len(allT)//skipFactor-1,len(allT))):
                 indices.append(1+i*skipFactor)
@@ -659,6 +667,7 @@ class GWAnalyser:
             SNR_regular: List[float] = []
             SNR_soundShell: List[float] = []
             K: List[float] = []
+            Kunbounded: List[float] = []
             kappa: List[float] = []
             alpha: List[float] = []
             vw: List[float] = []
@@ -709,6 +718,7 @@ class GWAnalyser:
                     SNR_regular.append(gws.calculateSNR(gwFunc_regular))
                     SNR_soundShell.append(gws.calculateSNR(gwFunc_soundShell))
                     K.append(gws.K)
+                    Kunbounded.append(gws.Kunbounded)
                     kappa.append(gws.kappaSound)
                     alpha.append(gws.alpha)
                     vw.append(gws.vw)
@@ -803,9 +813,11 @@ class GWAnalyser:
 
             plt.figure(figsize=(12, 8))
             plt.plot(T, K, lw=2.5)
+            plt.plot(T, Kunbounded, lw=2.5)
             plotMilestoneTemperatures()
             plt.xlabel('$T$', fontsize=24)
             plt.ylabel('$K$', fontsize=24)
+            plt.legend(['$\\rho_\\mathrm{kin}/(\\rho_f + \\rho_\\mathrm{kin})$', '$\\rho_\\mathrm{kin}/\\rho_f$'])
             finalisePlot()
 
             plt.figure(figsize=(12, 8))
