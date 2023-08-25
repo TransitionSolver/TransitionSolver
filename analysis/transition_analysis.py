@@ -1107,7 +1107,10 @@ class TransitionAnalyser():
             Shigh = self.actionSampler.subSonT[gammaMaxIndex-1]
             # TODO: should use proper formula for second derivative with non-uniform grid.
             d2SdT2 = (Shigh - 2*Smid + Slow) / (0.5*(Thigh - Tlow))**2
-            self.transition.analysis.betaV = H[gammaMaxIndex]*self.actionSampler.subT[gammaMaxIndex]*np.sqrt(d2SdT2)
+            if self.bDebug:
+                print('Calculating betaV, d2SdT2:', d2SdT2)
+            if d2SdT2 > 0:
+                self.transition.analysis.betaV = H[gammaMaxIndex]*self.actionSampler.subT[gammaMaxIndex]*np.sqrt(d2SdT2)
 
         meanBubbleSeparation = (bubbleNumberDensity[indexTp])**(-1/3)
 

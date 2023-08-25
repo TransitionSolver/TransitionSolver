@@ -109,8 +109,13 @@ def kappaNuModel(cs2,al,vp):
         return [dxidv,dwdv]
 
     n = 501 # change accuracy here
+    #n = int(2e8+1)
     vs = np.linspace((vp-vm)/(1.-vp*vm), 0, n)
     sol = odeint(dfdv, [vp,1.], vs, args=(nu,))
     xis, ws = (sol[:,0],-sol[:,1]*wm/al*4./vp**3)
 
     return simps(ws*(xis*vs)**2/(1.-vs**2), xis)
+
+
+if __name__ == "__main__":
+    print(kappaNuModel(0.3333684071549121, 4942.716815118201, 0.9999819356748879))

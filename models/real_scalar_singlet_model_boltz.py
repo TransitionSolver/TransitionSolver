@@ -29,7 +29,7 @@ class RealScalarSingletModel_Boltz(AnalysablePotential):
         self.Ndim = 2
 
         self.ndof = 107.75
-        self.raddof = 80.25  # The dof that we don't explicitly include in VT. These must be accounted for in the
+        self.raddof = 22.25  # The dof that we don't explicitly include in VT. These must be accounted for in the
         #                      radiation for the free energy density.
         self.bUseSimpleDOF = False
 
@@ -729,47 +729,22 @@ class RealScalarSingletModel_Boltz(AnalysablePotential):
         ----------------------------------------------------------------------------------------------------------------
     """
 
+    # Calculate exp(-(mass/temperature)^2).
     def getBoltzmannSuppression(self, massSq, TSq):
         if not self.bUseBoltzmannSuppression:
-        #    return np.ones(shape=massSq_orig.shape)
             return np.ones(shape=(massSq*TSq).shape)
 
         if TSq <= 0:
             return np.zeros(shape=(massSq*TSq).shape)
 
-        #massSq = np.atleast_1d(massSq_orig)
-        #massSq = np.array(m)
         zSq = massSq/TSq
         thermalCorrections = np.zeros(shape=zSq.shape)
         mask = np.abs(zSq) < BOLTZ_EXP_MAX
-        """try:
-            if len(massSq.shape) > 0:
-                result = np.reshape(np.exp(-np.abs(massSq[mask]/TSq)), thermalCorrections.shape)
-            else:
-                result = np.exp(-np.abs(massSq/TSq))
-        except:
-            traceback.print_exc()
-            print('Here')"""
-        # TODO: probably don't need to reshape if we already know the shape of the thermal mass.
-        #try:
-        #    if len(result.shape) > 0 and result.shape != thermalCorrections[mask].shape:
-        #        result = np.reshape(result, thermalCorrections[mask].shape)
-        #except:
-        #    traceback.print_exc()
-        #    print('Here2')
-        """try:
-            thermalCorrections[mask] = result[mask]
-        except:
-            traceback.print_exc()
-            print('Here')"""
-        try:
-            if len(zSq.shape) > 0:
-                thermalCorrections[mask] = np.reshape(np.exp(-np.abs(zSq[mask])), thermalCorrections[mask].shape)
-            else:
-                thermalCorrections[mask] = np.exp(-np.abs(zSq))
-        except:
-            traceback.print_exc()
-            print('Here')
+        if len(zSq.shape) > 0:
+            thermalCorrections[mask] = np.reshape(np.exp(-np.abs(zSq[mask])), thermalCorrections[mask].shape)
+        else:
+            # TODO: aren't the shapes misaligned here?
+            thermalCorrections[mask] = np.exp(-np.abs(zSq))
         return thermalCorrections
 
     def boson_massSq(self, X, T, massMatrix=None, ignoreGoldstone=False):

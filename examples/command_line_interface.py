@@ -74,6 +74,10 @@ def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script
     if PhaseTracer_directory == '':
         sys.exit(1)
 
+    #potential = potentialClass(*parameterPoint[:5])
+    #parameterPoint = potential.getParameterPoint()
+    #np.savetxt(outputFolder + '/parameter_point.txt', parameterPoint)
+
     # Call PhaseTracer to determine the phase structure of the potential. 'wsl' is the Windows Subsystem for Linux,
     # which is required because PhaseTracer does not run on Windows directly. The second element of the list is the
     # program name. The remaining elements are the input parameters for the specified program. The timeout (in seconds)
@@ -103,7 +107,7 @@ def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script
     analyser.bPlot = bPlot
     analyser.bReportAnalysis = bDebug
     analyser.bReportPaths = bDebug
-    analyser.timeout_phaseHistoryAnalysis = 100
+    analyser.timeout_phaseHistoryAnalysis = 500
 
     # Create the potential using the parameter point.
     if potentialClass == SMplusCubic:
@@ -116,6 +120,15 @@ def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script
         transitionAnalyser.bCheckPossibleCompletion = False
 
     notifyHandler.addEvent('TransitionAnalyser-on_create', notify_TransitionAnalyser_on_create)
+
+    origin = np.array([0, 0])
+    vev = potential.approxZeroTMin()[0]
+    print('V0(0, 0)      :', potential.V0(origin))
+    print('V0(vh, vs)    :', potential.V0(vev))
+    print('V(0 , 0 , 0)  :', potential.Vtot(origin, 0))
+    print('V(vh, vs, 0)  :', potential.Vtot(vev, 0))
+    print('V(0 , 0 , 100):', potential.Vtot(origin, 100))
+    print('V(vh, vs, 100):', potential.Vtot(vev, 100))
 
     # Analyse the phase history.
     paths, _, analysisMetrics = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=1.)
