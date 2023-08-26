@@ -628,8 +628,11 @@ class GWAnalyser:
             #plt.savefig('output/plots/GWs_BP1.pdf')
             plt.show()
 
-    def scanGWs(self):
+    def scanGWs(self, saveFolderName: str = ''):
+        if saveFolderName != '':
+            pathlib.Path(str(pathlib.Path(saveFolderName))).mkdir(parents=True, exist_ok=True)
         for transitionReport in self.relevantTransitions:
+            transitionID = transitionReport['id']
             startTime = time.perf_counter()
 
             allT: List[float] = transitionReport['TSubsample']
@@ -748,11 +751,14 @@ class GWAnalyser:
                 if 'Te' in transitionReport: plt.axvline(transitionReport['Te'], ls='--', c='b')
                 if 'Tf' in transitionReport: plt.axvline(transitionReport['Tf'], ls='--', c='k')
 
-            def finalisePlot():
+            def finalisePlot(plotName: str = 'plot'):
                 plt.tick_params(size=8, labelsize=28)
                 plt.margins(0, 0)
                 plt.tight_layout()
-                plt.show()
+                if saveFolderName != '':
+                    plt.savefig(saveFolderName+plotName+'.pdf', bbox_inches='tight')
+                else:
+                    plt.show()
 
             plt.rcParams["text.usetex"] = True
 
@@ -768,57 +774,51 @@ class GWAnalyser:
             plt.xlabel('$f_{\\mathrm{peak}} \\;\\; \\mathrm{[GeV]}$', fontsize=40)
             plt.ylabel('$\\Omega_{\\mathrm{peak}}$', fontsize=40)
             plt.legend(['$\\mathrm{noise}$', '$\\mathrm{sw \\; (regular)}$', '$\\mathrm{sw \\; (sound \\; shell)}$',
-                '$\\mathrm{turb}$'], fontsize=28)
+                '$\\mathrm{turb}$'], fontsize=28, loc='upper left')
             colorbar = plt.colorbar()
             colorbar.set_label(label='$T \\;\\; \\mathrm{[GeV]}$', fontsize=28)
             colorbar.ax.tick_params(labelsize=16)
             for i in range(1, len(plt.gca().get_legend().legendHandles)):
                 plt.gca().get_legend().legendHandles[i].set_color('k')
                 #handle.set_markeredgecolor('k')
-            finalisePlot()
+            finalisePlot('GW_peak_scatter')
 
             plt.figure(figsize=(12, 8))
             plt.plot(T, SNR_regular, lw=2.5)
             plt.plot(T, SNR_soundShell, lw=2.5)
+            plt.yscale('log')
             plotMilestoneTemperatures()
             plt.xlabel('$T \\;\\; \\mathrm{[GeV]}$', fontsize=40)
             plt.ylabel('$\\mathrm{SNR}$', fontsize=40)
             plt.legend(['$\\mathrm{regular}$', '$\\mathrm{sound \\; shell}$'], fontsize=28)
             #plt.ylim(bottom=0, top=max(SNR_regular[-1], SNR_soundShell[-1]))
-            plt.ylim(bottom=0)
-            finalisePlot()
+            #plt.ylim(bottom=0)
+            finalisePlot('SNR_vs_T')
 
-            plt.figure(figsize=(12, 8))
+            """plt.figure(figsize=(12, 8))
             plt.plot(T, [peakAmplitude_sw_soundShell[i] / peakAmplitude_sw_regular[i] for i in range(len(T))], lw=2.5)
             plotMilestoneTemperatures()
             plt.xlabel('$T \\;\\; \\mathrm{[GeV]}$', fontsize=40)
             plt.ylabel('$\\Omega_{\\mathrm{peak}}^{\\mathrm{sw}} \\mathrm{\\;\\; sound \\; shell \\; / \\; regular}$',
                 fontsize=40)
-            finalisePlot()
+            finalisePlot()"""
 
             plt.figure(figsize=(12, 8))
             plt.plot(T, peakAmplitude_sw_regular, lw=2.5)
             plt.plot(T, peakAmplitude_sw_soundShell, lw=2.5)
             plt.plot(T, peakAmplitude_turb, lw=2.5)
+            plt.yscale('log')
             plotMilestoneTemperatures()
             plt.xlabel('$T \\;\\; \\mathrm{[GeV]}$', fontsize=40)
             #plt.ylabel('$\\Omega_{\\mathrm{peak}}^{\\mathrm{sw}}$', fontsize=40)
             plt.ylabel('$\\Omega_{\\mathrm{peak}}$', fontsize=40)
             #plt.ylim(bottom=0, top=(1.1*max(peakAmplitude_sw_regular[-1], peakAmplitude_sw_soundShell[-1],
             #    peakAmplitude_turb[-1])))
-            plt.ylim(bottom=0)
-            plt.legend(['$\\mathrm{regular}$', '$\\mathrm{sound shell}$', '$\\mathrm{turb}$'], fontsize=28)
-            finalisePlot()
+            #plt.ylim(bottom=0)
+            plt.legend(['$\\mathrm{regular}$', '$\\mathrm{sound \; shell}$', '$\\mathrm{turb}$'], fontsize=28)
+            finalisePlot('Omega_peak_vs_T')
 
             """plt.figure(figsize=(12, 8))
-            plt.plot(T, peakAmplitude_turb, lw=2.5)
-            plotMilestoneTemperatures()
-            plt.xlabel('$T \\;\\; \\mathrm{[GeV]}$', fontsize=40)
-            plt.ylabel('$\\Omega_{\\mathrm{peak}}^{\\mathrm{turb}}$', fontsize=40)
-            plt.ylim(bottom=0, top=peakAmplitude_turb[-1])
-            finalisePlot()"""
-
-            plt.figure(figsize=(12, 8))
             plt.plot(T, K, lw=2.5)
             plt.plot(T, Kunbounded, lw=2.5)
             plotMilestoneTemperatures()
@@ -843,30 +843,25 @@ class GWAnalyser:
             plt.xlabel('$T \\;\\; \\mathrm{[GeV]}$', fontsize=40)
             plt.ylabel('$\\alpha$', fontsize=40)
             plt.ylim(bottom=0)
-            finalisePlot()
+            finalisePlot()"""
 
             plt.figure(figsize=(12, 8))
             plt.plot(T, peakFrequency_sw_bubbleSeparation, lw=2.5)
             plt.plot(T, peakFrequency_sw_shellThickness, lw=2.5)
             plt.plot(T, peakFrequency_turb, lw=2.5)
+            plt.yscale('log')
             plotMilestoneTemperatures()
             plt.xlabel('$T \\;\\; \\mathrm{[GeV]}$', fontsize=40)
             #plt.ylabel('$f_{\\mathrm{peak}}^{\\mathrm{sw}}$', fontsize=40)
             plt.ylabel('$f_{\\mathrm{peak}} \\;\\; \\mathrm{[GeV]}$', fontsize=40)
             plt.legend(['$\\mathrm{sw \\; bubble \\; separation}$', '$\\mathrm{sw \\; shell \\; thickness}$',
                 '$\\mathrm{turb}$'], fontsize=28)
-            finalisePlot()
-
-            """plt.figure(figsize=(12, 8))
-            plt.plot(T, peakFrequency_turb, lw=2.5)
-            plotMilestoneTemperatures()
-            plt.xlabel('$T \\;\\; \\mathrm{[GeV]}$', fontsize=40)
-            plt.ylabel('$f_{\\mathrm{peak}}^{\\mathrm{turb}}$', fontsize=40)
-            finalisePlot()"""
+            finalisePlot('f_peak_vs_T')
 
             plt.figure(figsize=(12, 8))
             plt.plot(T, lengthScale_bubbleSeparation, lw=2.5)
             plt.plot(T, lengthScale_shellThickness, lw=2.5)
+            plt.yscale('log')
             #plt.plot(T, lengthScale_beta, lw=2.5)
             #if betaV > 0.: plt.axhline(lengthScale_betaV, lw=2, ls='--')
             plotMilestoneTemperatures()
@@ -877,10 +872,10 @@ class GWAnalyser:
             plt.legend(['$\\mathrm{sw \\; bubble \\; separation}$', '$\\mathrm{sw \\; shell \\; thickness}$'],
                 fontsize=28)
             #plt.ylim(bottom=0, top=max(lengthScale_bubbleSeparation[-1], lengthScale_shellThickness[-1]))
-            plt.ylim(bottom=0)
-            finalisePlot()
+            #plt.ylim(bottom=0)
+            finalisePlot('length_scale_vs_T')
 
-            plt.figure(figsize=(12, 8))
+            """plt.figure(figsize=(12, 8))
             plt.plot(T, Treh, lw=2.5)
             plt.plot(T, TrehApprox, lw=2.5, ls='--')
             plt.plot(T, T, lw=2, ls=':')
@@ -959,7 +954,7 @@ class GWAnalyser:
             plotMilestoneTemperatures()
             plt.xlabel('$T \\;\\; \\mathrm{[GeV]}$', fontsize=40)
             plt.ylabel('$\\mathcal{R}_f$', fontsize=40)
-            finalisePlot()
+            finalisePlot()"""
 
 def scanGWsWithParam(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=False):
     peakAmplitude_sw: List[float] = []
@@ -1377,7 +1372,7 @@ def extractRelevantTransitions(report: dict, bForceAllTransitionsRelevant: bool 
 def main(detectorClass, potentialClass, outputFolder):
     gwa = GWAnalyser(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=False)
     # Use this for scanning GWs and thermal params over temperature.
-    gwa.scanGWs()
+    gwa.scanGWs('C:/Work/Monash/PhD/Documents/SupercoolGWs/Plots/new_BP4/')
     # Use this for evaluating GWs using thermal params at the onset of percolation.
     #gwa.determineGWs_withColl()
     #scanGWsWithParam(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=True)
