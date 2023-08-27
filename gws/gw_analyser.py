@@ -60,7 +60,6 @@ class GWAnalyser_InidividualTransition:
     peakFrequency_coll: float = 0.
     SNR: float = 0.
     K: float = 0.
-    Kunbounded: float = 0.
     vw: float = 0.
     T: float = 0.
     Treh: float = 0.
@@ -79,6 +78,7 @@ class GWAnalyser_InidividualTransition:
     kappaColl: float = 0.
     kappaTurb: float = 0.
     kappaSound: float = 0.
+    kappaSound_original: float = 0.
     alpha: float = 0.
 
     def __init__(self, phaseStructure: PhaseStructure, transitionReport: dict, potential: AnalysablePotential, detector:
@@ -113,7 +113,7 @@ class GWAnalyser_InidividualTransition:
         self.kappaColl = settings.kappaColl
         self.kappaTurb = settings.kappaTurb
         self.kappaSound = 0.  # Calculated in determineKineticEnergyFraction.
-        self.Kunbounded = 0.
+        self.kappaSound_original = 0.  # Calculated in determineKineticEnergyFraction.
         self.K = self.determineKineticEnergyFraction()
         #print('K:', self.K)
         if self.K == 0:
@@ -248,15 +248,11 @@ class GWAnalyser_InidividualTransition:
 
     def getPeakAmplitude_coll(self) -> float:
         # Based on https://arxiv.org/pdf/2208.11697.pdf
-        #kappa = giese_kappa.kappaNuMuModel(self.hydroVars.soundSpeedSqTrue, self.hydroVars.soundSpeedSqFalse, alpha, self.vw)
         A = 5.13e-2
         return A * self.redshiftAmp * (self.H*self.lengthScale_bubbleSeparation / ((8*np.pi)**(1/3) * self.vw))**2\
             * self.K**2
-        #    * ((self.kappaColl*alpha)/(1+alpha))**2
 
     def getPeakAmplitude_turb(self) -> float:
-        #return 20*self.redshiftAmp * (self.H*self.lengthScale_bubbleSeparation / (8*np.pi)**(1/3))\
-        #    * (self.kappaTurb*self.K)**(3/2)
         return 9.0*self.redshiftAmp * (self.H*self.lengthScale_bubbleSeparation) * (self.kappaTurb*self.K)**(3/2)
 
     def calculateSNR(self, gwFunc: Callable[[float], float]) -> float:
@@ -322,9 +318,6 @@ class GWAnalyser_InidividualTransition:
                 + self.peakAmplitude_turb*self.spectralShape_turb(f)
 
     def getGWfunc_sw(self, soundShell: bool = False) -> Callable[[float], float]:
-        #if self.peakAmplitude_sw == 0. or self.peakFrequency_sw_bubbleSeparation == 0.:
-        #    return lambda f: 0.
-
         if self.kappaColl > 0:
             return lambda f: 0
 
@@ -409,11 +402,9 @@ class GWAnalyser_InidividualTransition:
         alpha = 4*(thetaf - thetat) / (3*self.hydroVars.enthalpyDensityFalse)
         self.alpha = alpha
 
-        totalEnergyDensity = self.hydroVars.energyDensityFalse# - self.phaseStructure.groundStateEnergyDensity
-
         if self.kappaColl > 0:
             #return self.kappaColl * alpha / (1 + alpha)
-            return (thetaf - thetat) / totalEnergyDensity * self.kappaColl
+            return (thetaf - thetat) / self.hydroVars.energyDensityFalse * self.kappaColl
 
         #kappa = giese_kappa.kappaNuMuModel(self.hydroVars.soundSpeedSqTrue, self.hydroVars.soundSpeedSqFalse, alpha,
         #    self.vw)
@@ -422,7 +413,22 @@ class GWAnalyser_InidividualTransition:
         vcj = (1 + np.sqrt(3*alpha*(1 - csfSq + 3*csfSq*alpha))) / (1/csf + 3*csf*alpha)
         # Set the bubble wall velocity to the Chapman-Jouguet velocity.
         self.vw = min(vcj+1e-10, 0.9*vcj + 0.1)
-        self.kappaSound = giese_kappa.kappaNuModel(csfSq, alpha, self.vw)
+        nExp = 6
+        self.kappaSound = giese_kappa.kappaNuModel(csfSq, alpha, self.vw, 1+10**nExp)
+        self.kappaSound_original = self.kappaSound
+
+        #nExp += 1
+        #while self.kappaSound > 1 and nExp < 9:
+        #    print(f'nExp = {nExp-1} resulted in kappa = {self.kappaSound}, increasing...')
+        #    self.kappaSound = giese_kappa.kappaNuModel(csfSq, alpha, self.vw, 1+10**nExp)
+        #    nExp += 1
+
+        #if self.kappaSound_original > 1:
+        #    print('Final result: kappa =', self.kappaSound, 'using nExp =', nExp-1)
+
+        if self.kappaSound > 1:
+            #print('Still too large, capping at 1.')
+            self.kappaSound = 1
 
         if self.kappaSound <= 0:
             return 0
@@ -436,10 +442,8 @@ class GWAnalyser_InidividualTransition:
         #alternativeK = kappa * alpha / (1 + alpha + delta)
         #denom = (1 + alpha + delta)*(3*self.hydroVars.enthalpyDensityFalse)
 
-        oldK = (thetaf - thetat) / totalEnergyDensity * self.kappaSound
-        K = self.kappaSound*(thetaf - thetat) / (totalEnergyDensity + self.kappaSound*(thetaf - thetat))
-
-        self.Kunbounded = oldK
+        K = (thetaf - thetat) / self.hydroVars.energyDensityFalse * self.kappaSound
+        #K = self.kappaSound*(thetaf - thetat) / (self.hydroVars.energyDensityFalse + self.kappaSound*(thetaf - thetat))
 
         print('---------------------------------------------')
         print('alpha:  ', alpha)
@@ -448,13 +452,11 @@ class GWAnalyser_InidividualTransition:
         print('c_sf:   ', csf)
         print('c2_st:  ', self.hydroVars.soundSpeedSqTrue)
         print('K:      ', K)
-        print('K (old):', oldK)
         #print('Kalt:   ', alternativeK)
         #print('denom:  ', denom)
         print('kappa:  ', self.kappaSound)
         #print('delta:  ', delta)
         print('rho_f:  ', self.hydroVars.energyDensityFalse)
-        print('rho_tot:', totalEnergyDensity)
         print('theta_f:', thetaf)
         print('theta_t:', thetat)
         print('w_f    :', self.hydroVars.enthalpyDensityFalse)
@@ -670,8 +672,8 @@ class GWAnalyser:
             SNR_regular: List[float] = []
             SNR_soundShell: List[float] = []
             K: List[float] = []
-            Kunbounded: List[float] = []
             kappa: List[float] = []
+            kappa_original: List[float] = []
             alpha: List[float] = []
             vw: List[float] = []
             Treh: List[float] = []
@@ -721,8 +723,8 @@ class GWAnalyser:
                     SNR_regular.append(gws.calculateSNR(gwFunc_regular))
                     SNR_soundShell.append(gws.calculateSNR(gwFunc_soundShell))
                     K.append(gws.K)
-                    Kunbounded.append(gws.Kunbounded)
                     kappa.append(gws.kappaSound)
+                    kappa_original.append(gws.kappaSound_original)
                     alpha.append(gws.alpha)
                     vw.append(gws.vw)
                     Treh.append(gws.Treh)
@@ -819,14 +821,22 @@ class GWAnalyser:
             finalisePlot('Omega_peak_vs_T')
 
             """plt.figure(figsize=(12, 8))
+            plt.plot(T, kappa, lw=2.5)
+            plt.plot(T, kappa_original, lw=2.5)
+            plotMilestoneTemperatures()
+            plt.xlabel('$T \\;\\; \\mathrm{[GeV]}$', fontsize=40)
+            plt.ylabel('$\\kappa$', fontsize=40)
+            plt.ylim(bottom=0)
+            finalisePlot('kappa_sw_vs_T')"""
+
+            """plt.figure(figsize=(12, 8))
             plt.plot(T, K, lw=2.5)
-            plt.plot(T, Kunbounded, lw=2.5)
             plotMilestoneTemperatures()
             plt.xlabel('$T \\;\\; \\mathrm{[GeV]}$', fontsize=40)
             plt.ylabel('$K$', fontsize=40)
             plt.ylim(bottom=0)
-            plt.legend(['$\\rho_\\mathrm{kin}/(\\rho_f + \\rho_\\mathrm{kin})$', '$\\rho_\\mathrm{kin}/\\rho_f$'],
-                fontsize=28)
+            #plt.legend(['$\\rho_\\mathrm{kin}/(\\rho_f + \\rho_\\mathrm{kin})$', '$\\rho_\\mathrm{kin}/\\rho_f$'],
+            #    fontsize=28)
             finalisePlot()
 
             plt.figure(figsize=(12, 8))
@@ -1372,7 +1382,8 @@ def extractRelevantTransitions(report: dict, bForceAllTransitionsRelevant: bool 
 def main(detectorClass, potentialClass, outputFolder):
     gwa = GWAnalyser(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=False)
     # Use this for scanning GWs and thermal params over temperature.
-    gwa.scanGWs('C:/Work/Monash/PhD/Documents/SupercoolGWs/Plots/new_BP4/')
+    gwa.scanGWs('C:/Work/Monash/PhD/Documents/SupercoolGWs/Plots/new_BP1/')
+    #gwa.scanGWs()
     # Use this for evaluating GWs using thermal params at the onset of percolation.
     #gwa.determineGWs_withColl()
     #scanGWsWithParam(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=True)
@@ -1380,7 +1391,7 @@ def main(detectorClass, potentialClass, outputFolder):
 
 
 if __name__ == "__main__":
-    main(LISA, RealScalarSingletModel_Boltz, 'output/RSS/RSS_new_BP4/')
+    main(LISA, RealScalarSingletModel_Boltz, 'output/RSS/RSS_new_BP1/')
     #main(LISA, SMplusCubic, 'output/archil/archil_BP5/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/3/40/')
     #main(LISA, SMplusCubic, 'output/nanograv/BP1/')

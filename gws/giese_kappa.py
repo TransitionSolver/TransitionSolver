@@ -90,7 +90,7 @@ def kappaNuMuModel(cs2b,cs2s,al,vw):
     return (Ksh + Krf)/al
 
 
-def kappaNuModel(cs2,al,vp):
+def kappaNuModel(cs2,al,vp,n=501):
     nu = 1./cs2+1.
     tmp = 1.-3.*al+vp**2*(1./cs2+3.*al)
     disc = 4*vp**2*(1.-nu)+tmp**2
@@ -108,7 +108,7 @@ def kappaNuModel(cs2,al,vp):
         dwdv = nu*(xi-v)/(1.-xi*v)*w/(1.-v**2)
         return [dxidv,dwdv]
 
-    n = 501 # change accuracy here
+    #n = 501 # change accuracy here
     #n = int(2e8+1)
     vs = np.linspace((vp-vm)/(1.-vp*vm), 0, n)
     sol = odeint(dfdv, [vp,1.], vs, args=(nu,))
