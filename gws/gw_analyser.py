@@ -446,6 +446,7 @@ class GWAnalyser_InidividualTransition:
         #K = self.kappaSound*(thetaf - thetat) / (self.hydroVars.energyDensityFalse + self.kappaSound*(thetaf - thetat))
 
         print('---------------------------------------------')
+        print('T:      ', self.T)
         print('alpha:  ', alpha)
         print('v_w:    ', self.vw)
         print('v_cj:   ', vcj)
@@ -923,7 +924,7 @@ class GWAnalyser:
             plt.xlabel('$T \\;\\; \\mathrm{[GeV]}$', fontsize=40)
             plt.ylabel('$\\Gamma$', fontsize=40)
             plt.ylim(bottom=0)
-            finalisePlot()
+            finalisePlot()"""
 
             plt.figure(figsize=(12, 8))
             plt.plot(T, csfSq, lw=2.5)
@@ -933,7 +934,7 @@ class GWAnalyser:
             plt.xlabel('$T \\;\\; \\mathrm{[GeV]}$', fontsize=40)
             plt.ylabel('$c_s^2$', fontsize=40)
             plt.legend(['false', 'true'], fontsize=20)
-            finalisePlot()
+            finalisePlot('csSq_vs_T')
 
             plt.figure(figsize=(12, 8))
             plt.plot(T, csf, lw=2.5)
@@ -943,9 +944,9 @@ class GWAnalyser:
             plt.xlabel('$T \\;\\; \\mathrm{[GeV]}$', fontsize=40)
             plt.ylabel('$c_s$', fontsize=40)
             plt.legend(['false', 'true'], fontsize=20)
-            finalisePlot()
+            finalisePlot('cs_vs_T')
 
-            plt.figure(figsize=(12, 8))
+            """plt.figure(figsize=(12, 8))
             plt.plot(T, ndof, lw=2.5)
             plotMilestoneTemperatures()
             plt.xlabel('$T \\;\\; \\mathrm{[GeV]}$', fontsize=40)
@@ -1382,7 +1383,7 @@ def extractRelevantTransitions(report: dict, bForceAllTransitionsRelevant: bool 
 def main(detectorClass, potentialClass, outputFolder):
     gwa = GWAnalyser(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=False)
     # Use this for scanning GWs and thermal params over temperature.
-    gwa.scanGWs('C:/Work/Monash/PhD/Documents/SupercoolGWs/Plots/new_BP1/')
+    gwa.scanGWs('C:/Work/Monash/PhD/Documents/SupercoolGWs/Plots/new_BP3/')
     #gwa.scanGWs()
     # Use this for evaluating GWs using thermal params at the onset of percolation.
     #gwa.determineGWs_withColl()
@@ -1391,7 +1392,7 @@ def main(detectorClass, potentialClass, outputFolder):
 
 
 if __name__ == "__main__":
-    main(LISA, RealScalarSingletModel_Boltz, 'output/RSS/RSS_new_BP1/')
+    main(LISA, RealScalarSingletModel_Boltz, 'output/RSS/RSS_new_BP3/')
     #main(LISA, SMplusCubic, 'output/archil/archil_BP5/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/3/40/')
     #main(LISA, SMplusCubic, 'output/nanograv/BP1/')
