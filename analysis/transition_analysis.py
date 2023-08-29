@@ -4,6 +4,7 @@ from typing import Optional, Union
 from cosmoTransitions.tunneling1D import ThinWallError
 
 from gws import hydrodynamics
+from gws.hydrodynamics import HydroVars
 from util.print_suppressor import PrintSuppressor
 import numpy as np
 import scipy.optimize
@@ -517,6 +518,7 @@ class TransitionAnalyser():
     bAllowErrorsForTn: bool = True
     bReportAnalysis: bool = False
     timeout_phaseHistoryAnalysis: float = -1.
+    bUseChapmanJouguetVelocity: float = False
 
     potential: AnalysablePotential
     transition: Transition
@@ -560,6 +562,19 @@ class TransitionAnalyser():
         self.bComputeSubsampledThermalParams = False
 
         notifyHandler.handleEvent(self, 'on_create')
+
+    def getBubbleWallVelocity(self, hydroVars: HydroVars) -> float:
+        if self.bUseChapmanJouguetVelocity:
+            thetaf = (hydroVars.energyDensityFalse - hydroVars.pressureFalse/hydroVars.soundSpeedSqTrue) / 4
+            thetat = (hydroVars.energyDensityTrue - hydroVars.pressureTrue/hydroVars.soundSpeedSqTrue) / 4
+
+            alpha = 4*(thetaf - thetat) / (3*hydroVars.enthalpyDensityFalse)
+
+            csfSq = hydroVars.soundSpeedSqFalse
+            csf = np.sqrt(csfSq)
+            return (1 + np.sqrt(3*alpha*(1 - csfSq + 3*csfSq*alpha))) / (1/csf + 3*csf*alpha)
+        else:
+            return self.transition.vw
 
     # TODO: need to handle subcritical transitions better. Shouldn't use integration if the max sampled action is well
     #  below the nucleation threshold. Should treat the action as constant or linearise it and estimate transition
@@ -647,13 +662,15 @@ class TransitionAnalyser():
         numBubblesCorrectedIntegral = [0.]
         Vext = [0.]
         Pf = [1.]
-        H = [np.sqrt(self.calculateHubbleParameterSq(self.actionSampler.T[0]))]
         Gamma = [0.]
         bubbleNumberDensity = [0.]
         meanBubbleRadiusArray = [0.]
         meanBubbleSeparationArray = [0.]
         # TODO: need an initial value...
         betaArray = [0.]
+        hydroVars = [self.getHydroVars(self.actionSampler.T[0])]
+        H = [np.sqrt(self.calculateHubbleParameterSq_fromHydro(hydroVars[0]))]
+        vw = [self.getBubbleWallVelocity(hydroVars[0])]
 
         radDensityPrefactor = np.pi**2/30
         fourPiOnThree = 4/3*np.pi
@@ -686,13 +703,13 @@ class TransitionAnalyser():
             return Gamma[x] / (self.actionSampler.subT[x]**4 * H[x])
 
         def innerFunction_trueVacVol(x):
-            return self.transition.vw / H[x]
+            return vw[x] / H[x]
 
         def outerFunction_avgBubRad(x):
             return Gamma[x]*Pf[x] / (self.actionSampler.subT[x] * H[x])
 
         def innerFunction_avgBubRad(x):
-            return self.transition.vw / H[x]
+            return vw[x] / H[x]
 
         def sampleTransformationFunction(x):
             return self.actionSampler.subT[x]
@@ -711,8 +728,9 @@ class TransitionAnalyser():
         #bCheckForTeq = (not transition.subcritical and Tmax == transition.Tc) or\
         #    calculateEnergyDensityAtT(Tmax)[0] <= radDensity*Tmax**4
 
-        rho0 = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential,
-            self.actionSampler.T[0], forFromPhase=True) - self.groundStateEnergyDensity
+        #rho0 = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential,
+        #    self.actionSampler.T[0], forFromPhase=True) - self.groundStateEnergyDensity
+        rho0 = hydroVars[0].energyDensityFalse
         Temp = self.actionSampler.T[0]
         rhoR = radDensityPrefactor * self.potential.getDegreesOfFreedomInPhase(self.fromPhase, Temp) * Temp**4
 
@@ -732,44 +750,6 @@ class TransitionAnalyser():
 
         # Keep sampling until we have identified the end of the phase transition or that the transition doesn't complete.
         while not self.bCheckPossibleCompletion or self.transitionCouldComplete(maxSonTThreshold + toleranceSonT, Pf):
-            # Check if S/T increases (with decreasing temperature) before percolation occurs. This is important for
-            # determining the bubble number density at the percolation temperature.
-            # TODO: why are we checking Te < 0? [2023]
-            # TODO: removed (and replaced with alternate version just below) on 23/06/2023.
-            """if Tp < 0 and TAtSonTmin == 0 and self.actionSampler.SonT[-1] > self.actionSampler.SonT[simIndex]:
-                TAtSonTmin = self.actionSampler.T[simIndex]
-                SonTmin = self.actionSampler.SonT[simIndex]
-                GammaAtSonTmin = Gamma[-1]
-                HAtSonTmin = H[-1]
-                if self.bDebug:
-                    print('Gamma/(T*H^4) at Tmin:', GammaAtSonTmin/HAtSonTmin**4/TAtSonTmin)
-                self.transition.Tmin = TAtSonTmin
-                self.transition.SonTmin = SonTmin
-                # If we don't have three sample points yet, then we can't estimate the second derivative of S/T. Sample
-                # again so that we have enough points.
-                # TODO: but do we need to? Was this just for determining beta? Looks like we need three points in
-                #  actionSampler.getNextSample. [2023]
-                if len(self.actionSampler.T) < 3:
-                    # TODO: there is likely an edge case where our last sample is at T=Tmin, so we can't taken another
-                    #  sample!
-                    if sampleData.T == self.Tmin:
-                        if self.bDebug:
-                            print("We only have two action samples, and a third is required to estimate the second"
-                                + "derivative. However, we have already evaluated the action at Tmin!")
-                        self.transition.analysis.error = f'Found minimum in S/T at T={sampleData.T} but we have only' \
-                            f'{len(self.actionSampler.T)} samples and cannot estimate the second derivative.'
-                        return
-
-                    self.actionSampler.getNextSample(sampleData, Gamma, numBubblesIntegral[simIndex], self.Tmin)
-                    #simIndex += 1  # ???
-                    # TODO: incrementing simIndex here is important for correctly tracking T and SonT, but all the other
-                    #   quantities will skip an element (e.g. the Hubble parameter)... I'll have to return to this issue.
-
-                    if self.timeout_phaseHistoryAnalysis > 0:
-                        endTime = time.perf_counter()
-                        if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                            return"""
-
             # If the action begins increasing with decreasing temperature.
             if TAtSonTmin == 0 and self.actionSampler.SonT[simIndex+1] > self.actionSampler.SonT[simIndex]:
                 # TODO: do some form of interpolation.
@@ -787,12 +767,18 @@ class TransitionAnalyser():
             else:
                 SonT = np.linspace(self.actionSampler.SonT[simIndex], self.actionSampler.SonT[simIndex+1], numSamples)
 
-            rhof1, rhot1 = hydrodynamics.calculateEnergyDensityAtT(self.fromPhase, self.toPhase, self.potential,
-                self.actionSampler.T[simIndex])
-            rhof2, rhot2 = hydrodynamics.calculateEnergyDensityAtT(self.fromPhase, self.toPhase, self.potential,
-                self.actionSampler.T[simIndex+1])
-
-            rhof = np.linspace(rhof1, rhof2, len(T))
+            #rhof1, rhot1 = hydrodynamics.calculateEnergyDensityAtT(self.fromPhase, self.toPhase, self.potential,
+            #    self.actionSampler.T[simIndex])
+            #rhof2, rhot2 = hydrodynamics.calculateEnergyDensityAtT(self.fromPhase, self.toPhase, self.potential,
+            #    self.actionSampler.T[simIndex+1])
+            T1 = self.actionSampler.T[simIndex]
+            T2 = self.actionSampler.T[simIndex+1]
+            hydroVars1 = self.getHydroVars(T1)
+            hydroVars2 = self.getHydroVars(T2)
+            hydroVarsInterp = [hydrodynamics.getInterpolatedHydroVars(hydroVars1, hydroVars2, T1, T2, t) for t in T]
+            
+            # TODO: rather inefficient at the moment and we don't care about Teq (29/08/2023).
+            """rhof = np.linspace(rhof1, rhof2, len(T))
             rhot = np.linspace(rhot1, rhot2, len(T))
             # TODO: could optimise this for field-dependent degrees of freedom by interpolating the field configuration.
             rhoR = [radDensityPrefactor*self.potential.getDegreesOfFreedomInPhase(self.fromPhase, T[i])*T[i]**4
@@ -848,7 +834,7 @@ class TransitionAnalyser():
 
                     if self.bDebug:
                         print('Teq:', Teq)
-                        print('SonTeq:', self.transition.SonTeq)
+                        print('SonTeq:', self.transition.SonTeq)"""
 
             dT = T[0] - T[1]
 
@@ -859,9 +845,11 @@ class TransitionAnalyser():
             if bFirst:
                 self.actionSampler.subT.append(T[0])
                 self.actionSampler.subSonT.append(SonT[0])
-                self.actionSampler.subRhoV.append(rhoV[0])
-                self.actionSampler.subRhof.append(rhof[0])
-                self.actionSampler.subRhot.append(rhot[0])
+                #self.actionSampler.subRhoV.append(rhoV[0])
+                #self.actionSampler.subRhof.append(rhof[0])
+                #self.actionSampler.subRhot.append(rhot[0])
+                self.actionSampler.subRhof.append(hydroVarsInterp[0].energyDensityFalse)
+                self.actionSampler.subRhot.append(hydroVarsInterp[0].energyDensityTrue)
                 bFirst = False
 
             # ==========================================================================================================
@@ -873,9 +861,11 @@ class TransitionAnalyser():
             for i in range(1, len(T)):
                 self.actionSampler.subT.append(T[i])
                 self.actionSampler.subSonT.append(SonT[i])
-                self.actionSampler.subRhoV.append(rhoV[i])
-                self.actionSampler.subRhof.append(rhof[i])
-                self.actionSampler.subRhot.append(rhot[i])
+                #self.actionSampler.subRhoV.append(rhoV[i])
+                #self.actionSampler.subRhof.append(rhof[i])
+                #self.actionSampler.subRhot.append(rhot[i])
+                self.actionSampler.subRhof.append(hydroVarsInterp[i].energyDensityFalse)
+                self.actionSampler.subRhot.append(hydroVarsInterp[i].energyDensityTrue)
 
                 # The integration helper needs three data points before it can be initialised. However, we wait for an
                 # additional point so that we can immediately integrate and add it to the true vacuum fraction and false
@@ -910,7 +900,9 @@ class TransitionAnalyser():
                         meanBubbleSeparationArray.append((bubbleNumberDensity[j])**(-1/3))
 
                 #H.append(np.sqrt(self.calculateHubbleParameterSq(T[i])))
-                H.append(np.sqrt(calculateHubbleParameterSq_supplied(rhof[i] - self.groundStateEnergyDensity)))
+                #H.append(np.sqrt(calculateHubbleParameterSq_supplied(rhof[i] - self.groundStateEnergyDensity)))
+                H.append(np.sqrt(self.calculateHubbleParameterSq_fromHydro(hydroVarsInterp[i])))
+                vw.append(self.getBubbleWallVelocity(hydroVarsInterp[i]))
 
                 Gamma.append(self.calculateGamma(T[i], SonT[i]))
 
@@ -1091,6 +1083,10 @@ class TransitionAnalyser():
                 self.transition.analysis.error = f'Failed to get next sample at T={sampleData.T}'
                 return
 
+        # ==============================================================================================================
+        # End transition analysis.
+        # ==============================================================================================================
+
         GammaEff = np.array([Pf[i] * Gamma[i] for i in range(len(Gamma))])
 
         # Find the maximum nucleation rate to find TGammaMax. Only do so if there is a minimum in the action.
@@ -1125,6 +1121,8 @@ class TransitionAnalyser():
             Te_reh = self.transition.Treh_e
             Tf_reh = self.transition.Treh_f
 
+            print('-------------------------------------------------------------------------------------------')
+
             print('N(T_0): ', numBubblesIntegral[-1])
             print('T_0: ', self.actionSampler.subT[-1])
             print('Tc: ', self.transition.Tc)
@@ -1152,13 +1150,13 @@ class TransitionAnalyser():
                 else:
                     print('Physical volume of the false vacuum decreases below', Ts1)
             if Tn > 0:
-                print(f'Reheating from percolation: Tr(Tn): {Tn} -> {Tn_reh}')
+                print(f'Reheating from unit nucleation: Treh(Tn): {Tn} -> {Tn_reh}')
             if Tp > 0:
-                print(f'Reheating from percolation: Tr(Tp): {Tp} -> {Tp_reh}')
+                print(f'Reheating from percolation: Treh(Tp): {Tp} -> {Tp_reh}')
             if Te > 0:
-                print(f'Reheating from Vext=1: Tr(Te): {Te} -> {Te_reh}')
+                print(f'Reheating from Vext=1: Treh(Te): {Te} -> {Te_reh}')
             if Tf > 0:
-                print(f'Reheating from completion: Tr(Tf): {Tf} -> {Tf_reh}')
+                print(f'Reheating from completion: Treh(Tf): {Tf} -> {Tf_reh}')
             if TAtSonTmin > 0:
                 print('Action minimised at T =', TAtSonTmin)
             if self.transition.TGammaMax > 0:
@@ -1166,14 +1164,21 @@ class TransitionAnalyser():
 
             print('Mean bubble separation:', meanBubbleSeparation)
 
+            print('-------------------------------------------------------------------------------------------')
+
         if self.bDebug:
             print('Total action evaluations:', totalActionEvaluations)
 
         if self.bPlot:
             plt.rcParams.update({"text.usetex": True})
 
-            textY = 0.1
-            rhoV = self.actionSampler.subRhoV
+            plt.plot(self.actionSampler.subT, vw)
+            plt.xlabel('T')
+            plt.ylabel('v_w')
+            plt.ylim(0, 1)
+            plt.show()
+
+            """rhoV = self.actionSampler.subRhoV
             # TODO: now that rhoR is more expensive to calculate if the degrees of freedom are field dependent, we
             #  should store rhoR during analysis.
             rhoR = [radDensityPrefactor*self.potential.getDegreesOfFreedomInPhase(self.fromPhase, t)*t**4 for t in
@@ -1188,7 +1193,7 @@ class TransitionAnalyser():
             plt.ylim(bottom=0)
             plt.margins(0, 0)
             plt.tight_layout()
-            plt.show()
+            plt.show()"""
 
             """drhoVdT = (rhoV[-2] - rhoV[-1]) / (self.actionSampler.subT[-2] - self.actionSampler.subT[-1])
             extrapRhoV = lambda x: rhoV[-1] + (x - self.actionSampler.subT[-1])*drhoVdT
@@ -1216,6 +1221,7 @@ class TransitionAnalyser():
                 ylim = np.array(physicalVolumeRelative[:min(indexTf+1, maxIndex)]).max(initial=1.)*1.2
 
                 textXOffset = 0.01*(self.actionSampler.subT[0] - self.actionSampler.subT[maxIndex])
+                textY = 0.1
 
                 plt.figure(figsize=(14, 11))
                 plt.plot(self.actionSampler.subT[:maxIndex+1], physicalVolumeRelative, zorder=3, lw=3.5)
@@ -1303,10 +1309,11 @@ class TransitionAnalyser():
                 print('Transition strength:', transitionStrength)
 
         # If the transition has completed before Teq was identified, predict the value of Teq through extrapolation.
-        if Teq == 0 and len(self.actionSampler.T) > 2:
+        # TODO: don't worry about Teq at the moment (29/08/2023).
+        """if Teq == 0 and len(self.actionSampler.T) > 2:
             Teq = self.predictTeq()
             self.transition.Teq = Teq
-            # Don't worry about SonTeq.
+            # Don't worry about SonTeq."""
 
         if self.bReportAnalysis:
             print('Mean bubble separation (Tp):', meanBubbleSeparationArray[indexTp])
@@ -2099,6 +2106,13 @@ class TransitionAnalyser():
         # Default is energy density for from phase.
         rhof = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, T)
         return 8*np.pi*GRAV_CONST/3*(rhof - self.groundStateEnergyDensity)
+
+    def calculateHubbleParameterSq_fromHydro(self, hydroVars: HydroVars) -> float:
+        return 8*np.pi*GRAV_CONST/3*hydroVars.energyDensityFalse
+
+    def getHydroVars(self, T: float) -> HydroVars:
+        return hydrodynamics.getHydroVars_new(self.fromPhase, self.toPhase, self.potential, T,
+            self.groundStateEnergyDensity)
 
     # Ignore IDE warnings about type of return value, Teq. toms748 returns only a float if full_output=False as is default.
     def predictTeq(self) -> float:

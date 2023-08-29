@@ -39,6 +39,27 @@ class HydroVars:
         self.pseudotraceTrue = (self.energyDensityTrue - self.pressureTrue/self.soundSpeedSqTrue) / 4
 
 
+def getInterpolatedHydroVars(hv1: HydroVars, hv2: HydroVars, T1: float, T2: float, T: float) -> HydroVars:
+    fraction = (T - T1) / (T2 - T1)
+
+    def interpolate(val1: float, val2: float) -> float:
+        return val1 + fraction*(val2 - val1)
+
+    pressureFalse = interpolate(hv1.pressureFalse, hv2.pressureFalse)
+    pressureTrue = interpolate(hv1.pressureTrue, hv2.pressureTrue)
+    energyDensityFalse = interpolate(hv1.energyDensityFalse, hv2.energyDensityFalse)
+    energyDensityTrue = interpolate(hv1.energyDensityTrue, hv2.energyDensityTrue)
+    enthalpyDensityFalse = interpolate(hv1.enthalpyDensityFalse, hv2.enthalpyDensityFalse)
+    enthalpyDensityTrue = interpolate(hv1.enthalpyDensityTrue, hv2.enthalpyDensityTrue)
+    entropyDensityFalse = interpolate(hv1.entropyDensityFalse, hv2.entropyDensityFalse)
+    entropyDensityTrue = interpolate(hv1.entropyDensityTrue, hv2.entropyDensityTrue)
+    soundSpeedSqFalse = interpolate(hv1.soundSpeedSqFalse, hv2.soundSpeedSqFalse)
+    soundSpeedSqTrue = interpolate(hv1.soundSpeedSqTrue, hv2.soundSpeedSqTrue)
+
+    return HydroVars(pressureFalse, pressureTrue, energyDensityFalse, energyDensityTrue, enthalpyDensityFalse,
+        enthalpyDensityTrue, entropyDensityFalse, entropyDensityTrue, soundSpeedSqFalse, soundSpeedSqTrue)
+
+
 # TODO: this probably belongs elsewhere, maybe in PhaseStructure or AnalysablePotential.
 def getTstep(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float) -> float:
     Tmin = max(fromPhase.T[0], toPhase.T[0])

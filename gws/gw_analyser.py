@@ -1383,7 +1383,7 @@ def extractRelevantTransitions(report: dict, bForceAllTransitionsRelevant: bool 
 def main(detectorClass, potentialClass, outputFolder):
     gwa = GWAnalyser(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=False)
     # Use this for scanning GWs and thermal params over temperature.
-    gwa.scanGWs('C:/Work/Monash/PhD/Documents/SupercoolGWs/Plots/new_BP3/')
+    gwa.scanGWs('C:/Work/Monash/PhD/Documents/SupercoolGWs/Plots/new_BP2/')
     #gwa.scanGWs()
     # Use this for evaluating GWs using thermal params at the onset of percolation.
     #gwa.determineGWs_withColl()
@@ -1392,7 +1392,7 @@ def main(detectorClass, potentialClass, outputFolder):
 
 
 if __name__ == "__main__":
-    main(LISA, RealScalarSingletModel_Boltz, 'output/RSS/RSS_new_BP3/')
+    main(LISA, RealScalarSingletModel_Boltz, 'output/RSS/RSS_new_BP2/')
     #main(LISA, SMplusCubic, 'output/archil/archil_BP5/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/3/40/')
     #main(LISA, SMplusCubic, 'output/nanograv/BP1/')

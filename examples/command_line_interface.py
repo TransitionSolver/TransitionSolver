@@ -118,6 +118,7 @@ def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script
     def notify_TransitionAnalyser_on_create(transitionAnalyser: TransitionAnalyser):
         transitionAnalyser.bComputeSubsampledThermalParams = True
         transitionAnalyser.bCheckPossibleCompletion = False
+        transitionAnalyser.bUseChapmanJouguetVelocity = True
 
     notifyHandler.addEvent('TransitionAnalyser-on_create', notify_TransitionAnalyser_on_create)
 
@@ -199,4 +200,4 @@ if __name__ == "__main__":
             print('Failed to load parameter point defined by:', ' '.join(sys.argv[2:]))
             sys.exit(1)
 
-    main(_potentialClass, outputFolder, _PT_script, _PT_params, _parameterPoint, bDebug=True)
+    main(_potentialClass, outputFolder, _PT_script, _PT_params, _parameterPoint, bDebug=True, bPlot=True)
