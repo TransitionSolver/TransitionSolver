@@ -1,3 +1,4 @@
+from __future__ import annotations
 from analysis import phase_structure
 from models.analysable_potential import AnalysablePotential
 from analysis.phase_structure import PhaseStructure, Phase, Transition, TransitionPath

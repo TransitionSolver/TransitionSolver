@@ -1,3 +1,4 @@
+from __future__ import annotations
 from analysis.transition_analysis import TransitionAnalyser
 from models.toy_model import ToyModel
 from models.real_scalar_singlet_model import RealScalarSingletModel
