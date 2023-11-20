@@ -1,6 +1,6 @@
+from __future__ import annotations
 import traceback
 
-from __future__ import annotations
 from analysis.transition_analysis import TransitionAnalyser
 from models.Archil_model import SMplusCubic
 from models.analysable_potential import AnalysablePotential
