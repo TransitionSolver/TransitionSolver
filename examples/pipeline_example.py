@@ -2,7 +2,7 @@
 # a simple index parameter into the pipeline and using that index to determine the parameter point and file names, one
 # can run multiple instances of the pipeline in parallel with different indices.
 
-
+from __future__ import annotations
 import numpy as np
 
 from typing import Type, Callable, Optional

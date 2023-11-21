@@ -1,3 +1,4 @@
+from __future__ import annotations
 import traceback
 
 from analysis.transition_analysis import TransitionAnalyser

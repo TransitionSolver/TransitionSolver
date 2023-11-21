@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Callable
 
 from analysis.phase_structure import Phase
