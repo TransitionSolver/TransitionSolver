@@ -7,7 +7,7 @@ import json
 
 from scipy import optimize, interpolate
 
-import command_line_interface as cli
+from examples import command_line_interface as cli
 from analysis import phase_structure
 from gws import hydrodynamics
 
