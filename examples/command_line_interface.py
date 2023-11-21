@@ -43,7 +43,7 @@ def writePhaseHistoryReport(fileName: str, paths: list[ProperPath], phaseStructu
 
 def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script: str, PT_params: list[str],
         parameterPoint: list[float], bDebug: bool = False, bPlot: bool = False, bUseBoltzmannSuppression: bool =
-        False) -> None:
+        True) -> None:
     # Create the output folder if it doesn't exist already.
     pathlib.Path(str(pathlib.Path(outputFolder))).mkdir(parents=True, exist_ok=True)
 

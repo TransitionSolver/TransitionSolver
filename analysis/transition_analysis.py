@@ -337,6 +337,13 @@ class ActionSampler:
         if (Tnew - self.Tmin) < 0.5*(self.T[-1] - self.Tmin) and (self.T[-1] - self.Tmin) > 5.:
             Tnew = 0.5*(self.Tmin + self.T[-1])
 
+        # Hack for better resolution in supercool GW plots.
+        #maxStep = 0.1 # BP1 and BP2
+        #maxStep = 0.3 # BP3 and BP4
+
+        #if abs(Tnew - self.T[-1]) > maxStep:
+        #    Tnew = self.T[-1] - maxStep
+
         sampleData.T = Tnew
 
         self.evaluateAction(sampleData)
@@ -706,7 +713,7 @@ class TransitionAnalyser():
             return vw[x] / H[x]
 
         def outerFunction_avgBubRad(x):
-            return Gamma[x]*Pf[x] / (self.actionSampler.subT[x] * H[x])
+            return Gamma[x]*Pf[x] / (self.actionSampler.subT[x]**4 * H[x])
 
         def innerFunction_avgBubRad(x):
             return vw[x] / H[x]

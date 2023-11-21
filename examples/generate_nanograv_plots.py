@@ -16,7 +16,7 @@ from models.Archil_model import SMplusCubic
 
 def runPoint(inputFileName: str, outputFolderName: str) -> None:
     parameterPoint = list(np.loadtxt(inputFileName))
-    cli.main(SMplusCubic, outputFolderName, 'run_supercool', ['-boltz', '-debug'], parameterPoint, bDebug=True,
+    cli.main(SMplusCubic, outputFolderName, 'run_supercool', ['-boltz'], parameterPoint, bDebug=True,
         bUseBoltzmannSuppression=True)
 
 
@@ -123,7 +123,7 @@ def calculateReheatingTemperature(T: float, Tc: float, rho_f: float, rho_t_func:
 
 def makeTrehPlot():
     BP = 2
-    reportBP2 = getReport(f'input/nanograv/nanograv_BP{BP}.txt', f'output/nanograv/BP{BP}/')
+    reportBP2 = getReport(f'input/nanograv/nanograv_BP{BP}.txt', f'output/nanograv/BP{BP}')
 
     if reportBP2 is None:
         print('Phase history report was not obtained successfully for BP2, cannot generate plots.')
@@ -179,9 +179,9 @@ def makeTrehPlot():
 #Just doubling code because I'm lazy and we're not using this plot anyway.
 def makeCombinedTrehPlot():
     BP = 1
-    reportBP1 = getReport(f'input/nanograv/nanograv_BP{BP}.txt', f'output/nanograv/BP{BP}/')
+    reportBP1 = getReport(f'input/nanograv/nanograv_BP{BP}.txt', f'output/nanograv/BP{BP}')
     BP = 2
-    reportBP2 = getReport(f'input/nanograv/nanograv_BP{BP}.txt', f'output/nanograv/BP{BP}/')
+    reportBP2 = getReport(f'input/nanograv/nanograv_BP{BP}.txt', f'output/nanograv/BP{BP}')
 
     if reportBP1 is None:
         print('Phase history report was not obtained successfully for BP1, cannot generate plots.')
@@ -265,4 +265,5 @@ def makeCombinedTrehPlot():
 
 if __name__ == "__main__":
     #makePfPlot()
-    makeTrehPlot()
+    #makeTrehPlot()
+    runPoint('input/nanograv/nanograv_BP2.txt', 'output/nanograv/BP2')

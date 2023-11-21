@@ -81,6 +81,24 @@ class SMplusCubic(AnalysablePotential):
         r = -.5*self.muSq*rho**2 + self.kap*rho**3 / 3 + .25*self.lam*rho**4
         return r
 
+    # Calculate exp(-(mass/temperature)^2).
+    def getBoltzmannSuppression(self, massSq, TSq):
+        if not self.bUseBoltzmannSuppression:
+            return np.ones(shape=(massSq*TSq).shape)
+
+        if TSq <= 0:
+            return np.zeros(shape=(massSq*TSq).shape)
+
+        zSq = massSq/TSq
+        thermalCorrections = np.zeros(shape=zSq.shape)
+        mask = np.abs(zSq) < BOLTZ_EXP_MAX
+        if len(zSq.shape) > 0:
+            thermalCorrections[mask] = np.reshape(np.exp(-np.abs(zSq[mask])), thermalCorrections[mask].shape)
+        else:
+            # TODO: aren't the shapes misaligned here?
+            thermalCorrections[mask] = np.exp(-np.abs(zSq))
+        return thermalCorrections
+
     def boson_massSq(self, X, T):
         X = np.asanyarray(X)
         rho = X[...,0]
@@ -89,38 +107,42 @@ class SMplusCubic(AnalysablePotential):
         g2Sq = self.g**2
         g1Sq = self.g1**2
 
-        h20 = 3*self.lam*rhoSq + 2*self.kap*rho - self.mu0Sq
-        TSqforH = (0. if TSq == 0. or h20/TSq > BOLTZ_EXP_MAX else TSq*np.exp(-h20/TSq))\
-            if self.bUseBoltzmannSuppression else TSq
-        h2 = h20 + TSqforH*(self.lam/4 + g2Sq + (g2Sq + g1Sq)/16 + self.yt**2/4)
-        W2_T = g2Sq/4*rhoSq
-        TSqforW = (0. if TSq == 0. or W2_T/TSq > BOLTZ_EXP_MAX else TSq*np.exp(-W2_T/TSq))\
-            if self.bUseBoltzmannSuppression else TSq
-        W2_L = W2_T + 11/6*g2Sq*TSqforW
+        # Tree-level Higgs mass.
+        hSq0 = 3*self.lam*rhoSq + 2*self.kap*rho - self.mu0Sq
+        #TSqforH = (0. if TSq == 0. or hSq0/TSq > BOLTZ_EXP_MAX else TSq*np.exp(-hSq0/TSq))\
+        #    if self.bUseBoltzmannSuppression else TSq
+        TSqforH = TSq*self.getBoltzmannSuppression(hSq0, TSq)
+        hSq = hSq0 + TSqforH*(self.lam/4 + g2Sq + (g2Sq + g1Sq)/16 + self.yt**2/4)
+        WSq_T = g2Sq/4*rhoSq
+        #TSqforW = (0. if TSq == 0. or WSq_T/TSq > BOLTZ_EXP_MAX else TSq*np.exp(-WSq_T/TSq))\
+        #    if self.bUseBoltzmannSuppression else TSq
+        TSqforW = TSq*self.getBoltzmannSuppression(WSq_T, TSq)
+        WSq_L = WSq_T + 11/6*g2Sq*TSqforW
 
         #a = (g2Sq + g1Sq)/4*rho**2 + 11/6*(g2Sq + g1Sq)*TSq
         #Delta = np.sqrt(a**2 - 11/3*g1Sq*g2Sq*(11/3 + rhoSq)*TSq)
-        #Z2_L = 0.5*(a + Delta)
-        #Z2_T = (g2Sq + g1Sq)/4*rho**2
-        #ph2_L = 0.5*(a - Delta)
+        #ZSq_L = 0.5*(a + Delta)
+        #ZSq_T = (g2Sq + g1Sq)/4*rho**2
+        #phSq_L = 0.5*(a - Delta)
         if self.bUseBoltzmannSuppression and TSq > 0:
             a0 = b0 = (g2Sq + g1Sq)*3*rhoSq
-            Z2_T = (a0 + b0)/24
+            ZSq_T = (a0 + b0)/24
             #ph2_T = (a0 - b0)/24
-            TSqforZ = (0. if Z2_T/TSq > BOLTZ_EXP_MAX else TSq*np.exp(-Z2_T/TSq))\
-                if self.bUseBoltzmannSuppression else TSq
+            #TSqforZ = (0. if ZSq_T/TSq > BOLTZ_EXP_MAX else TSq*np.exp(-ZSq_T/TSq))\
+            #    if self.bUseBoltzmannSuppression else TSq
+            TSqforZ = TSq*self.getBoltzmannSuppression(ZSq_T, TSq)
             a = (g2Sq + g1Sq)*(3*rhoSq + 22*TSqforZ)
             b = np.sqrt(9*(g2Sq + g1Sq)**2*rhoSq**2 + 44*TSqforZ*(g2Sq - g1Sq)**2 * (3*rhoSq + 11*TSqforZ))
-            Z2_L = (a + b)/24
-            ph2_L = (a - b)/24
+            ZSq_L = (a + b)/24
+            phSq_L = (a - b)/24
         else:
             a = (g2Sq + g1Sq)*(3*rhoSq + 22*TSq)
             b = np.sqrt(9*(g2Sq + g1Sq)**2*rhoSq**2 + 44*TSq*(g2Sq - g1Sq)**2*(3*rhoSq + 11*TSq))
-            Z2_L = (a + b)/24
-            ph2_L = (a - b)/24
-            Z2_T = (g2Sq + g1Sq)/4*rhoSq
+            ZSq_L = (a + b)/24
+            phSq_L = (a - b)/24
+            ZSq_T = (g2Sq + g1Sq)/4*rhoSq
 
-        M = np.array([h2, W2_L, W2_T, Z2_L, Z2_T, ph2_L])
+        M = np.array([hSq, WSq_L, WSq_T, ZSq_L, ZSq_T, phSq_L])
         M = np.rollaxis(M, 0, len(M.shape))
 
         dof = np.array([1, 2, 4, 1, 2, 1])
