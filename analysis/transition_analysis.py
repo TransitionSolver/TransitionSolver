@@ -584,7 +584,10 @@ class TransitionAnalyser():
 
             csfSq = hydroVars.soundSpeedSqFalse
             csf = np.sqrt(csfSq)
-            return (1 + np.sqrt(3*alpha*(1 - csfSq + 3*csfSq*alpha))) / (1/csf + 3*csf*alpha)
+            vw = (1 + np.sqrt(3*alpha*(1 - csfSq + 3*csfSq*alpha))) / (1/csf + 3*csf*alpha)
+            if np.isnan(vw) or vw > 1.:
+                return 1.
+            return vw
         else:
             return self.transition.vw
 
