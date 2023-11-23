@@ -589,7 +589,7 @@ class GWAnalyser:
             plt.margins(0, 0)
             plt.show()
 
-    def determineGWs_withColl(self):
+    def determineGWs_withColl(self, file_name=None):
         for transitionReport in self.relevantTransitions:
             gws_noColl = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
                 self.detector)
@@ -622,14 +622,16 @@ class GWAnalyser:
 
             plt.rcParams["text.usetex"] = True
 
-            """with open('output/gws_BP1.txt', 'w') as file:
-                for i in range(len(self.detector.sensitivityCurve[0])):
-                    f = self.detector.sensitivityCurve[0][i]
-                    tot = gwFunc_noColl(f)
-                    sw = gwFunc_sw(f)
-                    turb = gwFunc_turb(f)
-                    coll = gwFunc_coll(f)
-                    file.write(' '.join([str(f), str(tot), str(sw), str(turb), str(coll)]) + '\n')"""
+            if file_name:
+                with open(file_name, 'w') as file:
+                    for i in range(len(self.detector.sensitivityCurve[0])):
+                        f = self.detector.sensitivityCurve[0][i]
+                        tot = gwFunc_noColl(f)
+                        sw = gwFunc_sw(f)
+                        turb = gwFunc_turb(f)
+                        coll = gwFunc_coll(f)
+                        file.write(' '.join([str(f), str(tot), str(sw), str(turb), str(coll)]) + '\n')
+                return
 
             plt.figure(figsize=(12,8))
             #plt.loglog(self.detector.sensitivityCurve[0], self.detector.sensitivityCurve[1])
