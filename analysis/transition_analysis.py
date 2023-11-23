@@ -2,7 +2,11 @@ from __future__ import annotations
 import traceback
 from typing import Optional, Union
 
-from cosmoTransitions.tunneling1D import ThinWallError
+try:
+    from cosmoTransitions.tunneling1D import ThinWallError
+except:
+    class ThinWallError(Exception):
+        pass
 
 from gws import hydrodynamics
 from gws.hydrodynamics import HydroVars
