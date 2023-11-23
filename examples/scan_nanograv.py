@@ -5,7 +5,6 @@ Solve for kappa to find benchmarks
 
 import os
 import functools
-import json
 import sys
 
 import numpy as np
