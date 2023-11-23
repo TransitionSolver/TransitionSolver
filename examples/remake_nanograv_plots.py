@@ -15,6 +15,20 @@ from gws import hydrodynamics
 from models.Archil_model import SMplusCubic
 
 
+STYLE = {"text.usetex": True,
+         "font.family": "serif",
+         "axes.labelsize": 40,
+         "legend.fontsize": 28,
+         "xtick.labelsize": 28,
+         "ytick.labelsize": 28,
+         "xtick.major.size": 8,
+         "ytick.major.size": 8,
+         "text.latex.preamble": "\\usepackage{txfonts}"}
+
+
+plt.rcParams.update(**STYLE)
+
+
 def get_report(output_folder: str):
     with open(os.path.join(output_folder, 'phase_history.json'), 'r',  encoding='utf8') as ph:
         return json.load(ph)
@@ -30,7 +44,6 @@ def make_pf_plot(bp1, bp2):
     Tf = [r['transitions'][0].get('Tf') for r in reports]
     names = ["BP1", "BP2"]
 
-    plt.rcParams.update({"text.usetex": True, "font.family": "serif"})
     colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
     plt.figure(figsize=(12, 8))
@@ -73,7 +86,7 @@ def make_pf_plot(bp1, bp2):
 
     # make legend
 
-    leg = plt.legend(fontsize=28, loc="lower right")
+    leg = plt.legend(loc="lower right")
 
     # adjust colors on legend
 
@@ -82,9 +95,8 @@ def make_pf_plot(bp1, bp2):
 
     # finalize
 
-    plt.xlabel(r'$T$ [GeV]', fontsize=40)
-    plt.ylabel('$P_{f}(T)$', fontsize=40)
-    plt.tick_params(size=8, labelsize=28)
+    plt.xlabel(r'$T$ [GeV]')
+    plt.ylabel('$P_{f}(T)$')
 
     plt.xlim(xmin, 70)
     plt.ylim(ymin, 1.01)
@@ -142,7 +154,6 @@ def make_t_reh_plot(folder_name):
 
     # plot data
 
-    plt.rcParams.update({"text.usetex": True, "font.family": "serif"})
     plt.figure(figsize=(12, 8))
 
     plt.plot(T, Treh, lw=2.5)
@@ -152,9 +163,8 @@ def make_t_reh_plot(folder_name):
 
     plt.xlim(0, None)
     plt.ylim(0, None)
-    plt.xlabel(r'$T_p$ [GeV]', fontsize=40)
-    plt.ylabel(r'$T_{\mathrm{reh}}$ [GeV]', fontsize=40)
-    plt.tick_params(size=8, labelsize=28)
+    plt.xlabel(r'$T_p$ [GeV]')
+    plt.ylabel(r'$T_{\mathrm{reh}}$ [GeV]')
     plt.tight_layout()
 
     folder_name = os.path.join("output", "nanograv")
