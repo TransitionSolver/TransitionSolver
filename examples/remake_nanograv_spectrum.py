@@ -16,7 +16,7 @@ from examples.pta_data import nanograv_15, ppta_dr3, epta_dr2_full
 STYLE = {"text.usetex": True,
          "font.family": "serif",
          "axes.labelsize": 28,
-         "legend.fontsize": 28,
+         "legend.fontsize": 20,
          "xtick.labelsize": 28,
          "ytick.labelsize": 28,
          "xtick.major.size": 8,
@@ -37,7 +37,7 @@ def add_violin(ax, x, y, color, label, rw=0.1, alpha=0.8):
         pc.set_edgecolor(color)
 
     # for legend
-    ax.stairs(np.arange(1,6,1), np.arange(1e5,7e5,1e5), fill=True, color=color, alpha=alpha, label=label)
+    ax.stairs(np.arange(1, 6, 1), np.arange(1e5, 7e5, 1e5), fill=True, color=color, alpha=alpha, label=label)
 
 
 def add_violins(ax):
