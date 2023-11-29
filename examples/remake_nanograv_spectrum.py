@@ -10,6 +10,7 @@ from gws.gw_analyser import GWAnalyser
 from gws.detectors.lisa import LISA
 from models.Archil_model import SMplusCubic
 from examples.scan_nanograv import partial_class
+from examples.pta_data import nanograv_15, ppta_dr3, epta_dr2_full
 
 
 STYLE = {"text.usetex": True,
@@ -33,15 +34,16 @@ def add_violin(ax, x, y, color, label, rw=0.1, alpha=0.8):
     for pc in vpt['bodies']:
         pc.set_facecolor(color)
         pc.set_alpha(alpha)
+        pc.set_edgecolor(color)
 
-    ax.stairs(np.arange(1, 6, 1), fill=True, color=color, alpha=alpha, label=label)
+    # for legend
+    ax.stairs(np.arange(1,6,1), np.arange(1e5,7e5,1e5), fill=True, color=color, alpha=alpha, label=label)
 
 
 def add_violins(ax):
-    add_violin(ax, freqs_NANO12_5, NANO12_logOmegah2_distribution[::5][[0,1,2,3,4]], 'r', 'NANOGrav 12.5yr')
-    add_violin(ax, freqs_NANO15_8, NANO15_logOmegah2_distribution, 'limegreen', 'NANOGrav 15yr')
-    add_violin(ax, freqs_PPTADR3_8, PPTADR3_logOmegah2_distribution, 'dodgerblue', 'PPTA DR3')
-    add_violin(ax, freqs_EPTADR2Full_10, EPTADR2Full_logOmegah2_distribution, 'orange', 'EPTA DR2 Full')
+    add_violin(ax, nanograv_15[0], nanograv_15[1], 'limegreen', 'NANOGrav 15yr')
+    add_violin(ax, ppta_dr3[0], ppta_dr3[1], 'dodgerblue', 'PPTA DR3')
+    add_violin(ax, epta_dr2_full[0], epta_dr2_full[1], 'orange', 'EPTA DR2 Full')
 
 
 def make_plot(bp):
@@ -54,7 +56,7 @@ def make_plot(bp):
 
     # Add experimental results
 
-    # add_violins(ax)
+    add_violins(ax)
 
     # Add benchmark
 
