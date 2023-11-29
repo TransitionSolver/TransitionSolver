@@ -69,7 +69,7 @@ def getPipelineParameterPoint(pointIndex: int, numSamples: int, scanIndex: int):
         low = -117.561
         high = -117.555
     else:
-        low = -2.5
+        low = -2.5*125**2/246
         high = 0
     return low + (high - low)*pointIndex/(numSamples-1)
 
