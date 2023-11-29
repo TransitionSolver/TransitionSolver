@@ -13,10 +13,10 @@ class SMplusCubic(AnalysablePotential):
     # The idea is that if only kap is supplied, the muSq and lam are extracted at the one-loop level. Otherwise, they
     # are taken as input, presumably from a previous run of the one-loop extraction (e.g. read from saved benchmark).
     def init(self, kap, muSq=0, lam=0, mu0Sq=0, yt=0.9946, g=0.6535, g1=0.35, bDebugIteration=False,
-            bUseBoltzmannSuppression=False):
+            bUseBoltzmannSuppression=False, mh=125.):
         self.v = 246.
         self.vSq = self.v**2
-        self.mh = 125.
+        self.mh = mh
         self.mhSq = self.mh**2
 
         # The number of scalar fields in the model.
