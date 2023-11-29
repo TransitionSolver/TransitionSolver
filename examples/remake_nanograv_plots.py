@@ -17,7 +17,7 @@ from models.Archil_model import SMplusCubic
 
 STYLE = {"text.usetex": True,
          "font.family": "serif",
-         "axes.labelsize": 40,
+         "axes.labelsize": 28,
          "legend.fontsize": 28,
          "xtick.labelsize": 28,
          "ytick.labelsize": 28,
@@ -51,11 +51,14 @@ def make_pf_plot(bp1, bp2):
     # tweak axes to show lines clearly as suggested by ref
 
     ax = plt.gca()
-    ax.spines['bottom'].set_bounds(0, 70)
-    ax.spines['left'].set_bounds(0, 1)
     ax.spines[['right', 'top']].set_visible(False)
-    ymin = -0.04
-    xmin = -1.5
+
+    ymin = 0
+    ymax = 1.
+    xmin = -1.
+    xmax = 70.
+
+    ax.spines['left'].set_bounds(ymin, ymax)
 
     for i in range(2):
 
@@ -65,41 +68,47 @@ def make_pf_plot(bp1, bp2):
 
     for i in range(2):
 
+        style = {'color': colors[i], 'ls': '--', 'lw': 2, 'alpha': 0.45}
+
         # plot nucleation temperatures
 
         if Tn[i] is not None:
-            plt.vlines(x=Tn[i], ymin=ymin, ymax=0.99, lw=2, color=colors[i], ls=':', label='$T_n$' if i == 0 else "_nolegend_")
+            plt.vlines(x=Tn[i], ymin=ymin, ymax=ymax, **style)
 
         # plot percolation temperatures
 
         if Tp[i] is not None:
             critical_pf = 0.71
-            plt.vlines(x=Tp[i], ymin=ymin, ymax=critical_pf, lw=2, color=colors[i], ls='--', label='$T_p$' if i == 0 else "_nolegend_")
-            plt.hlines(y=critical_pf, xmin=xmin, xmax=Tp[i], lw=2, color=colors[i], ls='--')
+            plt.vlines(x=Tp[i], ymin=ymin, ymax=critical_pf, **style)
+            plt.hlines(y=critical_pf, xmin=xmin, xmax=Tp[i], **style)
 
         # plot completion temperatures
 
         if Tf[i] is not None:
             critical_pf = 0.01
-            plt.vlines(x=Tf[i], ymin=ymin, ymax=critical_pf, lw=2, color=colors[i], ls='-.', label='$T_f$' if i == 0 else "_nolegend_")
-            plt.hlines(y=critical_pf, xmin=xmin, xmax=Tf[i], lw=2, color=colors[i], ls='-.')
+            plt.vlines(x=Tf[i], ymin=ymin, ymax=critical_pf, **style) 
+            plt.hlines(y=critical_pf, xmin=xmin, xmax=Tf[i], **style)
+
+    # annotate
+
+    fontsize = 15
+
+    plt.annotate(r"$P_f(T_p) = 0.71$, $T_p = 0.1\,\textrm{GeV}$", (Tp[1] + 0.5, 0.15), rotation=-90., color=colors[1], fontsize=fontsize)
+    plt.annotate(r"Unit nucleation, $T_n = 53\,\textrm{GeV}$", (Tn[0] + 0.5, 0.25), rotation=-90., color=colors[0], fontsize=fontsize)
+    plt.annotate(r"$P_f(T_f) = 0.01$, $T_f = 24\,\textrm{GeV}$", (2.5, 0.01 + 0.02), rotation=0., color=colors[0], fontsize=fontsize)
+    plt.annotate(r"$P_f(T_p) = 0.71$, $T_p = 37\,\textrm{GeV}$", (9.5, 0.71 + 0.02), rotation=0., color=colors[0], fontsize=fontsize)
 
     # make legend
 
-    leg = plt.legend(loc="lower right")
-
-    # adjust colors on legend
-
-    for i in range(2, 5):
-        leg.legend_handles[i].set_color('black')
+    plt.legend(loc="center right", bbox_to_anchor=(1.01, 0.75))
 
     # finalize
 
     plt.xlabel(r'$T$ [GeV]')
-    plt.ylabel('$P_{f}(T)$')
+    plt.ylabel('False vacuum fraction, $P_{f}(T)$')
 
-    plt.xlim(xmin, 70)
-    plt.ylim(ymin, 1.01)
+    plt.xlim(xmin, xmax)
+    plt.ylim(ymin, ymax + 0.1)
 
     plt.tight_layout()
     plt.subplots_adjust(right=0.98)
@@ -152,6 +161,9 @@ def make_t_reh_plot(folder_name):
 
     Treh = [reheat_temp(t, Tc, rhof_interp(t), rhot_interp) for t in T]
 
+    Tp = [37., 0.1]
+    BP = [reheat_temp(t, Tc, rhof_interp(t), rhot_interp) for t in Tp]
+
     # plot data
 
     plt.figure(figsize=(12, 8))
@@ -159,10 +171,18 @@ def make_t_reh_plot(folder_name):
     plt.plot(T, Treh, lw=2.5)
     plt.plot(T, T, lw=1.75, ls='--')
 
+    plt.scatter(Tp, BP, marker="H", s=50, clip_on=False, zorder=100)
+
+    # annotate
+
+    plt.annotate("BP1", (Tp[0], BP[0] + 2), ha="center", fontsize=20)
+    plt.annotate("BP2", (Tp[1] + 0.5, BP[1] + 1), fontsize=20)
+
+
     # finalize
 
-    plt.xlim(0, None)
-    plt.ylim(0, None)
+    plt.xlim(0, max(T))
+    plt.ylim(0, max(T))
     plt.xlabel(r'$T_p$ [GeV]')
     plt.ylabel(r'$T_{\mathrm{reh}}$ [GeV]')
     plt.tight_layout()

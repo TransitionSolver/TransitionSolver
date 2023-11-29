@@ -14,8 +14,8 @@ from examples.scan_nanograv import partial_class
 
 STYLE = {"text.usetex": True,
          "font.family": "serif",
-         "axes.labelsize": 40,
-         "legend.fontsize": 22,
+         "axes.labelsize": 28,
+         "legend.fontsize": 28,
          "xtick.labelsize": 28,
          "ytick.labelsize": 28,
          "xtick.major.size": 8,
