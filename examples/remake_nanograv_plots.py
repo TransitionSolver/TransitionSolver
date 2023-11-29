@@ -86,7 +86,7 @@ def make_pf_plot(bp1, bp2):
 
         if Tf[i] is not None:
             critical_pf = 0.01
-            plt.vlines(x=Tf[i], ymin=ymin, ymax=critical_pf, **style) 
+            plt.vlines(x=Tf[i], ymin=ymin, ymax=critical_pf, **style)
             plt.hlines(y=critical_pf, xmin=xmin, xmax=Tf[i], **style)
 
     # annotate
