@@ -14,7 +14,12 @@ I believe `PhaseTracer` requires at least C++11.
 
 The following packages are required for `TransitionSolver`:
 
-* A modified version of `CosmoTransitions` that fixes many numerical errors.
+* `CosmoTransitions` which is modified with the patch distributed with TransitionSolver util/CosmoTransitions.patch.  On linux this patch can be applied by copying it to the base directory of CosmoTransitions and doing:
+
+$ patch -p1  < CosmoTransitions.patch
+
+This  patch fixes a number of numerical errors that would otherwise disrupt the calculations performed by TransitionSolver.
+
 * `PhaseTracer` in the `TransitionSolverInterface` branch.
 
 The following non-core Python modules are required for `TransitionSolver`:
