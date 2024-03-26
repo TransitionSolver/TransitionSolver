@@ -20,7 +20,7 @@ $ patch -p1  < CosmoTransitions.patch
 
 This  patch fixes a number of numerical errors that would otherwise disrupt the calculations performed by TransitionSolver.
 
-* `PhaseTracer` in the `TransitionSolverInterface` branch.
+* `PhaseTracer` in the `TransitionSolverInterface` branch for which you will also need git version control.  On linux OS you can try the simple script util/Install_PhaseTracer distributed with TransitionSolver. 
 
 The following non-core Python modules are required for `TransitionSolver`:
 
