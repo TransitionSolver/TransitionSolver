@@ -104,7 +104,6 @@ def main():
     analyser.timeout_phaseHistoryAnalysis = 100
 
     # Create the potential using the parameter point.
-    #potential = ToyModel(*parameterPoint)
     potential = RealScalarSingletModel(*parameterPoint)
 
     def notify_TransitionAnalyser_on_create(transitionAnalyser: TransitionAnalyser):
