@@ -1,7 +1,7 @@
 List of possible improvements
 
 1)  Importance: Not urgent ;  type: Interfacing improvement ; 
-Currently we only interface PhaseTracer and TranbsitionSolver via text file output.   This has some advantages in gterms of simplicity but can be a pain for large scans that GAMBIT prefers to avoid.  Would be nice to also have a rounine in PhaseTracer that passed out a phase)_structure object, avoiding the need to do this.
+Currently we only interface PhaseTracer and TranbsitionSolver via text file output.   This has some advantages in terms of simplicity but can be a pain for large scans that GAMBIT prefers to avoid.  Would be nice to also have a routine in PhaseTracer that passed out a phase)_structure object, avoiding the need to do this.
 
 2) Importance: minor; type: examples tidy up 
 
@@ -40,15 +40,15 @@ I get slightly different results, ie
 > Average bubble radius (Tf):  642182978112612.1
 > Hubble radius (Tf):          545135676759565.5
 
-I see similar chnages just running the same way several times and i als see these kind of differences in the json files. So I think the issue is we have random numrical uncertainty enter even with exact same input on same machine.  There is nothing wring with this as long as its not too large and as long as we know about it and document it so users are forewarned and don't lose gtrust whe n they notice this themselves. 
+I see similar changes just running the same way several times and i also see these kind of differences in the json files. So I think the issue is we have random numerical uncertainty enter even with exact same input on same machine.  There is nothing wring with this as long as its not too large and as long as we know about it and document it so users are forewarned and don't lose trust when they notice this themselves. 
 
 5) Importance: minor; type: output tidy up ;  status: addressed
 
-Actually most output is swicthed off by setting bDebug = False.
+Actually most output is switched off by setting bDebug = False.
 
-I think its not desireable to always print so much to screen while the code runs.  Can we make an option to pipe to some log file.  Check this is not already done in scan code. 
+I think its not desirable to always print so much to screen while the code runs.  Can we make an option to pipe to some log file.  Check this is not already done in scan code. 
 
-6) Importance: low ; type: user illsutration improvement ; status: maybe addressed
+6) Importance: low ; type: user illustration improvement ; status: maybe addressed
 
 I just added a comment explaining how to do this above the one in barebones example. Maybe that is enough. 
 
@@ -67,7 +67,7 @@ way.
 
 8)  Importance: low; type: code style
 
-The notifyHandler and notify_TransitionAnalyser_on_create is smething I am not used to.  After reading I think this could be replaced in barebones example by juts passing a boolean flag (or set of flags) that is later used to set bComputeSubsampledThermalParams.  Maybe there is some utility to this fancy machinary later on, but in barebones it looks overengineered. 
+The notifyHandler and notify_TransitionAnalyser_on_create is something I am not used to.  After reading I think this could be replaced in barebones example by juts passing a Boolean flag (or set of flags) that is later used to set bComputeSubsampledThermalParams.  Maybe there is some utility to this fancy machinery later on, but in barebones it looks overengineered. 
 
 9) Importance: minor,  type: corner cases / future proofing
 
@@ -76,11 +76,11 @@ Line 81-82, phase_history_analyser.py
 if phases[i].T[-1] == highTemp:
                 bHighTemperaturePhase[i] = True
 
-is identifying high temp hases if their highest temp matches exactly hightemp. Could the highest temp be stored in different levels of precision such that some will get missed here?  I guess the way PT works this doesn't happen, but maybe ot could happen if its replaced or changed with another tool?
+is identifying high temp phases if their highest temp matches exactly hightemp. Could the highest temp be stored in different levels of precision such that some will get missed here?  I guess the way PT works this doesn't happen, but maybe it could happen if its replaced or changed with another tool?
 
 10)  Importance: high, type: tidy, complete
 
-Make sure we go through all TODO statemenst in code and either deal with them or at least make sure they do not sound alarming /  make things look bad / unfinsihed.  e.g. " # TODO: why was it necessary to do it this way?" (line 86, phase_history_analyser.py).  See also "# is it this simple? (added 15/11/2021)" (line 330, phase_history_analysis.py).
+Make sure we go through all TODO statements in code and either deal with them or at least make sure they do not sound alarming /  make things look bad / unfinished.  e.g. " # TODO: why was it necessary to do it this way?" (line 86, phase_history_analyser.py).  See also "# is it this simple? (added 15/11/2021)" (line 330, phase_history_analysis.py).
 
 
 
@@ -91,16 +91,16 @@ Make sure we go through all TODO statemenst in code and either deal with them or
                 bLowTemperaturePhase[i] = True"""
  (line 94--96, phase_history_analyser.py)
 
-This assumes the low temperature is T=0. This may not be desired if we consider higher scale PTs and maybe don't wnat to go to T=0?  i don't understand whats going in here anyway with the TODO comments etc.
+This assumes the low temperature is T=0. This may not be desired if we consider higher scale PTs and maybe don't want to go to T=0?  i don't understand whats going in here anyway with the TODO comments etc.
 
 12) Importance: low, type: code style, clarity
 
-The method analysePhaseHistory_supplied has three outputs, paths, a bool and analysis metrics.  The code is written in such a way that the bool never gets a name in the code for this method, which could lead to confusion / mistakes later.  I think the bool is meant to be False when the paths were sucessful found and True when there is an error. maybe we could set Error = True or Error = False firts and then pass it?      
+The method analysePhaseHistory_supplied has three outputs, paths, a bool and analysis metrics.  The code is written in such a way that the bool never gets a name in the code for this method, which could lead to confusion / mistakes later.  I think the bool is meant to be False when the paths were successful found and True when there is an error. maybe we could set Error = True or Error = False first and then pass it?      
 
 
 13) Importance: high, type: calculation consistency
 
-We need to make sure we are happy with the treatement of vw and that it is consistent throughout all parts of the code.  I hope we can allow the user to choose:
+We need to make sure we are happy with the treatment of vw and that it is consistent throughout all parts of the code.  I hope we can allow the user to choose:
 
 i) to input any fixed value of vw between 0 and 1, throwing an error if exactly 1  or too close to q is used when it will cause  a problem for our numerics (this is in the hydrodynamics parts right?) 
 
@@ -110,4 +110,4 @@ I *think* it does mostly work this way now.  However the Chapman-Jouguet velocit
 
 a) I need to check carefully that this is not being used anywhere when  bUseChapmanJouguetVelocity = True 
 
-b) Eeven if that os checked its a bit confusing for users (and future developers) to do it this way so IO think we should discuss other design options. 
+b) Even if that is checked its a bit confusing for users (and future developers) to do it this way so IO think we should discuss other design options. 
