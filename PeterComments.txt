@@ -116,3 +116,13 @@ b) Even if that is checked and all good, its a bit confusing for users  to do it
 14) Importance: low, type: user instructions
 
 Should we write the python command as "python3" in the README and manual?  I guess python3 will work for all users but "python" will not work for users who still have that set to python2. That actually applies to my local setup though i guess as we go forward python2 is getting abandoned so this will apply ti fewere and fewer people.Just thought of it when looking at another python code we may want to interface to at some point, fastPTA https://github.com/Mauropieroni/fastPTA/ where they write it that way in the README.  
+
+
+
+15) Importance: high, type: code base
+
+As well as the TODO statemenst there are many places in the code where triple quotes are around code.  See line 94--96 and lines 132-150  of phase_history_analysis.py and lines 796 -- 852, 1196--1228, 1328--1331, 1883-1893 of transition_analysis.py.  Somtimes but not always they are preceded by a #TODO and I presume they are effectively commented out code that is not ready yet, though technically triple quotes are not comments and are read by the interpreter as a long string.   
+Anyway obviously these need to be dealt with before release.
+
+
+
