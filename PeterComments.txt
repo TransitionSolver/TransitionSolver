@@ -106,13 +106,13 @@ i) to input any fixed value of vw between 0 and 1, throwing an error if exactly 
 
 ii) select the Chapman-Jouguet velocity which varies with temperature consistently throughout the code.
 
-I *think* it does mostly work this way now.  However the Chapman-Jouguet velocity is indicated via a flag bUseChapmanJouguetVelocity, but you still pass a vw to the phase history analyser in e.g. line  137 of the command_line_interface so:
+I *think* it does mostly work this way now with getBubbleWallVelocity returning the CJ vw when theflag bUseChapmanJouguetVelocity is set True and the user set vw otherwise.  However the fact that the Chapman-Jouguet velocity is indicated via a flag bUseChapmanJouguetVelocity, but you still pass a vw to the phase history analyser (in e.g. line  137 of the command_line_interface so) means:
 
-a) I need to check carefully that this is not being used anywhere when  bUseChapmanJouguetVelocity = True 
+a) I need to check carefully that the user input vw is not being used anywhere when  bUseChapmanJouguetVelocity = True 
 
-b) Even if that is checked its a bit confusing for users (and future developers) to do it this way so IO think we should discuss other design options. 
+b) Even if that is checked and all good, its a bit confusing for users  to do it this way and I think will lead to future developers wanting to carefully check the same thing or to potentially introduce bugs, so I think we should discuss other design options. 
 
 
 14) Importance: low, type: user instructions
 
-Should we write the python command as "python3" in the README and manual?  I guess python3 will work for all users but "python" will not work for users who still have that set to python2. That actually applies to my local setup though i guess as we go forward python2 is getting abandoned so this will apply ti fewere and fewer people. I just thought of it when looking at another python code we may want to interface to at some point, fastPTA https://github.com/Mauropieroni/fastPTA/ where they write it that way in the README.
+Should we write the python command as "python3" in the README and manual?  I guess python3 will work for all users but "python" will not work for users who still have that set to python2. That actually applies to my local setup though i guess as we go forward python2 is getting abandoned so this will apply ti fewere and fewer people.Just thought of it when looking at another python code we may want to interface to at some point, fastPTA https://github.com/Mauropieroni/fastPTA/ where they write it that way in the README.  
