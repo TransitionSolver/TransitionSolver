@@ -6,9 +6,9 @@
 
 ## Languages
 
-Python 3.9 was used to develop `TransitionSolver` but we also support versions 3.7 and 3.8  buy including including `from __future__ import annotations` at the top of relevant files.
+Python 3.9 was used to develop `TransitionSolver` but we also support versions 3.7 and 3.8  by including including `from __future__ import annotations` at the top of relevant files.
 
-I believe `PhaseTracer` requires at least C++11.
+The dependent package `PhaseTracer` requires at least a C++11 compatible compiler, see `PhaseTracer` documentation for more specifications.
 
 ## Packages and modules
 
