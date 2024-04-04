@@ -111,3 +111,8 @@ I *think* it does mostly work this way now.  However the Chapman-Jouguet velocit
 a) I need to check carefully that this is not being used anywhere when  bUseChapmanJouguetVelocity = True 
 
 b) Even if that is checked its a bit confusing for users (and future developers) to do it this way so IO think we should discuss other design options. 
+
+
+14) Importance: low, type: user instructions
+
+Should we write the python command as "python3" in the README and manual?  I guess python3 will work for all users but "python" will not work for users who still have that set to python2. That actually applies to my local setup though i guess as we go forward python2 is getting abandoned so this will apply ti fewere and fewer people. I just thought of it when looking at another python code we may want to interface to at some point, fastPTA https://github.com/Mauropieroni/fastPTA/ where they write it that way in the README.
