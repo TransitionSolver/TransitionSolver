@@ -132,19 +132,34 @@ maxSonTThreshold = self.estimateMaximumSignificantSonT() + 80
 minSonTThreshold = 80.0
 toleranceSonT = 3.0
 
-17)  We have made booleans to do with contributions in the models a fundamental part of our user interface, e.g,  bUseBoltzmannSuppression being an argument in our command line interface.
+17)  Importance: low  type: user interface
+
+We have made booleans to do with contributions in the models a fundamental part of our user interface, e.g,  bUseBoltzmannSuppression being an argument in our command line interface which works for a number of models.  This seems a bit awkward, especially for extending to new models.    It would be nice to imagine a general command line user interface that only relied on the existnec eof a model. Thats a clever coding tassk someone unfamiliar with the rest of the code could do, but its also not very urgent 
+  
 
 18) Importance: low, type: clean up
 
-The command_line_interface.py where PT is called is messy with commented out bits.  Tbh it looks like mess I had in wghen I was editing this by hand to work on ubuntu but giot blame says i was not the last pesron to edit it.
+The command_line_interface.py where PT is called is messy with commented out bits.  Tbh it looks like mess I had in when I was editing this by hand to work on ubuntu but git blame says I was not the last pesron to edit it. 
 
 Anyway lets clean this up.
  
-19) -subcrit optuion never passed to PT in any of our user interfaces?
+19) Importance: low to medium, type: user interface
+
+-subcrit option never passed to PT in any of our user interfaces as far as I could tell when looking with Cheng. 
 
 
-20) why is temperature scale set to 300 for RSS?  in gneeral what to say to suesr about these settings...
+20) Importance: low to medium, type: model RSS defaults
 
-21 Ask about massShifthack usage, what to tell users.  This is to avoid problems when you want to comnsider very small masses and need to have minMassThreshold set very low (10^{-10} according to comment.  Then numerical noise may guve a non-zero mass to the goldstone and that may affect our results.
+Why is temperature scale set to 300 for RSS?  In general I think this should just be the expected physics scale.  We should think what to say to user about these settings in general (Cheng has been asking about them a lot while writing a new model file).  
 
-22) forbidPhaseCrit -- why only check 0 component in RSS, in general why allow slightly negative, isn't this to avoid critical temps between z2 mirrors ?
+21) Importance: low to medium, type: settings / user understanding
+
+Need to decide what to tell users anout the setting .massShiftHack. We need to somehow communicate details like this as the user will see these options when trying to follow how to add new models , though this is specific to our implementation of the potential.    This is to avoid problems when you want to comnsider very small masses and need to have minMassThreshold set very low (10^{-10} according to comment.  Then numerical noise may guve a non-zero mass to the goldstone and that may affect our results.
+
+22)  Importance: low to medium, type: user understanding
+
+forbidPhaseCrit --  I don't understand this one myself yet.  Why only check 0 component in RSS, in general why allow slightly negative, isn't this to avoid critical temps between z2 mirrors ?
+
+23) Importance: low to medium, type: error handling
+
+The cause of errors being a PT failure  is not reported (and nor is the error from PT in any way) when there is a  pre-existing PhaseStraucture.dat file.  Maybe user stupidity but its happpened a few times so maybe we can catch this somehow? 
