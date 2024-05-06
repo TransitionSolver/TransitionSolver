@@ -85,11 +85,8 @@ def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script
     # program name. The remaining elements are the input parameters for the specified program. The timeout (in seconds)
     # ensures that PhaseTracer cannot run indefinitely. stdout is routed to DEVNULL to suppress any print statements
     # from PhaseTracer. stderr is routed to STDOUT so that errors in PhaseTracer are printed here.
-    #subprocess.call(['wsl', PhaseTracer_directory + 'bin', 'ls'])
-    #subprocess.call([PhaseTracer_directory + 'bin', 'ls'])
     command = (['wsl'] if windows else []) + [PhaseTracer_directory + f'bin/{PT_script}', outputFolder +
         '/parameter_point.txt', outputFolder] + PT_params
-    print(command)
     subprocess.call(command, timeout=60)#, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
     # Load the phase structure saved by PhaseTracer.
