@@ -136,12 +136,15 @@ toleranceSonT = 3.0
 
 We have made booleans to do with contributions in the models a fundamental part of our user interface, e.g,  bUseBoltzmannSuppression being an argument in our command line interface which works for a number of models.  This seems a bit awkward, especially for extending to new models.    It would be nice to imagine a general command line user interface that only relied on the existnec eof a model. Thats a clever coding tassk someone unfamiliar with the rest of the code could do, but its also not very urgent 
   
+## DONE
+## 18) Importance: low, type: clean up
 
-18) Importance: low, type: clean up
-
-The command_line_interface.py where PT is called is messy with commented out bits.  Tbh it looks like mess I had in when I was editing this by hand to work on ubuntu but git blame says I was not the last pesron to edit it. 
-
-Anyway lets clean this up.
+## The command_line_interface.py where PT is called is messy with
+## commented out bits.  Tbh it looks like mess I had in when I was
+## editing this by hand to work on ubuntu but git blame says I was not
+## the last pesron to edit it.
+## 
+## Anyway lets clean this up.
  
 19) Importance: low to medium, type: user interface
 
