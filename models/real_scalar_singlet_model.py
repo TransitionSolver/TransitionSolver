@@ -57,10 +57,10 @@ class RealScalarSingletModel(AnalysablePotential):
         self.fieldScale = self.vh
         self.temperatureScale = 300
 
-        self.massShiftHack = 1
         # Setting this to 1e-10 causes issues where the Goldstone mass can be just above 1e-10 and then we include the
         # massShiftHack term when avoiding the divergence from the Goldstone at the VEV.
         self.minMassThreshold = 1e-5
+        self.massShiftHack = 1
 
         self.bUseGoldstoneResummation = True
 
