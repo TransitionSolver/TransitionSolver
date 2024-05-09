@@ -65,12 +65,17 @@ Do we or could we add an example where we just  parameterPoint in code rather th
 ## load_data should be a method of phaseStructure when its written this
 ## way.
 
-## OK I just looked at this again, it seems the simple asnwer is load_data is not a method of the class PhaseStructure, as indictaed by the lack of indentation. Its just a helper function.  I think the confusion here is the line:
+## OK I just looked at this again, it seems the simple asnwer is
+## load_data is not a method of the class PhaseStructure, as indictaed
+## by the lack of indentation. Its just a function thats defined in
+## the same file (module I guess).  I think the confusion here is the line:
 
-##  bFileExists, phaseStructure = phase_structure.load_data(outputFolder + '/phase_structure.dat', bExpectFile=True)
+##  bFileExists, phaseStructure =
+##  phase_structure.load_data(outputFolder + '/phase_structure.dat',
+##  bExpectFile=True)
 
-## To me this looked like a phase_structure objevct calling a method.
-## But uits not its a function frpom the imported module
+## To me this looked like a phase_structure object calling a method.
+## But its not its a function from the imported module
 ## phase_structure being called.  That function the creates an object
 ## from the class PhaseStructure which is the second of the two
 ## outputs.
