@@ -54,15 +54,26 @@ I just added a comment explaining how to do this above the one in barebones exam
 
 Do we or could we add an example where we just  parameterPoint in code rather than loading from file? (I just deleted some commented out code that looked like this...). Without this I think a user would need to look into the code (check this makes sense before adding)   
 
-7) Importance: low to medium; type: code confusion or memory efficiency
+## IGNORE/RESOLVED:
+## 7)  Importance: low to medium; type: code confusion or memory efficiency
 
-Why have phaseStructure output by the load_data method of
-phaseStructure, seems odd " bFileExists, phaseStructure =
-phase_structure.load_data".  Does this mean we have two copies of this
-object in memory? Looking inside this method load_data does construct
-a phaseStructure object inside it.  Actually I see no reason why
-load_data should be a method of phaseStructure when its written this
-way.
+## Why have phaseStructure output by the load_data method of
+## phaseStructure, seems odd " bFileExists, phaseStructure =
+## phase_structure.load_data".  Does this mean we have two copies of this
+## object in memory? Looking inside this method load_data does construct
+## a phaseStructure object inside it.  Actually I see no reason why
+## load_data should be a method of phaseStructure when its written this
+## way.
+
+## OK I just looked at this again, it seems the simple asnwer is load_data is not a method of the class PhaseStructure, as indictaed by the lack of indentation. Its just a helper function.  I think the confusion here is the line:
+
+##  bFileExists, phaseStructure = phase_structure.load_data(outputFolder + '/phase_structure.dat', bExpectFile=True)
+
+## To me this looked like a phase_structure objevct calling a method.
+## But uits not its a function frpom the imported module
+## phase_structure being called.  That function the creates an object
+## from the class PhaseStructure which is the second of the two
+## outputs.
 
 
 8)  Importance: low; type: code style
@@ -166,3 +177,11 @@ forbidPhaseCrit --  I don't understand this one myself yet.  Why only check 0 co
 23) Importance: low to medium, type: error handling
 
 The cause of errors being a PT failure  is not reported (and nor is the error from PT in any way) when there is a  pre-existing PhaseStraucture.dat file.  Maybe user stupidity but its happpened a few times so maybe we can catch this somehow? 
+
+24)  Importamce: medium, type: tidy
+
+We have an empty method in the TransitionFinder class of PhaseTracer TransitionFinder::validateTransition.  The comments are also odd, looks like Lachlan started writimng the explanation of what it should do in comments and them chnaged his mind in the middle of typing and wrote an alternative suggestion instead.
+
+We should probably just delete this...
+
+25) 
