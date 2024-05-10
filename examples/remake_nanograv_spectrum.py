@@ -27,24 +27,38 @@ STYLE = {"text.usetex": True,
 plt.rcParams.update(**STYLE)
 
 
-def add_violin(ax, x, y, color, label, rw=0.1, alpha=0.8):
+def add_boxplot(ax, x, y, color, label, rw=0.08, alpha=0.8):
 
-    vpt = ax.violinplot(y, positions=(x), widths=rw * x, showextrema=False)
+    box = ax.boxplot(y,
+        positions=x,
+        widths=rw * x,
+        whis=(2.5, 97.5),
+        showfliers=False,
+        medianprops={'lw': 0},
+        whiskerprops={'lw': 1.5},
+        showcaps=False,
+        patch_artist=True,
+        manage_ticks=False)
 
-    for pc in vpt['bodies']:
-        pc.set_facecolor(color)
-        pc.set_alpha(alpha)
-        pc.set_edgecolor(color)
+    for element in ['boxes', 'whiskers', 'fliers', 'means', 'medians', 'caps']:
+        plt.setp(box[element], color=color)
+
+    for patch in box['boxes']:
+        patch.set(facecolor=color, alpha=alpha)
 
     # for legend
-    ax.stairs(np.arange(1, 6, 1), np.arange(1e5, 7e5, 1e5), fill=True, color=color, alpha=alpha, label=label)
 
+    square = ax.scatter(np.nan, np.nan, color=color, alpha=alpha, marker="s", s=75)
+    line = ax.scatter(np.nan, np.nan, color=color, alpha=alpha, marker="|", s=500, linewidths=3)
 
-def add_violins(ax):
-    add_violin(ax, nanograv_15[0], nanograv_15[1], 'limegreen', 'NANOGrav 15yr')
-    add_violin(ax, ppta_dr3[0], ppta_dr3[1], 'dodgerblue', 'PPTA DR3')
-    add_violin(ax, epta_dr2_full[0], epta_dr2_full[1], 'orange', 'EPTA DR2 Full')
+    return (label, (line, square))
 
+def add_boxplots(ax):
+    items = []
+    items.append(add_boxplot(ax, nanograv_15[0], nanograv_15[1], 'limegreen', 'NANOGrav 15yr'))
+    items.append(add_boxplot(ax, ppta_dr3[0], ppta_dr3[1], 'dodgerblue', 'PPTA DR3'))
+    items.append(add_boxplot(ax, epta_dr2_full[0], epta_dr2_full[1], 'orange', 'EPTA DR2 Full'))
+    return items
 
 def make_plot(bp):
 
@@ -56,7 +70,7 @@ def make_plot(bp):
 
     # Add experimental results
 
-    add_violins(ax)
+    boxplot_leg_items = add_boxplots(ax)
 
     # Add benchmark
 
@@ -68,14 +82,20 @@ def make_plot(bp):
     p1 = ax.plot(f, fluid, 'C3', lw=4, alpha=0.8)
     ax.fill_between(f, y1=1e-3 * fluid, y2=1e3 * fluid, color='C3', lw=4, alpha=0.2)
     p2 = ax.fill(np.NaN, np.NaN, 'C3', alpha=0.2)
-
     ax.plot(f, col, 'grey', lw=3, ls=":", label='Collisions')
-
     p2[0].set(lw=4, edgecolor="C3")
-    handles, labels = ax.get_legend_handles_labels()
-    handles.append((p2[0], p1[0]))
 
+    # fix legend
+
+    handles, labels = ax.get_legend_handles_labels()
+
+    for i, (l, h) in enumerate(boxplot_leg_items):
+        labels.insert(i, l)
+        handles.insert(i, h)
+
+    handles.append((p2[0], p1[0]))
     labels.append('Fluid --- sound waves + turbulence')
+
     ax.legend(handles, labels)
 
     return ax

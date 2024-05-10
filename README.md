@@ -6,16 +6,21 @@
 
 ## Languages
 
-Python 3.9 was used to develop `TransitionSolver`. Versions 3.7 and 3.8 are compatible if using `from __future__ import annotations` at the top of files that complain about type hinting. Python 3.9 or later is recommended until compatability for older versions is added properly.
+Python 3.9 was used to develop `TransitionSolver` but we also support versions 3.7 and 3.8  by including including `from __future__ import annotations` at the top of relevant files.
 
-I believe `PhaseTracer` requires at least C++11.
+The dependent package `PhaseTracer` requires at least a C++11 compatible compiler, see `PhaseTracer` documentation for more specifications.
 
 ## Packages and modules
 
 The following packages are required for `TransitionSolver`:
 
-* A modified version of `CosmoTransitions` that fixes many numerical errors.
-* `PhaseTracer` in the `TransitionSolverInterface` branch.
+* `CosmoTransitions` which is modified with the patch distributed with TransitionSolver util/CosmoTransitions.patch.  On linux this patch can be applied by copying it to the base directory of CosmoTransitions and doing:
+
+$ patch -p1  < CosmoTransitions.patch
+
+This  patch fixes a number of numerical errors that would otherwise disrupt the calculations performed by TransitionSolver.
+
+* `PhaseTracer` in the `TransitionSolverInterface` branch for which you will also need git version control.  On linux OS you can try the simple script util/Install_PhaseTracer distributed with TransitionSolver. 
 
 The following non-core Python modules are required for `TransitionSolver`:
 

@@ -39,13 +39,12 @@ def writePhaseHistoryReport(fileName: str, paths: list[ProperPath], phaseStructu
 
 def main():
     # The folder where we will write the output.
-    #outputFolder = 'output/example3'
     outputFolder = 'output/RSS/RSS_BP1'
     # Create the output folder if it doesn't exist already.
     pathlib.Path(str(pathlib.Path(outputFolder))).mkdir(parents=True, exist_ok=True)
 
     # Define a parameter point (i.e. values for each parameter in the model).
-    #parameterPoint = [0.104005, 250, 3.5, 0.2]
+    # parameterPoint should be a comma separated list of numerical inputs like "parameterPoint = np.array([x,y,z,...])"
     parameterPoint = np.loadtxt('input/RSS/RSS_BP1.txt')
 
     # Save the parameter point for future reference (e.g. so we know what parameter point resulted in the reported phase
@@ -105,7 +104,6 @@ def main():
     analyser.timeout_phaseHistoryAnalysis = 100
 
     # Create the potential using the parameter point.
-    #potential = ToyModel(*parameterPoint)
     potential = RealScalarSingletModel(*parameterPoint)
 
     def notify_TransitionAnalyser_on_create(transitionAnalyser: TransitionAnalyser):

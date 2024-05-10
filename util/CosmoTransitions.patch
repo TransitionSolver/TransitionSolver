@@ -1,0 +1,144 @@
+diff --git a/cosmoTransitions/pathDeformation.py b/cosmoTransitions/pathDeformation.py
+index 418d1ab..9e79508 100644
+--- a/cosmoTransitions/pathDeformation.py
++++ b/cosmoTransitions/pathDeformation.py
+@@ -301,7 +301,14 @@ class Deformation_Spline:
+         phi_lin = phi[:1] + (phi[-1:]-phi[:1])*self._t
+         phi -= phi_lin
+         self._beta, residues, rank, s = np.linalg.lstsq(self._X, phi, rcond=-1)
+-        phi = np.sum(self._beta[np.newaxis,:,:]*self._X[:,:,np.newaxis], axis=1)
++        # TODO: zero any points that cause underflow.
++        try:
++            phi = np.sum(self._beta[np.newaxis,:,:]*self._X[:,:,np.newaxis], axis=1)
++        except FloatingPointError:
++            print('CT step underflow')
++            self._X[abs(self._X) < 1e-8] = 0
++            self._beta[abs(self._beta) < 1e-8] = 0
++            phi = np.sum(self._beta[np.newaxis, :, :] * self._X[:, :, np.newaxis], axis=1)
+         phi += phi_lin
+         self.phi = phi
+ 
+@@ -971,6 +978,8 @@ def fullTunneling(path_pts, V, dV, maxiter=20, fixEndCutoff=.03,
+             print(err.args[0])
+             converged = False
+         pts = deform_obj.phi
++        # TODO: avoids underflow errors for elements of pts that are on the order of 1e-100.
++        pts[abs(pts) < 1e-12] = 0.0
+         if save_all_steps: saved_steps.append(deform_obj.phi_list)
+         # 4. Check convergence. If the deformation converged after one step,
+         # then assume that `path` is a good solution.
+diff --git a/cosmoTransitions/tunneling1D.py b/cosmoTransitions/tunneling1D.py
+index b554c21..2d4675e 100644
+--- a/cosmoTransitions/tunneling1D.py
++++ b/cosmoTransitions/tunneling1D.py
+@@ -40,6 +40,13 @@ class PotentialError(Exception):
+     pass
+ 
+ 
++class ThinWallError(Exception):
++    """
++    Used when the value for 'x' (see findProfile) cannot be represented in the floating-point system.
++    """
++    pass
++
++
+ class SingleFieldInstanton:
+     """
+     This class will calculate properties of an instanton with a single scalar
+@@ -178,7 +185,16 @@ class SingleFieldInstanton:
+         if self.phi_eps > 0:
+             dV_ = self.d2V(phi) * delta_phi
+             # blend the two together so that there are no discontinuites
+-            blend_factor = np.exp(-(delta_phi/self.phi_eps)**2)
++            # TODO: check delta_phi and then the exponent to avoid underflow.
++            if abs(delta_phi) < 1e-50:
++                blend_factor = 1.0
++            else:
++                exponent = -(delta_phi/self.phi_eps)**2
++
++                if exponent < -100:
++                    blend_factor = 0.0
++                else:
++                    blend_factor = np.exp(-(delta_phi/self.phi_eps)**2)
+             dV = dV_*blend_factor + dV*(1-blend_factor)
+         return dV
+ 
+@@ -353,9 +369,14 @@ class SingleFieldInstanton:
+                 warnings.simplefilter("ignore")
+                 phi = (gamma(nu+1)*(0.5*beta_r)**-nu * iv(nu, beta_r)-1) * dV/d2V
+                 dphi = -nu*((0.5*beta_r)**-nu / r) * iv(nu, beta_r)
+-                dphi += (0.5*beta_r)**-nu * 0.5*beta \
+-                        * (iv(nu-1, beta_r)+iv(nu+1, beta_r))
+-                dphi *= gamma(nu+1) * dV/d2V
++                # TODO: apparently CosmoTransitions wants inf here in some cases, but Python rightfully complains when
++                #  trying to multiply by inf. Just set to inf if we get a FloatingPointError.
++                try:
++                    dphi += (0.5*beta_r)**-nu * 0.5*beta \
++                            * (iv(nu-1, beta_r)+iv(nu+1, beta_r))
++                    dphi *= gamma(nu+1) * dV/d2V
++                except FloatingPointError:
++                    dphi = np.inf
+                 phi += phi0
+         else:
+             phi = (gamma(nu+1)*(0.5*beta_r)**-nu * jv(nu, beta_r) - 1) * dV/d2V
+@@ -667,6 +688,7 @@ class SingleFieldInstanton:
+         This way, `phi = phi_metaMin` when `x` is zero and
+         `phi = phi_absMin` when `x` is  infinity.
+         """
++        bModded = False
+         # Set x parameters
+         xmin = xtol*10
+         xmax = np.inf
+@@ -694,7 +716,15 @@ class SingleFieldInstanton:
+         integration_args = (dr0, epsfrac, epsabs, drmin, rmax)
+         rf = None
+         while True:
+-            delta_phi0 = np.exp(-x)*delta_phi
++            # TODO: avoiding underflow from exp(-x).
++            if x > 500:
++                delta_phi0 = 1e-100
++            else:
++                delta_phi0 = np.exp(-x)*delta_phi
++            """try:
++                delta_phi0 = np.exp(-x)*delta_phi
++            except FloatingPointError:
++                print('')"""
+             # r0, phi0, dphi0 = self.initialConditions(x, rmin, thinCutoff)
+             r0_, phi0, dphi0 = self.initialConditions(
+                 delta_phi0, rmin, delta_phi_cutoff)
+@@ -706,16 +736,33 @@ class SingleFieldInstanton:
+                 break
+             r0 = r0_
+             y0 = np.array([phi0, dphi0])
+-            rf, yf, ctype = self.integrateProfile(r0, y0, *integration_args)
++            if bModded:
++                try:
++                    rf, yf, ctype = self.integrateProfile(r0, y0, *integration_args)
++                except ValueError as e:
++                    import traceback
++                    traceback.print_exc()
++                    print("Hasn't converged, but we'll return the action for the last path.")
++                    r0, rf, y0, dr0 = r0_prev, rf_prev, y0_prev, dr0_prev
++                    break
++            else:
++                rf, yf, ctype = self.integrateProfile(r0, y0, *integration_args)
+             # Check for overshoot, undershoot
+             if ctype == "converged":
+                 break
+             elif ctype == "undershoot":  # x is too low
+                 xmin = x
+                 x = x*xincrease if xmax == np.inf else .5*(xmin+xmax)
++                if bModded:
++                    r0_prev, rf_prev, y0_prev, dr0_prev = r0, rf, y0, dr0
++
++                if x > 1e100:
++                    raise ThinWallError('Unable to resolve thin-walled case within floating-point limits.')
+             elif ctype == "overshoot":  # x is too high
+                 xmax = x
+                 x = .5*(xmin+xmax)
++                if bModded:
++                    r0_prev, rf_prev, y0_prev, dr0_prev = r0, rf, y0, dr0
+             # Check if we've reached xtol
+             if (xmax-xmin) < xtol:
+                 break
+

@@ -1,0 +1,192 @@
+List of possible improvements
+
+1)  Importance: Not urgent ;  type: Interfacing improvement ; 
+Currently we only interface PhaseTracer and TranbsitionSolver via text file output.   This has some advantages in terms of simplicity but can be a pain for large scans that GAMBIT prefers to avoid.  Would be nice to also have a routine in PhaseTracer that passed out a phase)_structure object, avoiding the need to do this.
+
+2) Importance: minor; type: examples tidy up 
+
+When I run the barebones example I first get an empty figure pop up and then only after I code it do i get the proper figures appearing.  i am not sure why, I don't think any plots are missing just some bug in the way we do this maybe.  I also get a long error message from the tex, so maybe I do miss one though.  Possibly its an issue with my texlive distribution.
+
+3) Importance: minor; type: examples tidy up ; status: maybe handled already 
+
+Actually this can be switched off by setting bPlot = False.  So maybe that is enough.
+
+I am not a fan of having examples pop up plots anyway.  I guess its nice as demo but I suggest at least only have pone do that.  Others should save these or even make plot a separate step such that also matplotlib is an optional dependency.  If you think about scanning, people do not want to be create plots for each point.
+
+4) Importance: medium; type: understanding numerics
+When I replace the line
+
+parameterPoint = np.loadtxt('input/RSS/RSS_BP1.txt')
+
+in barebones_example.py with what I believe to be exactly equivalent input
+
+#parameterPoint = np.array([-7.253805920400513969e+02, -1.142030590385311370e+02, 2.987030761010101010e-01, 6.999301941045084732e+02, 4.256276196807469319e+02, 2.780020068332878291e+05, 4.049553405540934909e+04, 5.828128166279837596e-02, 8.498960515918183023e-02, 4.516261190913655743e-01, 2.791372362500696909e+05, 4.081096031831684377e+04])
+
+I get slightly different results, ie
+
+< Transition strength: 1.021954047970647
+< Mean bubble separation (Tp): 351342943232572.44
+< Average bubble radius (Tp):  151208621569929.0
+< Hubble radius (Tp):          404816806134528.0
+< Mean bubble separation (Tf): 623021184326276.1
+< Average bubble radius (Tf):  642254104256177.4
+< Hubble radius (Tf):          545141730854802.4
+---
+> Transition strength: 1.0219609945307169
+> Mean bubble separation (Tp): 351332428929661.9
+> Average bubble radius (Tp):  151189841295837.2
+> Hubble radius (Tp):          404803089764954.3
+> Mean bubble separation (Tf): 622986289888833.1
+> Average bubble radius (Tf):  642182978112612.1
+> Hubble radius (Tf):          545135676759565.5
+
+I see similar changes just running the same way several times and i also see these kind of differences in the json files. So I think the issue is we have random numerical uncertainty enter even with exact same input on same machine.  There is nothing wring with this as long as its not too large and as long as we know about it and document it so users are forewarned and don't lose trust when they notice this themselves. 
+
+5) Importance: minor; type: output tidy up ;  status: addressed
+
+Actually most output is switched off by setting bDebug = False.
+
+I think its not desirable to always print so much to screen while the code runs.  Can we make an option to pipe to some log file.  Check this is not already done in scan code. 
+
+6) Importance: low ; type: user illustration improvement ; status: maybe addressed
+
+I just added a comment explaining how to do this above the one in barebones example. Maybe that is enough. 
+
+Do we or could we add an example where we just  parameterPoint in code rather than loading from file? (I just deleted some commented out code that looked like this...). Without this I think a user would need to look into the code (check this makes sense before adding)   
+
+## IGNORE/RESOLVED:
+## 7)  Importance: low to medium; type: code confusion or memory efficiency
+
+## Why have phaseStructure output by the load_data method of
+## phaseStructure, seems odd " bFileExists, phaseStructure =
+## phase_structure.load_data".  Does this mean we have two copies of this
+## object in memory? Looking inside this method load_data does construct
+## a phaseStructure object inside it.  Actually I see no reason why
+## load_data should be a method of phaseStructure when its written this
+## way.
+
+## OK I just looked at this again, it seems the simple asnwer is
+## load_data is not a method of the class PhaseStructure, as indictaed
+## by the lack of indentation. Its just a function thats defined in
+## the same file (module I guess).  I think the confusion here is the line:
+
+##  bFileExists, phaseStructure =
+##  phase_structure.load_data(outputFolder + '/phase_structure.dat',
+##  bExpectFile=True)
+
+## To me this looked like a phase_structure object calling a method.
+## But its not its a function from the imported module
+## phase_structure being called.  That function the creates an object
+## from the class PhaseStructure which is the second of the two
+## outputs.
+
+
+8)  Importance: low; type: code style
+
+The notifyHandler and notify_TransitionAnalyser_on_create is something I am not used to.  After reading I think this could be replaced in barebones example by juts passing a Boolean flag (or set of flags) that is later used to set bComputeSubsampledThermalParams.  Maybe there is some utility to this fancy machinery later on, but in barebones it looks overengineered. 
+
+9) Importance: minor,  type: corner cases / future proofing
+
+Line 81-82, phase_history_analyser.py
+
+if phases[i].T[-1] == highTemp:
+                bHighTemperaturePhase[i] = True
+
+is identifying high temp phases if their highest temp matches exactly hightemp. Could the highest temp be stored in different levels of precision such that some will get missed here?  I guess the way PT works this doesn't happen, but maybe it could happen if its replaced or changed with another tool?
+
+10)  Importance: high, type: tidy, complete
+
+Make sure we go through all TODO statements in code and either deal with them or at least make sure they do not sound alarming /  make things look bad / unfinished.  e.g. " # TODO: why was it necessary to do it this way?" (line 86, phase_history_analyser.py).  See also "# is it this simple? (added 15/11/2021)" (line 330, phase_history_analysis.py).
+
+
+
+11)  Importance: medium but long term only, type: other use cases
+
+ """for i in range(len(phases)):
+            if phases[i].T[0] == 0.0:
+                bLowTemperaturePhase[i] = True"""
+ (line 94--96, phase_history_analyser.py)
+
+This assumes the low temperature is T=0. This may not be desired if we consider higher scale PTs and maybe don't want to go to T=0?  i don't understand whats going in here anyway with the TODO comments etc.
+
+12) Importance: low, type: code style, clarity
+
+The method analysePhaseHistory_supplied has three outputs, paths, a bool and analysis metrics.  The code is written in such a way that the bool never gets a name in the code for this method, which could lead to confusion / mistakes later.  I think the bool is meant to be False when the paths were successful found and True when there is an error. maybe we could set Error = True or Error = False first and then pass it?      
+
+
+13) Importance: high, type: calculation consistency
+
+We need to make sure we are happy with the treatment of vw and that it is consistent throughout all parts of the code.  I hope we can allow the user to choose:
+
+i) to input any fixed value of vw between 0 and 1, throwing an error if exactly 1  or too close to q is used when it will cause  a problem for our numerics (this is in the hydrodynamics parts right?) 
+
+ii) select the Chapman-Jouguet velocity which varies with temperature consistently throughout the code.
+
+I *think* it does mostly work this way now with getBubbleWallVelocity returning the CJ vw when theflag bUseChapmanJouguetVelocity is set True and the user set vw otherwise.  However the fact that the Chapman-Jouguet velocity is indicated via a flag bUseChapmanJouguetVelocity, but you still pass a vw to the phase history analyser (in e.g. line  137 of the command_line_interface so) means:
+
+a) I need to check carefully that the user input vw is not being used anywhere when  bUseChapmanJouguetVelocity = True 
+
+b) Even if that is checked and all good, its a bit confusing for users  to do it this way and I think will lead to future developers wanting to carefully check the same thing or to potentially introduce bugs, so I think we should discuss other design options. 
+
+
+14) Importance: low, type: user instructions
+
+Should we write the python command as "python3" in the README and manual?  I guess python3 will work for all users but "python" will not work for users who still have that set to python2. That actually applies to my local setup though i guess as we go forward python2 is getting abandoned so this will apply ti fewere and fewer people.Just thought of it when looking at another python code we may want to interface to at some point, fastPTA https://github.com/Mauropieroni/fastPTA/ where they write it that way in the README.  
+
+
+
+15) Importance: high, type: code base
+
+As well as the TODO statemenst there are many places in the code where triple quotes are around code.  See line 94--96 and lines 132-150  of phase_history_analysis.py and lines 796 -- 852, 1196--1228, 1328--1331, 1883-1893 of transition_analysis.py.  Somtimes but not always they are preceded by a #TODO and I presume they are effectively commented out code that is not ready yet, though technically triple quotes are not comments and are read by the interpreter as a long string.   
+Anyway obviously these need to be dealt with before release.
+
+16)  Importance: don't know, type: question
+
+What is the meaning of the hard coded numbers here? Could they in any way be scenario specific?  
+
+maxSonTThreshold = self.estimateMaximumSignificantSonT() + 80
+minSonTThreshold = 80.0
+toleranceSonT = 3.0
+
+17)  Importance: low  type: user interface
+
+We have made booleans to do with contributions in the models a fundamental part of our user interface, e.g,  bUseBoltzmannSuppression being an argument in our command line interface which works for a number of models.  This seems a bit awkward, especially for extending to new models.    It would be nice to imagine a general command line user interface that only relied on the existnec eof a model. Thats a clever coding tassk someone unfamiliar with the rest of the code could do, but its also not very urgent 
+  
+## DONE
+## 18) Importance: low, type: clean up
+
+## The command_line_interface.py where PT is called is messy with
+## commented out bits.  Tbh it looks like mess I had in when I was
+## editing this by hand to work on ubuntu but git blame says I was not
+## the last pesron to edit it.
+## 
+## Anyway lets clean this up.
+ 
+19) Importance: low to medium, type: user interface
+
+-subcrit option never passed to PT in any of our user interfaces as far as I could tell when looking with Cheng. 
+
+
+20) Importance: low to medium, type: model RSS defaults
+
+Why is temperature scale set to 300 for RSS?  In general I think this should just be the expected physics scale.  We should think what to say to user about these settings in general (Cheng has been asking about them a lot while writing a new model file).  
+
+21) Importance: low to medium, type: settings / user understanding
+
+Need to decide what to tell users anout the setting .massShiftHack. We need to somehow communicate details like this as the user will see these options when trying to follow how to add new models , though this is specific to our implementation of the potential.    This is to avoid problems when you want to comnsider very small masses and need to have minMassThreshold set very low (10^{-10} according to comment.  Then numerical noise may guve a non-zero mass to the goldstone and that may affect our results.
+
+22)  Importance: low to medium, type: user understanding
+
+forbidPhaseCrit --  I don't understand this one myself yet.  Why only check 0 component in RSS, in general why allow slightly negative, isn't this to avoid critical temps between z2 mirrors ?
+
+23) Importance: low to medium, type: error handling
+
+The cause of errors being a PT failure  is not reported (and nor is the error from PT in any way) when there is a  pre-existing PhaseStraucture.dat file.  Maybe user stupidity but its happpened a few times so maybe we can catch this somehow? 
+
+24)  Importamce: medium, type: tidy
+
+We have an empty method in the TransitionFinder class of PhaseTracer TransitionFinder::validateTransition.  The comments are also odd, looks like Lachlan started writimng the explanation of what it should do in comments and them chnaged his mind in the middle of typing and wrote an alternative suggestion instead.
+
+We should probably just delete this...
+
+25) 

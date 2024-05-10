@@ -968,7 +968,7 @@ class GWAnalyser:
                 plt.xlim(left=min(peakFrequency_sw_shellThickness[0], peakFrequency_turb[0]), right=max(0.1,
                     peakFrequency_sw_shellThickness[-1], peakFrequency_turb[-1]))
                 plt.ylim(top=100)
-                plt.xlabel('$f_{\\mathrm{peak}} \\;\\; \\mathrm{[GeV]}$', fontsize=40)
+                plt.xlabel('$f_{\\mathrm{peak}} \\;\\; \\mathrm{[Hz]}$', fontsize=40)
                 plt.ylabel('$h^2 \\Omega_{\\mathrm{peak}}$', fontsize=40)
                 colorbar = plt.colorbar()
                 colorbar.set_label(label='$T_* \\;\\; \\mathrm{[GeV]}$', fontsize=28)
@@ -997,7 +997,7 @@ class GWAnalyser:
                     peakFrequency_sw_shellThickness[-1], peakFrequency_turb[-1], peakFrequency_sw_shellThickness_2[0],
                     peakFrequency_turb_2[0]))
                 plt.ylim(top=100)
-                plt.xlabel('$f_{\\mathrm{peak}} \\;\\; \\mathrm{[GeV]}$', fontsize=40)
+                plt.xlabel('$f_{\\mathrm{peak}} \\;\\; \\mathrm{[Hz]}$', fontsize=40)
                 plt.ylabel('$h^2 \\Omega_{\\mathrm{peak}}$', fontsize=40)
                 colorbar = plt.colorbar()
                 colorbar.set_label(label='$T_* \\;\\; \\mathrm{[GeV]}$', fontsize=28)
@@ -1123,7 +1123,7 @@ class GWAnalyser:
                 plt.yscale('log')
                 plotMilestoneTemperatures()
                 plt.xlabel('$T_* \\;\\; \\mathrm{[GeV]}$', fontsize=40)
-                plt.ylabel('$f_{\\mathrm{peak}} \\;\\; \\mathrm{[GeV]}$', fontsize=40)
+                plt.ylabel('$f_{\\mathrm{peak}} \\;\\; \\mathrm{[Hz]}$', fontsize=40)
                 plt.legend(['$\\mathrm{lattice}$', '$\\mathrm{sound \\; shell}$', '$\\mathrm{turbulence}$'],
                     fontsize=28)
                 finalisePlot('f_peak_vs_T')
@@ -1138,7 +1138,7 @@ class GWAnalyser:
                 plt.yscale('log')
                 plotMilestoneTemperatures()
                 plt.xlabel('$T_* \\;\\; \\mathrm{[GeV]}$', fontsize=40)
-                plt.ylabel('$f_{\\mathrm{peak}} \\;\\; \\mathrm{[GeV]}$', fontsize=40)
+                plt.ylabel('$f_{\\mathrm{peak}} \\;\\; \\mathrm{[Hz]}$', fontsize=40)
                 plt.legend(['$\\mathrm{lattice}$', '$\\mathrm{sound \\; shell}$', '$\\mathrm{turbulence}$'],
                     fontsize=28, loc='lower left')
                 finalisePlot('f_peak_vs_T')
