@@ -230,7 +230,7 @@ class Transition:
             # make sure to keep that data in the report rather than create a circular reference.
             if self.analysis.actionCurveFile == '' or self.analysis.actionCurveFile == reportFileName:
                 report['T'] = self.analysis.T
-                report['SonT'] = self.analysis.SonT
+                report['action'] = self.analysis.SonT
             else:
                 report['actionCurveFile'] = self.analysis.actionCurveFile
 

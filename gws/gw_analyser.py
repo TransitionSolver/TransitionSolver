@@ -663,7 +663,7 @@ class GWAnalyser:
         Tcoarse = transitionReport['T']
         H = transitionReport['H']
         Pf = transitionReport['Pf']
-        SonTcoarse = transitionReport['SonT']
+        SonTcoarse = transitionReport['action']
         interpSonT = scipy.interpolate.interp1d(Tcoarse, SonTcoarse)
         SonT = interpSonT(T)
         Gamma = [T[i]**4 * (SonT[i]/(2*np.pi))**(3/2) * np.exp(-SonT[i]) for i in range(len(T))]

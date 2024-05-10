@@ -1,6 +1,6 @@
 from __future__ import annotations
 import traceback
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 try:
     from cosmoTransitions.tunneling1D import ThinWallError
@@ -45,7 +45,8 @@ class ActionSample:
     def __init__(self, T: float, S3: float = -1.):
         self.T = T
         self.S3 = S3
-        self.SonT = -1 if S3 < 0. else S3 / max(0.001, T)
+        # TODO: doesn't correctly handle low-temperature transitions T; e.g. supercooling down to (sub-)MeV scale.
+        self.action = -1 if S3 < 0. else S3 / max(0.001, T)
         self.bValid = self.S3 > 0.
 
     # Emulates a constructor that takes as input another TemperatureData object.
@@ -59,11 +60,11 @@ class ActionSample:
     def transferData(self, data: 'ActionSample'):
         data.T = self.T
         data.S3 = self.S3
-        data.SonT = self.SonT
+        data.action = self.action
         data.bValid = self.bValid
 
     def __str__(self):
-        return f'(T: {self.T}, S/T: {self.SonT})'
+        return f'(T: {self.T}, S/T: {self.action})'
 
     def __repr__(self):
         return str(self)
@@ -118,9 +119,9 @@ class ActionSampler:
 
     # precomputedT and precomputedSonT are lists of values for the S/T curve. These can be used to avoid sampling the
     # action curve explicitly, until the samples run out.
-    def __init__(self, transitionAnalyser: 'TransitionAnalyser', minSonTThreshold: float, maxSonTThreshold: float,
-            toleranceSonT: float, stepSizeMax=0.95, precomputedT: Optional[list[float]] = None, precomputedSonT:
-            Optional[list[float]] = None):
+    def __init__(self, transitionAnalyser: 'TransitionAnalyser', minActionThreshold: float, maxActionThreshold: float,
+                 actionTargetTolerance: float, stepSizeMax=0.95, precomputedT: Optional[list[float]] = None,
+                 precomputedSonT: Optional[list[float]] = None):
         self.transitionAnalyser = transitionAnalyser
 
         # Copy properties for concision.
@@ -155,9 +156,9 @@ class ActionSampler:
         self.stepSize = -1
         self.stepSizeMax = stepSizeMax
 
-        self.minSonTThreshold = minSonTThreshold
-        self.maxSonTThreshold = maxSonTThreshold
-        self.toleranceSonT = toleranceSonT
+        self.minActionThreshold = minActionThreshold
+        self.maxActionThreshold = maxActionThreshold
+        self.actionTargetTolerance = actionTargetTolerance
 
         notifyHandler.handleEvent(self, 'on_create')
 
@@ -206,7 +207,7 @@ class ActionSampler:
                 self.T.append(self.precomputedT[len(self.T)])
                 self.SonT.append(self.precomputedSonT[len(self.SonT)])
                 sampleData.T = self.T[-1]
-                sampleData.SonT = self.SonT[-1]
+                sampleData.action = self.SonT[-1]
                 return True, 'Precomputed'
             elif len(self.T) == len(self.precomputedT):
                 # TODO: not exactly sure if this is necessary, but probably is.
@@ -359,7 +360,7 @@ class ActionSampler:
             return False, 'Action failed'
 
         self.T.append(sampleData.T)
-        self.SonT.append(sampleData.SonT)
+        self.SonT.append(sampleData.action)
 
         return True, 'Success'
 
@@ -476,45 +477,45 @@ class ActionSampler:
         # At T=0, emulate the freezing suppression by dividing by a small but non-vanishing number. In case the action
         # calculation returns a negative result (probably due to a failure of the algorithm), assume the action is actually
         # zero.
-        data.SonT = max(0, action / max(T, 0.001))
-        data.bValid = data.SonT > 1e-10
+        data.action = max(0, action / max(T, 0.001))
+        data.bValid = data.action > 1e-10
 
         if self.bDebug:
             if data.bValid:
-                print(f'Successfully evaluated action S = {data.SonT} in {time.perf_counter() - startTime} seconds.')
+                print(f'Successfully evaluated action S = {data.action} in {time.perf_counter() - startTime} seconds.')
             else:
-                print(f'Obtained nonsensical action S = {data.SonT} in {time.perf_counter() - startTime} seconds.')
+                print(f'Obtained nonsensical action S = {data.action} in {time.perf_counter() - startTime} seconds.')
 
         return fromFieldConfig, toFieldConfig
 
 
 class ActionCurveShapeAnalysisData:
     def __init__(self):
-        self.desiredData = None
-        self.nextBelowDesiredData = None
-        self.storedLowerActionData = []
-        self.actionSamples = []
+        self.desiredData: Optional[ActionSample] = None
+        self.nextBelowDesiredData: Optional[ActionSample] = None
+        self.storedLowerActionData: List[ActionSample] = []
+        self.actionSamples: List[ActionSample] = []
         # TODO: does the default choice for this ever matter? Are there cases where we don't identify it but still
         #  continue the transition analysis? Maybe for fine-tuned subcritical transitions that nucleate quickly but
         #  don't complete quickly?
-        self.bBarrierAtTmin = False
-        self.confidentNoNucleation = False
-        self.error = False
+        self.bBarrierAtTmin: bool = False
+        self.confidentNoNucleation: bool = False
+        self.error: bool = False
 
-    def copyDesiredData(self, sample):
+    def copyDesiredData(self, sample: ActionSample):
         self.desiredData = ActionSample.copyData(sample)
 
-    def copyNextBelowDesiredData(self, sample):
+    def copyNextBelowDesiredData(self, sample: ActionSample):
         self.nextBelowDesiredData = ActionSample.copyData(sample)
 
-    def copyStoredLowerActionData(self, samples):
+    def copyStoredLowerActionData(self, samples: List[ActionSample]):
         for sample in samples:
             self.storedLowerActionData.append(ActionSample.copyData(sample))
 
-    def copyActionSamples(self, samples):
+    def copyActionSamples(self, samples: List[ActionSample]):
         for sample in samples:
             # samples is a list of tuples of primitive types, so no need for a manual deep copy.
-            if sample[2]:  # bValid
+            if sample.bValid:
                 self.actionSamples.append(sample)
 
 
@@ -598,8 +599,8 @@ class TransitionAnalyser():
         # TODO: this should depend on the scale of the transition, so make it configurable.
         # Estimate the maximum significant value of S/T by finding where the instantaneous nucleation rate multiplied by
         # the maximum possible duration of the transition is O(1). This is highly conservative, but intentionally so
-        # because we only sample maxSonTThreshold within some (loose) tolerance.
-        maxSonTThreshold = self.estimateMaximumSignificantSonT() + 80
+        # because we only sample maxActionThreshold within some (loose) tolerance.
+        maxSonTThreshold = self.estimateMaximumSignificantAction() + 80
         minSonTThreshold = 80.0
         toleranceSonT = 3.0
 
@@ -641,8 +642,8 @@ class TransitionAnalyser():
                 for i in range(len(self.actionSampler.lowerSonTData)-2, -1, -1):
                     # Don't discard the point if it is separated in temperature from the almost degenerate S/T value already
                     # stored.
-                    if abs(self.actionSampler.lowerSonTData[i].SonT -
-                            self.actionSampler.lowerSonTData[keepIndices[-1]].SonT) > 1 or\
+                    if abs(self.actionSampler.lowerSonTData[i].action -
+                           self.actionSampler.lowerSonTData[keepIndices[-1]].action) > 1 or\
                             abs(self.actionSampler.lowerSonTData[i].T -
                             self.actionSampler.lowerSonTData[keepIndices[-1]].T) >\
                             self.potential.temperatureScale*0.001:
@@ -660,13 +661,13 @@ class TransitionAnalyser():
             self.actionSampler.getNextSample(sampleData, [], 0., self.Tmin)
 
         # We finally have a temperature where S/T is not much smaller than the value we started with (which was close to
-        # maxSonTThreshold). From here we can use the separation in these temperatures and S/T values to predict reasonable
-        # temperatures to efficiently sample S/T in the range [minSonTThreshold, maxSonTThreshold] until the nucleation
+        # maxActionThreshold). From here we can use the separation in these temperatures and S/T values to predict reasonable
+        # temperatures to efficiently sample S/T in the range [minActionThreshold, maxActionThreshold] until the nucleation
         # temperature is found.
 
-        # If we continue to assume linearity, we will overestimate the rate at which minSonTThreshold is reached. Therefore,
+        # If we continue to assume linearity, we will overestimate the rate at which minActionThreshold is reached. Therefore,
         # we can take large steps in temperature and dynamically update the step size based on the new prediction of when
-        # minSonTThreshold will be reached. Further, we can adjust the step size based on how well the prediction matches
+        # minActionThreshold will be reached. Further, we can adjust the step size based on how well the prediction matches
         # the observed value. If the prediction is good, we can increase the step size as the S/T curve must be close to
         # linear in this region. If the prediction is bad, the S/T must be noticeably non-linear in this region and thus we
         # need a smaller step size for accurate sampling.
@@ -843,7 +844,7 @@ class TransitionAnalyser():
                 else:
                     Teq = chosenTeq
                     self.transition.Teq = Teq
-                    S1, S2 = self.actionSampler.SonT[simIndex], self.actionSampler.SonT[simIndex+1]
+                    S1, S2 = self.actionSampler.action[simIndex], self.actionSampler.action[simIndex+1]
                     # Linearly interpolate the action to find S(Teq).
                     self.transition.SonTeq = S1 + (S2 - S1)*(Teq - T1)/(T2 - T1)
 
@@ -1416,7 +1417,7 @@ class TransitionAnalyser():
             lowTempIndex = len(self.actionSampler.SonT)
 
             minAction = min(self.actionSampler.SonT)
-            maxAction = self.actionSampler.maxSonTThreshold
+            maxAction = self.actionSampler.maxActionThreshold
 
             # Search for the lowest temperature for which the action is not significantly larger than the maximum
             # significant action.
@@ -1512,28 +1513,29 @@ class TransitionAnalyser():
             self.transition.Pf = Pf
 
     def primeTransitionAnalysis(self, startTime: float) -> (Optional[ActionSample], list[ActionSample]):
-        TcData = ActionSample(self.transition.Tc)
-        TminData = ActionSample(self.Tmin)
+        TcData: ActionSample = ActionSample(self.transition.Tc)
+        TminData: ActionSample = ActionSample(self.Tmin)
 
         if self.bDebug:
             # \u00B1 is the plus/minus symbol.
-            print('Bisecting to find S/T =', self.actionSampler.maxSonTThreshold, u'\u00B1',
-                self.actionSampler.toleranceSonT)
+            print('Bisecting to find S/T =', self.actionSampler.maxActionThreshold, u'\u00B1',
+                  self.actionSampler.actionTargetTolerance)
 
-        # Use bisection to find the temperature at which S/T ~ maxSonTThreshold.
-        actionCurveShapeAnalysisData = self.findNucleationTemperatureWindow_refined(startTime=startTime)
+        # Use bisection to find the temperature at which S/T ~ maxActionThreshold.
+        actionCurveShapeAnalysisData: ActionCurveShapeAnalysisData =\
+            self.findNucleationTemperatureWindow_refined(startTime=startTime)
 
         if self.timeout_phaseHistoryAnalysis > 0:
-            endTime = time.perf_counter()
+            endTime: float = time.perf_counter()
             if endTime - startTime > self.timeout_phaseHistoryAnalysis:
                 return None, []
 
         # TODO: Maybe use the names from here anyway? The current set of names is a little confusing!
-        data = actionCurveShapeAnalysisData.desiredData
-        bisectMinData = actionCurveShapeAnalysisData.nextBelowDesiredData
-        lowerSonTData = actionCurveShapeAnalysisData.storedLowerActionData
-        allSamples = actionCurveShapeAnalysisData.actionSamples
-        bBarrierAtTmin = actionCurveShapeAnalysisData.bBarrierAtTmin
+        data: ActionSample = actionCurveShapeAnalysisData.desiredData
+        bisectMinData: ActionSample = actionCurveShapeAnalysisData.nextBelowDesiredData
+        lowerSonTData: List[ActionSample] = actionCurveShapeAnalysisData.storedLowerActionData
+        allSamples: List[ActionSample] = actionCurveShapeAnalysisData.actionSamples
+        bBarrierAtTmin: bool = actionCurveShapeAnalysisData.bBarrierAtTmin
 
         # If we didn't find any action values near the nucleation threshold, we are done.
         if data is None or not data.bValid:
@@ -1543,36 +1545,45 @@ class TransitionAnalyser():
                     print('No action samples')
                 return None, []
 
-            allSamples = np.array(allSamples)
-            minSonTIndex = np.argmin(allSamples[:, 1])
+            #allSamples = np.array(allSamples)
+            #minSonTIndex = np.argmin(allSamples[:, 1])
 
-            self.transition.analysis.lowestSonT = allSamples[minSonTIndex, 1]
+            # Find the minimum action so we can record it.
+            minActionIndex = 0
+            minAction = allSamples[0].action
+
+            for i in range(1, len(allSamples)):
+                if allSamples[i].action < minAction:
+                    minAction = allSamples[i].action
+                    minActionIndex = i
+
+            self.transition.analysis.lowestSonT = minAction
 
             if self.bReportAnalysis:
                 print('No transition')
-                print('Lowest sampled S/T =', allSamples[minSonTIndex, 1], 'at T =', allSamples[minSonTIndex, 0])
+                print('Lowest sampled S/T =', minAction, 'at T =', allSamples[minActionIndex].T)
 
-            # if bDebug or bPlot:
             # This is a little confusing at first, but what this does is:
             # - allSamples.argsort(axis=0): sort the indices of both columns (T and S/T) based on the values stored in
             #   the corresponding positions.
             # - [:,0]: grab the first column (the T column).
             # - Use the sorted indices based on T to grab the elements of allSamples in the correct order.
             # This returns a copy of allSamples with the same (T, S/T) tuples, but sorted by the T values.
-            allSamples = allSamples[allSamples.argsort(axis=0)[:, 0]]
-            # TODO: couldn't we just use sort(key=)?
+            #allSamples = allSamples[allSamples.argsort(axis=0)[:, 0]]
+            # TODO: [2024] changed to use the key parameter in regular sort. Need to make sure this works as intended.
+            allSamples.sort(key=lambda x: x.T, reverse=True)
 
-            T = [sample[0] for sample in allSamples]
-            SonT = [sample[1] for sample in allSamples]
+            T = [sample.T for sample in allSamples]
+            SonT = [sample.action for sample in allSamples]
 
             if self.bDebug:
                 print('T:', T)
-                print('SonT:', SonT)
+                print('action:', SonT)
 
             if self.bPlot:
                 plt.plot(T, SonT)
                 plt.xlabel('$T$')
-                plt.ylabel('$S_3/T$')
+                plt.ylabel('$S(T)$')
                 plt.yscale('log')
                 # plt.ylim(bottom=2)
                 plt.show()
@@ -1581,40 +1592,40 @@ class TransitionAnalyser():
             self.transition.analysis.SonT = SonT
             return None, []
         else:
-            if self.bPlot:
-                print(f'Data: (T: {data.T}, S/T: {data.SonT})')
+            if self.bDebug:
+                print(f'Data: (T: {data.T}, S/T: {data.action})')
                 print('len(lowerSonTData):', len(lowerSonTData))
 
-        intermediateData = ActionSample.copyData(data)
+        intermediateData: ActionSample = ActionSample.copyData(data)
 
         self.actionSampler.lowerSonTData = lowerSonTData
 
         if self.bDebug:
-            print('Attempting to find next reasonable (T, S/T) sample below maxSonTThreshold...')
+            print('Attempting to find next reasonable (T, S/T) sample below maxActionThreshold...')
 
-        if data.SonT > self.actionSampler.minSonTThreshold + 0.8 * (
-                self.actionSampler.maxSonTThreshold - self.actionSampler.minSonTThreshold):
+        if data.action > self.actionSampler.minActionThreshold + 0.8*(self.actionSampler.maxActionThreshold -
+                                                                      self.actionSampler.minActionThreshold):
             if self.bDebug:
-                print('Presumably not a subcritical transition curve, with current S/T near maxSonTThreshold.')
+                print('Presumably not a subcritical transition curve, with current action near maxActionThreshold.')
             subcritical = False
             # targetSonT is the first S/T value we would like to sample. Skipping this might lead to numerical errors in the
             # integration, and sampling at higher S/T values is numerically insignificant.
-            # targetSonT = minSonTThreshold + 0.98*(min(maxSonTThreshold, data.SonT) - minSonTThreshold)
-            targetSonT = data.SonT * self.actionSampler.stepSizeMax
+            # targetSonT = minActionThreshold + 0.98*(min(maxActionThreshold, data.action) - minActionThreshold)
+            targetSonT = data.action * self.actionSampler.stepSizeMax
 
             # Check if the bisection window can inform which temperature we should sample to reach the target S/T.
-            if abs(bisectMinData.SonT - targetSonT) < 0.3 * (
-                    self.actionSampler.maxSonTThreshold - self.actionSampler.minSonTThreshold):
-                interpFactor = (targetSonT - bisectMinData.SonT) / (data.SonT - bisectMinData.SonT)
+            if abs(bisectMinData.action - targetSonT) < 0.3 * (
+                    self.actionSampler.maxActionThreshold - self.actionSampler.minActionThreshold):
+                interpFactor = (targetSonT - bisectMinData.action) / (data.action - bisectMinData.action)
                 intermediateData.T = bisectMinData.T + interpFactor * (data.T - bisectMinData.T)
             # Otherwise, check if the low S/T data can inform which temperature we should sample to reach the target S/T.
-            elif len(lowerSonTData) > 0 and abs(lowerSonTData[-1].SonT - targetSonT) \
-                    < 0.5 * (self.actionSampler.maxSonTThreshold - self.actionSampler.minSonTThreshold):
-                interpFactor = (targetSonT - lowerSonTData[-1].SonT) / (data.SonT - lowerSonTData[-1].SonT)
+            elif len(lowerSonTData) > 0 and abs(lowerSonTData[-1].action - targetSonT) \
+                    < 0.5 * (self.actionSampler.maxActionThreshold - self.actionSampler.minActionThreshold):
+                interpFactor = (targetSonT - lowerSonTData[-1].action) / (data.action - lowerSonTData[-1].action)
                 intermediateData.T = lowerSonTData[-1].T + interpFactor * (data.T - lowerSonTData[-1].T)
             # Otherwise, all that's left to do is guess.
             else:
-                # Try sampling S/T at a temperature just below where S/T = maxSonTThreshold, and determine where to sample
+                # Try sampling S/T at a temperature just below where S/T = maxActionThreshold, and determine where to sample
                 # next based on the result.
                 intermediateData.T = self.Tmin + 0.99*(data.T - self.Tmin)
 
@@ -1629,19 +1640,19 @@ class TransitionAnalyser():
                 self.transition.analysis.error = f'Failed to evaluate action at trial temperature T={intermediateData.T}'
                 return None, []
 
-            # If we happen to sample too far away from 'data' (which can happen if S/T is very steep near maxSonTThreshold),
-            # then we should correct our next sample to be closer to maxSonTThreshold. In case of a noisy action, make sure
-            # to limit the number of samples and simply choose the result with the closest S/T to maxSonTThreshold.
+            # If we happen to sample too far away from 'data' (which can happen if S/T is very steep near maxActionThreshold),
+            # then we should correct our next sample to be closer to maxActionThreshold. In case of a noisy action, make sure
+            # to limit the number of samples and simply choose the result with the closest S/T to maxActionThreshold.
             maxCorrectionSamples = 5
             correctionSamplesTaken = 0
             closestPoint = ActionSample.copyData(intermediateData)
 
             # While our sample's S/T is too far from the target value, step closer to 'data' and try again.
             while correctionSamplesTaken < maxCorrectionSamples \
-                    and abs(1 - abs(intermediateData.SonT - data.SonT) / data.SonT) < self.actionSampler.stepSizeMax:
+                    and abs(1 - abs(intermediateData.action - data.action) / data.action) < self.actionSampler.stepSizeMax:
                 if self.bDebug:
                     print('Sample too far from target S/T value at T =', intermediateData.T, 'with S/T =',
-                          intermediateData.SonT)
+                          intermediateData.action)
                     print('Trying again at T =', 0.5*(intermediateData.T + data.T))
                 correctionSamplesTaken += 1
                 # Step halfway across the interval and try again.
@@ -1657,31 +1668,31 @@ class TransitionAnalyser():
                 self.actionSampler.storeLowerSonTData(ActionSample.copyData(intermediateData))
 
                 # If this is the closest point, store this in case the next sample is worse (for a noisy action).
-                if abs(intermediateData.SonT - data.SonT) < abs(closestPoint.SonT - data.SonT):
+                if abs(intermediateData.action - data.action) < abs(closestPoint.action - data.action):
                     intermediateData.transferData(closestPoint)
 
-            # If we corrected intermediate data, make sure to update it to the closest point (to maxSonTThreshold) sampled.
+            # If we corrected intermediate data, make sure to update it to the closest point (to maxActionThreshold) sampled.
             if correctionSamplesTaken > 0:
                 closestPoint.transferData(intermediateData)
 
             # Given that we took a small step in temperature and have a relatively large S/T, an increase in S/T means there
             # is insufficient time for nucleation to occur. It is improbable that S/T would drop to a small enough value
             # within this temperature range to yield nucleation.
-            if intermediateData.SonT >= data.SonT:
+            if intermediateData.action >= data.action:
                 if self.bDebug:
                     print('S/T increases before nucleation can occur.')
                 return None, self.actionSampler.lowerSonTData
 
             self.actionSampler.T.extend([data.T, intermediateData.T])
-            self.actionSampler.SonT.extend([data.SonT, intermediateData.SonT])
+            self.actionSampler.SonT.extend([data.action, intermediateData.action])
         else:
             if self.bDebug:
                 print(
-                    'Presumably a subcritical transition curve, with current S/T significantly below maxSonTThreshold.')
+                    'Presumably a subcritical transition curve, with current S/T significantly below maxActionThreshold.')
             subcritical = True
 
             # Take a very small step, with the size decreasing as S/T decreases.
-            interpFactor = 0.99 + 0.009*(1 - data.SonT/self.actionSampler.minSonTThreshold)
+            interpFactor = 0.99 + 0.009*(1 - data.action / self.actionSampler.minActionThreshold)
             intermediateData.T = self.Tmin + interpFactor*(data.T - self.Tmin)
 
             # There's no point taking a tiny temperature step if we already took a larger step away from Tmax as our highest
@@ -1696,20 +1707,20 @@ class TransitionAnalyser():
 
             # Don't accept cases where S/T is negative (translated to 0) for the last two evaluations. This suggests the
             # bounce solver is failing and we cannot proceed reliably.
-            if not intermediateData.bValid or intermediateData.SonT == 0 and TcData.SonT == 0:
+            if not intermediateData.bValid or intermediateData.action == 0 and TcData.action == 0:
                 self.transition.analysis.error = f'Failed to evaluate action at trial temperature T={intermediateData.T}'
-                # print('This was for a subcritical transition with initial S/T:', data.SonT, 'at T:', data.T)
+                # print('This was for a subcritical transition with initial S/T:', data.action, 'at T:', data.T)
                 return None, []
 
             # If we couldn't sample all the way to Tmax, predict what the action would be at Tmax and store that as a
             # previous sample to be used in the following integration. intermediateData will be used as the next sample
             # point.
             if data.T < self.Tmax:
-                maxSonT = data.SonT + (data.SonT - intermediateData.SonT) * (self.Tmax - data.T) / (
+                maxSonT = data.action + (data.action - intermediateData.action) * (self.Tmax - data.T) / (
                             data.T - intermediateData.T)
 
                 self.actionSampler.T.extend([self.Tmax, data.T])
-                self.actionSampler.SonT.extend([maxSonT, data.SonT])
+                self.actionSampler.SonT.extend([maxSonT, data.action])
 
                 # We have already sampled this data point and should use it as the next point in the integration. Storing it
                 # in lowerSonTData automatically results in this desired behaviour. No copy is required as we don't alter
@@ -1719,10 +1730,10 @@ class TransitionAnalyser():
             # integration.
             else:
                 self.actionSampler.T.extend([data.T, intermediateData.T])
-                self.actionSampler.SonT.extend([data.SonT, intermediateData.SonT])
+                self.actionSampler.SonT.extend([data.action, intermediateData.action])
 
         if self.bDebug:
-            print('Found next sample: T =', intermediateData.T, 'and S/T =', intermediateData.SonT)
+            print('Found next sample: T =', intermediateData.T, 'and S/T =', intermediateData.action)
 
         # Now take the same step in temperature and evaluate the action again.
         sampleData = ActionSample.copyData(intermediateData)
@@ -1743,7 +1754,7 @@ class TransitionAnalyser():
             self.actionSampler.lowerSonTData.pop()
         else:
             sampleData.action = -1
-            sampleData.SonT = -1
+            sampleData.action = -1
 
             self.actionSampler.evaluateAction(sampleData)
 
@@ -1765,16 +1776,17 @@ class TransitionAnalyser():
 
         return sampleData, allSamples
 
-    def estimateMaximumSignificantSonT(self, tolerance=2.0):
-        actionMin = 50
-        actionMax = 200
-        action = 160
+    def estimateMaximumSignificantAction(self, tolerance: float = 2.0):
+        # TODO: these need to be configurable or start with larger variation.
+        actionMin: float = 50
+        actionMax: float = 200
+        action: float = 160
 
         while actionMax - actionMin > tolerance:
             action = 0.5*(actionMin + actionMax)
 
-            nucRate = self.calculateInstantaneousNucleationRate(self.Tmax, action)
-            numBubbles = nucRate*(self.Tmax - self.Tmin)
+            nucRate: float = self.calculateInstantaneousNucleationRate(self.Tmax, action)
+            numBubbles: float = nucRate*(self.Tmax - self.Tmin)
 
             if 0.1 < numBubbles < 10:
                 return action
@@ -1786,84 +1798,95 @@ class TransitionAnalyser():
         return action
 
     def findNucleationTemperatureWindow_refined(self, startTime: float = -1.0):
-        actionCurveShapeAnalysisData = ActionCurveShapeAnalysisData()
-        Tstep = 0.01*(self.Tmax - self.Tmin)
-        actionSamples = []
+        actionCurveShapeAnalysisData: ActionCurveShapeAnalysisData = ActionCurveShapeAnalysisData()
+        Tstep: float = 0.01*(self.Tmax - self.Tmin)
+        actionSamples: List[ActionSample] = []
         lowerActionData = []
 
         TLow = self.Tmin
         THigh = self.Tmax
 
-        # TODO: come up with a new name for this now that evaluateAction has replaced calculateActionSimple.
-        def evaluateAction_internal():
+        # ==============================================================================================================
+        # Begin locally-defined convenience functions.
+        # ==============================================================================================================
+
+        # Wrapper function that evaluates the action and stores it in data. Returns whether the action was successfully
+        # evaluated.
+        def evaluateAction_internal() -> bool:
             try:
                 self.actionSampler.evaluateAction(data)
             except ThinWallError:
                 if not self.bAllowErrorsForTn:
                     return False
-            except Exception as e:
+            except Exception:
                 import traceback
                 traceback.print_exc()
                 return False
 
-            actionSamples.append((data.T, data.SonT, data.bValid))
+            #actionSamples.append((data.T, data.action, data.bValid))
+            actionSamples.append(ActionSample.copyData(data))
 
-            if data.bValid and self.actionSampler.minSonTThreshold < data.SonT < self.actionSampler.maxSonTThreshold:
+            if data.bValid and self.actionSampler.minActionThreshold < data.action < self.actionSampler.maxActionThreshold:
                 lowerActionData.append(ActionSample.copyData(data))
 
             return True
 
-        def getSignLabel():
+        # Returns a label that indicates whether the action store in data is above or below the target value.
+        def getSignLabel() -> str:
             if not data.bValid:
                 return 'unknown'
-            elif abs(data.SonT - self.actionSampler.maxSonTThreshold) <= self.actionSampler.toleranceSonT:
+            elif abs(data.action - self.actionSampler.maxActionThreshold) <= self.actionSampler.actionTargetTolerance:
                 return 'equal'
-            elif data.SonT > self.actionSampler.maxSonTThreshold:
+            elif data.action > self.actionSampler.maxActionThreshold:
                 return 'above'
             else:
                 return 'below'
 
-        def saveCurveShapeAnalysisData(success=False):
+        def saveCurveShapeAnalysisData(bSuccess: bool = False):
             dataToUse = data
             lowerTSampleToUse = lowerTSample
 
-            # If the transition is said to fail (e.g. due to failure to evaluate the bounce in the thin-walled limit), check
-            # if we have enough data to suggest the transition should occur.
-            if not success:
+            # If the transition is said to fail (e.g. due to failure to evaluate the bounce in the thin-walled limit),
+            # check if we have enough data to suggest the transition should occur.
+            if not bSuccess:
                 # Find the highest temperature for which the action is below the nucleation threshold.
                 maxTempBelowIndex = -1
                 prevMaxTempBelowIndex = -1
                 for i in range(len(actionSamples)):
-                    if actionSamples[i][2] and actionSamples[i][1] < self.actionSampler.maxSonTThreshold:
-                        if maxTempBelowIndex < 0 or actionSamples[i][0] > actionSamples[maxTempBelowIndex][0]:
+                    if actionSamples[i].bValid and actionSamples[i].action < self.actionSampler.maxActionThreshold:
+                        if maxTempBelowIndex < 0 or actionSamples[i].T > actionSamples[maxTempBelowIndex].T:
                             prevMaxTempBelowIndex = maxTempBelowIndex
                             maxTempBelowIndex = i
 
                 # If such a sample exists, we can use this as the desired data point.
                 if maxTempBelowIndex > -1:
-                    success = True
-                    temp = actionSamples[maxTempBelowIndex][0]
-                    action = actionSamples[maxTempBelowIndex][1]
-                    dataToUse = ActionSample(temp, action*temp)
+                    bSuccess = True
+                    temperature: float = actionSamples[maxTempBelowIndex].T
+                    action = actionSamples[maxTempBelowIndex].action
+                    dataToUse = ActionSample(temperature, action*temperature)
                     dataToUse.bValid = True
 
                     # Attempt to also store the sample point directly before this in temperature.
                     if prevMaxTempBelowIndex > -1:
-                        temp = actionSamples[prevMaxTempBelowIndex][0]
-                        action = actionSamples[prevMaxTempBelowIndex][1]
-                        lowerTSampleToUse = ActionSample(temp, action*temp)
+                        temperature = actionSamples[prevMaxTempBelowIndex].T
+                        action = actionSamples[prevMaxTempBelowIndex].action
+                        lowerTSampleToUse = ActionSample(temperature, action*temperature)
                         lowerTSampleToUse.bValid = True
                     else:
                         lowerTSampleToUse = None
 
-            if success:
+            if bSuccess:
                 actionCurveShapeAnalysisData.copyDesiredData(dataToUse)
                 actionCurveShapeAnalysisData.copyNextBelowDesiredData(lowerTSampleToUse)
                 # We probably just stored data in lowerActionData, so remove it since we're using it as the target value.
-                if self.actionSampler.minSonTThreshold < dataToUse.SonT < self.actionSampler.maxSonTThreshold:
+                if self.actionSampler.minActionThreshold < dataToUse.action < self.actionSampler.maxActionThreshold:
                     lowerActionData.pop()
             actionCurveShapeAnalysisData.copyActionSamples(actionSamples)
             actionCurveShapeAnalysisData.copyStoredLowerActionData(lowerActionData)
+
+        # ==============================================================================================================
+        # End locally-defined convenience functions.
+        # ==============================================================================================================
 
         # Evaluate the action at Tmin. (Actually just above so we avoid issues where the phase might disappear.)
         data = ActionSample(self.Tmin+Tstep)
@@ -1877,6 +1900,8 @@ class TransitionAnalyser():
         labelLow = getSignLabel()
 
         # If the action calculation failed at the low temperature, step along the curve slightly and try again.
+        # TODO: [2024] maybe leave this as configurable alternative behaviour? It would be used as an alternative to the
+        #  uncommented code just below.
         """if labelLow == 'unknown':
             data.T += 5*Tstep
             evaluateAction()
@@ -1889,8 +1914,8 @@ class TransitionAnalyser():
     
             TLow = data.T"""
 
-        # TODO: the assumption is that if the action calculation fails, it's probably because the barrier becomes too small,
-        #  hence the action would be very low.
+        # Assume that if the action calculation fails, it's probably because the barrier becomes too small, hence the
+        # action would be very low.
         if labelLow == 'unknown':
             if self.bAllowErrorsForTn:
                 labelLow = 'below'
@@ -1902,7 +1927,7 @@ class TransitionAnalyser():
 
             # Store the result at Tmin to compare to.
             minT = data.T
-            minAction = data.SonT
+            minAction = data.action
             minLabel = labelLow
 
             data.transferData(lowerTSample)
@@ -1918,12 +1943,12 @@ class TransitionAnalyser():
                 TLow = data.T
 
                 # If the action is increasing (going from Tmin to Tmin+deltaT), then we will not find a lower action.
-                if data.SonT > minAction:
+                if data.action > minAction:
                     # If the action at the minimum temperature was equal to the threshold within tolerance, we have shown
                     # that it was the minimum action overall and can return it as the only solution.
                     if minLabel == 'equal':
                         data.T = minT
-                        data.SonT = minAction
+                        data.action = minAction
                         actionCurveShapeAnalysisData.copyDesiredData(data)
                     else:
                         actionCurveShapeAnalysisData.confidentNoNucleation = True
@@ -1962,7 +1987,7 @@ class TransitionAnalyser():
 
                 # TODO: cleanup if this still works [2023]
                 #calculateActionSimple(potential, data, fromPhase, toPhase, Tstep=-Tstep, bDebug=settings.bDebug)
-                #actionSamples.append((data.T, data.SonT, data.bValid))
+                #actionSamples.append((data.T, data.action, data.bValid))
                 labelLow = 'below'
                 labelHigh = getSignLabel()
 
@@ -2011,10 +2036,10 @@ class TransitionAnalyser():
             # decreasing here. This determines which half of the region the target value could lie within, as we are
             # seeking regions of lower action.
 
-            # The temperature stored in data might be slightly different that TMid if there was a failed action calculation
-            # and a later attempt was successful.
+            # The temperature stored in data might be slightly different form TMid if there was a failed action
+            # calculation and a later attempt was successful.
             midT = data.T
-            midSonT = data.SonT
+            midSonT = data.action
             data.transferData(lowerTSample)
             data.T += Tstep
             bSuccess = evaluateAction_internal()
@@ -2027,7 +2052,7 @@ class TransitionAnalyser():
                 if self.bAllowErrorsForTn:
                     TLow = TMid
                 # else we would have returned already.
-            elif data.SonT > midSonT:
+            elif data.action > midSonT:
                 THigh = TMid
             else:
                 TLow = TMid
@@ -2044,20 +2069,22 @@ class TransitionAnalyser():
 
             # Given the gradient of the action we have approximated, predict the temperature at which the target value
             # would be reached based on linear extrapolation. Since the gradient will overestimate the rate at which the
-            # target value is reached (based on the possible shape of the action curve), if this predicted temperature lies
-            # outside of the current temperature window, we can conservatively claim that the target value cannot be found.
-            dTdS = (data.T - midT) / (data.SonT - midSonT)
+            # target value is reached (based on the possible shape of the action curve), if this predicted temperature
+            # lies outside of the current temperature window, we can conservatively claim that the target value cannot
+            # be found.
+            dTdS = (data.T - midT) / (data.action - midSonT)
 
-            if data.SonT > midSonT:
-                TPredicted = midT - (midSonT - self.actionSampler.maxSonTThreshold)*dTdS
+            if data.action > midSonT:
+                TPredicted = midT - (midSonT - self.actionSampler.maxActionThreshold) * dTdS
                 extrapolationFailed = TPredicted < TLow
             else:
-                TPredicted = data.T - (data.SonT - self.actionSampler.maxSonTThreshold)*dTdS
+                TPredicted = data.T - (data.action - self.actionSampler.maxActionThreshold) * dTdS
                 extrapolationFailed = TPredicted > THigh
 
             if extrapolationFailed:
                 if self.bDebug:
-                    print('S/T will not go below', self.actionSampler.maxSonTThreshold, 'based on linear extrapolation.')
+                    print('Action will not go below', self.actionSampler.maxActionThreshold,
+                          'based on linear extrapolation.')
 
                 saveCurveShapeAnalysisData()
                 actionCurveShapeAnalysisData.confidentNoNucleation = True
@@ -2065,8 +2092,8 @@ class TransitionAnalyser():
 
             TMid = 0.5*(TLow + THigh)
 
-        # Now we should have labelLow='below' and labelHigh='above'. That is, we bracket the desired solution. We can simply
-        # bisect from here.
+        # Now we should have labelLow='below' and labelHigh='above'. That is, we bracket the desired solution. We can
+        # simply bisect from here.
         while THigh - TLow > (self.Tmax - self.Tmin)*1e-5:
             data.transferData(lowerTSample)
             TMid = 0.5*(TLow + THigh)
@@ -2104,8 +2131,10 @@ class TransitionAnalyser():
             -> Union[float, np.ndarray]:
         return T**4 * (action/(2*np.pi))**(3/2) * np.exp(-action)
 
-    # TODO: [2023] need to allow this to be used for list inputs again.
-    #def calculateInstantaneousNucleationRate(T: Union[float, Iterable[float]], SonT: Union[float, Iterable[float]], potential: AnalysablePotential):
+    # TODO: [2023] need to allow this to be used for list inputs again. [2024] That would require making
+    #  hydrodynamics.calculateEnergyDensityAtT_singlePhase accept list inputs too. Not necessary at the moment.
+    #def calculateInstantaneousNucleationRate(T: Union[float, Iterable[float]], action: Union[float, Iterable[float]], potential: AnalysablePotential):
+    # Returns the integrand of N, where N is the number of nucleated bubbles.
     def calculateInstantaneousNucleationRate(self, T: float, action: float) -> float:
         HSq = self.calculateHubbleParameterSq(T)
 
@@ -2114,6 +2143,7 @@ class TransitionAnalyser():
         return Gamma / (T*HSq**2)
 
     # TODO: We can optimise this for a list of input temperatures by reusing potential samples in adjacent derivatives.
+    #  For now we don't handle a list of input temperatures so this doesn't matter.
     def calculateHubbleParameterSq(self, T: float) -> float:
         # Default is energy density for from phase.
         rhof = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, T)
@@ -2126,8 +2156,10 @@ class TransitionAnalyser():
         return hydrodynamics.getHydroVars_new(self.fromPhase, self.toPhase, self.potential, T,
             self.groundStateEnergyDensity)
 
+    # TODO: [2024] commented this out because we don't need Teq. We might as well remove this complicated and costly
+    #  function.
     # Ignore IDE warnings about type of return value, Teq. toms748 returns only a float if full_output=False as is default.
-    def predictTeq(self) -> float:
+    """def predictTeq(self) -> float:
         radDensityPrefactor = np.pi**2/30
 
         def radiationEnergyDensity(T: float) -> float:
@@ -2293,7 +2325,7 @@ class TransitionAnalyser():
             Teq = scipy.optimize.toms748(energyEra, newTmin, self.actionSampler.subT[-1])
             if self.bDebug:
                 print('Teq was found below the minimum sampled temperature. Teq:', Teq)
-            return Teq
+            return Teq"""
 
     def calculateReheatTemperature(self, T: float) -> float:
         Tsep = min(0.001*(self.transition.Tc - self.Tmin), 0.5*(T - self.Tmin))
@@ -2561,7 +2593,7 @@ def calculateTypicalLengthScale(Tp, indexTp, indexTn, Tc, meanBubbleSeparation, 
     return REnergyMax, RVolMax
 
 
-# Returns T, SonT, bFinishedAnalysis.
+# Returns T, action, bFinishedAnalysis.
 def loadPrecomputedActionData(fileName: str, transition: Transition, maxSonTThreshold: float) -> tuple[list[float],
         list[float], bool]:
     if fileName == '':
@@ -2582,7 +2614,7 @@ def loadPrecomputedActionData(fileName: str, transition: Transition, maxSonTThre
 
         if transDict is not None:
             precomputedT = transDict['T']
-            precomputedSonT = transDict['SonT']
+            precomputedSonT = transDict['action']
 
             # If the nucleation window wasn't found, we do not have precomputed data.
             if not transDict['foundNucleationWindow']:
