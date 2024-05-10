@@ -48,6 +48,13 @@ class PhaseHistoryAnalyser:
 
         return self.analysePhaseHistory_supplied(potential, phaseStructure, vw=vw)
 
+    # TODO: [29/04/2024] Need to check that a path prefix/suffix is not created when when it shouldn't be, particularly
+    #  that evaluating transitions subcritically is respected. Imagine that in transition path (TP) 1 we reach phase A,
+    #  which has already been reached in TP2. Before thinking we can treat these TPs as the same from this temperature
+    #  onwards, we need to make sure that the phase was reached in an effectively similar way in both TPs. It could be
+    #  that phase A was reached in TP1 at a temperature where some phase transition PT1 could occur subcritically,
+    #  wherease PT1 could only occur critically in TP2. The current system might already handle this correctly, but it
+    #  needs to be checked.
     # Second return value is whether we timed out.
     def analysePhaseHistory_supplied(self, potential: AnalysablePotential, phaseStructure: PhaseStructure, vw: float =
             1.) -> tuple[list[ProperPath], bool, Optional[AnalysisMetrics]]:
@@ -235,6 +242,9 @@ class PhaseHistoryAnalyser:
             transition = transitionEdge.transition
             path = transitionEdge.path
 
+            # TODO: we would need to make sure that the transition has the same Tmax as before, otherwise we would need
+            #  to analyse it again with the new Tmax. The same transition could proceed quite differently if it begins
+            #  at different temperatures.
             if transition.analysis is None:
                 if self.bReportAnalysis:
                     print(f'Analysing transition {transition.ID} ({transition.false_phase} --(T={transition.Tc})-->'
@@ -254,7 +264,7 @@ class PhaseHistoryAnalyser:
                     Tmax = transition.Tc
                     for tr in path.transitions:
                         if tr.true_phase == transition.false_phase:
-                            Tmax = min(Tmax, tr.Tn)
+                            Tmax = min(Tmax, tr.Tn) # TODO: this is using Tn.
                             break
                 else:
                     Tmax = transition.Tc
@@ -294,9 +304,17 @@ class PhaseHistoryAnalyser:
 
             # If the transition begins.
             if transition.Tp > 0:
+                # If the transition completes.
                 if transition.Tf > 0:
                     frontierNodesToRemove = []
 
+                    # Remove any transitions from the frontier that share the same false vacuum, and that would occur
+                    # after this transition completes. Such transitions are no longer relevant to explore.
+                    # TODO: [29/04/2024] what if another transition path gets you to this false phase below Tp or Tf?
+                    #  Surely we can't discard the transitions in that case. Maybe the transitions should stay in the
+                    #  frontier, but once they're popped off the frontier for analysis, we check if the path that
+                    #  frontier node belongs to actually ends in the transition's false vacuum. If no paths end at this
+                    #  false vacuum, then there is no longer any need to analyse any transition from it.
                     for frontierNode in frontier:
                         if frontierNode.falsePhaseNode.phase == transitionEdge.falsePhaseNode.phase and\
                                 frontierNode.transition.Tc < transition.Tf:
@@ -487,7 +505,7 @@ class PhaseHistoryAnalyser:
 
                 # If the new transition could have started above the temperature we get to the true phase, then we may
                 # be able to add it as a subcritical transition.
-                if transitionEdge.transition.Tn < newTransition.Tc:
+                if transitionEdge.transition.Tn < newTransition.Tc: # TODO: this uses Tn.
                     # Make sure the transition isn't reversed, removing it as a possibility.
                     newTruePhase = newTransition.true_phase
                     bReversed = False
