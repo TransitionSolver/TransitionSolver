@@ -22,7 +22,7 @@ from cosmoTransitions import pathDeformation
 from models.analysable_potential import AnalysablePotential
 from scipy.interpolate import lagrange
 import matplotlib.pyplot as plt
-from util import integration
+from util.integration import LinearNestedNormalisedIntegrationHelper, CubedNestedIntegrationHelper
 import time
 import json
 
@@ -600,17 +600,17 @@ class TransitionAnalyser():
         # Estimate the maximum significant value of S/T by finding where the instantaneous nucleation rate multiplied by
         # the maximum possible duration of the transition is O(1). This is highly conservative, but intentionally so
         # because we only sample maxActionThreshold within some (loose) tolerance.
-        maxSonTThreshold = self.estimateMaximumSignificantAction() + 80
-        minSonTThreshold = 80.0
-        toleranceSonT = 3.0
+        maxActionThreshold = self.estimateMaximumSignificantAction() + 80
+        minActionThreshold = 80.0
+        toleranceAction = 3.0
 
         precomputedT, precomputedSonT, bFinishedAnalysis = loadPrecomputedActionData(precomputedActionCurveFileName,
-            self.transition, maxSonTThreshold)
+            self.transition, maxActionThreshold)
 
         if bFinishedAnalysis:
             return
 
-        self.actionSampler = ActionSampler(self, minSonTThreshold, maxSonTThreshold, toleranceSonT,
+        self.actionSampler = ActionSampler(self, minActionThreshold, maxActionThreshold, toleranceAction,
             precomputedT=precomputedT, precomputedSonT=precomputedSonT)
 
         if self.bDebug:
@@ -634,14 +634,17 @@ class TransitionAnalyser():
 
             self.transition.bFoundNucleationWindow = True
 
-            # Remove any lowerSonTData points that are very close together. We don't need to sample the S/T curve extremely
-            # densely (a spacing of 1 is more than reasonable), and doing so causes problems with the subsequent steps along
-            # the curve TODO: to be fixed anyway!
+            # Remove any lowerSonTData points that are very close together. We don't need to sample the action curve
+            # extremely densely (a spacing of 1 is more than reasonable), and doing so causes problems with the
+            # subsequent steps along the curve TODO: to be fixed anyway!
             if len(self.actionSampler.lowerSonTData) > 0:
                 keepIndices = [len(self.actionSampler.lowerSonTData)-1]
                 for i in range(len(self.actionSampler.lowerSonTData)-2, -1, -1):
-                    # Don't discard the point if it is separated in temperature from the almost degenerate S/T value already
-                    # stored.
+                    # Don't discard the point if it is separated in temperature from the almost degenerate action value
+                    # already stored.
+                    # TODO: make the action difference configurable. It should depend on the scale of the transition and
+                    #  the desired precision. We should have some tunable 'minimum action sample difference' parameter
+                    #  which is intelligently derived from the precision and new physics scale.
                     if abs(self.actionSampler.lowerSonTData[i].action -
                            self.actionSampler.lowerSonTData[keepIndices[-1]].action) > 1 or\
                             abs(self.actionSampler.lowerSonTData[i].T -
@@ -660,81 +663,87 @@ class TransitionAnalyser():
             self.actionSampler.getNextSample(sampleData, [], 0., self.Tmin)
             self.actionSampler.getNextSample(sampleData, [], 0., self.Tmin)
 
-        # We finally have a temperature where S/T is not much smaller than the value we started with (which was close to
-        # maxActionThreshold). From here we can use the separation in these temperatures and S/T values to predict reasonable
-        # temperatures to efficiently sample S/T in the range [minActionThreshold, maxActionThreshold] until the nucleation
-        # temperature is found.
+        # We finally have a temperature where the action is not much smaller than the value we started with (which was
+        # close to maxActionThreshold). From here we can use the separation in these temperatures and the action values
+        # to predict reasonable temperatures to efficiently sample S/T in the range [minActionThreshold,
+        # maxActionThreshold] until the nucleation temperature is found.
 
-        # If we continue to assume linearity, we will overestimate the rate at which minActionThreshold is reached. Therefore,
-        # we can take large steps in temperature and dynamically update the step size based on the new prediction of when
-        # minActionThreshold will be reached. Further, we can adjust the step size based on how well the prediction matches
-        # the observed value. If the prediction is good, we can increase the step size as the S/T curve must be close to
-        # linear in this region. If the prediction is bad, the S/T must be noticeably non-linear in this region and thus we
-        # need a smaller step size for accurate sampling.
+        # If we continue to assume linearity, we will overestimate the rate at which minActionThreshold is reached.
+        # Therefore, we can take large steps in temperature and dynamically update the step size based on the new
+        # prediction of when minActionThreshold will be reached. Further, we can adjust the step size based on how well
+        # the prediction matches the observed value. If the prediction is good, we can increase the step size as the
+        # action curve must be close to linear in this region. If the prediction is bad, the action must be noticeably
+        # non-linear in this region and thus we need a smaller step size for accurate sampling.
 
-        numBubblesIntegrand = [0.]
-        numBubblesCorrectedIntegrand = [0.]
-        numBubblesIntegral = [0.]
-        numBubblesCorrectedIntegral = [0.]
-        Vext = [0.]
-        Pf = [1.]
-        Gamma = [0.]
-        bubbleNumberDensity = [0.]
-        meanBubbleRadiusArray = [0.]
-        meanBubbleSeparationArray = [0.]
+        numBubblesIntegrand: List[float] = [0.]
+        numBubblesCorrectedIntegrand: List[float] = [0.]
+        numBubblesIntegral: List[float] = [0.]
+        numBubblesCorrectedIntegral: List[float] = [0.]
+        Vext: List[float] = [0.]
+        Pf: List[float] = [1.]
+        Gamma: List[float] = [0.]
+        bubbleNumberDensity: List[float] = [0.]
+        meanBubbleRadiusArray: List[float] = [0.]
+        meanBubbleSeparationArray: List[float] = [0.]
         # TODO: need an initial value...
-        betaArray = [0.]
-        hydroVars = [self.getHydroVars(self.actionSampler.T[0])]
-        H = [np.sqrt(self.calculateHubbleParameterSq_fromHydro(hydroVars[0]))]
-        vw = [self.getBubbleWallVelocity(hydroVars[0])]
+        betaArray: List[float] = [0.]
+        hydroVars: List[HydroVars] = [self.getHydroVars(self.actionSampler.T[0])]
+        H: List[float] = [np.sqrt(self.calculateHubbleParameterSq_fromHydro(hydroVars[0]))]
+        vw: List[float] = [self.getBubbleWallVelocity(hydroVars[0])]
 
-        radDensityPrefactor = np.pi**2/30
-        fourPiOnThree = 4/3*np.pi
+        radDensityPrefactor: float = np.pi**2/30
+        fourPiOnThree: float = 4/3*np.pi
 
         # =================================================
         # Calculate the maximum temperature result.
         # This gives a boundary condition for integration.
-        T4 = self.actionSampler.T[0]**4
+        T4: float = self.actionSampler.T[0]**4
 
         Gamma[0] = T4 * (self.actionSampler.SonT[0] / (2*np.pi))**(3/2) * np.exp(-self.actionSampler.SonT[0])
 
         numBubblesIntegrand[0] = Gamma[0] / (self.actionSampler.T[0]*H[0]**4)
         numBubblesCorrectedIntegrand[0] = numBubblesIntegrand[0]
 
-        # The temperature for which S/T is minimised. This is important for determining the bubble number density. If this
-        # minimum S/T value is encountered after the percolation temperature, then it can be ignored. It is only important
-        # if it occurs before percolation.
-        TAtSonTmin = 0
+        # The temperature for which the action is minimised. This is important for determining the bubble number
+        # density. If the minimum action value is encountered after the percolation temperature, then it can be ignored.
+        # It is only important if it occurs before percolation.
+        TAtActionMin = 0
 
-        Teq = 0
-        SonTeq = np.infty
+        #Teq = 0
+        #SonTeq = np.infty
 
         bFirst = True
 
-        # When the fraction of space remaining in the false vacuum falls below this threshold, the transition is considered
-        # to be complete.
+        # When the fraction of space remaining in the false vacuum falls below this threshold, the transition is
+        # considered to be complete.
+        # TODO: make this configurable.
         completionThreshold = 1e-2
 
+        # Outer integrand for the true vacuum volume calculation.
         def outerFunction_trueVacVol(x):
             return Gamma[x] / (self.actionSampler.subT[x]**4 * H[x])
 
+        # Inner integrand for the true vacuum volume calculation.
         def innerFunction_trueVacVol(x):
             return vw[x] / H[x]
 
+        # Outer integrand for the average bubble radius calculation.
         def outerFunction_avgBubRad(x):
             return Gamma[x]*Pf[x] / (self.actionSampler.subT[x]**4 * H[x])
 
+        # Inner integrand for the average bubble radius calculation.
         def innerFunction_avgBubRad(x):
             return vw[x] / H[x]
 
+        # Maps an array index to the temperature corresponding to that index.
         def sampleTransformationFunction(x):
             return self.actionSampler.subT[x]
 
         # We need three (two) data points before we can initialise the integration helper for the true vacuum volume
         # (average bubble radius). We wait for four data points to be ready (see below for why), then initialise both at the
         # same time.
-        integrationHelper_trueVacVol = None
-        integrationHelper_avgBubRad = None
+        integrationHelper_trueVacVol: Optional[CubedNestedIntegrationHelper] = None
+        integrationHelper_avgBubRad: Optional[LinearNestedNormalisedIntegrationHelper] = None
 
         Tn = Tnbar = Tp = Te = Tf = Ts1 = Ts2 = -1
         indexTp = indexTf = -1
@@ -746,35 +755,36 @@ class TransitionAnalyser():
 
         #rho0 = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential,
         #    self.actionSampler.T[0], forFromPhase=True) - self.groundStateEnergyDensity
-        rho0 = hydroVars[0].energyDensityFalse
+        """rho0 = hydroVars[0].energyDensityFalse
         Temp = self.actionSampler.T[0]
         rhoR = radDensityPrefactor * self.potential.getDegreesOfFreedomInPhase(self.fromPhase, Temp) * Temp**4
 
         bCheckForTeq = rho0 - 2*rhoR < 0
 
         if self.bDebug and not bCheckForTeq:
-            print('Not checking for Teq since rho_V > rho_R at Tmax.')
+            print('Not checking for Teq since rho_V > rho_R at Tmax.')"""
 
         physicalVolume = [3]
 
-        percolationThreshold_Pf = 0.71
-        percolationThreshold_Vext = -np.log(percolationThreshold_Pf)
+        # TODO: make this configurable.
+        percolationThreshold_Pf: float = 0.71
+        percolationThreshold_Vext: float = -np.log(percolationThreshold_Pf)
 
         # The index in the simulation we're up to analysing. Note that we always sample 1 past this index so we can
         # interpolate between T[simIndex] and T[simIndex+1].
         simIndex = 0
 
         # Keep sampling until we have identified the end of the phase transition or that the transition doesn't complete.
-        while not self.bCheckPossibleCompletion or self.transitionCouldComplete(maxSonTThreshold + toleranceSonT, Pf):
+        while not self.bCheckPossibleCompletion or self.transitionCouldComplete(maxActionThreshold + toleranceAction, Pf):
             # If the action begins increasing with decreasing temperature.
-            if TAtSonTmin == 0 and self.actionSampler.SonT[simIndex+1] > self.actionSampler.SonT[simIndex]:
+            if TAtActionMin == 0 and self.actionSampler.SonT[simIndex+1] > self.actionSampler.SonT[simIndex]:
                 # TODO: do some form of interpolation.
-                TAtSonTmin = self.actionSampler.T[simIndex]
+                TAtActionMin = self.actionSampler.T[simIndex]
                 SonTmin = self.actionSampler.SonT[simIndex]
-                self.transition.Tmin = TAtSonTmin
+                self.transition.Tmin = TAtActionMin
                 self.transition.SonTmin = SonTmin
 
-            numSamples = self.actionSampler.getNumSubsamples(minSonTThreshold, maxSonTThreshold)
+            numSamples = self.actionSampler.getNumSubsamples(minActionThreshold, maxActionThreshold)
             T = np.linspace(self.actionSampler.T[simIndex], self.actionSampler.T[simIndex+1], numSamples)
             # We can only use quadratic interpolation if we have at least 3 action samples, which occurs for simIndex > 0.
             if simIndex > 0:
@@ -887,8 +897,8 @@ class TransitionAnalyser():
                 # additional point so that we can immediately integrate and add it to the true vacuum fraction and false
                 # vacuum probability arrays as usual below.
                 if integrationHelper_trueVacVol is None and len(self.actionSampler.subT) == 4:
-                    integrationHelper_trueVacVol = integration.CubedNestedIntegrationHelper([0, 1, 2],
-                        outerFunction_trueVacVol, innerFunction_trueVacVol, sampleTransformationFunction)
+                    integrationHelper_trueVacVol = CubedNestedIntegrationHelper([0, 1, 2], outerFunction_trueVacVol,
+                        innerFunction_trueVacVol, sampleTransformationFunction)
 
                     # Don't add the first element since we have already stored Vext[0] = 0, Pf[0] = 1, etc.
                     for j in range(1, len(integrationHelper_trueVacVol.data)):
@@ -901,7 +911,7 @@ class TransitionAnalyser():
 
                     # Do the same thing for the average bubble radius integration helper. This needs to be done after Pf
                     # has been filled with data because outerFunction_avgBubRad uses this data.
-                    integrationHelper_avgBubRad = integration.LinearNestedNormalisedIntegrationHelper([0, 1],
+                    integrationHelper_avgBubRad = LinearNestedNormalisedIntegrationHelper([0, 1],
                         outerFunction_avgBubRad, innerFunction_avgBubRad, outerFunction_avgBubRad,
                         sampleTransformationFunction)
 
@@ -1106,7 +1116,7 @@ class TransitionAnalyser():
         GammaEff = np.array([Pf[i] * Gamma[i] for i in range(len(Gamma))])
 
         # Find the maximum nucleation rate to find TGammaMax. Only do so if there is a minimum in the action.
-        if TAtSonTmin > 0:
+        if TAtActionMin > 0:
             gammaMaxIndex = np.argmax(Gamma)
             self.transition.TGammaMax = self.actionSampler.subT[gammaMaxIndex]
             self.transition.SonTGammaMax = self.actionSampler.subSonT[gammaMaxIndex]
@@ -1173,8 +1183,8 @@ class TransitionAnalyser():
                 print(f'Reheating from Vext=1: Treh(Te): {Te} -> {Te_reh}')
             if Tf > 0:
                 print(f'Reheating from completion: Treh(Tf): {Tf} -> {Tf_reh}')
-            if TAtSonTmin > 0:
-                print('Action minimised at T =', TAtSonTmin)
+            if TAtActionMin > 0:
+                print('Action minimised at T =', TAtActionMin)
             if self.transition.TGammaMax > 0:
                 print('Nucleation rate maximised at T =', self.transition.TGammaMax)
 

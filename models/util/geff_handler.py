@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Callable, List, Tuple
+from typing import Callable, List, Tuple, Union
 import csv
 from scipy.interpolate import CubicSpline
 import matplotlib.pyplot as plt
@@ -25,61 +25,70 @@ def getRawGeffCurveFromFile(filename: str) -> Tuple[List[float], List[float]]:
     return x, y
 
 
-def getGeffCurveFromFile(filename: str) -> Callable[[float], float]:
-    x: List[float] = []
-    y: List[float] = []
+# Constructs and returns a function that takes as input z=T/m (temperature over particle mass) and returns the effective
+# degrees of freedom for the corresponding particle. The function is derived from digitised data stored in the input
+# file. Any z values outside the data's domain are clamped to the data boundaries. That is, if z < zMin, treat it as
+# z = zMin, and similarly for z > zMax. Any negative degrees of freedom in the data is set to zero.
+def getGeffCurveFromFile(filename: str) -> Callable[[Union[float, np.ndarray]], np.ndarray]:
+    zData: List[float] = []
+    geff: List[float] = []
 
     with open(filename, newline='') as f:
         reader = csv.reader(f)
         for line in reader:
-            x.append(float(line[0]))
-            y.append(float(line[1]))
-            if y[-1] < 0:
-                y[-1] = 0.
+            zData.append(float(line[0]))
+            geff.append(float(line[1]))
+            # Don't allow negative degrees of freedom. Instead, set to zero.
+            if geff[-1] < 0:
+                geff[-1] = 0.
 
-    # Make sure we have an increasing sequence of x values, otherwise the CubicSpline will complain.
-    if x[0] > x[-1]:
-        x.reverse()
-        y.reverse()
+    # Make sure we have an increasing sequence of zData values, otherwise the CubicSpline will complain.
+    if zData[0] > zData[-1]:
+        zData.reverse()
+        geff.reverse()
 
-    interpolator = CubicSpline(x, y)
+    # Create a cubic spline from the data. This is effectively the function that will be returned.
+    interpolator = CubicSpline(zData, geff)
 
     # Find the boundaries of the data so we can clamp the output to match the domain.
-    xMin = x[0]
-    yMin = y[0]
-    xMax = x[-1]
-    yMax = y[-1]
+    zMin = zData[0]
+    geffMin = geff[0]
+    zMax = zData[-1]
+    geffMax = geff[-1]
 
-    def clampedInterpolator(z: float):
+    # Return a clamped version of the cubic spline such that any input values outside the domain are instead treated as
+    # the closest boundary of the domain.
+    # TODO: why can't we just set extrapolate=False when creating the CubicSpline?
+    def clampedInterpolator(z: Union[float, np.ndarray]) -> np.ndarray:
         z = np.array(z)
-        mask_underflow = z <= xMin
-        mask_overflow = z >= xMax
-        mask_inrange = np.logical_and(z > xMin, z < xMax)
+        mask_underflow = z <= zMin
+        mask_overflow = z >= zMax
+        mask_inrange = np.logical_and(z > zMin, z < zMax)
         result = np.zeros(shape=z.shape)
-        result[mask_underflow] = yMin
-        result[mask_overflow] = yMax
+        result[mask_underflow] = geffMin
+        result[mask_overflow] = geffMax
         result[mask_inrange] = interpolator(z[mask_inrange])
         mask_negative = np.logical_and(mask_inrange, result < 0.)
         result[mask_negative] = 0.
         return result
-        #if z <= xMin:
-        #    return yMin
-        #if z >= xMax:
-        #    return yMax
+        #if z <= zMin:
+        #    return geffMin
+        #if z >= zMax:
+        #    return geffMax
         #return max(0., interpolator(z))
 
     return clampedInterpolator
 
 
-def getGeffCurve_boson() -> Callable[[float], float]:
+def getGeffCurve_boson() -> Callable[[Union[float, np.ndarray]], np.ndarray]:
     return getGeffCurveFromFile('models/util/boson_geff.csv')
 
 
-def getGeffCurve_fermion() -> Callable[[float], float]:
+def getGeffCurve_fermion() -> Callable[[Union[float, np.ndarray]], np.ndarray]:
     return getGeffCurveFromFile('models/util/fermion_geff.csv')
 
 
-def getGeffCurve_total() -> Callable[[float], float]:
+def getGeffCurve_total() -> Callable[[Union[float, np.ndarray]], np.ndarray]:
     return getGeffCurveFromFile('models/util/SM_geff.csv')
 
 
