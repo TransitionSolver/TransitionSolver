@@ -87,7 +87,7 @@ class AnalysablePotential(generic_potential):
 
     # TODO: this only works if the model follows CosmoTransitions' usual potential implementation, where one-loop
     #  corrections are handled by specify masses in the boson_ and fermion_massSq functions. Also, the temperature-
-    #  dependence would only be accounted for correcly if the user includes thermal corrections to the masses in these
+    #  dependence would only be accounted for correctly if the user includes thermal corrections to the masses in these
     #  functions according to the Parwani method.
     def getDegreesOfFreedom(self, X: Union[float, list[float], np.ndarray] = 0., T: Union[float, list[float],
             np.ndarray] = 0.) -> Union[float, np.ndarray]:

@@ -720,6 +720,9 @@ class TransitionAnalyser():
         # TODO: make this configurable.
         completionThreshold = 1e-2
 
+        # TODO: add initial bubble radius to these equations and make it a configurable calculation function like
+        #  vw will be.
+
         # Outer integrand for the true vacuum volume calculation.
         def outerFunction_trueVacVol(x):
             return Gamma[x] / (self.actionSampler.subT[x]**4 * H[x])
@@ -1787,6 +1790,15 @@ class TransitionAnalyser():
 
         return sampleData, allSamples
 
+    # TODO: This currently is based on a crude estimate of the nucleation temperature. The nucleation temperature
+    #  corresponds to 1 bubble per Hubble volume. Assume a constant action (i.e. independent of temperature). What
+    #  (constant) action value leads to roughly 1 bubble per Hubble volume? This informs the action scale of the
+    #  phase transition.
+    #  Because this is such a crude approximation, and because the nucleation temperature is not a good starting point
+    #  for transition analysis in general, the actual maximum action scale is taken to be the returned value plus some
+    #  large correction to ensure we don't miss some important details about the start of the phase transition.
+    #  I think we should change this to be some (over-)estimate of the true vacuum fraction and we can e.g. search for
+    #  P_t(S) ~ 0.1%.
     def estimateMaximumSignificantAction(self, tolerance: float = 2.0):
         # TODO: these need to be configurable or start with larger variation.
         actionMin: float = 50
