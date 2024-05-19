@@ -302,10 +302,10 @@ class PhaseHistoryAnalyser:
                 if self.bDebug:
                     print(f'Already analysed transition {transition.ID}')
 
-            # If the transition begins.
-            if transition.Tp > 0:
+            if transition.starts() > 0:
                 # If the transition completes.
-                if transition.Tf > 0:
+                # TODO: do we want to use .successful() instead? .successful also checks that Vphys is decreasing at Tp.
+                if transition.completes() > 0:
                     frontierNodesToRemove = []
 
                     # Remove any transitions from the frontier that share the same false vacuum, and that would occur

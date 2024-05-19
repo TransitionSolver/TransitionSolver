@@ -49,6 +49,7 @@ class Phase:
                 maxIndex = midpoint
 
         def V(X) -> Union[float, np.ndarray]: return potential.Vtot(X, T)
+        # TODO: make factor configurable.
         offset = 0.001*potential.fieldScale
 
         # Interpolate between the most relevant data points.
@@ -64,6 +65,7 @@ class Phase:
         if len(optimisedPoint.shape) == 0:
             optimisedPoint = optimisedPoint.ravel()
 
+        # TODO: make condition configurable.
         if abs(T - self.T[minIndex]) < 0.2*potential.temperatureScale and \
                 np.linalg.norm(optimisedPoint - interpPoint) > 0.2*potential.fieldScale:
             # The minimum shifted too far, so the optimiser probably found a different phase.

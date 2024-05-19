@@ -424,6 +424,7 @@ class ActionSampler:
         fromFieldConfig = self.fromPhase.findPhaseAtT(T, self.potential)
         toFieldConfig = self.toPhase.findPhaseAtT(T, self.potential)
 
+        # TODO: make factor configurable.
         fieldSeparationScale = 0.001*self.potential.fieldScale
 
         # If the phases merge together, reset them to their previous values. This can happen for subcritical transitions,

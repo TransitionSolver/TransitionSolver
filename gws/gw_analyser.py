@@ -158,6 +158,7 @@ class GWAnalyser_InidividualTransition:
         self.lengthScale_shellThickness = self.lengthScale_bubbleSeparation\
             * abs(self.vw - np.sqrt(self.hydroVars.soundSpeedSqFalse)) / self.vw
 
+        # TODO: Should be using self.potential.getDegreesOfFreedomInPhase right?
         self.ndof = self.potential.getDegreesOfFreedom(self.toPhase.findPhaseAtT(self.T, self.potential), self.T)
         ndofReh = self.potential.getDegreesOfFreedom(self.toPhase.findPhaseAtT(self.Treh, self.potential), self.Treh)
         #print('T_p:', self.T)
