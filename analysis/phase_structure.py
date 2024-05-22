@@ -100,9 +100,9 @@ class Transition:
     Tmin: float
     TGammaMax: float
     Teq: float
-    SonTmin: float
-    SonTGammaMax: float
-    SonTeq: float
+    actionMin: float
+    actionGammaMax: float
+    actionTeq: float
 
     GammaMax: float
 
@@ -162,9 +162,9 @@ class Transition:
         self.Tmin = -1.
         self.TGammaMax = -1.
         self.Teq = -1.
-        self.SonTmin = -1.
-        self.SonTGammaMax = -1.
-        self.SonTeq = -1.
+        self.actionMin = -1.
+        self.actionGammaMax = -1.
+        self.actionTeq = -1.
 
         self.Gamma = -1.
 
@@ -232,7 +232,7 @@ class Transition:
             # make sure to keep that data in the report rather than create a circular reference.
             if self.analysis.actionCurveFile == '' or self.analysis.actionCurveFile == reportFileName:
                 report['T'] = self.analysis.T
-                report['action'] = self.analysis.SonT
+                report['action'] = self.analysis.action
             else:
                 report['actionCurveFile'] = self.analysis.actionCurveFile
 
@@ -243,10 +243,10 @@ class Transition:
         report['Tc'] = self.Tc
         if self.Tn > 0:
             report['Tn'] = self.Tn
-            report['SonTn'] = self.analysis.SonTn
+            report['actionTn'] = self.analysis.actionTn
         if self.Tnbar > 0:
             report['Tnbar'] = self.Tnbar
-            report['SonTnbar'] = self.analysis.SonTnbar
+            report['actionTnbar'] = self.analysis.actionTnbar
 
         if self.Tp > 0: report['Tp'] = self.Tp
         if self.Te > 0: report['Te'] = self.Te
@@ -276,14 +276,14 @@ class Transition:
 
         if self.Tmin > 0:
             report['Tmin'] = self.Tmin
-            report['SonTmin'] = self.SonTmin
+            report['actionMin'] = self.actionMin
         if self.TGammaMax > 0:
             report['TGammaMax'] = self.TGammaMax
-            report['SonTGammaMax'] = self.SonTGammaMax
+            report['actionGammaMax'] = self.actionGammaMax
             report['GammaMax'] = self.GammaMax
         #if self.Teq > 0:
         report['Teq'] = self.Teq
-        #report['SonTeq'] = self.SonTeq
+        #report['actionTeq'] = self.actionTeq
 
         if self.Tp > 0: report['decreasingVphysAtTp'] = self.decreasingVphysAtTp
         if self.Tf > 0: report['decreasingVphysAtTf'] = self.decreasingVphysAtTf

@@ -119,6 +119,10 @@ class CubedNestedIntegrationHelper(IntegrationHelper):
 
         self.i += 1
 
+    def undo(self):
+        self.x.pop()
+        self.data.pop()
+
 
 # Designed specifically to aid in evaluating integrals of the form
 #   I(x) = x^-1 {[int_x^a dx' f(x') int_x^x' dx'' g(x'')] / [int_x^a dx' h(x')]} ,
