@@ -559,25 +559,27 @@ class TransitionAnalyser():
     # TODO: make vw a function of this class that can be overriden. Currently it is obtained from the transition.
     def __init__(self, potential: AnalysablePotential, transition: Transition, fromPhase: Phase, toPhase: Phase,
             groundStateEnergyDensity: float, Tmin: float = 0., Tmax: float = 0.):
-        self.meanBubbleRadius = [0.]
-        self.physicalVolume = [3.]
-        self.hydroVars = [self.getHydroVars(self.actionSampler.T[0])]
-        self.hubbleParameter = [np.sqrt(self.calculateHubbleParameterSq_fromHydro(self.hydroVars[0]))]
-        self.bubbleNumberDensity = [0.]
-        self.nucleationRate = [0.]
-        self.falseVacuumFraction = [1.]
-        self.trueVacuumVolumeExtended = [0.]
-        self.numBubblesCorrectedIntegral = [0.]
-        self.numBubblesIntegral = [0.]
-        self.numBubblesCorrectedIntegrand = [0.]
-        self.numBubblesIntegrand = [0.]
-        self.potential = potential
-        self.transition = transition
-        self.fromPhase = fromPhase
-        self.toPhase = toPhase
-        self.groundStateEnergyDensity = groundStateEnergyDensity
-        self.Tmin = Tmin
-        self.Tmax = Tmax
+        self.bubbleWallVelocity: List[float] = []
+        self.meanBubbleSeparation: List[float] = []
+        self.meanBubbleRadius: List[float] = []
+        self.physicalVolume: List[float] = []
+        self.hydroVars: List[HydroVars] = []
+        self.hubbleParameter: List[float] = []
+        self.bubbleNumberDensity: List[float] = []
+        self.nucleationRate: List[float] = []
+        self.falseVacuumFraction: List[float] = []
+        self.trueVacuumVolumeExtended: List[float] = []
+        self.numBubblesCorrectedIntegral: List[float] = []
+        self.numBubblesIntegral: List[float] = []
+        self.numBubblesCorrectedIntegrand: List[float] = []
+        self.numBubblesIntegrand: List[float] = []
+        self.potential: AnalysablePotential = potential
+        self.transition: Transition = transition
+        self.fromPhase: Phase = fromPhase
+        self.toPhase: Phase = toPhase
+        self.groundStateEnergyDensity: float = groundStateEnergyDensity
+        self.Tmin: float = Tmin
+        self.Tmax: float = Tmax
 
         if self.Tmin == 0:
             # The minimum temperature for which both phases exist, and prevent analysis below the effective potential's
@@ -589,7 +591,8 @@ class TransitionAnalyser():
             # The transition is not evaluated subcritically.
             self.Tmax = self.transition.Tc
 
-        self.Tstep = max(0.0005*min(self.fromPhase.T[-1], self.toPhase.T[-1]), 0.0001*self.potential.temperatureScale)
+        self.Tstep: float = max(0.0005*min(self.fromPhase.T[-1], self.toPhase.T[-1]),
+                                0.0001*self.potential.temperatureScale)
 
         self.bComputeSubsampledThermalParams = False
 
@@ -597,7 +600,7 @@ class TransitionAnalyser():
         self.percolationThreshold_Vext: float = -np.log(self.percolationThreshold_Pf)
         # When the fraction of space remaining in the false vacuum falls below this threshold, the transition is
         # considered to be complete.
-        self.completionThreshold = 1e-2
+        self.completionThreshold: float = 1e-2
 
         notifyHandler.handleEvent(self, 'on_create')
 
@@ -626,6 +629,7 @@ class TransitionAnalyser():
         # the maximum possible duration of the transition is O(1). This is highly conservative, but intentionally so
         # because we only sample maxActionThreshold within some (loose) tolerance.
         maxActionThreshold = self.estimateMaximumSignificantAction() + 80
+        # TODO: this also needs to be configurable or more general.
         minActionThreshold = 80.0
         toleranceAction = 3.0
 
@@ -637,6 +641,21 @@ class TransitionAnalyser():
 
         self.actionSampler = ActionSampler(self, minActionThreshold, maxActionThreshold, toleranceAction,
                                            precomputedT=precomputedT, precomputedAction=precomputedAction)
+
+        self.hydroVars.append(self.getHydroVars(self.actionSampler.T[0]))
+        self.bubbleWallVelocity.append(self.getBubbleWallVelocity(self.hydroVars[0]))
+        self.meanBubbleSeparation.append(0.)
+        self.meanBubbleRadius.append(0.)
+        self.physicalVolume.append(3.)
+        self.hubbleParameter.append(np.sqrt(self.calculateHubbleParameterSq_fromHydro(self.hydroVars[0])))
+        self.bubbleNumberDensity.append(0.)
+        self.nucleationRate.append(0.)
+        self.falseVacuumFraction.append(1.)
+        self.trueVacuumVolumeExtended.append(0.)
+        self.numBubblesCorrectedIntegral.append(0.)
+        self.numBubblesIntegral.append(0.)
+        self.numBubblesCorrectedIntegrand.append(0.)
+        self.numBubblesIntegrand.append(0.)
 
         if self.bDebug:
             print('Tmin:', self.Tmin)
@@ -700,10 +719,8 @@ class TransitionAnalyser():
         # action curve must be close to linear in this region. If the prediction is bad, the action must be noticeably
         # non-linear in this region and thus we need a smaller step size for accurate sampling.
 
-        meanBubbleSeparation: List[float] = [0.]
         # TODO: need an initial value...
         beta: List[float] = [0.]
-        bubbleWallVelocity: List[float] = [self.getBubbleWallVelocity(self.hydroVars[0])]
 
         fourPiOnThree: float = 4/3*np.pi
 
@@ -723,9 +740,8 @@ class TransitionAnalyser():
         # It is only important if it occurs before percolation.
         TAtActionMin = 0
 
-        #Teq = 0
-        #actionTeq = np.infty
-
+        # Whether we're handling the first iteration of the overall while loop, handling the interpolation between the
+        # first and second action samples. Some things only need to be done in the first iteration as initialisation.
         bFirst = True
 
         # TODO: add initial bubble radius to these equations and make it a configurable calculation function like
@@ -736,8 +752,9 @@ class TransitionAnalyser():
             return self.nucleationRate[x] / (self.actionSampler.subT[x] ** 4 * self.hubbleParameter[x])
 
         # Inner integrand for the true vacuum volume calculation.
+
         def innerFunction_trueVacVol(x):
-            return bubbleWallVelocity[x] / self.hubbleParameter[x]
+            return self.bubbleWallVelocity[x] / self.hubbleParameter[x]
 
         # Outer integrand for the average bubble radius calculation.
 
@@ -746,7 +763,7 @@ class TransitionAnalyser():
 
         # Inner integrand for the average bubble radius calculation.
         def innerFunction_avgBubRad(x):
-            return bubbleWallVelocity[x] / self.hubbleParameter[x]
+            return self.bubbleWallVelocity[x] / self.hubbleParameter[x]
 
         # Maps an array index to the temperature corresponding to that index.
         def sampleTransformationFunction(x):
@@ -758,38 +775,24 @@ class TransitionAnalyser():
         integrationHelper_trueVacVol: Optional[CubedNestedIntegrationHelper] = None
         integrationHelper_avgBubRad: Optional[LinearNestedNormalisedIntegrationHelper] = None
 
-        # Don't check for Teq if the transition is subcritical (or evaluated subcritically) and the vacuum energy density
-        # already exceeds the radiation energy density at the maximum temperature.
-        #bCheckForTeq = (not transition.subcritical and Tmax == transition.Tc) or\
-        #    calculateEnergyDensityAtT(Tmax)[0] <= radDensity*Tmax**4
-
-        #rho0 = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential,
-        #    self.actionSampler.T[0], forFromPhase=True) - self.groundStateEnergyDensity
-        """rho0 = hydroVars[0].energyDensityFalse
-        Temp = self.actionSampler.T[0]
-        rhoR = radDensityPrefactor * self.potential.getDegreesOfFreedomInPhase(self.fromPhase, Temp) * Temp**4
-
-        bCheckForTeq = rho0 - 2*rhoR < 0
-
-        if self.bDebug and not bCheckForTeq:
-            print('Not checking for Teq since rho_V > rho_R at Tmax.')"""
-
         # The index in the simulation we're up to analysing. Note that we always sample 1 past this index so we can
-        # interpolate between T[simIndex] and T[simIndex+1].
+        # interpolate between T[simIndex] and T[simIndex+1] (the latter is a lower temperature).
         simIndex = 0
 
-        # Keep sampling until we have identified the end of the phase transition or that the transition doesn't complete.
+        # Keep sampling the action until we have identified the end of the phase transition or that the transition
+        # doesn't complete.
         while not self.bCheckPossibleCompletion or self.transitionCouldComplete(maxActionThreshold + toleranceAction,
-                                                                                self.falseVacuumFraction):
-            # If the action begins increasing with decreasing temperature.
-            if TAtActionMin == 0 and self.actionSampler.action[simIndex + 1] > self.actionSampler.action[simIndex]:
-                # TODO: do some form of interpolation.
+                self.falseVacuumFraction):
+            # If the action begins to increase with decreasing temperature.
+            if TAtActionMin == 0 and self.actionSampler.action[simIndex+1] > self.actionSampler.action[simIndex]:
+                # TODO: do some form of interpolation. Interp factor will be based on comparing new and old derivs.
                 TAtActionMin = self.actionSampler.T[simIndex]
                 actionMin = self.actionSampler.action[simIndex]
                 self.transition.Tmin = TAtActionMin
                 self.transition.actionMin = actionMin
 
-            numSamples = self.actionSampler.getNumSubsamples(integrationHelper_trueVacVol)
+            numSamples = self.actionSampler.getNumSubsamples_new(integrationHelper_trueVacVol)
+            # List of temperatures in decreasing order.
             T = np.linspace(self.actionSampler.T[simIndex], self.actionSampler.T[simIndex+1], numSamples)
             # We can only use quadratic interpolation if we have at least 3 action samples, which occurs for simIndex > 0.
             if simIndex > 0:
@@ -866,12 +869,12 @@ class TransitionAnalyser():
 
                     for j in range(1, len(integrationHelper_avgBubRad.data)):
                         self.meanBubbleRadius.append(integrationHelper_avgBubRad.data[j])
-                        meanBubbleSeparation.append((self.bubbleNumberDensity[j]) ** (-1 / 3))
+                        self.meanBubbleSeparation.append((self.bubbleNumberDensity[j])**(-1/3))
 
                 #hubbleParameter.append(np.sqrt(self.calculateHubbleParameterSq(T[i])))
                 #hubbleParameter.append(np.sqrt(calculateHubbleParameterSq_supplied(rhof[i] - self.groundStateEnergyDensity)))
                 self.hubbleParameter.append(np.sqrt(self.calculateHubbleParameterSq_fromHydro(hydroVarsInterp[i])))
-                bubbleWallVelocity.append(self.getBubbleWallVelocity(hydroVarsInterp[i]))
+                self.bubbleWallVelocity.append(self.getBubbleWallVelocity(hydroVarsInterp[i]))
 
                 self.nucleationRate.append(self.calculateBubbleNucleationRate(T[i], action[i]))
 
@@ -896,7 +899,7 @@ class TransitionAnalyser():
                     # This needs to be done after the new falseVacuumFraction has been added because outerFunction_avgBubRad uses this data.
                     integrationHelper_avgBubRad.integrate(len(self.actionSampler.subT)-1)
                     self.meanBubbleRadius.append(integrationHelper_avgBubRad.data[-1])
-                    meanBubbleSeparation.append((self.bubbleNumberDensity[-1]) ** (-1 / 3))
+                    self.meanBubbleSeparation.append((self.bubbleNumberDensity[-1])**(-1/3))
 
                 TNew = self.actionSampler.subT[-1]
                 #TPrev = self.actionSampler.subT[-2]
@@ -954,8 +957,6 @@ class TransitionAnalyser():
         # End transition analysis.
         # ==============================================================================================================
 
-        GammaEff = np.array([self.falseVacuumFraction[i] * self.nucleationRate[i] for i in range(len(self.nucleationRate))])
-
         # Find the maximum nucleation rate to find TGammaMax. Only do so if there is a minimum in the action.
         if TAtActionMin > 0:
             gammaMaxIndex = np.argmax(self.nucleationRate)
@@ -975,8 +976,7 @@ class TransitionAnalyser():
             if d2SdT2 > 0:
                 self.transition.analysis.betaV = self.hubbleParameter[gammaMaxIndex] * self.actionSampler.subT[gammaMaxIndex] * np.sqrt(d2SdT2)
 
-        #meanBubbleSeparationAtTp = (self.bubbleNumberDensity[indexTp]) ** (-1 / 3)
-        meanBubbleSeparationAtTp = (self.getQuantityAtTemperature(self.bubbleNumberDensity, self.transition.Tp))**(-1/3)
+        meanBubbleSeparationAtTp = self.getQuantityAtTemperature(self.meanBubbleSeparation, self.transition.Tp)
 
         if self.bReportAnalysis:
             print('-------------------------------------------------------------------------------------------')
@@ -1028,130 +1028,7 @@ class TransitionAnalyser():
             print('Total action evaluations:', totalActionEvaluations)
 
         if self.bPlot:
-            plt.rcParams.update({"text.usetex": True})
-
-            plt.plot(self.actionSampler.subT, bubbleWallVelocity)
-            plt.xlabel('T')
-            plt.ylabel('v_w')
-            plt.ylim(0, 1)
-            plt.show()
-
-            """rhoV = self.actionSampler.subRhoV
-            # TODO: now that rhoR is more expensive to calculate if the degrees of freedom are field dependent, we
-            #  should store rhoR during analysis.
-            rhoR = [radDensityPrefactor*self.potential.getDegreesOfFreedomInPhase(self.fromPhase, t)*t**4 for t in
-                self.actionSampler.subT]
-            rhoTot = [rhoR[i]+rhoV[i] for i in range(len(self.actionSampler.subT))]
-            plt.plot(self.actionSampler.subT, rhoV)
-            plt.plot(self.actionSampler.subT, rhoR)
-            plt.plot(self.actionSampler.subT, rhoTot)
-            plt.xlabel('$T$')
-            plt.ylabel('$\\rho$')
-            plt.legend(['$\\rho_V$', '$\\rho_R$', '$\\rho_{\\mathrm{tot}}$'])
-            plt.ylim(bottom=0)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()"""
-
-            """drhoVdT = (rhoV[-2] - rhoV[-1]) / (self.actionSampler.subT[-2] - self.actionSampler.subT[-1])
-            extrapRhoV = lambda x: rhoV[-1] + (x - self.actionSampler.subT[-1])*drhoVdT
-            extraT = list(np.linspace(2*self.actionSampler.subT[-1]-self.actionSampler.subT[-2], 0, 100))
-            fullT = self.actionSampler.subT + extraT
-            fullRhoR = rhoR + [radDensityPrefactor*self.potential.getDegreesOfFreedomInPhase(self.fromPhase, t)*t**4
-                for t in extraT]
-            fullRhoV = rhoV + [extrapRhoV(t) for t in extraT]
-            fullRhoTot = [fullRhoR[i] + fullRhoV[i] for i in range(len(fullT))]
-            plt.plot(fullT, fullRhoV)
-            plt.plot(fullT, fullRhoR)
-            plt.plot(fullT, fullRhoTot)
-            plt.axvline(self.actionSampler.subT[-1], ls='--')
-            plt.xlabel('$T$')
-            plt.ylabel('$\\rho$')
-            plt.legend(['$\\rho_V$', '$\\rho_R$', '$\\rho_{\\mathrm{tot}}$'])
-            plt.show()"""
-
-            if self.transition.Tf > 0:
-                indexTf: int = 0
-
-                for i in range(len(self.actionSampler.subT)):
-                    if self.actionSampler.subT[i] < self.transition.Tf:
-                        indexTf = i
-                        break
-
-                maxIndex = len(self.actionSampler.subT)
-                maxIndex = min(len(self.actionSampler.subT)-1, maxIndex - (maxIndex - indexTf)//2)
-                physicalVolumeRelative = [100 * (self.transition.Tf/self.actionSampler.subT[i]) ** 3 * self.falseVacuumFraction[i]
-                                          for i in range(maxIndex+1)]
-
-                ylim = np.array(physicalVolumeRelative[:min(indexTf+1, maxIndex)]).max(initial=1.)*1.2
-
-                textXOffset = 0.01*(self.actionSampler.subT[0] - self.actionSampler.subT[maxIndex])
-                textY = 0.1
-
-                plt.figure(figsize=(14, 11))
-                plt.plot(self.actionSampler.subT[:maxIndex+1], physicalVolumeRelative, zorder=3, lw=3.5)
-                #if TVphysDecr_high > 0: plt.axvline(TVphysDecr_high, c='r', ls='--', lw=2)
-                #if TVphysDecr_low > 0: plt.axvline(TVphysDecr_low, c='r', ls='--', lw=2)
-                if self.transition.TVphysDecr_high > 0 and self.transition.TVphysDecr_low > 0:
-                    plt.axvspan(self.transition.TVphysDecr_low, self.transition.TVphysDecr_high, alpha=0.3, color='r', zorder=-1)
-                if self.transition.Tp > 0:
-                    plt.axvline(self.transition.Tp, c='g', ls='--', lw=2)
-                    plt.text(self.transition.Tp + textXOffset, textY, '$T_p$', fontsize=44, horizontalalignment='left')
-                if self.transition.Te > 0:
-                    plt.axvline(self.transition.Te, c='b', ls='--', lw=2)
-                    plt.text(self.transition.Te + textXOffset, textY, '$T_e$', fontsize=44, horizontalalignment='left')
-                if self.transition.Tf > 0:
-                    plt.axvline(self.transition.Tf, c='k', ls='--', lw=2)
-                    plt.text(self.transition.Tf - textXOffset, textY, '$T_f$', fontsize=44, horizontalalignment='right')
-                plt.axhline(1., c='gray', ls=':', lw=2, zorder=-1)
-                plt.xlabel('$T \,\, \\mathrm{[GeV]}$', fontsize=52)
-                plt.ylabel('$\\mathcal{V}_{\\mathrm{phys}}(T)/\\mathcal{V}_{\\mathrm{phys}}(T_f)$', fontsize=52,
-                    labelpad=20)
-                plt.xlim(0, self.actionSampler.subT[0])
-                plt.ylim(0, ylim)
-                plt.tick_params(size=10, labelsize=40)
-                plt.margins(0, 0)
-                plt.tight_layout()
-                plt.show()
-                #saveFolder = 'C:/Work/Monash/PhD/Documents/Subtleties of supercooled cosmological first-order phase transitions/images/'
-                #plt.savefig(saveFolder + 'Relative physical volume.png', bbox_inches='tight', pad_inches=0.1)
-
-            ylim = np.array(self.physicalVolume).min(initial=0.)
-            ylim *= 1.2 if ylim < 0 else 0.8
-            if -0.5 < ylim < 0:
-                ylim = -0.5
-
-            textXOffset = 0.01*(self.actionSampler.subT[0] - 0)
-            textY = ylim + 0.07*(3.5 - ylim)
-
-            plt.figure(figsize=(14, 11))
-            plt.plot(self.actionSampler.subT, self.physicalVolume, zorder=3, lw=3.5)
-            #if TVphysDecr_high > 0: plt.axvline(TVphysDecr_high, c='r', ls='--', lw=2)
-            #if TVphysDecr_low > 0: plt.axvline(TVphysDecr_low, c='r', ls='--', lw=2)
-            if self.transition.TVphysDecr_high > 0 and self.transition.TVphysDecr_low > 0:
-                plt.axvspan(self.transition.TVphysDecr_low, self.transition.TVphysDecr_high, alpha=0.3, color='r', zorder=-1)
-            if self.transition.Tp > 0:
-                plt.axvline(self.transition.Tp, c='g', ls='--', lw=2)
-                plt.text(self.transition.Tp + textXOffset, textY, '$T_p$', fontsize=44, horizontalalignment='left')
-            if self.transition.Te > 0:
-                plt.axvline(self.transition.Te, c='b', ls='--', lw=2)
-                plt.text(self.transition.Te + textXOffset, textY, '$T_e$', fontsize=44, horizontalalignment='left')
-            if self.transition.Tf > 0:
-                plt.axvline(self.transition.Tf, c='k', ls='--', lw=2)
-                plt.text(self.transition.Tf - textXOffset, textY, '$T_f$', fontsize=44, horizontalalignment='right')
-            plt.axhline(3., c='gray', ls=':', lw=2, zorder=-1)
-            plt.axhline(0., c='gray', ls=':', lw=2, zorder=-1)
-            plt.xlabel('$T \,\, \\mathrm{[GeV]}$', fontsize=50)
-            plt.ylabel('$\\frac{\\displaystyle d}{\\displaystyle dt} \\mathcal{V}_{\\mathrm{phys}} \,\, \\mathrm{[GeV]}$',
-                fontsize=50, labelpad=20)
-            plt.xlim(0, self.actionSampler.subT[0])
-            plt.ylim(ylim, 3.5)
-            plt.tick_params(size=10, labelsize=40)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()
-            #saveFolder = 'C:/Work/Monash/PhD/Documents/Subtleties of supercooled cosmological first-order phase transitions/images/'
-            #plt.savefig(saveFolder + 'Decreasing physical volume.png', bbox_inches='tight', pad_inches=0.1)
+            self.plotTransitionResults()
 
         if self.transition.Tp > 0:
             #transitionStrength, _, _ = calculateTransitionStrength(self.potential, self.fromPhase, self.toPhase,
@@ -1189,164 +1066,6 @@ class TransitionAnalyser():
                 print('Hubble radius (Tf):         ', 1 / self.getQuantityAtTemperature(self.hubbleParameter,
                     self.transition.Tf))
 
-        if self.bPlot:
-            Tn = self.transition.Tn
-            Tp = self.transition.Tp
-            Te = self.transition.Te
-            Tf = self.transition.Tf
-            actionTn = self.transition.analysis.actionTn
-            actionTp = self.transition.analysis.actionTp
-            actionTe = self.transition.analysis.actionTe
-            actionTf = self.transition.analysis.actionTf
-            #plt.rcParams.update({"text.usetex": True})
-            #plt.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}']  # for \text command
-
-            plt.figure(figsize=(12, 8))
-            plt.plot(self.actionSampler.subT, self.nucleationRate)
-            plt.plot(self.actionSampler.subT, GammaEff)
-            #plt.plot(actionSampler.subT, approxGamma)
-            #plt.plot(actionSampler.subT, taylorExpGamma)
-            plt.xlabel('$T$', fontsize=24)
-            plt.ylabel('$\\nucleationRate(T)$', fontsize=24)
-            if self.transition.TGammaMax > 0: plt.axvline(self.transition.TGammaMax, c='g', ls=':')
-            if self.transition.Tmin > 0: plt.axvline(self.transition.Tmin, c='r', ls=':')
-            if Tp > 0: plt.axvline(Tp, c='g', ls=':')
-            if Te > 0: plt.axvline(Te, c='b', ls=':')
-            if Tf > 0: plt.axvline(Tf, c='k', ls=':')
-            plt.legend(['$\\mathrm{standard}$', '$\\mathrm{effective}$'], fontsize=24)
-            plt.tick_params(size=5, labelsize=16)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()
-
-            plt.figure(figsize=(12, 8))
-            plt.plot(self.actionSampler.subT, self.bubbleNumberDensity, linewidth=2.5)
-            plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
-            plt.ylabel('$n_B(T)$', fontsize=24)
-            if Tn > 0: plt.axvline(Tn, c='r', ls=':')
-            if Tp > 0: plt.axvline(Tp, c='g', ls=':')
-            if Te > 0: plt.axvline(Te, c='b', ls=':')
-            if Tf > 0: plt.axvline(Tf, c='k', ls=':')
-            plt.tick_params(size=5, labelsize=16)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()
-
-            highTempIndex = 1
-
-            # Search for the highest temperature for which the mean bubble separation is not larger than it is at the
-            # lowest sampled temperature.
-            for i in range(1, len(self.actionSampler.subT)):
-                if meanBubbleSeparation[i] <= meanBubbleSeparation[-1]:
-                    highTempIndex = i
-                    break
-
-            # If the mean bubble separation is always larger than it is at the lowest sampled temperature, plot the
-            # entire range of sampled temperatures.
-            if highTempIndex == len(self.actionSampler.subT)-1:
-                highTempIndex = 0
-
-            plt.figure(figsize=(12, 8))
-            plt.plot(self.actionSampler.subT, self.meanBubbleRadius, linewidth=2.5)
-            plt.plot(self.actionSampler.subT, meanBubbleSeparation, linewidth=2.5)
-            plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
-            #plt.ylabel('$\\overline{R}_B(T)$', fontsize=24)
-            plt.legend(['$\\overline{R}_B(T)$', '$R_*(T)$'], fontsize=24)
-            if Tn > 0: plt.axvline(Tn, c='r', ls=':')
-            if Tp > 0: plt.axvline(Tp, c='g', ls=':')
-            if Te > 0: plt.axvline(Te, c='b', ls=':')
-            if Tf > 0: plt.axvline(Tf, c='k', ls=':')
-            plt.xlim(self.actionSampler.subT[-1], self.actionSampler.subT[highTempIndex])
-            plt.ylim(0, 1.2 * max(meanBubbleSeparation[-1], self.meanBubbleRadius[-1]))
-            plt.tick_params(size=5, labelsize=16)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()
-
-            highTempIndex = 0
-            lowTempIndex = len(self.actionSampler.action)
-
-            minAction = min(self.actionSampler.action)
-            maxAction = self.actionSampler.maxActionThreshold
-
-            # Search for the lowest temperature for which the action is not significantly larger than the maximum
-            # significant action.
-            for i in range(len(self.actionSampler.action)):
-                if self.actionSampler.action[i] <= maxAction:
-                    highTempIndex = i
-                    break
-
-            # Search for the lowest temperature for which the action is not significantly larger than the maximum
-            # significant action.
-            for i in range(len(self.actionSampler.action) - 1, -1, -1):
-                if self.actionSampler.action[i] <= maxAction:
-                    lowTempIndex = i
-                    break
-
-            plt.figure(figsize=(12,8))
-            plt.plot(self.actionSampler.subT, self.actionSampler.subAction, linewidth=2.5)
-            #plt.plot(actionSampler.subT, approxAction, linewidth=2.5)
-            plt.scatter(self.actionSampler.T, self.actionSampler.action)
-            if Tn > -1:
-                plt.axvline(Tn, c='r', ls=':')
-                plt.axhline(actionTn, c='r', ls=':')
-            if Tp > -1:
-                plt.axvline(Tp, c='g', ls=':')
-                plt.axhline(actionTp, c='g', ls=':')
-            if Te > -1:
-                plt.axvline(Te, c='b', ls=':')
-                plt.axhline(actionTe, c='b', ls=':')
-            if Tf > -1:
-                plt.axvline(Tf, c='k', ls=':')
-                plt.axhline(actionTf, c='k', ls=':')
-            plt.minorticks_on()
-            plt.grid(visible=True, which='major', color='k', linestyle='--')
-            plt.grid(visible=True, which='minor', color='gray', linestyle=':')
-            plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
-            plt.ylabel('$S(T)$', fontsize=24)
-            #plt.legend(['precise', 'approx'])
-            plt.xlim(self.actionSampler.T[lowTempIndex], self.actionSampler.T[highTempIndex])
-            plt.ylim(minAction - 0.05*(maxAction - minAction), maxAction)
-            plt.tick_params(size=5, labelsize=16)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()
-
-            # Number of bubbles plotted over entire sampled temperature range, using log scale for number of bubbles.
-            plt.figure(figsize=(12, 8))
-            plt.plot(self.actionSampler.subT, self.numBubblesCorrectedIntegral, linewidth=2.5)
-            plt.plot(self.actionSampler.subT, self.numBubblesIntegral, linewidth=2.5)
-            #plt.plot(actionSampler.subT, numBubblesApprox, linewidth=2.5)
-            if Tn > 0: plt.axvline(Tn, c='r', ls=':')
-            if Tp > 0: plt.axvline(Tp, c='g', ls=':')
-            if Te > 0: plt.axvline(Te, c='b', ls=':')
-            if Tf > 0: plt.axvline(Tf, c='k', ls=':')
-            plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
-            #plt.ylabel('$N(T)$', fontsize=24)
-            plt.yscale('log')
-            #plt.legend(['precise', 'approx'])
-            plt.legend(['$N(T)$', '$N^{\\mathrm{ext}}(T)$'], fontsize=24)
-            plt.tick_params(size=5, labelsize=16)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()
-
-            plt.figure(figsize=(12, 8))
-            plt.plot(self.actionSampler.subT, self.falseVacuumFraction, linewidth=2.5)
-            if Tn > 0: plt.axvline(Tn, c='r', ls=':')
-            if Tp > 0: plt.axvline(Tp, c='g', ls=':')
-            if Te > 0: plt.axvline(Te, c='b', ls=':')
-            if Tf > 0: plt.axvline(Tf, c='k', ls=':')
-            plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=40)
-            plt.ylabel('$P_f(T)$', fontsize=40)
-            plt.tick_params(size=8, labelsize=28)
-            plt.margins(0,0)
-            plt.tight_layout()
-            plt.show()
-            #plt.savefig("output/plots/Pf_vs_T_BP2.pdf")
-            #plt.savefig('E:/Monash/PhD/Milestones/Confirmation Review/images/xSM P(T) vs T.png', bbox_inches='tight',
-            #    pad_inches=0.05)
-
         if len(precomputedT) > 0:
             self.transition.analysis.actionCurveFile = precomputedActionCurveFileName
         self.transition.analysis.T = self.actionSampler.T
@@ -1358,9 +1077,264 @@ class TransitionAnalyser():
             self.transition.TSubampleArray = self.actionSampler.subT
             self.transition.HArray = self.hubbleParameter
             self.transition.betaArray = beta
-            self.transition.meanBubbleSeparationArray = meanBubbleSeparation
+            self.transition.meanBubbleSeparationArray = self.meanBubbleSeparation
             self.transition.meanBubbleRadiusArray = self.meanBubbleRadius
             self.transition.Pf = self.falseVacuumFraction
+
+    def plotTransitionResults(self):
+        plt.rcParams.update({"text.usetex": True})
+
+        GammaEff = np.array([self.falseVacuumFraction[i] * self.nucleationRate[i] for i in
+            range(len(self.nucleationRate))])
+
+        plt.plot(self.actionSampler.subT, self.bubbleWallVelocity)
+        plt.xlabel('T')
+        plt.ylabel('v_w')
+        plt.ylim(0, 1)
+        plt.show()
+
+        if self.transition.Tf > 0:
+            indexTf: int = 0
+
+            for i in range(len(self.actionSampler.subT)):
+                if self.actionSampler.subT[i] < self.transition.Tf:
+                    indexTf = i
+                    break
+
+            maxIndex = len(self.actionSampler.subT)
+            maxIndex = min(len(self.actionSampler.subT) - 1, maxIndex - (maxIndex - indexTf) // 2)
+            physicalVolumeRelative = [
+                100 * (self.transition.Tf / self.actionSampler.subT[i]) ** 3 * self.falseVacuumFraction[i]
+                for i in range(maxIndex + 1)]
+
+            ylim = np.array(physicalVolumeRelative[:min(indexTf + 1, maxIndex)]).max(initial=1.) * 1.2
+
+            textXOffset = 0.01 * (self.actionSampler.subT[0] - self.actionSampler.subT[maxIndex])
+            textY = 0.1
+
+            plt.figure(figsize=(14, 11))
+            plt.plot(self.actionSampler.subT[:maxIndex + 1], physicalVolumeRelative, zorder=3, lw=3.5)
+            # if TVphysDecr_high > 0: plt.axvline(TVphysDecr_high, c='r', ls='--', lw=2)
+            # if TVphysDecr_low > 0: plt.axvline(TVphysDecr_low, c='r', ls='--', lw=2)
+            if self.transition.TVphysDecr_high > 0 and self.transition.TVphysDecr_low > 0:
+                plt.axvspan(self.transition.TVphysDecr_low, self.transition.TVphysDecr_high, alpha=0.3, color='r',
+                            zorder=-1)
+            if self.transition.Tp > 0:
+                plt.axvline(self.transition.Tp, c='g', ls='--', lw=2)
+                plt.text(self.transition.Tp + textXOffset, textY, '$T_p$', fontsize=44, horizontalalignment='left')
+            if self.transition.Te > 0:
+                plt.axvline(self.transition.Te, c='b', ls='--', lw=2)
+                plt.text(self.transition.Te + textXOffset, textY, '$T_e$', fontsize=44, horizontalalignment='left')
+            if self.transition.Tf > 0:
+                plt.axvline(self.transition.Tf, c='k', ls='--', lw=2)
+                plt.text(self.transition.Tf - textXOffset, textY, '$T_f$', fontsize=44, horizontalalignment='right')
+            plt.axhline(1., c='gray', ls=':', lw=2, zorder=-1)
+            plt.xlabel('$T \,\, \\mathrm{[GeV]}$', fontsize=52)
+            plt.ylabel('$\\mathcal{V}_{\\mathrm{phys}}(T)/\\mathcal{V}_{\\mathrm{phys}}(T_f)$', fontsize=52,
+                       labelpad=20)
+            plt.xlim(0, self.actionSampler.subT[0])
+            plt.ylim(0, ylim)
+            plt.tick_params(size=10, labelsize=40)
+            plt.margins(0, 0)
+            plt.tight_layout()
+            plt.show()
+            # saveFolder = 'C:/Work/Monash/PhD/Documents/Subtleties of supercooled cosmological first-order phase transitions/images/'
+            # plt.savefig(saveFolder + 'Relative physical volume.png', bbox_inches='tight', pad_inches=0.1)
+
+        ylim = np.array(self.physicalVolume).min(initial=0.)
+        ylim *= 1.2 if ylim < 0 else 0.8
+        if -0.5 < ylim < 0:
+            ylim = -0.5
+
+        textXOffset = 0.01 * (self.actionSampler.subT[0] - 0)
+        textY = ylim + 0.07 * (3.5 - ylim)
+
+        plt.figure(figsize=(14, 11))
+        plt.plot(self.actionSampler.subT, self.physicalVolume, zorder=3, lw=3.5)
+        # if TVphysDecr_high > 0: plt.axvline(TVphysDecr_high, c='r', ls='--', lw=2)
+        # if TVphysDecr_low > 0: plt.axvline(TVphysDecr_low, c='r', ls='--', lw=2)
+        if self.transition.TVphysDecr_high > 0 and self.transition.TVphysDecr_low > 0:
+            plt.axvspan(self.transition.TVphysDecr_low, self.transition.TVphysDecr_high, alpha=0.3, color='r',
+                        zorder=-1)
+        if self.transition.Tp > 0:
+            plt.axvline(self.transition.Tp, c='g', ls='--', lw=2)
+            plt.text(self.transition.Tp + textXOffset, textY, '$T_p$', fontsize=44, horizontalalignment='left')
+        if self.transition.Te > 0:
+            plt.axvline(self.transition.Te, c='b', ls='--', lw=2)
+            plt.text(self.transition.Te + textXOffset, textY, '$T_e$', fontsize=44, horizontalalignment='left')
+        if self.transition.Tf > 0:
+            plt.axvline(self.transition.Tf, c='k', ls='--', lw=2)
+            plt.text(self.transition.Tf - textXOffset, textY, '$T_f$', fontsize=44, horizontalalignment='right')
+        plt.axhline(3., c='gray', ls=':', lw=2, zorder=-1)
+        plt.axhline(0., c='gray', ls=':', lw=2, zorder=-1)
+        plt.xlabel('$T \,\, \\mathrm{[GeV]}$', fontsize=50)
+        plt.ylabel('$\\frac{\\displaystyle d}{\\displaystyle dt} \\mathcal{V}_{\\mathrm{phys}} \,\, \\mathrm{[GeV]}$',
+                   fontsize=50, labelpad=20)
+        plt.xlim(0, self.actionSampler.subT[0])
+        plt.ylim(ylim, 3.5)
+        plt.tick_params(size=10, labelsize=40)
+        plt.margins(0, 0)
+        plt.tight_layout()
+        plt.show()
+        # saveFolder = 'C:/Work/Monash/PhD/Documents/Subtleties of supercooled cosmological first-order phase transitions/images/'
+        # plt.savefig(saveFolder + 'Decreasing physical volume.png', bbox_inches='tight', pad_inches=0.1)
+
+        Tn = self.transition.Tn
+        Tp = self.transition.Tp
+        Te = self.transition.Te
+        Tf = self.transition.Tf
+        actionTn = self.transition.analysis.actionTn
+        actionTp = self.transition.analysis.actionTp
+        actionTe = self.transition.analysis.actionTe
+        actionTf = self.transition.analysis.actionTf
+        # plt.rcParams.update({"text.usetex": True})
+        # plt.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}']  # for \text command
+
+        plt.figure(figsize=(12, 8))
+        plt.plot(self.actionSampler.subT, self.nucleationRate)
+        plt.plot(self.actionSampler.subT, GammaEff)
+        # plt.plot(actionSampler.subT, approxGamma)
+        # plt.plot(actionSampler.subT, taylorExpGamma)
+        plt.xlabel('$T$', fontsize=24)
+        plt.ylabel('$\\nucleationRate(T)$', fontsize=24)
+        if self.transition.TGammaMax > 0: plt.axvline(self.transition.TGammaMax, c='g', ls=':')
+        if self.transition.Tmin > 0: plt.axvline(self.transition.Tmin, c='r', ls=':')
+        if Tp > 0: plt.axvline(Tp, c='g', ls=':')
+        if Te > 0: plt.axvline(Te, c='b', ls=':')
+        if Tf > 0: plt.axvline(Tf, c='k', ls=':')
+        plt.legend(['$\\mathrm{standard}$', '$\\mathrm{effective}$'], fontsize=24)
+        plt.tick_params(size=5, labelsize=16)
+        plt.margins(0, 0)
+        plt.tight_layout()
+        plt.show()
+
+        plt.figure(figsize=(12, 8))
+        plt.plot(self.actionSampler.subT, self.bubbleNumberDensity, linewidth=2.5)
+        plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
+        plt.ylabel('$n_B(T)$', fontsize=24)
+        if Tn > 0: plt.axvline(Tn, c='r', ls=':')
+        if Tp > 0: plt.axvline(Tp, c='g', ls=':')
+        if Te > 0: plt.axvline(Te, c='b', ls=':')
+        if Tf > 0: plt.axvline(Tf, c='k', ls=':')
+        plt.tick_params(size=5, labelsize=16)
+        plt.margins(0, 0)
+        plt.tight_layout()
+        plt.show()
+
+        highTempIndex = 1
+
+        # Search for the highest temperature for which the mean bubble separation is not larger than it is at the
+        # lowest sampled temperature.
+        for i in range(1, len(self.actionSampler.subT)):
+            if self.meanBubbleSeparation[i] <= self.meanBubbleSeparation[-1]:
+                highTempIndex = i
+                break
+
+        # If the mean bubble separation is always larger than it is at the lowest sampled temperature, plot the
+        # entire range of sampled temperatures.
+        if highTempIndex == len(self.actionSampler.subT) - 1:
+            highTempIndex = 0
+
+        plt.figure(figsize=(12, 8))
+        plt.plot(self.actionSampler.subT, self.meanBubbleRadius, linewidth=2.5)
+        plt.plot(self.actionSampler.subT, self.meanBubbleSeparation, linewidth=2.5)
+        plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
+        # plt.ylabel('$\\overline{R}_B(T)$', fontsize=24)
+        plt.legend(['$\\overline{R}_B(T)$', '$R_*(T)$'], fontsize=24)
+        if Tn > 0: plt.axvline(Tn, c='r', ls=':')
+        if Tp > 0: plt.axvline(Tp, c='g', ls=':')
+        if Te > 0: plt.axvline(Te, c='b', ls=':')
+        if Tf > 0: plt.axvline(Tf, c='k', ls=':')
+        plt.xlim(self.actionSampler.subT[-1], self.actionSampler.subT[highTempIndex])
+        plt.ylim(0, 1.2 * max(self.meanBubbleSeparation[-1], self.meanBubbleRadius[-1]))
+        plt.tick_params(size=5, labelsize=16)
+        plt.margins(0, 0)
+        plt.tight_layout()
+        plt.show()
+
+        highTempIndex = 0
+        lowTempIndex = len(self.actionSampler.action)
+
+        minAction = min(self.actionSampler.action)
+        maxAction = self.actionSampler.maxActionThreshold
+
+        # Search for the lowest temperature for which the action is not significantly larger than the maximum
+        # significant action.
+        for i in range(len(self.actionSampler.action)):
+            if self.actionSampler.action[i] <= maxAction:
+                highTempIndex = i
+                break
+
+        # Search for the lowest temperature for which the action is not significantly larger than the maximum
+        # significant action.
+        for i in range(len(self.actionSampler.action) - 1, -1, -1):
+            if self.actionSampler.action[i] <= maxAction:
+                lowTempIndex = i
+                break
+
+        plt.figure(figsize=(12, 8))
+        plt.plot(self.actionSampler.subT, self.actionSampler.subAction, linewidth=2.5)
+        # plt.plot(actionSampler.subT, approxAction, linewidth=2.5)
+        plt.scatter(self.actionSampler.T, self.actionSampler.action)
+        if Tn > -1:
+            plt.axvline(Tn, c='r', ls=':')
+            plt.axhline(actionTn, c='r', ls=':')
+        if Tp > -1:
+            plt.axvline(Tp, c='g', ls=':')
+            plt.axhline(actionTp, c='g', ls=':')
+        if Te > -1:
+            plt.axvline(Te, c='b', ls=':')
+            plt.axhline(actionTe, c='b', ls=':')
+        if Tf > -1:
+            plt.axvline(Tf, c='k', ls=':')
+            plt.axhline(actionTf, c='k', ls=':')
+        plt.minorticks_on()
+        plt.grid(visible=True, which='major', color='k', linestyle='--')
+        plt.grid(visible=True, which='minor', color='gray', linestyle=':')
+        plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
+        plt.ylabel('$S(T)$', fontsize=24)
+        # plt.legend(['precise', 'approx'])
+        plt.xlim(self.actionSampler.T[lowTempIndex], self.actionSampler.T[highTempIndex])
+        plt.ylim(minAction - 0.05 * (maxAction - minAction), maxAction)
+        plt.tick_params(size=5, labelsize=16)
+        plt.margins(0, 0)
+        plt.tight_layout()
+        plt.show()
+
+        # Number of bubbles plotted over entire sampled temperature range, using log scale for number of bubbles.
+        plt.figure(figsize=(12, 8))
+        plt.plot(self.actionSampler.subT, self.numBubblesCorrectedIntegral, linewidth=2.5)
+        plt.plot(self.actionSampler.subT, self.numBubblesIntegral, linewidth=2.5)
+        # plt.plot(actionSampler.subT, numBubblesApprox, linewidth=2.5)
+        if Tn > 0: plt.axvline(Tn, c='r', ls=':')
+        if Tp > 0: plt.axvline(Tp, c='g', ls=':')
+        if Te > 0: plt.axvline(Te, c='b', ls=':')
+        if Tf > 0: plt.axvline(Tf, c='k', ls=':')
+        plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
+        # plt.ylabel('$N(T)$', fontsize=24)
+        plt.yscale('log')
+        # plt.legend(['precise', 'approx'])
+        plt.legend(['$N(T)$', '$N^{\\mathrm{ext}}(T)$'], fontsize=24)
+        plt.tick_params(size=5, labelsize=16)
+        plt.margins(0, 0)
+        plt.tight_layout()
+        plt.show()
+
+        plt.figure(figsize=(12, 8))
+        plt.plot(self.actionSampler.subT, self.falseVacuumFraction, linewidth=2.5)
+        if Tn > 0: plt.axvline(Tn, c='r', ls=':')
+        if Tp > 0: plt.axvline(Tp, c='g', ls=':')
+        if Te > 0: plt.axvline(Te, c='b', ls=':')
+        if Tf > 0: plt.axvline(Tf, c='k', ls=':')
+        plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=40)
+        plt.ylabel('$P_f(T)$', fontsize=40)
+        plt.tick_params(size=8, labelsize=28)
+        plt.margins(0, 0)
+        plt.tight_layout()
+        plt.show()
+        # plt.savefig("output/plots/Pf_vs_T_BP2.pdf")
+        # plt.savefig('E:/Monash/PhD/Milestones/Confirmation Review/images/xSM P(T) vs T.png', bbox_inches='tight',
+        #    pad_inches=0.05)
 
     def getQuantityAtTemperature(self, quantity: List[float], temperature: float) -> float:
         index: int = 0
@@ -2165,11 +2139,10 @@ class TransitionAnalyser():
 
     def calculateReheatTemperature(self, T: float) -> float:
         Tsep = min(0.001*(self.transition.Tc - self.Tmin), 0.5*(T - self.Tmin))
-        # TODO: [2023] surely this should be handled earlier.
-        #if self.Tmin == 0:
-        #    self.Tmin = self.potential.minimumTemperature #0.001 #2*Tsep
+
         # Can't use supplied version of energy density calculation because T is changing. Default is from phase.
         rhof = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, T)
+
         def objective(t):
             rhot = hydrodynamics.calculateEnergyDensityAtT_singlePhase(self.fromPhase, self.toPhase, self.potential, t,
                 forFromPhase=False)
@@ -2177,8 +2150,8 @@ class TransitionAnalyser():
             # different temperatures, T and Tt (Treh), respectively).
             return rhot - rhof
 
-        # If the energy density of the true vacuum is never larger than the current energy density of the false vacuum even
-        # at Tc, then reheating goes beyond Tc.
+        # If the energy density of the true vacuum is never larger than the current energy density of the false vacuum
+        # even at Tc, then reheating goes beyond Tc.
         if objective(self.transition.Tc) < 0:
             # Also, check the energy density of the true vacuum when it first appears. If a solution still doesn't exist
             # here, then just report -1.
