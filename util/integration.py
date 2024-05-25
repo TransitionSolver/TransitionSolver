@@ -1,4 +1,12 @@
+from __future__ import annotations
+
+from typing import List
+
+
 class IntegrationHelper:
+    x: List[float]
+    data: List[float]
+
     def __init__(self, *args, **kwargs):
         self.init(*args, **kwargs)
         self.initialiseIntegration()
@@ -8,6 +16,13 @@ class IntegrationHelper:
 
     def initialiseIntegration(self):
         return
+
+    def integrate(self, newx: float):
+        return
+
+    def undo(self):
+        self.x.pop()
+        self.data.pop()
 
 
 # Designed specifically to aid in evaluating integrals of the form
@@ -71,6 +86,7 @@ class CubedNestedIntegrationHelper(IntegrationHelper):
         self.i = 3
 
     def integrate(self, newx: float):
+        # Aliases for concision.
         x = self.x
         f = self.f
         g = self.g
@@ -119,10 +135,6 @@ class CubedNestedIntegrationHelper(IntegrationHelper):
 
         self.i += 1
 
-    def undo(self):
-        self.x.pop()
-        self.data.pop()
-
 
 # Designed specifically to aid in evaluating integrals of the form
 #   I(x) = x^-1 {[int_x^a dx' f(x') int_x^x' dx'' g(x'')] / [int_x^a dx' h(x')]} ,
@@ -148,6 +160,7 @@ class LinearNestedNormalisedIntegrationHelper(IntegrationHelper):
         self.A = 0
         self.B = 0
 
+        # Aliases for concision.
         x = self.x
         f = self.f
         g = self.g
@@ -156,8 +169,8 @@ class LinearNestedNormalisedIntegrationHelper(IntegrationHelper):
 
         dxn2 = tr(x[0]) - tr(x[1])
 
-        fn1 = f(x[0])
-        fn2 = f(x[1])
+        #fn1 = f(x[0])
+        #fn2 = f(x[1])
         gsn2 = g(x[1]) + g(x[0])
 
         self.A = 0.25/tr(x[1])*f(x[0])*gsn2*dxn2**2
