@@ -6,18 +6,24 @@ from typing import List
 class IntegrationHelper:
     x: List[float]
     data: List[float]
+    bInitialised: bool
+    bDebug: bool  # TODO: currently not set to true anywhere.
 
     def __init__(self, *args, **kwargs):
+        self.bInitialised = False
         self.init(*args, **kwargs)
-        self.initialiseIntegration()
+        #self.initialiseIntegration()
 
     def init(self, *args, **kwargs):
         return
 
     def initialiseIntegration(self):
-        return
+        self.bInitialised = True
 
     def integrate(self, newx: float):
+        return
+
+    def integrateNaive(self):
         return
 
     def undo(self):
@@ -26,7 +32,7 @@ class IntegrationHelper:
 
 
 # Designed specifically to aid in evaluating integrals of the form
-#   I(x) = x^-3 * {int_x^a dx' f(x') [int_x^x' dx'' g(x'')]^3} ,
+#   I(x) = int_x^a dx' f(x') [int_x^x' dx'' g(x'')]^3 ,
 # where it must be evaluated for several values of x. Naively this would be an O(n^3) algorithm, where n is the number
 # of evaluations, assuming n is also the step size in the integration. However, this can be reduced to O(n) using a
 # recurrence relation between I(x_i) and I(x_{i+1}).
@@ -43,6 +49,8 @@ class CubedNestedIntegrationHelper(IntegrationHelper):
         self.data = [0.0]
 
     def initialiseIntegration(self):
+        super().initialiseIntegration()
+
         self.L2 = 0
         self.L3 = 0
         self.L6 = 0
@@ -52,9 +60,9 @@ class CubedNestedIntegrationHelper(IntegrationHelper):
         g = self.g
         tr = self.tr
 
-        xn1 = tr(x[0])
-        xn2 = tr(x[1])
-        xn3 = tr(x[2])
+        #xn1 = tr(x[0])
+        #xn2 = tr(x[1])
+        #xn3 = tr(x[2])
 
         dxn2 = tr(x[0]) - tr(x[1])
         dxn3 = tr(x[1]) - tr(x[2])
@@ -86,6 +94,9 @@ class CubedNestedIntegrationHelper(IntegrationHelper):
         self.i = 3
 
     def integrate(self, newx: float):
+        if self.bDebug and not self.bInitialised:
+            print('CubedNestedIntegrationHelper.integrate called when bInitialised is False.')
+
         # Aliases for concision.
         x = self.x
         f = self.f
@@ -135,9 +146,27 @@ class CubedNestedIntegrationHelper(IntegrationHelper):
 
         self.i += 1
 
+    # Uses the naive integration method. Returns the result and doesn't store the result in self.data. Used only for
+    # temporary integration when the integration handler doesn't have enough data to be initialised.
+    def integrateNaive(self) -> float:
+        result: float = 0
+
+        x = [self.tr(xx) for xx in self.x]
+        f = self.f
+        g = self.g
+
+        for i in range(len(self.x)-1, 0, -1):
+            innerIntegral = 0
+            for j in range(i-1, 0, -1):
+                innerIntegral += (g(x[j]) + g(x[j-1]))*(x[j] - x[j-1])
+            innerIntegralExtra = innerIntegral + (f(x[i]) + f(x[i-1]))*(x[i] - x[i-1])
+            result += (f(x[i])*innerIntegral**3 + f(x[i-1])*innerIntegralExtra**3)*(x[i] - x[i-1])
+
+        return result/16
+
 
 # Designed specifically to aid in evaluating integrals of the form
-#   I(x) = x^-1 {[int_x^a dx' f(x') int_x^x' dx'' g(x'')] / [int_x^a dx' h(x')]} ,
+#   I(x) = [int_x^a dx' f(x') int_x^x' dx'' g(x'')] / [int_x^a dx' h(x')] ,
 # where it must be evaluated for several values of x. Naively this would be an O(n^3) algorithm,
 # where n is the number of evaluations, assuming n is also the step size in the integration. However, this can be
 # reduced to O(n) using a recurrence relation between I(x_i) and I(x_{i+1}).
@@ -156,6 +185,8 @@ class LinearNestedNormalisedIntegrationHelper(IntegrationHelper):
         self.data = [0.0]
 
     def initialiseIntegration(self):
+        super().initialiseIntegration()
+
         self.L = 0
         self.A = 0
         self.B = 0
@@ -182,6 +213,9 @@ class LinearNestedNormalisedIntegrationHelper(IntegrationHelper):
         self.i = 2
 
     def integrate(self, newx: int):
+        if self.bDebug and not self.bInitialised:
+            print('CubedNestedIntegrationHelper.integrate called when bInitialised is False.')
+
         x = self.x
         f = self.f
         g = self.g
@@ -211,3 +245,47 @@ class LinearNestedNormalisedIntegrationHelper(IntegrationHelper):
         self.data.append(self.A/self.B)
 
         self.i += 1
+
+    # Uses the naive integration method. Returns the result and doesn't store the result in self.data. Used only for
+    # temporary integration when the integration handler doesn't have enough data to be initialised.
+    def integrateNaive(self) -> float:
+        numerator: float = 0
+        denominator: float = 0
+
+        x = [self.tr(xx) for xx in self.x]
+        f = self.f
+        g = self.g
+        h = self.h
+
+        for i in range(len(self.x)-1, 0, -1):
+            innerIntegral = 0
+            for j in range(i-1, 0, -1):
+                innerIntegral += (g(x[j]) + g(x[j-1]))*(x[j] - x[j-1])
+            innerIntegralExtra = innerIntegral + (f(x[i]) + f(x[i-1]))*(x[i] - x[i-1])
+            numerator += (f(x[i])*innerIntegral + f(x[i-1])*innerIntegralExtra)*(x[i] - x[i-1])
+
+            denominator += (h(x[i]) + h(x[i-1]))*(x[i] - x[i-1])
+
+        # The numerator should have a factor of 1/4 (due to double integration), while the denominator should have a
+        # factor of 1/2 (due to single integration). Therefore, we have an overall factor of 1/2.
+        return 0.5 * numerator / denominator
+
+
+if __name__ == "__main__":
+    import numpy as np
+    a = 2
+    b = 3
+    firstPoints = np.linspace(a, b, 4000)
+    outFun = lambda x: x
+    inFun = lambda x: x + 1
+    trans = lambda x: x
+    integrator = CubedNestedIntegrationHelper(firstPoints, outFun, inFun, trans)
+    print('naive:', integrator.integrateNaive())
+    exactResult = ((a-b)**4*(35*a**4 + 4*a**3*(38+35*b) + a**2*(224+608*b+210*b**2) + 4*a*(28+224*b+170*b**2+35*b**3)
+                             + b*(448+560*b+240*b**2+35*b**3)))/2240
+    print('exact:', exactResult)
+
+    integrator = LinearNestedNormalisedIntegrationHelper(firstPoints, outFun, inFun, outFun, trans)
+    print('naive:', integrator.integrateNaive())
+    exactResult = (b*(8+3*b) + a*(8*a/(a+b)-3*(4+a)))/12
+    print('exact:', exactResult)

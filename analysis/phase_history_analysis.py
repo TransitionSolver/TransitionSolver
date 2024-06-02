@@ -264,7 +264,8 @@ class PhaseHistoryAnalyser:
                     Tmax = transition.Tc
                     for tr in path.transitions:
                         if tr.true_phase == transition.false_phase:
-                            Tmax = min(Tmax, tr.Tn) # TODO: this is using Tn.
+                            # TODO: this is using Tn. This should be configurable. A reasonable choice might be Tp.
+                            Tmax = min(Tmax, tr.Tn)
                             break
                 else:
                     Tmax = transition.Tc
