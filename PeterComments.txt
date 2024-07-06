@@ -194,3 +194,42 @@ We should probably just delete this...
 ## get_fermion_masses_sq.  We really should avoid doing that...
 
 26)  The model used for RSS in TransitionSolver is RealScalarSingletModel_Boltz in real_scalar_singlet_model_boltz.py.  However real_scalar_singlet_model.py still exists.  I don't like deleting the old file if its its simpler to understand but I do think we should tidy this up somehow. Otherwsie users/readers  may get confused like I did: Actually comparing RSS.hpp and real_scalar_singlet_model.py, it looks like the latter does not set the fermion masses in the same way and only as the top quark, whereas RSS has all fermion masses, but for set couplings has only top and bottom.  
+
+
+27) Importance: low but easy, type: user interface
+When we are making some thing easier to change for the user we chould make sure we include the Hubble parameter today.   There is this Hubble tension... It can be easily changed in determineGWs right now (line 188). 
+
+28) For future we can remove bag mnodel assumptions from evey place we use the time-temperature relatation, e.g. our most derived from of the JMAK equation.  
+
+29) Importance: medium, but maybe for future, type: calculations
+We could easily add the other fot values for the bubble collisions from the paper we use.  Maybe its fast to do for this paper. Also can add analytical calculation of the Bubble collison, GW peak amplitide and peak frequency from https://arxiv.org/abs/2107.01845 .  This requires codimng up theor integral as they don't give a fit formulae, so maybe a little mini project for student.   
+
+## DONE
+## 30) If we use Omeha h^2 for "peak amplitude" we should be
+## clear about what value of little h we take?  I think at least
+## because we need to add it for the regular lattice sound wave fit we
+## should, but i need tio check if actually they have somnehow used a
+## specific factor of h^2 and we should really be undoing that...
+
+## Answer: In the redshift we don't use the h=0.674 input to get the
+## numerical factors because it cancels out.  We then must multiply by
+## h^2 to get Omega h^2.  So we need to state the h^2 we use in the
+## GWs section and not the redshift factor sectuio.
+
+
+31) We hardcode a numerical value fo3 h in line 185, and this is then used in H0 in line 188 and in line 194, but actually it just cancels out.  We should edit this to change 
+self.redshiftAmp = (s0/s1)**(4/3) * (H1/H0)**2 * h**2
+to
+self.redshiftAmp = (s0/s1)**(4/3) * H1**2 * hoverH0**2
+ and just hardcode hoverH0 which is really just a scaling factor. That way it  doesn't appear like we depend on data for h and simplifies things a little
+
+32)  The sound wave regular fit has a numerical prefcator wfor the peak amplitude which is missing a factor h^2, same as our review unfortunately.  The correct prefcator is guven in the draft and I will fix this.
+
+33) The sound shell model prefcator is OK but we use \tilde{\omega} = 0.01 there while we use 0.012 for regular fit (this is the exact number suggested in the numerical simulation paper erratum).  Of course they guve a range of values from the simulations and I think Lachlan picked 0.01 from that tabke as a resonable choice but I feel we should go with their choice.  Eitehr way we should use the same in both cases.
+
+
+
+
+
+
+
