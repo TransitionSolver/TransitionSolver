@@ -227,9 +227,49 @@ self.redshiftAmp = (s0/s1)**(4/3) * H1**2 * hoverH0**2
 
 33) The sound shell model prefcator is OK but we use \tilde{\omega} = 0.01 there while we use 0.012 for regular fit (this is the exact number suggested in the numerical simulation paper erratum).  Of course they guve a range of values from the simulations and I think Lachlan picked 0.01 from that tabke as a resonable choice but I feel we should go with their choice.  Eitehr way we should use the same in both cases.
 
+34) For calculating the hubble paraneter we seem to have two methods in the TransitionAnalyser class and two functions defined at in transition_analyser.py presambly for use outside of the class.
+
+Inside class we have :
+calculateHubbleParameterSq(self, T: float) -> float
+calculateHubbleParameterSq_fromHydro(self, hydroVars: HydroVars) -> float:
+
+where the difference is just whether you use the stored value for rho_f from HydroVars or call the function for getting the energy density from the hydrodynamics module.  However note in the latter we then subtract explicitly the ground state energy.  When getting it from HydroVars this has presuambly already been done (see later points delving into this)?  Anyway thats a bit messy maybe.  Possibly better to store ground state energy and  rho_f without subtraction and put them together here?    
+
+Outside class we have:
+* calculateHubbleParameterSq
+* calculateHubbleParameterSq_supplied
+
+I guess these are when you don't want to use the transition_analysis class.  But if we can have these as just functions do we need the methods?  Seems a bit messy but maybe all four needed somehow?
 
 
 
+35) I could not easily see where we are setting energyDensityFalse in HydroVars such that we subtract (or don't if thats the case) the ground state energy was. I think because I was seraching for the full variabe name when its set as just ef.  I then realised in getHydroVars_new  we intriduce FED_f and FED_t that we do this subtraction, but its easy to miss as we then redefine
+Ffm = FED_f(T)
+Ftm = FED_t(T)
+In getHydroVars I don't see it being subtracted, so it must be this one? In fact it looks like getHydroVars is an old less efficient version of getHydroVars_new ?  Note here I mean the routines in hydrodynamics.py.  In transition_analysis.py there is a wrapper for calling getHydroVars_new from hydrodymnamics which is called getHydroVars.   Gets a bit confusing.
 
+
+36) why does calculateEnergyDensityAtT_singlePhase take both phases as arguments and then calculate with only one after checking a boolean argument?  Why not just pass the phase you need?     Ah it needs the from_phase and the to_phase to compute Tstep.  I don't understand this part though...  Tstep seems to be for the numerical derivative.  I guess he can't use just one, as it might be at the origin and not give a good scale?  I'd like to understand the logic of Tstep though, but i don't follow looking at it quickly.
+
+
+37) In hydrodybamics there are lots of places where we use the definition of the derivative to compute derivatives numerically.  But we don't ever check for problems.  it seems we are choosing step sizes carefully but still I expect these could fall over sometimes, shouldn't we catch such problems?  See e.g, calculateEnergyDensityAtT_singlePhase_supplied for an example!
+
+
+38) In hydrodynamics there are two routines for getting the varibles:
+* getHydroVars
+*getHydroVars_new
+The latter seems to be a new more efficient version and this one also subtracts off the ground state energy for the energy density while the former does not. Hwever the former still seems to be used in line 112 to gte the vakues for the reheating
+self.hydroVarsReh = hydrodynamics.getHydroVars(self.fromPhase, self.toPhase, self.potential, self.Treh)
+which is sued to get the entropy.  I am not sure why the old version is used here though. Is this intentional or it just doesn't matter?
+
+
+39) completionThreshold is set to 1e-2 inside analyseTransition in transition_analysis.py.  We shoudl isntead relace this line with a clal to get a seeting and only the default of that setting should be 0.01.
+
+
+40) I don't undersatnd in analyseTransition how the following line does what the comment above says?
+
+# Keep sampling until we have identified the end of the phase transition or that the transition doesn't complete.
+        while not self.bCheckPossibleCompletion or self.transitionCouldComplete(maxSonTThreshold + toleranceSonT, Pf):
+The second bit is clear as long as that is true we continue. I guess there is check inside the routine for completion being reached.  But the firts bit seems to continue only if bCheckPossibleCompletion is false, ie we keep the whle loop going when we do *not* want to check completion?  I don't get it....  Also maybe some brackers around  "not self.bCheckPossibleCompletion" would avoid readers having to double check order of the not and or?
 
 
