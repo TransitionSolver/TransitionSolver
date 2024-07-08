@@ -239,13 +239,14 @@ class GWAnalyser_InidividualTransition:
             #print('Alternative peak frequency (coll):', 0.77 * self.beta / (2*np.pi) * 4.28e11/(self.hydroVars.entropyDensityTrue)**(1/3))
 
     def getPeakAmplitude_regular(self) -> float:
-        # Fit from our GW review (but dividing length scale by soundSpeed in accordance with updated estimate of tau_c).
-        return 0.15509*self.redshiftAmp * self.K*self.K * self.H*(self.lengthScale_bubbleSeparation / (8*np.pi)**(1/3))\
-            / self.soundSpeed * self.upsilon
+        # Fit from https://arxiv.org/pdf/1704.05871 taking account of erratum.
+        Omega_gw = 0.012
+        return 2.061*Omega_gw*self.redshiftAmp * self.K*self.K * (self.H* self.lengthScale_bubbleSeparation / self.soundSpeed) * self.upsilon
 
     def getPeakAmplitude_soundShell(self) -> float:
         # Based on https://arxiv.org/pdf/1909.10040.pdf.
-        Omega_gw = 0.01  # From https://arxiv.org/pdf/1704.05871.pdf TABLE IV.
+        # Omega_gw = 0.01 # From https://arxiv.org/pdf/1704.05871.pdf TABLE IV.
+        Omega_gw = 0.012  # From erratum of https://arxiv.org/pdf/1704.05871.pdf TABLE IV.
         rb = self.peakFrequency_sw_bubbleSeparation / self.peakFrequency_sw_shellThickness
         mu_f = 4.78 - 6.27*rb + 3.34*rb**2
         Am = 3*self.K**2*Omega_gw / mu_f
@@ -1682,7 +1683,8 @@ def compareBubRad():
 def main(detectorClass, potentialClass, outputFolder):
     gwa = GWAnalyser(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=False)
     # Use this for scanning GWs and thermal params over temperature.
-    gwa.scanGWs('C:/Work/Monash/PhD/Documents/SupercoolGWs/Plots/redo_BP3/', bCombined=False)
+    #gwa.scanGWs('C:/Work/Monash/PhD/Documents/SupercoolGWs/Plots/redo_BP3/', bCombined=False)
+    gwa.scanGWs('output/RSS/RSS_BP3/Plots/', bCombined=False)
     #gwa.scanGWs()
     # Use this for evaluating GWs using thermal params at the onset of percolation.
     #gwa.determineGWs_withColl()
@@ -1691,7 +1693,8 @@ def main(detectorClass, potentialClass, outputFolder):
 
 
 if __name__ == "__main__":
-    main(LISA, RealScalarSingletModel_Boltz, 'output/RSS/RSS_new_BP3/')
+    #main(LISA, RealScalarSingletModel_Boltz, 'output/RSS/RSS_new_BP3/')
+    main(LISA, RealScalarSingletModel_Boltz, 'output/RSS/RSS_BP3/')
     #main(LISA, SMplusCubic, 'output/archil/archil_BP5/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/3/40/')
     #main(LISA, SMplusCubic, 'output/nanograv/BP1/')
