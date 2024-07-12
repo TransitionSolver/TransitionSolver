@@ -179,17 +179,16 @@ class GWAnalyser_InidividualTransition:
         Neff = 3.046
         g0 = 2 + 7/11*Neff
         s0 = 2*np.pi**2/45*g0*T0**3
-        h = 0.674
         kmtoMpc = 3.241e-20
         #perSectoGeV = 6.582e-25
-        H0 = 100*h*kmtoMpc/GeVtoHz
+        hoverH0 = 1.0 / (100*kmtoMpc/GeVtoHz)
         s1 = self.hydroVarsReh.entropyDensityTrue
         H1 = self.H
         # a1/a0 = (s0/s1)^(1/3) and convert from GeV to Hz.
         self.redshiftFreq = (s0/s1)**(1/3) * GeVtoHz
-        # (a1/a0)^4 (H0/H1)^2 = (s0/s1)^(4/3) * (H0/H1)^2, and absorb h^2 factor.
-        self.redshiftAmp = (s0/s1)**(4/3) * (H1/H0)**2 * h**2
+        # (a1/a0)^4 (H0/H1)^2 = (s0/s1)^(4/3) * (H0/H1)^2, and absorb h^2 factor
 
+        self.redshiftAmp = (s0/s1)**(4/3) * H1**2 * hoverH0**2
         #print('Redshift ratio (amp):', self.redshiftAmp / self.redshiftAmp_radDom)
         #print('Redshift ratio (freq):', self.redshiftFreq*self.H / self.redshiftFreq_radDom)
 
