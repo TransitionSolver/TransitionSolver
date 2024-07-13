@@ -53,23 +53,23 @@ Note: All scripts should be run from the root directory: `TransitionSolver/`. Be
 
 Two example scripts are provided in the `examples` subdirectory: `pipeline_example.py` and `barebones_example.py`. These examples do not support any arguments from the command line, so modification must be done within the code. These examples can be run from the terminal but accept no arguments. `pipeline_example.py` has two example functions that perform the same task in slightly different ways: `example` and `example_parameterPointFile`. See their respective documentation for details. To run, use the commands:
 
-	python -m examples.pipeline_example
-	python -m examples.barebones_example
+	python3 -m examples.pipeline_example
+	python3 -m examples.barebones_example
 
 There is now a new way to run `TransitionSolver`, using `command_line_interface.py`, again in the `examples` subdirectory. This accepts arguments from the command line. Two methods for using this script are:
 
-	python -m examples.command_line_interface <modelLabel> <outputFolderName> <inputFileName>
-	python -m examples.command_line_interface <modelLabel> <outputFolderName> <parameter value 1> <parameter value 2> ... <parameter value n>
+	python3 -m examples.command_line_interface <modelLabel> <outputFolderName> <inputFileName>
+	python3 -m examples.command_line_interface <modelLabel> <outputFolderName> <parameter value 1> <parameter value 2> ... <parameter value n>
 	
 The first method reads parameter values from an input text file `<inputFileName>`. It must be a `.txt` file. The second method reads parameter values 1 to n from the command line. Both methods save results in the folder specified by `<outputFolderName>`. The argument `<modelLabel>` specifies which model to use. Currently supported model labels are `rss` for the real scalar singlet model, `rss_ht` for the high temperature expansion, and `toy` for the toy model. Here are some examples that can be run using the first method:
 
-	python -m examples.command_line_interface rss output/RSS/RSS_BP<n> input/RSS/RSS_BP<n>.txt
-	python -m examples.command_line_interface rss_ht output/RSS_HT/RSS_HT_BP1 input/RSS_HT/RSS_HT_BP1.txt
-	python -m examples.command_line_interface toy output/Toy/Toy_BP<n> input/Toy/Toy_BP<n>.txt
+	python3 -m examples.command_line_interface rss output/RSS/RSS_BP<n> input/RSS/RSS_BP<n>.txt
+	python3 -m examples.command_line_interface rss_ht output/RSS_HT/RSS_HT_BP1 input/RSS_HT/RSS_HT_BP1.txt
+	python3 -m examples.command_line_interface toy output/Toy/Toy_BP<n> input/Toy/Toy_BP<n>.txt
 
 Here, `<n>` ranges from 1 to 5 because only five benchmarks for the `rss` and `toy` models have been provided in the `input` subdirectory. The `rss_ht` model currently only has one benchmark. Equivantly, using the second method for running `command_line_interface`, one could do e.g.
 
-	python -m examples.command_line_interface toy output/Toy/Toy_BP5 0.1040047755 250 3.5 0.2
+	python3 -m examples.command_line_interface toy output/Toy/Toy_BP5 0.1040047755 250 3.5 0.2
 
 # Defining a model
 Unfortunately, defining a model currently requires double effort: it must be defined in `TransitionSolver` and `PhaseTracer`. In `PhaseTracer`, the model should extend either `Potential` or `OneLoopPotential`. In `TransitionSolver`, the model should extend `AnalysablePotential`, which in turn extends `CosmoTransitions`' `generic_potential`. See `ToyModel.hpp` in `PhaseTracer/EffectivePotential/include/models` and `toy_model.py` in `TransitionSolver` for a simple example model.
