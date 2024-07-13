@@ -123,13 +123,15 @@ def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script
 
     origin = np.array([0, 0])
     vev = potential.approxZeroTMin()[0]
+    print('Printing the potential in TransitionSolver...')
     print('V0(0, 0)      :', potential.V0(origin))
     print('V0(vh, vs)    :', potential.V0(vev))
     print('V(0 , 0 , 0)  :', potential.Vtot(origin, 0))
     print('V(vh, vs, 0)  :', potential.Vtot(vev, 0))
     print('V(0 , 0 , 100):', potential.Vtot(origin, 100))
     print('V(vh, vs, 100):', potential.Vtot(vev, 100))
-
+    print('The potentials in  PhaseTracer and TransitionSolver need to match for TransitionSolver to work')
+    print('Now TransitionSOlver will analyse the phase history.')
     # Analyse the phase history.
     paths, _, analysisMetrics = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=1.)
 

@@ -5,13 +5,15 @@ Currently we only interface PhaseTracer and TranbsitionSolver via text file outp
 
 2) Importance: minor; type: examples tidy up 
 
-When I run the barebones example I first get an empty figure pop up and then only after I code it do i get the proper figures appearing.  i am not sure why, I don't think any plots are missing just some bug in the way we do this maybe.  I also get a long error message from the tex, so maybe I do miss one though.  Possibly its an issue with my texlive distribution.
+When I run the barebones example I first get an empty figure pop up and then only after I close it do i get the proper figures appearing.  i am not sure why, I don't think any plots are missing just some bug in the way we do this maybe.  I also get a long error message from the tex, so maybe I do miss one though.  Possibly its an issue with my texlive distribution.
 
 3) Importance: minor; type: examples tidy up ; status: maybe handled already 
 
 Actually this can be switched off by setting bPlot = False.  So maybe that is enough.
 
 I am not a fan of having examples pop up plots anyway.  I guess its nice as demo but I suggest at least only have pone do that.  Others should save these or even make plot a separate step such that also matplotlib is an optional dependency.  If you think about scanning, people do not want to be create plots for each point.
+
+Update: I switched bplot = False and bDevbug = False on in the command_line_interface.  I think thats how we want it for distribution, though locally we can put them to true while developing.  We aslo currenly output the potential for various phi and T values firts in PT and then in command_line_interface.  This is to cross check the potential matches in both.  I am adding comments to command_line_interface and the PT models tp m ake this clearer if we want to release like this. But we may also need to quantify the degree to which they match to avoid users thinking small deviations that come from numerical noise means it can't work
 
 4) Importance: medium; type: understanding numerics
 When I replace the line
@@ -304,4 +306,20 @@ to describe this so I need to chat to Lachlan and get clarification.
 43) In am concerned about our use of K in bubble collsions, doesn't
 that mean we use the efficiency factor from sound waves?  Shouldn't we
 replace K -> K / kappa ?  I am fairly sure we need to fix this.
+
+44)I get this seemingly non-fatal error message output a number of times when running the gws part of the code:
+
+intdy--  t (=r1) illegal      
+      in above message,  r1 =  0.9937174800926D+00
+      t not in interval tcur - hu (= r1) to tcur (=r2)       
+      in above,  r1 =  0.9937174800926D+00   r2 =  0.9936930671188D+0
+
+I only noticed it yesterday but I checked I get it going all the way back to commit 19ad19244ae419e919636ed98b391d3c571e319e .  
+
+It seems like an error from a dependent package used for the integration but I haven't learned much chucking it into google.
+
+Possibly I really didn't see it before and its a new thing comiong from an update to the dependent package i have installed locally?
+
+
+
 
