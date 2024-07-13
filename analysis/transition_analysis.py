@@ -764,6 +764,8 @@ class TransitionAnalyser():
         simIndex = 0
 
         # Keep sampling until we have identified the end of the phase transition or that the transition doesn't complete.
+        # If bCheckPossibleCompletion is false we determine it does not complete only if we get to T=0 and it has not,
+        # otherewise we can also determine this when transitionCouldComplete returns false.
         while not self.bCheckPossibleCompletion or self.transitionCouldComplete(maxSonTThreshold + toleranceSonT, Pf):
             # If the action begins increasing with decreasing temperature.
             if TAtSonTmin == 0 and self.actionSampler.SonT[simIndex+1] > self.actionSampler.SonT[simIndex]:
