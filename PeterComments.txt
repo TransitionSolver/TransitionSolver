@@ -275,8 +275,33 @@ which is sued to get the entropy.  I am not sure why the old version is used her
 The second bit is clear as long as that is true we continue. I guess there is check inside the routine for completion being reached.  But the firts bit seems to continue only if bCheckPossibleCompletion is false, ie we keep the whle loop going when we do *not* want to check completion?  I don't get it....  Also maybe some brackers around  "not self.bCheckPossibleCompletion" would avoid readers having to double check order of the not and or?
 
 
-41)  I may have allready put a comment asking about unguarded numerical routines that may throw errors / go wrong.For example we call toms748 in calculateReheatTemperature.  I think we did have tio catch errors from a C++ implementation of this (in boost I think?) so surely we can have issues from the scipy.optimise one too?
+41) I may have already put a comment asking about unguarded numerical
+routines that may throw errors / go wrong.For example we call toms748
+in calculateReheatTemperature.  I think we did have tio catch errors
+from a C++ implementation of this (in boost I think?) so surely we can
+have issues from the scipy.optimise one too?
 
 
-42)  I got confused about where we get the code for computing kappa_{sw} from. Since we only account for the speed of sound in the false vacuum varying (ie wjhere they use the nu model), in priciple it ought to be possible to get it from the paper where this was firts done: 2004.06995 as they do supply a code snippet for this in that paper.  However, Lachlan made some comments that seemed to say it was from the follow up 2010.09744 where they do ythe numu model.  I thought this was probbaly a typo in his comment but then I looked at the code again (giese_kappa.py) and notcied the comment at the top which says its copied from  2010.09744 so mits unlikely he got this mixed up twice. i cpmpared the code to the code in the appendices and it does look more like the code in the appendix of 2010.09744, some bits are just identiocal but it seems he made some extra functions to also just do the nu model. So as far as I can tell  giese_kappa.py comes from 2010.09744 but then has extra routines that ere wither modified from the ones there to work with the simpler nu model or were taken from 2004.06995  and repackaged to fit there?  IO don'yt know how to describe this so I need to chat to Lachlan and get clarification.
+42) I got confused about where we get the code for computing
+kappa_{sw} from. Since we only account for the speed of sound in the
+false vacuum varying (ie wjhere they use the nu model), in priciple it
+ought to be possible to get it from the paper where this was firts
+done: 2004.06995 as they do supply a code snippet for this in that
+paper.  However, Lachlan made some comments that seemed to say it was
+from the follow up 2010.09744 where they do ythe numu model.  I
+thought this was probbaly a typo in his comment but then I looked at
+the code again (giese_kappa.py) and notcied the comment at the top
+which says its copied from 2010.09744 so mits unlikely he got this
+mixed up twice. i cpmpared the code to the code in the appendices and
+it does look more like the code in the appendix of 2010.09744, some
+bits are just identiocal but it seems he made some extra functions to
+also just do the nu model. So as far as I can tell giese_kappa.py
+comes from 2010.09744 but then has extra routines that ere wither
+modified from the ones there to work with the simpler nu model or were
+taken from 2004.06995 and repackaged to fit there?  IO don'yt know how
+to describe this so I need to chat to Lachlan and get clarification.
+
+43) In am concerned about our use of K in bubble collsions, doesn't
+that mean we use the efficiency factor from sound waves?  Shouldn't we
+replace K -> K / kappa ?  I am fairly sure we need to fix this.
 
