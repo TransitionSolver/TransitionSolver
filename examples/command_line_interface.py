@@ -199,4 +199,4 @@ if __name__ == "__main__":
             print('Failed to load parameter point defined by:', ' '.join(sys.argv[2:]))
             sys.exit(1)
 
-    main(_potentialClass, outputFolder, _PT_script, _PT_params, _parameterPoint, bDebug=True, bPlot=True)
+    main(_potentialClass, outputFolder, _PT_script, _PT_params, _parameterPoint, bDebug=False, bPlot=False)
