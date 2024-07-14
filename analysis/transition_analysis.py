@@ -950,6 +950,12 @@ class TransitionAnalyser():
                 # The integration helper needs three data points before it can be initialised. However, we wait for an
                 # additional point so that we can immediately integrate and add it to the true vacuum fraction and false
                 # vacuum probability arrays as usual below.
+
+                # TODO:
+                # Switch to using the initialise method. We can use the naive integration before the integration helpers
+                # are initialised, so there should be no need to loop over the recently generated burst of data anymore.
+                # TODO:
+
                 if self.integrationHelper_trueVacVol is None and len(self.actionSampler.subT) == 4:
                     self.integrationHelper_trueVacVol = CubedNestedIntegrationHelper([0, 1, 2],
                         outerFunction_trueVacVol, innerFunction_trueVacVol, sampleTransformationFunction)
