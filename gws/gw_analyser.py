@@ -410,18 +410,18 @@ class GWAnalyser_InidividualTransition:
         self.alpha = alpha
 
         if self.kappaColl > 0:
-            #return self.kappaColl * alpha / (1 + alpha)
-            return (thetaf - thetat) / self.hydroVars.energyDensityFalse * self.kappaColl
+            return self.kappaColl * alpha / (1 + alpha)
+            #return (thetaf - thetat) / self.hydroVars.energyDensityFalse * self.kappaColl
 
         #kappa = giese_kappa.kappaNuMuModel(self.hydroVars.soundSpeedSqTrue, self.hydroVars.soundSpeedSqFalse, alpha,
         #    self.vw)
-        csfSq = self.hydroVars.soundSpeedSqFalse
-        csf = np.sqrt(csfSq)
-        vcj = (1 + np.sqrt(3*alpha*(1 - csfSq + 3*csfSq*alpha))) / (1/csf + 3*csf*alpha)
+        cstSq = self.hydroVars.soundSpeedSqTrue
+        cst = np.sqrt(cstSq)
+        vcj = (1 + np.sqrt(3*alpha*(1 - cstSq + 3*cstSq*alpha))) / (1/cst + 3*cst*alpha)
         # Set the bubble wall velocity to the Chapman-Jouguet velocity.
         self.vw = min(vcj+1e-10, 0.9*vcj + 0.1)
         nExp = 6
-        self.kappaSound = giese_kappa.kappaNuModel(csfSq, alpha, self.vw, 1+10**nExp)
+        self.kappaSound = giese_kappa.kappaNuModel(cstSq, alpha, self.vw, 1+10**nExp)
         self.kappaSound_original = self.kappaSound
 
         #nExp += 1
