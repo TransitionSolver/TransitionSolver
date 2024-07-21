@@ -405,10 +405,6 @@ class ActionSampler:
         return numSamples
 
     def getNumSubsamples_new(self) -> int:
-        if self.transitionAnalyser.integrationHelper_trueVacVol is None:
-            # TODO: come up with some alternative mechanism for estimating Pf.
-            return 10
-
         # The trial temperature should depend on the ratio of the desired change in Pf between subsamples, and the
         # desired change in Pf between the last two samples. Assume that Pf will change at an approximately linear
         # rate throughout the sample window.
@@ -428,12 +424,13 @@ class ActionSampler:
 
         # Convenience function for predicting the false vacuum fraction.
         def predictFalseVacuumFraction() -> float:
+            lastT: float = self.subT[-1]
             T: float = self.T[-2] - temperatureStepSize
             action: float = actionInterp(T)
-            dT: float = self.subT[-1] - T
+            dT: float = lastT - T
             hydroVars: HydroVars = self.transitionAnalyser.getHydroVars(T)
             # Here subT[-1] is the last subsample that has already been integrated.
-            self.transitionAnalyser.integrateTemperatureStep(T, action, self.subT[-1], dT, hydroVars)
+            self.transitionAnalyser.integrateTemperatureStep(T, action, lastT, dT, hydroVars)
             Pf: float = self.transitionAnalyser.falseVacuumFraction[-1]
             # Undo the integration (which involved many list appends) because we only wanted to estimate Pf, not store
             # this new data point.
@@ -758,23 +755,6 @@ class TransitionAnalyser():
         self.actionSampler = ActionSampler(self, minActionThreshold, maxActionThreshold, toleranceAction,
                                            precomputedT=precomputedT, precomputedAction=precomputedAction)
 
-        self.hydroVars.append(self.getHydroVars(self.actionSampler.T[0]))
-        self.bubbleWallVelocity.append(self.getBubbleWallVelocity(self.hydroVars[0]))
-        self.meanBubbleSeparation.append(0.)
-        self.meanBubbleRadius.append(0.)
-        self.physicalVolume.append(3.)
-        self.hubbleParameter.append(np.sqrt(self.calculateHubbleParameterSq_fromHydro(self.hydroVars[0])))
-        self.bubbleNumberDensity.append(0.)
-        self.nucleationRate.append(0.)
-        self.falseVacuumFraction.append(1.)
-        self.trueVacuumVolumeExtended.append(0.)
-        self.numBubblesCorrectedIntegral.append(0.)
-        self.numBubblesIntegral.append(0.)
-        self.numBubblesCorrectedIntegrand.append(0.)
-        self.numBubblesIntegrand.append(0.)
-        # TODO: need an initial value...
-        self.beta.append(0.)
-
         if self.bDebug:
             print('Tmin:', self.Tmin)
             print('Tmax:', self.Tmax)
@@ -824,6 +804,23 @@ class TransitionAnalyser():
             sampleData = ActionSample(-1, -1)
             self.actionSampler.getNextSample(sampleData, [], 0., self.Tmin)
             self.actionSampler.getNextSample(sampleData, [], 0., self.Tmin)
+
+        self.hydroVars.append(self.getHydroVars(self.actionSampler.T[0]))
+        self.bubbleWallVelocity.append(self.getBubbleWallVelocity(self.hydroVars[0]))
+        self.meanBubbleSeparation.append(0.)
+        self.meanBubbleRadius.append(0.)
+        self.physicalVolume.append(3.)
+        self.hubbleParameter.append(np.sqrt(self.calculateHubbleParameterSq_fromHydro(self.hydroVars[0])))
+        self.bubbleNumberDensity.append(0.)
+        self.nucleationRate.append(0.)
+        self.falseVacuumFraction.append(1.)
+        self.trueVacuumVolumeExtended.append(0.)
+        self.numBubblesCorrectedIntegral.append(0.)
+        self.numBubblesIntegral.append(0.)
+        self.numBubblesCorrectedIntegrand.append(0.)
+        self.numBubblesIntegrand.append(0.)
+        # TODO: need an initial value...
+        self.beta.append(0.)
 
         # We finally have a temperature where the action is not much smaller than the value we started with (which was
         # close to maxActionThreshold). From here we can use the separation in these temperatures and the action values
@@ -889,6 +886,17 @@ class TransitionAnalyser():
         # interpolate between T[simIndex] and T[simIndex+1] (the latter is a lower temperature).
         simIndex = 0
 
+        # See the handling of bFirst below for why this is necessary.
+        self.actionSampler.subT.append(self.actionSampler.T[0])
+        self.actionSampler.subAction.append(self.actionSampler.action[0])
+
+        # The first argument in each of these integration helpers is firstX. The first x value is 0, corresponding to
+        # index 0 in the actionSampler.subT list, as per the sampleTransformationFunction.
+        self.integrationHelper_trueVacVol = CubedNestedIntegrationHelper(0, outerFunction_trueVacVol,
+            innerFunction_trueVacVol, sampleTransformationFunction)
+        self.integrationHelper_avgBubRad = LinearNestedNormalisedIntegrationHelper(0, outerFunction_avgBubRad,
+            innerFunction_avgBubRad, outerFunction_avgBubRad, sampleTransformationFunction)
+
         # Keep sampling the action until we have identified the end of the phase transition or that the transition
         # doesn't complete.
         while not self.bCheckPossibleCompletion or self.transitionCouldComplete(maxActionThreshold + toleranceAction,
@@ -902,6 +910,7 @@ class TransitionAnalyser():
                 self.transition.actionMin = actionMin
 
             numSamples = self.actionSampler.getNumSubsamples_new()
+            print('Num samples:', numSamples)
             # List of temperatures in decreasing order.
             T = np.linspace(self.actionSampler.T[simIndex], self.actionSampler.T[simIndex+1], numSamples)
             # We can only use quadratic interpolation if we have at least 3 action samples, which occurs for simIndex > 0.
@@ -924,13 +933,12 @@ class TransitionAnalyser():
 
             dT = T[0] - T[1]
 
-            # Since we skip the first element of the subsamples in the following loop, make sure to add the very first
+            # Because we skip the first element of the subsamples in the following loop, make sure to add the very first
             # subsample of the integration to the corresponding lists. This only needs to be done for the first sampling
             # iteration, as the next iteration's first subsample is this iteration's last subsample (i.e. it will
             # already have been added).
             if bFirst:
-                self.actionSampler.subT.append(T[0])
-                self.actionSampler.subAction.append(action[0])
+                # subT and subAction have already been done because they were required for determining numSamples.
                 self.actionSampler.subRhof.append(hydroVarsInterp[0].energyDensityFalse)
                 self.actionSampler.subRhot.append(hydroVarsInterp[0].energyDensityTrue)
                 bFirst = False
@@ -956,7 +964,7 @@ class TransitionAnalyser():
                 # are initialised, so there should be no need to loop over the recently generated burst of data anymore.
                 # TODO:
 
-                if self.integrationHelper_trueVacVol is None and len(self.actionSampler.subT) == 4:
+                """if self.integrationHelper_trueVacVol is None and len(self.actionSampler.subT) == 4:
                     self.integrationHelper_trueVacVol = CubedNestedIntegrationHelper([0, 1, 2],
                         outerFunction_trueVacVol, innerFunction_trueVacVol, sampleTransformationFunction)
 
@@ -986,7 +994,7 @@ class TransitionAnalyser():
 
                     for j in range(1, len(integrationHelper_avgBubRad.data)):
                         self.meanBubbleRadius.append(integrationHelper_avgBubRad.data[j])
-                        self.meanBubbleSeparation.append((self.bubbleNumberDensity[j])**(-1/3))
+                        self.meanBubbleSeparation.append((self.bubbleNumberDensity[j])**(-1/3))"""
 
                 self.integrateTemperatureStep(T[i], action[i], T[i-1], dT, hydroVarsInterp[i])
 
@@ -1187,20 +1195,21 @@ class TransitionAnalyser():
         self.numBubblesCorrectedIntegral.append(self.numBubblesCorrectedIntegral[-1]
                       + 0.5 * dT * (self.numBubblesCorrectedIntegrand[-1] + self.numBubblesCorrectedIntegrand[-2]))
 
-        if self.integrationHelper_trueVacVol is not None:
-            self.integrationHelper_trueVacVol.integrate(len(self.actionSampler.subT)-1)
-            self.trueVacuumVolumeExtended.append(4*np.pi/3 * self.integrationHelper_trueVacVol.data[-1])
-            self.physicalVolume.append(3 + T*(self.trueVacuumVolumeExtended[-2] -
-                self.trueVacuumVolumeExtended[-1]) / (self.actionSampler.subT[-2] - T))
-            self.falseVacuumFraction.append(np.exp(-self.trueVacuumVolumeExtended[-1]))
-            self.bubbleNumberDensity.append((T/TPrev)**3 * self.bubbleNumberDensity[-1]
-                + 0.5*(TPrev - T)*T**3 * (self.nucleationRate[-2] * self.falseVacuumFraction[-2]
-                / (TPrev**4 * self.hubbleParameter[-2]) + self.nucleationRate[-1] *
-                self.falseVacuumFraction[-1] / (T ** 4 * self.hubbleParameter[-1])))
-            # This needs to be done after the new falseVacuumFraction has been added because outerFunction_avgBubRad uses this data.
-            self.integrationHelper_avgBubRad.integrate(len(self.actionSampler.subT)-1)
-            self.meanBubbleRadius.append(self.integrationHelper_avgBubRad.data[-1])
-            self.meanBubbleSeparation.append((self.bubbleNumberDensity[-1])**(-1/3))
+        #if self.integrationHelper_trueVacVol is not None:
+        self.integrationHelper_trueVacVol.integrate(len(self.actionSampler.subT)-1)
+        self.trueVacuumVolumeExtended.append(4*np.pi/3 * self.integrationHelper_trueVacVol.data[-1])
+        nextToLastT = self.actionSampler.subT[-2] if len(self.actionSampler.subT) > 1 else TPrev + dT
+        self.physicalVolume.append(3 + T*(self.trueVacuumVolumeExtended[-2] -
+            self.trueVacuumVolumeExtended[-1]) / (nextToLastT - T))
+        self.falseVacuumFraction.append(np.exp(-self.trueVacuumVolumeExtended[-1]))
+        self.bubbleNumberDensity.append((T/TPrev)**3 * self.bubbleNumberDensity[-1]
+            + 0.5*(TPrev - T)*T**3 * (self.nucleationRate[-2] * self.falseVacuumFraction[-2]
+            / (TPrev**4 * self.hubbleParameter[-2]) + self.nucleationRate[-1] *
+            self.falseVacuumFraction[-1] / (T ** 4 * self.hubbleParameter[-1])))
+        # This needs to be done after the new falseVacuumFraction has been added because outerFunction_avgBubRad uses this data.
+        self.integrationHelper_avgBubRad.integrate(len(self.actionSampler.subT)-1)
+        self.meanBubbleRadius.append(self.integrationHelper_avgBubRad.data[-1])
+        self.meanBubbleSeparation.append((self.bubbleNumberDensity[-1])**(-1/3))
 
     def undoIntegration(self):
         self.hubbleParameter.pop()
@@ -1211,15 +1220,15 @@ class TransitionAnalyser():
         self.numBubblesIntegral.pop()
         self.numBubblesCorrectedIntegral.pop()
 
-        if self.integrationHelper_trueVacVol is not None:
-            self.integrationHelper_trueVacVol.undo()
-            self.trueVacuumVolumeExtended.pop()
-            self.physicalVolume.pop()
-            self.falseVacuumFraction.pop()
-            self.bubbleNumberDensity.pop()
-            self.integrationHelper_avgBubRad.undo()
-            self.meanBubbleRadius.pop()
-            self.meanBubbleSeparation.pop()
+        #if self.integrationHelper_trueVacVol is not None:
+        self.integrationHelper_trueVacVol.undo()
+        self.trueVacuumVolumeExtended.pop()
+        self.physicalVolume.pop()
+        self.falseVacuumFraction.pop()
+        self.bubbleNumberDensity.pop()
+        self.integrationHelper_avgBubRad.undo()
+        self.meanBubbleRadius.pop()
+        self.meanBubbleSeparation.pop()
 
     def plotTransitionResults(self):
         plt.rcParams.update({"text.usetex": True})
@@ -2134,6 +2143,7 @@ class TransitionAnalyser():
 
     def calculateBubbleNucleationRate(self, T: Union[float, np.ndarray], action: Union[float, np.ndarray])\
             -> Union[float, np.ndarray]:
+        print('calculateBubbleNucleationRate:', T, action, T**4 * (action/(2*np.pi))**(3/2) * np.exp(-action))
         return T**4 * (action/(2*np.pi))**(3/2) * np.exp(-action)
 
     # TODO: [2023] need to allow this to be used for list inputs again. [2024] That would require making

@@ -21,11 +21,14 @@ class IntegrationHelper:
 
     def initialiseIntegration(self):
         self.bInitialised = True
+        self.x = [self.x[0]]
+        self.data = [self.data[0]]
 
     def integrate(self, newx: float) -> float:
         if len(self.x) == self.numPreparationPoints:
             self.initialiseIntegration()
 
+        # This can only happen in custom integration helpers. The provided integration helpers add to x upon creation.
         if len(self.x) == 0:
             self.x.append(newx)
             self.data.append(0.)
@@ -38,11 +41,15 @@ class IntegrationHelper:
 
     # Should append newx to self.x, and the result to self.data.
     def integrateProper(self, newx: float) -> float:
-        return 0.
+        self.x.append(newx)
+        self.data.append(0.)
+        return self.data[-1]
 
-    # Should append newx to self.x, but NOT append the result to self.data.
+    # Should append newx to self.x, and the result to self.data.
     def integrateNaive(self, newx: float) -> float:
-        return 0.
+        self.x.append(newx)
+        self.data.append(0.)
+        return self.data[-1]
 
     def undo(self):
         self.x.pop()
@@ -57,10 +64,10 @@ class IntegrationHelper:
 # This class assumes a new, smaller* x is passed to the integration for each interval.
 # *smaller after it has been transformed using sampleTransformationFunction.
 class CubedNestedIntegrationHelper(IntegrationHelper):
-    def init(self, outerFunction, innerFunction, sampleTransformationFunction):
+    def init(self, firstX, outerFunction, innerFunction, sampleTransformationFunction):
         #self.x = initialPoints
-        self.x = []
-        self.data = []
+        self.x = [firstX]
+        self.data = [0.]
 
         self.f = outerFunction
         self.g = innerFunction
@@ -178,20 +185,23 @@ class CubedNestedIntegrationHelper(IntegrationHelper):
         self.x.append(newx)
 
         # Reverse the list of decreasing inputs to make integration more intuitive. This will not be a bottleneck.
-        x = [self.tr(xx) for xx in self.x[::-1]]
+        x = self.x[::-1]
+        x_tr = [self.tr(xx) for xx in x]
         f = self.f
         g = self.g
 
         for i in range(len(x)-1):
-            dxi = x[i+1] - x[i]
+            dxi = abs(x_tr[i+1] - x_tr[i])
             innerIntegral = 0
             for j in range(i):
-                dxj = x[j+1] - x[j]
+                dxj = abs(x_tr[j+1] - x_tr[j])
                 innerIntegral += dxj*(g(x[j]) + g(x[j+1]))
             innerIntegralExtra = dxi*(g(x[i]) + g(x[i+1]))
             result += dxi*(f(x[i])*innerIntegral**3 + f(x[i+1])*(innerIntegral + innerIntegralExtra)**3)
 
-        return result/16
+        self.data.append(result/16)
+
+        return self.data[-1]
 
 
 # Designed specifically to aid in evaluating integrals of the form
@@ -203,10 +213,10 @@ class CubedNestedIntegrationHelper(IntegrationHelper):
 # been transformed using sampleTransformationFunction).
 # This integration scheme requires two initial x points before the main recurrence relations can be used.
 class LinearNestedNormalisedIntegrationHelper(IntegrationHelper):
-    def init(self, outerFunction, innerFunction, normalisationFunction, sampleTransformationFunction):
+    def init(self, firstX, outerFunction, innerFunction, normalisationFunction, sampleTransformationFunction):
         #self.x = initialPoints
-        self.x = []
-        self.data = []
+        self.x = [firstX]
+        self.data = [0.]
 
         self.f = outerFunction
         self.g = innerFunction
@@ -217,9 +227,6 @@ class LinearNestedNormalisedIntegrationHelper(IntegrationHelper):
 
     def initialiseIntegration(self):
         super().initialiseIntegration()
-
-        #old_data = self.data
-        self.data = [0.]
 
         self.L = 0
         self.A = 0
@@ -292,16 +299,17 @@ class LinearNestedNormalisedIntegrationHelper(IntegrationHelper):
         self.x.append(newx)
 
         # Reverse the list of decreasing inputs to make integration more intuitive. This will not be a bottleneck.
-        x = [self.tr(xx) for xx in self.x[::-1]]
+        x = self.x[::-1]
+        x_tr = [self.tr(xx) for xx in x]
         f = self.f
         g = self.g
         h = self.h
 
         for i in range(len(x)-1):
-            dxi = x[i+1] - x[i]
+            dxi = abs(x_tr[i+1] - x_tr[i])
             innerIntegral = 0
             for j in range(i):
-                dxj = x[j+1] - x[j]
+                dxj = abs(x_tr[j+1] - x_tr[j])
                 innerIntegral += dxj*(g(x[j]) + g(x[j+1]))
             innerIntegralExtra = dxi*(g(x[i]) + g(x[i+1]))
             numerator += 0.25*dxi*(f(x[i])*innerIntegral + f(x[i+1])*(innerIntegral + innerIntegralExtra))
