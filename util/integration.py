@@ -313,7 +313,8 @@ class LinearNestedNormalisedIntegrationHelper(IntegrationHelper):
         return self.data[-1]
 
 
-if __name__ == "__main__":
+def test1():
+    print('test1:')
     import numpy as np
     a = 2
     b = 3
@@ -324,8 +325,10 @@ if __name__ == "__main__":
     integrator = CubedNestedIntegrationHelper(outFun, inFun, trans)
     integrator.x = list(firstPoints[:-1])
     print('naive:    ', integrator.integrateNaive(firstPoints[-1]))
-    exactResult = ((a-b)**4*(35*a**4 + 4*a**3*(38+35*b) + a**2*(224+608*b+210*b**2) + 4*a*(28+224*b+170*b**2+35*b**3)
-                             + b*(448+560*b+240*b**2+35*b**3)))/2240
+    exactResult = ((a - b) ** 4 * (
+                35 * a ** 4 + 4 * a ** 3 * (38 + 35 * b) + a ** 2 * (224 + 608 * b + 210 * b ** 2) + 4 * a * (
+                    28 + 224 * b + 170 * b ** 2 + 35 * b ** 3)
+                + b * (448 + 560 * b + 240 * b ** 2 + 35 * b ** 3))) / 2240
     integrator = CubedNestedIntegrationHelper(outFun, inFun, trans)
     lastResult = 0.
     for x in firstPoints:
@@ -336,11 +339,51 @@ if __name__ == "__main__":
     integrator = LinearNestedNormalisedIntegrationHelper(outFun, inFun, outFun, trans)
     integrator.x = list(firstPoints[:-1])
     print('naive:    ', integrator.integrateNaive(firstPoints[-1]))
-    exactResult = (b*(8+3*b) + a*(8*a/(a+b)-3*(4+a)))/12
+    exactResult = (b * (8 + 3 * b) + a * (8 * a / (a + b) - 3 * (4 + a))) / 12
     integrator = LinearNestedNormalisedIntegrationHelper(outFun, inFun, outFun, trans)
-    #integrator.initialiseIntegration()
+    # integrator.initialiseIntegration()
     lastResult = 0.
     for x in firstPoints:
         lastResult = integrator.integrate(x)
-    print('efficient:',  lastResult)
+    print('efficient:', lastResult)
     print('exact:    ', exactResult)
+
+
+def test2():
+    print('test2:')
+
+    import numpy as np
+    a = 2
+    b = 3
+    firstPoints = np.linspace(a, b, 1000)[::-1]
+    outFun = lambda x: (x+4)*x
+    inFun = lambda x: x*x
+    trans = lambda x: x
+    integrator = CubedNestedIntegrationHelper(outFun, inFun, trans)
+    integrator.x = list(firstPoints[:-1])
+    print('naive:    ', integrator.integrateNaive(firstPoints[-1]))
+    exactResult = (486*a**11 + 55*a**12 - 220*a**9*b**2*(6 + b) - 110*a**3*b**8*(9 + 2*b) + 66*a**6*b**5*(24 + 5*b)
+                   + 5*b**11*(48 + 11*b)) / 17820
+    integrator = CubedNestedIntegrationHelper(outFun, inFun, trans)
+    lastResult = 0.
+    for x in firstPoints:
+        lastResult = integrator.integrate(x)
+    print('efficient:', lastResult)
+    print('exact:    ', exactResult)
+
+    integrator = LinearNestedNormalisedIntegrationHelper(outFun, inFun, outFun, trans)
+    integrator.x = list(firstPoints[:-1])
+    print('naive:    ', integrator.integrateNaive(firstPoints[-1]))
+    exactResult = (36*a**5 + 5*a**6 - 10*a**3*b**2*(6 + b) + b**5*(24 + 5*b)) / (30*(b**2*(6 + b) - a**2*(6 + a)))
+    integrator = LinearNestedNormalisedIntegrationHelper(outFun, inFun, outFun, trans)
+    # integrator.initialiseIntegration()
+    lastResult = 0.
+    for x in firstPoints:
+        lastResult = integrator.integrate(x)
+    print('efficient:', lastResult)
+    print('exact:    ', exactResult)
+
+
+if __name__ == "__main__":
+    test1()
+    test2()

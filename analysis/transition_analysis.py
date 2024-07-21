@@ -659,7 +659,7 @@ class TransitionAnalyser():
 
     bComputeSubsampledThermalParams: bool
 
-    # TODO: make vw a function of this class that can be overriden. Currently it is obtained from the transition.
+    # TODO: make vw a function of this class that can be overridden. Currently it is obtained from the transition.
     def __init__(self, potential: AnalysablePotential, transition: Transition, fromPhase: Phase, toPhase: Phase,
             groundStateEnergyDensity: float, Tmin: float = 0., Tmax: float = 0.):
         self.bubbleWallVelocity: List[float] = []
