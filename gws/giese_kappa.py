@@ -1,4 +1,4 @@
-# Currently copied straight from Appendix B of https://arxiv.org/pdf/2010.09744.pdf and Appendix A of 2004.06995.   PA: I think comnment is out of date.  This seems to incorporate bits frpom both 2010.09744 and 2004.06995 or maybe its all  2010.09744 plus our modofcations to used just the nu model? 
+# Currently copied straight from Appendix B of https://arxiv.org/pdf/2010.09744.pdf and Appendix A of 2004.06995.
 
 import numpy as np
 from scipy.integrate import odeint
