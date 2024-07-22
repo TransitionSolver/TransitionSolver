@@ -410,8 +410,8 @@ class GWAnalyser_InidividualTransition:
         self.alpha = alpha
 
         if self.kappaColl > 0:
-            return self.kappaColl * alpha / (1 + alpha)
-            #return (thetaf - thetat) / self.hydroVars.energyDensityFalse * self.kappaColl
+            # return self.kappaColl * alpha / (1 + alpha)
+            return (thetaf - thetat) / self.hydroVars.energyDensityFalse * self.kappaColl
 
         #kappa = giese_kappa.kappaNuMuModel(self.hydroVars.soundSpeedSqTrue, self.hydroVars.soundSpeedSqFalse, alpha,
         #    self.vw)
