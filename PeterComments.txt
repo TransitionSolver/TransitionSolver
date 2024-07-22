@@ -154,7 +154,7 @@ Edit later:  I think this is not done consistently in the gws module because the
 
 15) Importance: high, type: code base
 
-As well as the TODO statemenst there are many places in the code where triple quotes are around code.  See line 94--96 and lines 132-150  of phase_history_analysis.py and lines 796 -- 852, 1196--1228, 1328--1331, 1883-1893 of transition_analysis.py.  Somtimes but not always they are preceded by a #TODO and I presume they are effectively commented out code that is not ready yet, though technically triple quotes are not comments and are read by the interpreter as a long string.   
+As well as the TODO statemenst there are many places in the code where triple quotes are around code.  See line 94--96 and lines 132-150  of phase_history_analysis.py and lines 796 -- 852, 1196--1228, 1328--1331, 1883-1893 of transition_analysis.py.  Sometimes but not always they are preceded by a #TODO and I presume they are effectively commented out code that is not ready yet, though technically triple quotes are not comments and are read by the interpreter as a long string.   
 Anyway obviously these need to be dealt with before release.
 
 16)  Importance: don't know, type: question
@@ -186,19 +186,19 @@ We have made booleans to do with contributions in the models a fundamental part 
 
 20) Importance: low to medium, type: model RSS defaults
 
-Why is temperature scale set to 300 for RSS?  In general I think this should just be the expected physics scale.  We should think what to say to user about these settings in general (Cheng has been asking about them a lot while writing a new model file).  
+Why is temperature scale set to 300 for RSS?  In general I think this should just be the expected physics scale.  We should think what to say to user about these settings in general (Cheng has been asking about them a lot while writing a new model file).   PA: Could change to VEV or say explicitly when describing in RSS model bit that i write now that this is jist roughly the VEV but a bit bigger. 
 
 21) Importance: low to medium, type: settings / user understanding
 
-Need to decide what to tell users about the setting .massShiftHack. We need to somehow communicate details like this as the user will see these options when trying to follow how to add new models , though this is specific to our implementation of the potential.    This is to avoid problems when you want to comnsider very small masses and need to have minMassThreshold set very low (10^{-10} according to comment.  Then numerical noise may guve a non-zero mass to the goldstone and that may affect our results.
+Need to decide what to tell users about the setting .massShiftHack. We need to somehow communicate details like this as the user will see these options when trying to follow how to add new models, though this is specific to our implementation of the potential.    This is to avoid problems when you want to consider very small masses and need to have minMassThreshold set very low (10^{-10} according to comment.  Then numerical noise may give a non-zero mass to the goldstone and that may affect our results.  PA: this is a bit ugly but specific to model file, maybe we do not need ti explain this, and that is an advanc=tahge of having the documentation rather than pointing people at these examples like I did Cheng.
 
 22)  Importance: low to medium, type: user understanding
 
-forbidPhaseCrit --  I don't understand this one myself yet.  Why only check 0 component in RSS, in general why allow slightly negative, isn't this to avoid critical temps between z2 mirrors ?
+forbidPhaseCrit --  I don't understand this one myself yet.  Why only check 0 component in RSS, in general why allow slightly negative, isn't this to avoid critical temps between z2 mirrors ?  PA: blocking off zero means the miss phi=0 minima due to numerics (slightly negative),
 
 23) Importance: medium, type: error handling
 
-The cause of errors being a PT failure  is not reported (and nor is the error from PT in any way) when there is a  pre-existing PhaseStraucture.dat file.  Maybe user stupidity but its happpened a few times so maybe we can catch this somehow? 
+The cause of errors being a PT failure  is not reported (and nor is the error from PT in any way) when there is a  pre-existing PhaseStraucture.dat file.  Maybe user stupidity but its happpened a few times so maybe we can catch this somehow? PA: we need to look into grabbing the std::err and doing something with it.  PA look into this get back to Lachlan. Plan: Check for non-empty std::err, and print message and halt. Add TS flag to force it contnue if the suer want to ignore these. OR Delete old phasetracer.dat file when runnung TS.    
 
 24)  Importamce: medium, type: tidy
 
@@ -347,9 +347,9 @@ to describe this so I need to chat to Lachlan and get clarification.
 
 43) I am concerned about our use of K in bubble collsions, doesn't
 that mean we use the efficiency factor from sound waves?  Shouldn't we
-replace K -> K / kappa ?  I am fairly sure we need to fix this.
+replace K -> K / kappa ?  I am fairly sure we need to fix this.  PA: we were already doing something but PA will swutch ti nsuing version which inclorporates delta, but uses kappa_{coll}.
 
-44)I get this seemingly non-fatal error message output a number of times when running the gws part of the code:
+44) I get this seemingly non-fatal error message output a number of times when running the gws part of the code:
 
 intdy--  t (=r1) illegal      
       in above message,  r1 =  0.9937174800926D+00
@@ -360,8 +360,8 @@ I only noticed it yesterday but I checked I get it going all the way back to com
 
 It seems like an error from a dependent package used for the integration but I haven't learned much chucking it into google.
 
-Possibly I really didn't see it before and its a new thing comiong from an update to the dependent package i have installed locally?
+Possibly I really didn't see it before and its a new thing coming from an update to the dependent package i have installed locally?
 
-
+PA: we also noticed the rest of the output also has an (obsure) error message.  Both Lachlan and Peter will look into this again.
 
 
