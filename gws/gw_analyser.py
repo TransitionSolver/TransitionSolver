@@ -417,7 +417,12 @@ class GWAnalyser_InidividualTransition:
         #    self.vw)
         cstSq = self.hydroVars.soundSpeedSqTrue
         cst = np.sqrt(cstSq)
+        csfSq = self.hydroVars.soundSpeedSqFalse
+        csf = np.sqrt(csfSq)
         vcj = (1 + np.sqrt(3*alpha*(1 - cstSq + 3*cstSq*alpha))) / (1/cst + 3*cst*alpha)
+        print("cstSq =", cstSq)
+        #print("csfSq =", csfSq)
+        print("vcj = ", vcj)
         # Set the bubble wall velocity to the Chapman-Jouguet velocity.
         self.vw = min(vcj+1e-10, 0.9*vcj + 0.1)
         nExp = 6

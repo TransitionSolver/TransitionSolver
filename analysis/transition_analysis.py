@@ -582,9 +582,9 @@ class TransitionAnalyser():
 
             alpha = 4*(thetaf - thetat) / (3*hydroVars.enthalpyDensityFalse)
 
-            csfSq = hydroVars.soundSpeedSqFalse
-            csf = np.sqrt(csfSq)
-            vw = (1 + np.sqrt(3*alpha*(1 - csfSq + 3*csfSq*alpha))) / (1/csf + 3*csf*alpha)
+            cstSq = hydroVars.soundSpeedSqTrue
+            cst = np.sqrt(cstSq)
+            vw = (1 + np.sqrt(3*alpha*(1 - cstSq + 3*cstSq*alpha))) / (1/cst + 3*cst*alpha)
             if np.isnan(vw) or vw > 1.:
                 return 1.
             return vw
