@@ -96,6 +96,7 @@ def d2fdx2(f: Callable[[float], float], x: float, dx: float, order=4) -> float:
 
 def getHydroVars_new(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float,
         groundStateEnergyDensity: float, order=4) -> HydroVars:
+    # TODO: if Tstep is too small, dF/dT and d2F/dT2 are zero and the sound speed calculation leads to division by zero.
     Tstep = getTstep(fromPhase, toPhase, potential, T)
 
     def FED_f(x: float) -> float:

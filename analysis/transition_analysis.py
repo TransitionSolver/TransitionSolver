@@ -186,6 +186,183 @@ class ActionSampler:
         if self.bDebug:
             print('size:', self.stepSize, 'factor:', stepFactor, 'lin:', linearity)
 
+    def getNextSample_new(self, sampleData: ActionSample) -> tuple[bool, str]:
+        print('=======================================================================================================')
+        print('getNextSample_new')
+        print('=======================================================================================================')
+        # If we are already near the minimum temperature allowed for phase transitions in this potential, we assume the
+        # transition will not progress from here. Or, if it does, we cannot accurately determine its progress due to
+        # external effects (like other cosmological events) that we don't handle.
+        if len(self.T) > 0 and sampleData.T <= self.potential.minimumTemperature:
+            return False, 'Reached minimum temperature'
+
+        if len(self.T) >= 3:
+            actionInterp: np.poly1d = lagrange(self.T[-3:], self.action[-3:])
+        else:
+            actionInterp: np.poly1d = lagrange(self.T[-2:], self.action[-2:])
+
+        temperatureStepSize = self.T[-2] - self.T[-1]
+        minStepSize: float
+        maxStepSize: float
+
+        minStepSize, maxStepSize = self.findTemperatureForFalseVacuumFraction(
+            T_prev=self.T[-1],
+            delta_Pf_min=self.transitionAnalyser.falseVacuumFractionChange_samples_min,
+            delta_Pf_max=self.transitionAnalyser.falseVacuumFractionChange_samples_max,
+            initial_step_size=temperatureStepSize,
+            action_interp=actionInterp,
+            T_low=max(1., self.Tmin), # TODO: undo this temporary hack
+            T_high=self.T[-1]
+        )
+
+        # TODO: for now, just pick the smaller step size.
+        temperatureStepSize = minStepSize
+
+        sampleData.T = self.T[-1] - temperatureStepSize
+        self.evaluateAction(sampleData)
+
+        if not sampleData.bValid:
+            if self.bDebug:
+                print('Failed to evaluate action at trial temperature T=', sampleData.T)
+            return False, 'Action failed'
+
+        self.T.append(sampleData.T)
+        self.action.append(sampleData.action)
+
+        return True, 'Success'
+
+    # TODO: need type for action interp.
+    def findTemperatureForFalseVacuumFraction(self, T_prev: float, delta_Pf_min: float, delta_Pf_max: float,
+                                              initial_step_size: float, action_interp, T_low: float, T_high: float)\
+            -> tuple[float, float]:
+        print(f'Finding temperature for Pf within window: [{T_low}, {T_high}]')
+        falseVacuumFractionPrevious: float = self.transitionAnalyser.falseVacuumFraction[-1]
+        temperatureStepSize: float = initial_step_size
+
+        # Whether the previous predicted false vacuum fraction change is too small or too large.
+        wasTooLarge: bool = False
+        wasTooSmall: bool = False
+
+        # The largest sampled step size for which the change in false vacuum fraction was too small.
+        minStepSize: float = 0.
+        # The smallest sampled step size for which the change in false vacuum fraction was too large.
+        maxStepSize: float = T_high - T_low
+
+        if action_interp(T_low) > 0:
+            falseVacuumFraction: float = self.predictFalseVacuumFraction(T_prev, maxStepSize, action_interp,
+                                                                         calculate_midpoint=True)
+
+            falseVacuumFractionChange: float = abs(falseVacuumFraction - falseVacuumFractionPrevious)
+
+            if falseVacuumFractionChange < delta_Pf_min:
+                print('Predicting Pf will not change enough across the temperature window.')
+                return maxStepSize, maxStepSize
+        else:
+            print('Unable to check Pf at max temperature step due to negative action extrapolation.')
+
+        # Adjust the temperature step size until we can bracket the desired range.
+        while True:
+            falseVacuumFraction = self.predictFalseVacuumFraction(T_prev, temperatureStepSize, action_interp,
+                                                                  calculate_midpoint=True)
+
+            falseVacuumFractionChange = abs(falseVacuumFraction - falseVacuumFractionPrevious)
+
+            tooSmall = falseVacuumFractionChange < delta_Pf_min
+            tooLarge = falseVacuumFractionChange > delta_Pf_max
+
+            if tooSmall:
+                print(f'Too small: Pf change = {falseVacuumFractionChange:.3e} not in [{delta_Pf_min:.3e}, '
+                      f'{delta_Pf_max:.3e}]')
+                if wasTooLarge:
+                    # We know the correct step size is somewhere in the range temperatureStepSize*(1, 2).
+                    minStepSize = temperatureStepSize
+                    maxStepSize = temperatureStepSize*2
+                    break
+                else:
+                    wasTooSmall = True
+                    minStepSize = temperatureStepSize
+                    # if temperatureStepSize == maximumStepSize:
+                    #    print('Already tried the maximum step size and it yielded insufficient change in false vacuum'
+                    #          ' fraction.')
+                    #    return max(2, math.ceil(temperatureChange_samples / temperatureStepSize))
+                    if temperatureStepSize >= (T_high - T_low):
+                        print('Temperature step size exceeds temperature window.')
+                        return maxStepSize, maxStepSize
+                    temperatureStepSize *= 2
+            elif tooLarge:
+                print(f'Too large: Pf change = {falseVacuumFractionChange:.3e} not in [{delta_Pf_min:.3e}, '
+                      f'{delta_Pf_max:.3e}]')
+                if wasTooSmall:
+                    # We know the correct step size is somewhere in the range temperatureStepSize*(0.5, 1).
+                    minStepSize = 0.5*temperatureStepSize
+                    maxStepSize = temperatureStepSize
+                    break
+                else:
+                    wasTooLarge = True
+                    temperatureStepSize *= 0.5
+            else:
+                break
+
+        return minStepSize, maxStepSize
+
+    # TODO: need type for actionInterp.
+    def predictFalseVacuumFraction(self, prevT: float, temperatureStepSize: float, actionInterp,
+                                   calculate_midpoint: bool) -> float:
+        print('Predicting Pf for T:', prevT - temperatureStepSize, 'where action should be:',
+              actionInterp(prevT - temperatureStepSize))
+
+        # The last subsample that has already been integrated.
+        lastT: float = self.subT[-1]
+
+        self.transitionAnalyser.integrationHelper_trueVacVol.setRestorePoint()
+        self.transitionAnalyser.integrationHelper_avgBubRad.setRestorePoint()
+
+        # TODO: update documentation with findings about necessity of midpoint.
+        # First estimate Pf at the midpoint, halfway between the previous temperature and the trial temperature.
+        # This is necessary (at least initially) to estimate the change in Pf. There are two effects that change Pf:
+        # 1. Growth of existing bubbles.
+        # 2. Nucleation of new bubbles.
+        # Only the growth is captured when adding another step in the integration for Pf. Newly nucleated bubbles
+        # likely have negligible initial radius so will not affect Pf at the temperature at which they were
+        # nucleated.
+        # Sampling at the midpoint is especially important when len(self.T) == 2, because otherwise the change in
+        # Pf will only come from the nucleation of new bubbles that have no time to have grown.
+        if calculate_midpoint:
+            # TODO: is it always necessary to sample Pf at the midpoint? It will give a better estimate of Pf at the
+            #  trial temperature but comes at twice the cost. Provide an option and test effects.
+            T: float = prevT - 0.5*temperatureStepSize
+            self.subT.append(T)
+            action: float = actionInterp(T)
+            self.subAction.append(action)
+            hydroVars: HydroVars = self.transitionAnalyser.getHydroVars(T)
+            self.transitionAnalyser.integrateTemperatureStep(T, action, lastT, hydroVars)
+
+        # Now estimate Pf at the trial temperature.
+        T: float = prevT - temperatureStepSize
+        self.subT.append(T)
+        action: float = actionInterp(T)
+        self.subAction.append(action)
+        hydroVars: HydroVars = self.transitionAnalyser.getHydroVars(T)
+        self.transitionAnalyser.integrateTemperatureStep(T, action, lastT, hydroVars)
+
+        Pf: float = self.transitionAnalyser.falseVacuumFraction[-1]
+
+        # Undo the integration (which involved many list appends) because we only wanted to estimate Pf, not store
+        # this new data point.
+        #self.transitionAnalyser.undoIntegration(2)
+        self.subT.pop()
+        self.subAction.pop()
+
+        if calculate_midpoint:
+            #self.transitionAnalyser.undoIntegration()
+            self.subT.pop()
+            self.subAction.pop()
+
+        self.transitionAnalyser.undoIntegration(2 if calculate_midpoint else 1)
+
+        return Pf
+
+    # TODO: old version used before 14/09/2024
     def getNextSample(self, sampleData: ActionSample, Gamma: list[float], numBubbles: float, Tmin: float)\
             -> (bool, str):
         # If we are already near T=0, the transition is assumed to not progress from here. We consider only bubble
@@ -389,7 +566,7 @@ class ActionSampler:
         return extraBubbles
 
     # TODO: old version used before 21/05/2024
-    def getNumSubsamples(self):
+    def getNumSubsamples_old(self):
         # Interpolate between the last two sample points, creating a densely sampled line which we can integrate.
         # Increase the sampling density as the action decreases due to the exponentially larger nucleation probability.
         quickFactor = 1.
@@ -404,7 +581,11 @@ class ActionSampler:
             print('Num samples:', numSamples, actionFactor, dTFactor)
         return numSamples
 
-    def getNumSubsamples_new(self) -> int:
+    def getNumSubsamples(self) -> int:
+        print('=======================================================================================================')
+        print('getNumSubsamples')
+        print('=======================================================================================================')
+
         # The trial temperature should depend on the ratio of the desired change in Pf between subsamples, and the
         # desired change in Pf between the last two samples. Assume that Pf will change at an approximately linear
         # rate throughout the sample window.
@@ -422,21 +603,8 @@ class ActionSampler:
         else:
             actionInterp: np.poly1d = lagrange(self.T[-2:], self.action[-2:])
 
-        # Convenience function for predicting the false vacuum fraction.
-        def predictFalseVacuumFraction() -> float:
-            lastT: float = self.subT[-1]
-            T: float = self.T[-2] - temperatureStepSize
-            action: float = actionInterp(T)
-            dT: float = lastT - T
-            hydroVars: HydroVars = self.transitionAnalyser.getHydroVars(T)
-            # Here subT[-1] is the last subsample that has already been integrated.
-            self.transitionAnalyser.integrateTemperatureStep(T, action, lastT, dT, hydroVars)
-            Pf: float = self.transitionAnalyser.falseVacuumFraction[-1]
-            # Undo the integration (which involved many list appends) because we only wanted to estimate Pf, not store
-            # this new data point.
-            self.transitionAnalyser.undoIntegration()
-
-            return Pf
+        # The last subsample that has already been integrated.
+        lastT: float = self.subT[-1]
 
         falseVacuumFractionPrevious: float = self.transitionAnalyser.falseVacuumFraction[-1]
         falseVacuumFractionChange: float
@@ -446,10 +614,6 @@ class ActionSampler:
         tooSmall: bool
         tooLarge: bool
 
-        # Whether the previous predicted false vacuum fraction change is too small or too large.
-        wasTooLarge: bool = False
-        wasTooSmall: bool = False
-
         # The largest sampled step size for which the change in false vacuum fraction was too small.
         minStepSize: float
         # The smallest sampled step size for which the change in false vacuum fraction was too large.
@@ -457,44 +621,37 @@ class ActionSampler:
         # Collectively, these are used to bracket the range of step sizes that could lead to the desired change in false
         # vacuum fraction.
 
-        # Adjust the temperature step size until we can bracket the desired range.
-        while True:
-            falseVacuumFraction: float = predictFalseVacuumFraction()
+        #temperatureForZeroAction = 0.
 
-            falseVacuumFractionChange: float = falseVacuumFraction - falseVacuumFractionPrevious
+        #if len(actionInterp.roots) > 0:
+        #    if np.isreal(actionInterp.roots[0]):
+        #        temperatureForZeroAction = max(0, actionInterp.roots[0])
 
-            tooSmall = falseVacuumFractionChange < self.transitionAnalyser.falseVacuumFractionChange_subsamples_min
-            tooLarge = falseVacuumFractionChange > self.transitionAnalyser.falseVacuumFractionChange_subsamples_max
+        #minimumTemperature = temperatureForZeroAction + 0.01*(lastT - temperatureForZeroAction)
+        #maximumStepSize = lastT - minimumTemperature
 
-            if tooSmall:
-                if wasTooLarge:
-                    # We know the correct step size is somewhere in the range temperatureStepSize*(1, 2).
-                    minStepSize = temperatureStepSize
-                    maxStepSize = temperatureStepSize*2
-                    break
-                else:
-                    wasTooSmall = True
-                    temperatureStepSize *= 2
-            elif tooLarge:
-                if wasTooSmall:
-                    # We know the correct step size is somewhere in the range temperatureStepSize*(0.5, 1).
-                    minStepSize = 0.5*temperatureStepSize
-                    maxStepSize = temperatureStepSize
-                    break
-                else:
-                    wasTooLarge = True
-                    temperatureStepSize *= 0.5
-            else:
-                return math.ceil(temperatureChange_samples / temperatureStepSize)
+        def num_subsamples(step_size: float) -> int:
+            # We need at least two samples.
+            return max(2, math.ceil(temperatureChange_samples / step_size))
 
-        # In case the estimated change in false vacuum fraction does not behave monotonically with step size,
+        minStepSize, maxStepSize = self.findTemperatureForFalseVacuumFraction(
+            T_prev=self.T[-2],
+            delta_Pf_min=self.transitionAnalyser.falseVacuumFractionChange_subsamples_min,
+            delta_Pf_max=self.transitionAnalyser.falseVacuumFractionChange_subsamples_max,
+            initial_step_size=temperatureStepSize,
+            action_interp=actionInterp,
+            T_low=self.T[-1],
+            T_high=self.T[-2]
+        )
 
         # Now bisect between minStepSize and maxStepSize. The backup termination condition is that the bisection window
         # has become small enough to not affect the result. Because we seek an integer number of subsamples, two float
         # step sizes can lead to the same integer result. There is no need to bisect further if this point is reached.
-        while math.ceil(temperatureChange_samples / minStepSize) != math.ceil(temperatureChange_samples / maxStepSize):
+        # There are edge cases where the min and max step sizes straddle an integer division solution
+        while num_subsamples(maxStepSize) - num_subsamples(minStepSize) > 1:
             temperatureStepSize = 0.5*(minStepSize + maxStepSize)
-            falseVacuumFraction = predictFalseVacuumFraction()
+            falseVacuumFraction = self.predictFalseVacuumFraction(self.T[-2], temperatureStepSize, actionInterp,
+                                                                  calculate_midpoint=True)
             falseVacuumFractionChange = falseVacuumFraction - falseVacuumFractionPrevious
 
             tooSmall = falseVacuumFractionChange < self.transitionAnalyser.falseVacuumFractionChange_subsamples_min
@@ -507,7 +664,7 @@ class ActionSampler:
             else:
                 break
 
-        return math.ceil(temperatureChange_samples / temperatureStepSize)
+        return num_subsamples(temperatureStepSize)
 
     # Stores newData in lowerActionData, maintaining the sorted order.
     def storeLowerActionData(self, newData):
@@ -626,7 +783,7 @@ class ActionCurveShapeAnalysisData:
                 self.actionSamples.append(sample)
 
 
-class TransitionAnalyser():
+class TransitionAnalyser:
     bDebug: bool = False
     bPlot: bool = False
     # Optimisation: check whether completion can occur before reaching T=0. If it cannot, stop the transition analysis.
@@ -802,8 +959,10 @@ class TransitionAnalyser():
             self.transition.bFoundNucleationWindow = True
 
             sampleData = ActionSample(-1, -1)
-            self.actionSampler.getNextSample(sampleData, [], 0., self.Tmin)
-            self.actionSampler.getNextSample(sampleData, [], 0., self.Tmin)
+            #self.actionSampler.getNextSample(sampleData, [], 0., self.Tmin)
+            #self.actionSampler.getNextSample(sampleData, [], 0., self.Tmin)
+            self.actionSampler.getNextSample_new(sampleData)
+            self.actionSampler.getNextSample_new(sampleData)
 
         self.hydroVars.append(self.getHydroVars(self.actionSampler.T[0]))
         self.bubbleWallVelocity.append(self.getBubbleWallVelocity(self.hydroVars[0]))
@@ -909,7 +1068,7 @@ class TransitionAnalyser():
                 self.transition.Tmin = TAtActionMin
                 self.transition.actionMin = actionMin
 
-            numSamples = self.actionSampler.getNumSubsamples_new()
+            numSamples = self.actionSampler.getNumSubsamples()
             print('Num samples:', numSamples)
             # List of temperatures in decreasing order.
             T = np.linspace(self.actionSampler.T[simIndex], self.actionSampler.T[simIndex+1], numSamples)
@@ -996,7 +1155,7 @@ class TransitionAnalyser():
                         self.meanBubbleRadius.append(integrationHelper_avgBubRad.data[j])
                         self.meanBubbleSeparation.append((self.bubbleNumberDensity[j])**(-1/3))"""
 
-                self.integrateTemperatureStep(T[i], action[i], T[i-1], dT, hydroVarsInterp[i])
+                self.integrateTemperatureStep(T[i], action[i], T[i-1], hydroVarsInterp[i])
 
                 TNew = self.actionSampler.subT[-1]
                 #TPrev = self.actionSampler.subT[-2]
@@ -1027,7 +1186,8 @@ class TransitionAnalyser():
                 break
 
             # Choose the next value of S/T we're aiming to sample.
-            success, message = self.actionSampler.getNextSample(sampleData, self.nucleationRate, self.numBubblesIntegral[-1], self.Tmin)
+            #success, message = self.actionSampler.getNextSample(sampleData, self.nucleationRate, self.numBubblesIntegral[-1], self.Tmin)
+            success, message = self.actionSampler.getNextSample_new(sampleData)
 
             simIndex += 1
 
@@ -1117,7 +1277,7 @@ class TransitionAnalyser():
             if self.transition.TGammaMax > 0:
                 print('Nucleation rate maximised at T =', self.transition.TGammaMax)
 
-            print('Mean bubble separation:', meanBubbleSeparationAtTp)
+            print(f'Mean bubble separation: {meanBubbleSeparationAtTp:.5e}')
 
             print('-------------------------------------------------------------------------------------------')
 
@@ -1151,17 +1311,17 @@ class TransitionAnalyser():
 
         if self.bReportAnalysis:
             if self.transition.Tp > 0:
-                print('Mean bubble separation (Tp):', self.transition.meanBubbleSeparation)
-                print('Average bubble radius (Tp): ', self.transition.meanBubbleRadius)
-                print('Hubble radius (Tp):         ', 1 / self.getQuantityAtTemperature(self.hubbleParameter,
-                    self.transition.Tp))
+                print(f'Mean bubble separation (Tp): {self.transition.meanBubbleSeparation:.5e}')
+                print(f'Average bubble radius (Tp):  {self.transition.meanBubbleRadius:5e}')
+                print(f'Hubble radius (Tp):          '
+                      f'{1 / self.getQuantityAtTemperature(self.hubbleParameter, self.transition.Tp)}')
             if self.transition.Tf > 0:
-                print('Mean bubble separation (Tf):', (self.getQuantityAtTemperature(self.bubbleNumberDensity,
-                    self.transition.Tf))**(-1/3))
-                print('Average bubble radius (Tf): ', self.getQuantityAtTemperature(self.meanBubbleRadius,
-                    self.transition.Tf))
-                print('Hubble radius (Tf):         ', 1 / self.getQuantityAtTemperature(self.hubbleParameter,
-                    self.transition.Tf))
+                print(f'Mean bubble separation (Tf): '
+                      f'{(self.getQuantityAtTemperature(self.bubbleNumberDensity, self.transition.Tf))**(-1/3)}')
+                print(f'Average bubble radius (Tf):  '
+                      f'{self.getQuantityAtTemperature(self.meanBubbleRadius, self.transition.Tf)}')
+                print(f'Hubble radius (Tf):          '
+                      f'{1 / self.getQuantityAtTemperature(self.hubbleParameter, self.transition.Tf)}')
 
         if len(precomputedT) > 0:
             self.transition.analysis.actionCurveFile = precomputedActionCurveFileName
@@ -1178,7 +1338,13 @@ class TransitionAnalyser():
             self.transition.meanBubbleRadiusArray = self.meanBubbleRadius
             self.transition.Pf = self.falseVacuumFraction
 
-    def integrateTemperatureStep(self, T, action, TPrev, dT, hydroVars):
+    # TODO: why pass T and action when the integrator reads them from actionSampler.subT and .subAction?
+    def integrateTemperatureStep(self, T, action, TPrev, hydroVars):
+        print('------------------------')
+        print('integrateTemperatureStep')
+        print('------------------------')
+        print(f'T = {self.actionSampler.subT[-1]}, S = {self.actionSampler.subAction[-1]}')
+        dT: float = TPrev - T
         #hubbleParameter.append(np.sqrt(self.calculateHubbleParameterSq(T[i])))
         #hubbleParameter.append(np.sqrt(calculateHubbleParameterSq_supplied(rhof[i] -
         #   self.groundStateEnergyDensity)))
@@ -1187,13 +1353,13 @@ class TransitionAnalyser():
 
         self.nucleationRate.append(self.calculateBubbleNucleationRate(T, action))
 
-        self.numBubblesIntegrand.append(self.nucleationRate[-1] / (T * self.hubbleParameter[-1] ** 4))
+        self.numBubblesIntegrand.append(self.nucleationRate[-1] / (T*self.hubbleParameter[-1]**4))
         self.numBubblesCorrectedIntegrand.append(
-            self.nucleationRate[-1] * self.falseVacuumFraction[-1] / (T * self.hubbleParameter[-1] ** 4))
+            self.nucleationRate[-1] * self.falseVacuumFraction[-1] / (T*self.hubbleParameter[-1]**4))
         self.numBubblesIntegral.append(self.numBubblesIntegral[-1]
-                      + 0.5 * dT * (self.numBubblesIntegrand[-1] + self.numBubblesIntegrand[-2]))
+            + 0.5*dT*(self.numBubblesIntegrand[-1] + self.numBubblesIntegrand[-2]))
         self.numBubblesCorrectedIntegral.append(self.numBubblesCorrectedIntegral[-1]
-                      + 0.5 * dT * (self.numBubblesCorrectedIntegrand[-1] + self.numBubblesCorrectedIntegrand[-2]))
+            + 0.5*dT*(self.numBubblesCorrectedIntegrand[-1] + self.numBubblesCorrectedIntegrand[-2]))
 
         #if self.integrationHelper_trueVacVol is not None:
         self.integrationHelper_trueVacVol.integrate(len(self.actionSampler.subT)-1)
@@ -1201,7 +1367,10 @@ class TransitionAnalyser():
         nextToLastT = self.actionSampler.subT[-2] if len(self.actionSampler.subT) > 1 else TPrev + dT
         self.physicalVolume.append(3 + T*(self.trueVacuumVolumeExtended[-2] -
             self.trueVacuumVolumeExtended[-1]) / (nextToLastT - T))
-        self.falseVacuumFraction.append(np.exp(-self.trueVacuumVolumeExtended[-1]))
+        if self.trueVacuumVolumeExtended[-1] < 100:
+            self.falseVacuumFraction.append(np.exp(-self.trueVacuumVolumeExtended[-1]))
+        else:
+            self.falseVacuumFraction.append(0.)
         self.bubbleNumberDensity.append((T/TPrev)**3 * self.bubbleNumberDensity[-1]
             + 0.5*(TPrev - T)*T**3 * (self.nucleationRate[-2] * self.falseVacuumFraction[-2]
             / (TPrev**4 * self.hubbleParameter[-2]) + self.nucleationRate[-1] *
@@ -1211,24 +1380,29 @@ class TransitionAnalyser():
         self.meanBubbleRadius.append(self.integrationHelper_avgBubRad.data[-1])
         self.meanBubbleSeparation.append((self.bubbleNumberDensity[-1])**(-1/3))
 
-    def undoIntegration(self):
-        self.hubbleParameter.pop()
-        self.bubbleWallVelocity.pop()
-        self.nucleationRate.pop()
-        self.numBubblesIntegrand.pop()
-        self.numBubblesCorrectedIntegrand.pop()
-        self.numBubblesIntegral.pop()
-        self.numBubblesCorrectedIntegral.pop()
+        print(f'Pf new = {self.falseVacuumFraction[-1]}, Pf old = {self.falseVacuumFraction[-2]}, delta = {self.falseVacuumFraction[-2] - self.falseVacuumFraction[-1]}')
 
-        #if self.integrationHelper_trueVacVol is not None:
-        self.integrationHelper_trueVacVol.undo()
-        self.trueVacuumVolumeExtended.pop()
-        self.physicalVolume.pop()
-        self.falseVacuumFraction.pop()
-        self.bubbleNumberDensity.pop()
-        self.integrationHelper_avgBubRad.undo()
-        self.meanBubbleRadius.pop()
-        self.meanBubbleSeparation.pop()
+    def undoIntegration(self, num_iters: int):
+        for _ in range(num_iters):
+            self.hubbleParameter.pop()
+            self.bubbleWallVelocity.pop()
+            self.nucleationRate.pop()
+            self.numBubblesIntegrand.pop()
+            self.numBubblesCorrectedIntegrand.pop()
+            self.numBubblesIntegral.pop()
+            self.numBubblesCorrectedIntegral.pop()
+
+            #self.integrationHelper_trueVacVol.undo()
+            self.trueVacuumVolumeExtended.pop()
+            self.physicalVolume.pop()
+            self.falseVacuumFraction.pop()
+            self.bubbleNumberDensity.pop()
+            #self.integrationHelper_avgBubRad.undo()
+            self.meanBubbleRadius.pop()
+            self.meanBubbleSeparation.pop()
+
+        self.integrationHelper_trueVacVol.restore()
+        self.integrationHelper_avgBubRad.restore()
 
     def plotTransitionResults(self):
         plt.rcParams.update({"text.usetex": True})
@@ -1345,7 +1519,7 @@ class TransitionAnalyser():
         # plt.plot(actionSampler.subT, approxGamma)
         # plt.plot(actionSampler.subT, taylorExpGamma)
         plt.xlabel('$T$', fontsize=24)
-        plt.ylabel('$\\nucleationRate(T)$', fontsize=24)
+        plt.ylabel('$\\mathrm{Nucleation rate (GeV^4)}$', fontsize=24)
         if self.transition.TGammaMax > 0: plt.axvline(self.transition.TGammaMax, c='g', ls=':')
         if self.transition.Tmin > 0: plt.axvline(self.transition.Tmin, c='r', ls=':')
         if Tp > 0: plt.axvline(Tp, c='g', ls=':')
@@ -1517,6 +1691,7 @@ class TransitionAnalyser():
             self.actionSampler.subT[index-1])
         return quantity[index] + interpFactor*(quantity[index-1] - quantity[index])
 
+    # TODO: a lot of this needs updating.
     def primeTransitionAnalysis(self, startTime: float) -> (Optional[ActionSample], list[ActionSample]):
         TcData: ActionSample = ActionSample(self.transition.Tc)
         TminData: ActionSample = ActionSample(self.Tmin)
@@ -1598,7 +1773,7 @@ class TransitionAnalyser():
             return None, []
         else:
             if self.bDebug:
-                print(f'Data: (T: {data.T}, S/T: {data.action})')
+                print(f'Data: (T: {data.T}, S: {data.action})')
                 print('len(lowerActionData):', len(lowerActionData))
 
         intermediateData: ActionSample = ActionSample.copyData(data)
@@ -1738,7 +1913,7 @@ class TransitionAnalyser():
                 self.actionSampler.action.extend([data.action, intermediateData.action])
 
         if self.bDebug:
-            print('Found next sample: T =', intermediateData.T, 'and S/T =', intermediateData.action)
+            print('Found next sample: T =', intermediateData.T, 'and S =', intermediateData.action)
 
         # Now take the same step in temperature and evaluate the action again.
         sampleData = ActionSample.copyData(intermediateData)
@@ -2143,8 +2318,18 @@ class TransitionAnalyser():
 
     def calculateBubbleNucleationRate(self, T: Union[float, np.ndarray], action: Union[float, np.ndarray])\
             -> Union[float, np.ndarray]:
-        print('calculateBubbleNucleationRate:', T, action, T**4 * (action/(2*np.pi))**(3/2) * np.exp(-action))
-        return T**4 * (action/(2*np.pi))**(3/2) * np.exp(-action)
+        #print('calculateBubbleNucleationRate:', T, action, T**4 * (action/(2*np.pi))**(3/2) * np.exp(-action))
+        # Prevent underflow.
+        if np.isscalar(T):
+            if action < 500:
+                return T**4 * (action/(2*np.pi))**(3/2) * np.exp(-action)
+            else:
+                return 0.
+        else:
+            nucleationRate = np.zeros(shape=T.shape)
+            mask = action < 500
+            nucleationRate[mask] = T[mask]**4 * (action[mask]/(2*np.pi))**(3/2) * np.exp(-action[mask])
+            return nucleationRate
 
     # TODO: [2023] need to allow this to be used for list inputs again. [2024] That would require making
     #  hydrodynamics.calculateEnergyDensityAtT_singlePhase accept list inputs too. Not necessary at the moment.

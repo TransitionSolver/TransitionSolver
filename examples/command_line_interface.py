@@ -140,6 +140,8 @@ def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script
 
 if __name__ == "__main__":
     import sys
+    import numpy
+    numpy.seterr(all='raise')
 
     print(sys.argv)
 

@@ -95,8 +95,9 @@ class SMplusCubic(AnalysablePotential):
         if len(zSq.shape) > 0:
             thermalCorrections[mask] = np.reshape(np.exp(-np.abs(zSq[mask])), thermalCorrections[mask].shape)
         else:
-            # TODO: aren't the shapes misaligned here?
-            thermalCorrections[mask] = np.exp(-np.abs(zSq))
+            if mask:
+                thermalCorrections[mask] = np.exp(-np.abs(zSq))
+            # Else the thermal corrections can stay as zero because exp(-LARGE_NUMBER) ~ 0.
         return thermalCorrections
 
     def boson_massSq(self, X, T):

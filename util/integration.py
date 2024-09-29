@@ -21,8 +21,8 @@ class IntegrationHelper:
 
     def initialiseIntegration(self):
         self.bInitialised = True
-        self.x = [self.x[0]]
-        self.data = [self.data[0]]
+        #self.x = [self.x[0]]
+        #self.data = [self.data[0]]
 
     def integrate(self, newx: float) -> float:
         if len(self.x) == self.numPreparationPoints:
@@ -51,9 +51,15 @@ class IntegrationHelper:
         self.data.append(0.)
         return self.data[-1]
 
-    def undo(self):
-        self.x.pop()
-        self.data.pop()
+    #def undo(self):
+    #    self.x.pop()
+    #    self.data.pop()
+
+    def setRestorePoint(self):
+        raise NotImplementedError('IntegrationHelper.setRestorePoint must be overridden if it is to be used.')
+
+    def restore(self):
+        raise NotImplementedError('IntegrationHelper.restore must be overridden if it is to be used.')
 
 
 # Designed specifically to aid in evaluating integrals of the form
@@ -72,15 +78,56 @@ class CubedNestedIntegrationHelper(IntegrationHelper):
         self.f = outerFunction
         self.g = innerFunction
         self.tr = sampleTransformationFunction
-        self.i = 0
+        #self.i = 0
         self.numPreparationPoints = 3
+
+        self.restorePoint = {}
+        self.L2 = 0.
+        self.L3 = 0.
+        self.L6 = 0.
+        self.S1 = 0.
+        self.S2 = 0.
+        self.S3 = 0.
+        self.S4 = 0.
+        self.S5 = 0.
+        self.S6 = 0.
+
+    # TODO: probably easier to just create a copy of the object at this rate. The current method is more efficient but
+    #  more cumbersome.
+    def setRestorePoint(self):
+        self.restorePoint = \
+        {
+            'L2': self.L2,
+            'L3': self.L3,
+            'L6': self.L6,
+            'S1': self.S1,
+            'S2': self.S2,
+            'S3': self.S3,
+            'S4': self.S4,
+            'S5': self.S5,
+            'S6': self.S6,
+            'length': len(self.x)
+        }
+
+    def restore(self):
+        self.L2 = self.restorePoint['L2']
+        self.L3 = self.restorePoint['L3']
+        self.L6 = self.restorePoint['L6']
+        self.S1 = self.restorePoint['S1']
+        self.S2 = self.restorePoint['S2']
+        self.S3 = self.restorePoint['S3']
+        self.S4 = self.restorePoint['S4']
+        self.S5 = self.restorePoint['S5']
+        self.S6 = self.restorePoint['S6']
+        self.x = self.x[:self.restorePoint['length']]
+        self.data = self.data[:self.restorePoint['length']]
 
     def initialiseIntegration(self):
         super().initialiseIntegration()
 
-        self.L2 = 0
-        self.L3 = 0
-        self.L6 = 0
+        self.L2 = 0.
+        self.L3 = 0.
+        self.L6 = 0.
 
         # Aliases for concision.
         x = self.x
@@ -113,13 +160,13 @@ class CubedNestedIntegrationHelper(IntegrationHelper):
         #print(abs((otherMethod - self.data[-1]) / self.data[-1]))
 
         self.S1 = (gsn3*dxn3)**3 * fsn2*dxn2
-        self.S2 = 0
-        self.S3 = 0
+        self.S2 = 0.
+        self.S3 = 0.
         self.S4 = 3*fn1*gsn3**2*dxn3**2*gsn2*dxn2**2
         self.S5 = 3*fn1*gsn3*dxn3*gsn2**2*dxn2**3
-        self.S6 = 0
+        self.S6 = 0.
 
-        self.i = 3
+        #self.i = 3
 
     def integrateProper(self, newx: float) -> float:
         if self.bDebug and not self.bInitialised:
@@ -132,7 +179,8 @@ class CubedNestedIntegrationHelper(IntegrationHelper):
         f = self.f
         g = self.g
         tr = self.tr
-        i = self.i
+        #i = self.i
+        i = len(self.x)-1
 
         xi = tr(x[i])
         xi1 = tr(x[i-1])
@@ -151,6 +199,7 @@ class CubedNestedIntegrationHelper(IntegrationHelper):
         gsi1 = g(x[i-1]) + g(x[i-2])
         gsi2 = g(x[i-2]) + g(x[i-3])
 
+        """
         # We want to use L2(i+1) in L3(i), so do L3 before updating L2.
         self.L3 += gsi2*self.L2#*dxi2*self.L2
         self.L2 += fsi2#*dxi2
@@ -172,8 +221,30 @@ class CubedNestedIntegrationHelper(IntegrationHelper):
 
         #self.data.append((xi1/xi)**3 * self.data[-1] + (Si + Ti) / (16.0*xi**3))
         self.data.append(self.data[-1] + (Si + Ti) / 16.0)
+        """
 
-        self.i += 1
+        # We want to use L2(i+1) in L3(i), so do L3 before updating L2.
+        self.L3 += gsi2*dxi2*self.L2
+        self.L2 += fsi2*dxi2
+        self.L6 += fi3*gsi2*dxi2**2
+
+        factor = (gsi*dxi)/(gsi1*dxi1)
+
+        self.S1 = factor**3 * self.S1 + fsi1*gsi**3*dxi**3*dxi1
+        self.S2 = factor**2 * self.S2 + 3*gsi**2*gsi1*dxi**2*dxi1 * self.L2
+        self.S3 = factor    * self.S3 + 3*gsi*gsi1*dxi*dxi1*(2*self.L3 + gsi1*dxi1*self.L2)
+        self.S4 = factor**2 * self.S4 + 3*fi2*gsi**2*gsi1*dxi**2*dxi1**2
+        self.S5 = factor    * self.S5 + 3*fi2*gsi*gsi1**2*dxi*dxi1**3
+        self.S6 = factor    * self.S6 + 6*gsi*gsi1*dxi*dxi1 * self.L6
+
+        Si = self.S1 + self.S2 + self.S3 + self.S4 + self.S5 + self.S6
+
+        Ti = fi1*gsi**3*dxi**4
+
+        #self.data.append((xi1/xi)**3 * self.data[-1] + (Si + Ti) / (16.0*xi**3))
+        self.data.append(self.data[-1] + (Si + Ti) / 16.0)
+
+        #self.i += 1
 
         return self.data[-1]
 
@@ -184,7 +255,7 @@ class CubedNestedIntegrationHelper(IntegrationHelper):
 
         self.x.append(newx)
 
-        # Reverse the list of decreasing inputs to make integration more intuitive. This will not be a bottleneck.
+        # Reverse the list of decreasing inputs to make integration more intuitive.
         x = self.x[::-1]
         x_tr = [self.tr(xx) for xx in x]
         f = self.f
@@ -222,15 +293,36 @@ class LinearNestedNormalisedIntegrationHelper(IntegrationHelper):
         self.g = innerFunction
         self.h = normalisationFunction
         self.tr = sampleTransformationFunction
-        self.i = 0
+        #self.i = 0
         self.numPreparationPoints = 2
+
+        self.restorePoint = {}
+
+        self.L = 0.
+        self.A = 0.
+        self.B = 0.
+
+    def setRestorePoint(self):
+        self.restorePoint = {
+            'L': self.L,
+            'A': self.A,
+            'B': self.B,
+            'length': len(self.x)
+        }
+
+    def restore(self):
+        self.L = self.restorePoint['L']
+        self.A = self.restorePoint['A']
+        self.B = self.restorePoint['B']
+        self.x = self.x[:self.restorePoint['length']]
+        self.data = self.data[:self.restorePoint['length']]
 
     def initialiseIntegration(self):
         super().initialiseIntegration()
 
-        self.L = 0
-        self.A = 0
-        self.B = 0
+        self.L = 0.
+        self.A = 0.
+        self.B = 0.
 
         # Aliases for concision.
         x = self.x
@@ -251,7 +343,7 @@ class LinearNestedNormalisedIntegrationHelper(IntegrationHelper):
 
         self.data.append(self.A/self.B)
 
-        self.i = 2
+        #self.i = 2
 
     def integrateProper(self, newx: float) -> float:
         if self.bDebug and not self.bInitialised:
@@ -264,7 +356,8 @@ class LinearNestedNormalisedIntegrationHelper(IntegrationHelper):
         g = self.g
         h = self.h
         tr = self.tr
-        i = self.i
+        #i = self.i
+        i = len(self.x)-1
 
         xi = tr(x[i])
         xi1 = tr(x[i-1])
@@ -286,7 +379,7 @@ class LinearNestedNormalisedIntegrationHelper(IntegrationHelper):
 
         self.data.append(self.A/self.B)
 
-        self.i += 1
+        #self.i += 1
 
         return self.data[-1]
 
@@ -330,28 +423,28 @@ def test1():
     outFun = lambda x: x
     inFun = lambda x: x + 1
     trans = lambda x: x
-    integrator = CubedNestedIntegrationHelper(outFun, inFun, trans)
+    integrator = CubedNestedIntegrationHelper(firstPoints[0], outFun, inFun, trans)
     integrator.x = list(firstPoints[:-1])
     print('naive:    ', integrator.integrateNaive(firstPoints[-1]))
-    exactResult = ((a - b) ** 4 * (
-                35 * a ** 4 + 4 * a ** 3 * (38 + 35 * b) + a ** 2 * (224 + 608 * b + 210 * b ** 2) + 4 * a * (
-                    28 + 224 * b + 170 * b ** 2 + 35 * b ** 3)
-                + b * (448 + 560 * b + 240 * b ** 2 + 35 * b ** 3))) / 2240
-    integrator = CubedNestedIntegrationHelper(outFun, inFun, trans)
+    exactResult = ((a - b)**4 * (35*a**4 + 4*a**3*(38 + 35*b)
+                                 + a**2*(224 + 608*b + 210*b**2)
+                                 + 4*a*(28 + 224*b + 170*b**2 + 35 * b ** 3)
+                                 + b*(448 + 560*b + 240*b**2 + 35*b**3))) / 2240
+    integrator = CubedNestedIntegrationHelper(firstPoints[0], outFun, inFun, trans)
     lastResult = 0.
-    for x in firstPoints:
+    for x in firstPoints[1:]:
         lastResult = integrator.integrate(x)
     print('efficient:', lastResult)
     print('exact:    ', exactResult)
 
-    integrator = LinearNestedNormalisedIntegrationHelper(outFun, inFun, outFun, trans)
+    integrator = LinearNestedNormalisedIntegrationHelper(firstPoints[0], outFun, inFun, outFun, trans)
     integrator.x = list(firstPoints[:-1])
     print('naive:    ', integrator.integrateNaive(firstPoints[-1]))
-    exactResult = (b * (8 + 3 * b) + a * (8 * a / (a + b) - 3 * (4 + a))) / 12
-    integrator = LinearNestedNormalisedIntegrationHelper(outFun, inFun, outFun, trans)
+    exactResult = (b*(8 + 3*b) + a*(8*a/(a + b) - 3*(4 + a))) / 12
+    integrator = LinearNestedNormalisedIntegrationHelper(firstPoints[0], outFun, inFun, outFun, trans)
     # integrator.initialiseIntegration()
     lastResult = 0.
-    for x in firstPoints:
+    for x in firstPoints[1:]:
         lastResult = integrator.integrate(x)
     print('efficient:', lastResult)
     print('exact:    ', exactResult)
@@ -367,26 +460,26 @@ def test2():
     outFun = lambda x: (x+4)*x
     inFun = lambda x: x*x
     trans = lambda x: x
-    integrator = CubedNestedIntegrationHelper(outFun, inFun, trans)
+    integrator = CubedNestedIntegrationHelper(firstPoints[0], outFun, inFun, trans)
     integrator.x = list(firstPoints[:-1])
     print('naive:    ', integrator.integrateNaive(firstPoints[-1]))
     exactResult = (486*a**11 + 55*a**12 - 220*a**9*b**2*(6 + b) - 110*a**3*b**8*(9 + 2*b) + 66*a**6*b**5*(24 + 5*b)
                    + 5*b**11*(48 + 11*b)) / 17820
-    integrator = CubedNestedIntegrationHelper(outFun, inFun, trans)
+    integrator = CubedNestedIntegrationHelper(firstPoints[0], outFun, inFun, trans)
     lastResult = 0.
-    for x in firstPoints:
+    for x in firstPoints[1:]:
         lastResult = integrator.integrate(x)
     print('efficient:', lastResult)
     print('exact:    ', exactResult)
 
-    integrator = LinearNestedNormalisedIntegrationHelper(outFun, inFun, outFun, trans)
+    integrator = LinearNestedNormalisedIntegrationHelper(firstPoints[0], outFun, inFun, outFun, trans)
     integrator.x = list(firstPoints[:-1])
     print('naive:    ', integrator.integrateNaive(firstPoints[-1]))
     exactResult = (36*a**5 + 5*a**6 - 10*a**3*b**2*(6 + b) + b**5*(24 + 5*b)) / (30*(b**2*(6 + b) - a**2*(6 + a)))
-    integrator = LinearNestedNormalisedIntegrationHelper(outFun, inFun, outFun, trans)
+    integrator = LinearNestedNormalisedIntegrationHelper(firstPoints[0], outFun, inFun, outFun, trans)
     # integrator.initialiseIntegration()
     lastResult = 0.
-    for x in firstPoints:
+    for x in firstPoints[1:]:
         lastResult = integrator.integrate(x)
     print('efficient:', lastResult)
     print('exact:    ', exactResult)
