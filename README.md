@@ -56,7 +56,7 @@ Two example scripts are provided in the `examples` subdirectory: `pipeline_examp
 	python3 -m examples.pipeline_example
 	python3 -m examples.barebones_example
 
-There is now a new way to run `TransitionSolver`, using `command_line_interface.py`, again in the `examples` subdirectory. This accepts arguments from the command line. Two methods for using this script are:
+For supported models `TransitionSolver` can also be run using `command_line_interface.py`, again in the `examples` subdirectory. This accepts arguments from the command line. Two methods for using this script are:
 
 	python3 -m examples.command_line_interface <modelLabel> <outputFolderName> <inputFileName>
 	python3 -m examples.command_line_interface <modelLabel> <outputFolderName> <parameter value 1> <parameter value 2> ... <parameter value n>
@@ -71,8 +71,18 @@ Here, `<n>` ranges from 1 to 5 because only five benchmarks for the `rss` and `t
 
 	python3 -m examples.command_line_interface toy output/Toy/Toy_BP5 0.1040047755 250 3.5 0.2
 
+# Computing gravitational waves
+TransitionSolver also comes woth a module for computing the GW spectrum.  The GW spectra are computed from fit formulae as described in [arXiv:2309.05474](https://arxiv.org/abs/2309.05474) and [arXiv:2306.17239](https://arxiv.org/abs/2306.17239).  To use the GW spectrum for a point after Transition has already been run
+using one of the options above please do
+
+      python3 -m gws.gw_analyser 
+
+PA: TODO change code to take arguements for model and TSOutputFolder and GWsOutputFolder and to choose between using scanGWsWithParam and scanGWs
+
+
+
 # Defining a model
-Unfortunately, defining a model currently requires double effort: it must be defined in `TransitionSolver` and `PhaseTracer`. In `PhaseTracer`, the model should extend either `Potential` or `OneLoopPotential`. In `TransitionSolver`, the model should extend `AnalysablePotential`, which in turn extends `CosmoTransitions`' `generic_potential`. See `ToyModel.hpp` in `PhaseTracer/EffectivePotential/include/models` and `toy_model.py` in `TransitionSolver` for a simple example model.
+Unfortunately, defining a model currently requires double effort: it must be defined in `TransitionSolver` and `PhaseTracer`. In `PhaseTracer`, the model should extend either `Potential` or `OneLoopPotential`. In `TransitionSolver`, the model should extend `AnalysablePotential`, which in turn extends `CosmoTransitions`' `generic_potential`. See `ToyModel.hpp` in `PhaseTracer/EffectivePotential/include/models` and `toy_model.py` in `TransitionSolver` for a simple example model.  In future versions it should be possible to only enter one potential and use PhaseTracer to compute the bounce action. 
 
 # Global events
 Simply import `util.events.NotifyHandler` into a script to enable a global event handler. Some classes query `NotifyHandler` to see if any actions should be taken when an event occurs. For example, `ActionSampler` (found in `transition_analysis.py`) queries `NotifyHandler` when an instance of `ActionSampler` is created, and passes a reference of the instance to the `NotifyHandler` for handling. One could register the on_create event with `NotifyHandler` by calling
