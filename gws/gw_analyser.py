@@ -1705,6 +1705,8 @@ if __name__ == "__main__":
     # new code
     default_output_dir = 'GWsOutput/plots/'
     default_input_dir = 'output/RSS/RSS_BP3/'
+    default_model = RealScalarSingletModel_Boltz
+    default_detector = LISA
     import sys
 
     print(sys.argv)
@@ -1712,10 +1714,10 @@ if __name__ == "__main__":
     # Check that the user has included enough parameters in the run command.
     if len(sys.argv) < 2:
         print('Since no arguments have been specifed running default model for the default GW detector, with default input folder and output folder.')
-        print('  If you wish to use a differemt model / input output file or detector please either:')
-        print('a) edit the model, input and outfolder strings or detector')
+        print('If you wish to use a differemt model or input/output files or detector please either:')
+        print('a) edit the default model, input and outfolder strings or detector set just below if __name__ == "__main__": in gws/gw_analyser.py')
         print('b) specify them at the command line as described in the README')
-        main(RealScalarSingletModel_Boltz, default_output_dir, default_input_dir)
+        main(default_model, default_output_dir, default_input_dir, default_detector)
         sys.exit(0)
     # read in model labels in lower case regardless of input case
     modelLabel = sys.argv[1].lower()
