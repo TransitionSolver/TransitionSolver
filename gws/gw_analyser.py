@@ -1683,8 +1683,12 @@ def compareBubRad():
     plt.margins(0., 0.)
     plt.show()
 
+def main(potentialClass, GWsOutputFolder, TSOutputFolder, detectorClass = LISA):
+    gwa = GWAnalyser(detectorClass, potentialClass, TSOutputFolder, bForceAllTransitionsRelevant=False)
+    gwa.scanGWs(GWsOutputFolder, bCombined=False)
 
-def main(detectorClass, potentialClass, outputFolder):
+#PA: why call this main while using the if __name__ == "__main__" idiom?  Doesn't calling it main just make it harder to use as a module? 
+def mainold(detectorClass, potentialClass, outputFolder):
     gwa = GWAnalyser(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=False)
     # Use this for scanning GWs and thermal params over temperature.
     #gwa.scanGWs('C:/Work/Monash/PhD/Documents/SupercoolGWs/Plots/redo_BP3/', bCombined=False)
@@ -1695,10 +1699,89 @@ def main(detectorClass, potentialClass, outputFolder):
     #scanGWsWithParam(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=True)
     #hydroTester(potentialClass, outputFolder)
 
+# when called as a script, read in argumenst for the model, output directory, input (ie the TS output) when we only run scanGWs and not scanGWsWithParam,  and finally the detector class, though only LISA is currently provided.
+# should check if TSoutput directory is passed and call scanGWs if so, otherwise chek for input parameter file and if so call scanGWswithParam.
 
 if __name__ == "__main__":
+    # new code
+    default_output_dir = 'GWsOutput/plots/'
+    default_input_dir = 'output/RSS/RSS_BP3/'
+    import sys
+
+    print(sys.argv)
+    print( "we have ", len(sys.argv), " arguments")
+    # Check that the user has included enough parameters in the run command.
+    if len(sys.argv) < 2:
+        print('Since no arguments have been specifed running default model for the default GW detector, with default input folder and output folder.')
+        print('  If you wish to use a differemt model / input output file please either:')
+        print('a) edit the model, detector and input and out filder strings or ')
+        print('b) specify them at the command line as described in the README')
+        main(RealScalarSingletModel_Boltz, default_output_dir, default_input_dir)
+        sys.exit(0)
+    # read in model labels in lower case regardless of input case 
+    modelLabel = sys.argv[1].lower()
+    print("modellabel set to ", modelLabel)
+    modelLabels = ['toy', 'rss', 'rss_ht', 'archil']  
+    # The AnalysablePotential subclass corresponding to a particular model label.
+    models = [ToyModel, RealScalarSingletModel_Boltz, RealScalarSingletModel_HT, SMplusCubic]
+    # PhaseTracer script to run, specific to a particular model label.
+    PT_scripts = ['run_ToyModel', 'run_RSS', 'run_RSS', 'run_supercool']
+    # Extra arguments to pass to PhaseTracer, specific to a particular model label.
+    PT_paramArrays = [[], ['-boltz'], ['-ht'], ['-boltz']]
+    _potentialClass = None
+    _PT_script = ''
+    _PT_params = []
+
+    # Attempt to match the input model label to the supported model labels.
+    for i in range(len(models)):
+        if modelLabel == modelLabels[i]:
+            _potentialClass = models[i]
+            _PT_script = PT_scripts[i]
+            _PT_params = PT_paramArrays[i]
+            break
+
+    if _potentialClass is None:
+        print(f'Invalid model label: {modelLabel}. Valid model labels are: {modelLabels}')
+        sys.exit(1)   
+
+    output_dir = sys.argv[2]
+    print("output_dir set to ", output_dir)
+    # location for TS output to be used to as input here to compute GWs
+    TS_output_dir = sys.argv[3]
+    if len(sys.argv) > 4:
+        Detector = sys.argv[4]
+    else:
+        Detector = LISA
+    #PA: I think for  scanGWs this is then enough anc can call main - need to do that and then figure out calling with parameters after testing that works at least.
+    main(RealScalarSingletModel_Boltz, output_dir, TS_output_dir, Detector)
+
+    
+    # _parameterPoint = sys.argv[3]
+    # loadedParameterPoint = False
+
+    # # First, attempt to treat the parameter point as a file name.
+    # if len(_parameterPoint) > 3:
+    #     if _parameterPoint[-4:] == '.txt':
+    #         try:
+    #             _parameterPoint = np.loadtxt(_parameterPoint)
+    #             loadedParameterPoint = True
+    #         except:
+    #             pass
+
+    # # If the parameter point does not correspond to the name of a readable file, treat it as a list of parameter values.
+    # if not loadedParameterPoint:
+    #     try:
+    #         _parameterPoint = []
+    #         for i in range(3, len(sys.argv)):
+    #             _value = float(sys.argv[i])
+    #             _parameterPoint.append(_value)
+    #     except:
+    #         print('Failed to load parameter point defined by:', ' '.join(sys.argv[2:]))
+    #         sys.exit(1)
+
+
     #main(LISA, RealScalarSingletModel_Boltz, 'output/RSS/RSS_new_BP3/')
-    main(LISA, RealScalarSingletModel_Boltz, 'output/RSS/RSS_BP3/')
+    
     #main(LISA, SMplusCubic, 'output/archil/archil_BP5/')
     #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/3/40/')
     #main(LISA, SMplusCubic, 'output/nanograv/BP1/')
