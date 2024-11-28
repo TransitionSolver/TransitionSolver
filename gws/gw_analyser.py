@@ -1687,7 +1687,6 @@ def main(potentialClass, GWsOutputFolder, TSOutputFolder, detectorClass = LISA):
     gwa = GWAnalyser(detectorClass, potentialClass, TSOutputFolder, bForceAllTransitionsRelevant=False)
     gwa.scanGWs(GWsOutputFolder, bCombined=False)
 
-#PA: why call this main while using the if __name__ == "__main__" idiom?  Doesn't calling it main just make it harder to use as a module? 
 def mainold(detectorClass, potentialClass, outputFolder):
     gwa = GWAnalyser(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=False)
     # Use this for scanning GWs and thermal params over temperature.
@@ -1713,15 +1712,15 @@ if __name__ == "__main__":
     # Check that the user has included enough parameters in the run command.
     if len(sys.argv) < 2:
         print('Since no arguments have been specifed running default model for the default GW detector, with default input folder and output folder.')
-        print('  If you wish to use a differemt model / input output file please either:')
-        print('a) edit the model, detector and input and out filder strings or ')
+        print('  If you wish to use a differemt model / input output file or detector please either:')
+        print('a) edit the model, input and outfolder strings or detector')
         print('b) specify them at the command line as described in the README')
         main(RealScalarSingletModel_Boltz, default_output_dir, default_input_dir)
         sys.exit(0)
-    # read in model labels in lower case regardless of input case 
+    # read in model labels in lower case regardless of input case
     modelLabel = sys.argv[1].lower()
     print("modellabel set to ", modelLabel)
-    modelLabels = ['toy', 'rss', 'rss_ht', 'archil']  
+    modelLabels = ['toy', 'rss', 'rss_ht', 'archil']
     # The AnalysablePotential subclass corresponding to a particular model label.
     models = [ToyModel, RealScalarSingletModel_Boltz, RealScalarSingletModel_HT, SMplusCubic]
     # PhaseTracer script to run, specific to a particular model label.
@@ -1742,7 +1741,7 @@ if __name__ == "__main__":
 
     if _potentialClass is None:
         print(f'Invalid model label: {modelLabel}. Valid model labels are: {modelLabels}')
-        sys.exit(1)   
+        sys.exit(1)
 
     output_dir = sys.argv[2]
     print("output_dir set to ", output_dir)
@@ -1755,7 +1754,6 @@ if __name__ == "__main__":
     #PA: I think for  scanGWs this is then enough anc can call main - need to do that and then figure out calling with parameters after testing that works at least.
     main(RealScalarSingletModel_Boltz, output_dir, TS_output_dir, Detector)
 
-    
     # _parameterPoint = sys.argv[3]
     # loadedParameterPoint = False
 
@@ -1779,14 +1777,3 @@ if __name__ == "__main__":
     #         print('Failed to load parameter point defined by:', ' '.join(sys.argv[2:]))
     #         sys.exit(1)
 
-
-    #main(LISA, RealScalarSingletModel_Boltz, 'output/RSS/RSS_new_BP3/')
-    
-    #main(LISA, SMplusCubic, 'output/archil/archil_BP5/')
-    #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/3/40/')
-    #main(LISA, SMplusCubic, 'output/nanograv/BP1/')
-    #main(LISA, SMplusCubic, 'output/pipeline/archilBoltz/6/')
-    #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/1/13/')
-    #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/1/14/')
-    #main(LISA, RealScalarSingletModel_HT, 'output/RSS_HT/RSS_HT_BP1/')
-    #main(LISA, ToyModel, 'output/Toy/Toy_BP1/')
