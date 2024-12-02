@@ -1686,26 +1686,22 @@ def compareBubRad():
 def main(potentialClass, GWsOutputFolder, TSOutputFolder, detectorClass = LISA):
     gwa = GWAnalyser(detectorClass, potentialClass, TSOutputFolder, bForceAllTransitionsRelevant=False)
     gwa.scanGWs(GWsOutputFolder, bCombined=False)
-
-def mainold(detectorClass, potentialClass, outputFolder):
-    gwa = GWAnalyser(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=False)
-    # Use this for scanning GWs and thermal params over temperature.
-    #gwa.scanGWs('C:/Work/Monash/PhD/Documents/SupercoolGWs/Plots/redo_BP3/', bCombined=False)
-    gwa.scanGWs('output/RSS/RSS_BP3/Plots/', bCombined=False)
-    #gwa.scanGWs()
     # Use this for evaluating GWs using thermal params at the onset of percolation.
     #gwa.determineGWs_withColl()
     #scanGWsWithParam(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=True)
     #hydroTester(potentialClass, outputFolder)
 
-# when called as a script, read in argumenst for the model, output directory, input (ie the TS output) when we only run scanGWs and not scanGWsWithParam,  and finally the detector class, though only LISA is currently provided.
-# should check if TSoutput directory is passed and call scanGWs if so, otherwise chek for input parameter file and if so call scanGWswithParam.
-
+# when called as a script, read in arguments listed in the order
+# 1 the model,
+# 2 output directory,
+# 3 input (ie the TS output),
+# 4 and optionally the detector class, though only LISA is currently provided.
+# if no arguments are provided it will run with the defaults provided below
 if __name__ == "__main__":
     # new code
+    default_model = RealScalarSingletModel_Boltz
     default_output_dir = 'GWsOutput/plots/'
     default_input_dir = 'output/RSS/RSS_BP3/'
-    default_model = RealScalarSingletModel_Boltz
     default_detector = LISA
     import sys
 
@@ -1744,7 +1740,7 @@ if __name__ == "__main__":
     if _potentialClass is None:
         print(f'Invalid model label: {modelLabel}. Valid model labels are: {modelLabels}')
         sys.exit(1)
-
+    # location for to utput GWs results.
     output_dir = sys.argv[2]
     print("output_dir set to ", output_dir)
     # location for TS output to be used to as input here to compute GWs
@@ -1756,26 +1752,87 @@ if __name__ == "__main__":
     #PA: I think for  scanGWs this is then enough anc can call main - need to do that and then figure out calling with parameters after testing that works at least.
     main(RealScalarSingletModel_Boltz, output_dir, TS_output_dir, Detector)
 
-    # _parameterPoint = sys.argv[3]
-    # loadedParameterPoint = False
-
-    # # First, attempt to treat the parameter point as a file name.
-    # if len(_parameterPoint) > 3:
-    #     if _parameterPoint[-4:] == '.txt':
-    #         try:
-    #             _parameterPoint = np.loadtxt(_parameterPoint)
-    #             loadedParameterPoint = True
-    #         except:
-    #             pass
-
-    # # If the parameter point does not correspond to the name of a readable file, treat it as a list of parameter values.
-    # if not loadedParameterPoint:
-    #     try:
-    #         _parameterPoint = []
-    #         for i in range(3, len(sys.argv)):
-    #             _value = float(sys.argv[i])
-    #             _parameterPoint.append(_value)
-    #     except:
-    #         print('Failed to load parameter point defined by:', ' '.join(sys.argv[2:]))
-    #         sys.exit(1)
-
+# TODO: develop an interface to run main part of TransitionSolver
+#       and then GWs and the same time.  Should try to avoid writing to json
+#      file and then reading it in.
+#      Inreface can work something like this:
+#      When called as a script, read in argument for
+#           # 1 the model,
+#           # 2 output directory,
+#           # 3 True if you want to run TransitionSolver from the beginning
+#           #        for an input file specifying the parameters OR
+#           #   False if you want run the gws module on results that have
+#           #         already been obtained from running basic functinality
+#           #         of TransitionSolver.
+#           # 4 input: if 3 is True this will be the name of a file
+#           #             specifying the input parameters of the model selected
+#           #             in 1.
+#           #          If 3 is False thsi will be the directory where output
+#           #             from runinng TS (without GWs) is located 
+#           #  5 optionally set the detector (default is LISA)
+#       Could works something like this:
+#       if __name__ == "__main__":                                                    
+#         # new code                                                                  
+#         default_output_dir = 'GWsOutput/plots/'                                     
+#         default_input_dir = 'output/RSS/RSS_BP3/'                                   
+#         default_model = RealScalarSingletModel_Boltz                                
+#         default_detector = LISA                                                     
+#         import sys                                                                  
+#                                                                                     
+#         print(sys.argv)                                                             
+#         print( "we have ", len(sys.argv), " arguments")                             
+#         # Check that the user has included enough parameters in the run command.    
+#        if len(sys.argv) < 2:
+#                print('Since no arguments have been specifed running default model for the default GW detector, with default input folder and output folder.')
+#                print('If you wish to use a differemt model or input/output files or detector please either:')
+#                print('a) edit the default model, input and outfolder strings or detector set just below if __name__ == "__main__": in gws/gw_analyser.py')
+#                print('b) specify them at the command line as described in the README')
+#                main(default_model, default_output_dir, default_input_dir, default_detector)
+#                sys.exit(0)
+#         # read in model labels in lower case regardless of input case
+#         modelLabel = sys.argv[1].lower()
+#         print("modellabel set to ", modelLabel)
+#         modelLabels = ['toy', 'rss', 'rss_ht', 'archil']
+#         # The AnalysablePotential subclass corresponding to a particular model label.
+#         models = [ToyModel, RealScalarSingletModel_Boltz, RealScalarSingletModel_HT, SMplusCubic]
+#         # PhaseTracer script to run, specific to a particular model label.
+#         PT_scripts = ['run_ToyModel', 'run_RSS', 'run_RSS', 'run_supercool']
+#         # Extra arguments to pass to PhaseTracer, specific to a particular model label.
+#         PT_paramArrays = [[], ['-boltz'], ['-ht'], ['-boltz']]
+#         _potentialClass = None
+#          _PT_script = ''
+#          _PT_params = []
+#      
+#          # Attempt to match the input model label to the supported model labels.
+#          for i in range(len(models)):
+#              if modelLabel == modelLabels[i]:
+#                  _potentialClass = models[i]
+#                  _PT_script = PT_scripts[i]
+#                  _PT_params = PT_paramArrays[i]
+#                  break
+#      
+#          if _potentialClass is None:
+#              print(f'Invalid model label: {modelLabel}. Valid model labels are: {modelLabels}')
+#              sys.exit(1)
+#      
+#          output_dir = sys.argv[2]
+#          print("output_dir set to ", output_dir)
+#          # boolean value indicat=ing whether we run TS from scratch or only run GWs for pre-exiting output
+#          run_TS_and_GWs =  sys.argv[3]
+#          # location for TS output to be used to as input here to compute GWs
+#          #inputs = sys.argv[3]
+#          if(run_TS_and_GWs == False):
+#              input_file = sys.argv[4]
+#          else:    
+#              TS_output_dir = sys.argv[4]
+#      # if an optional argument for detector is provided set it
+#          if len(sys.argv) > 5:
+#              Detector = sys.argv[5]
+#          else:
+#              # otherwise use default_detector (initially set to LISA but can be manually changed)
+#              Detector = default_detector
+#          #PA: I think for  scanGWs this is then enough and can call main - need to do that and then figure out calling with parameters after testing that works at least.
+#          if len(sys.argv) < 6:
+#              main(RealScalarSingletModel_Boltz, output_dir, TS_output_dir, Detector)      
+#      
+#      
