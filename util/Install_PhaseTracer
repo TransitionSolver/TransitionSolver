@@ -1,4 +1,15 @@
-git clone https://github.com/PhaseTracer/PhaseTracer ../PhaseTracer
-cd ../PhaseTracer
-git checkout TransitionSolverIntegration
+#!/bin/bash
+PTDIR=PhaseTracer
+if [ ! -d $PTDIR ]; then
+  git clone https://github.com/PhaseTracer/PhaseTracer PhaseTracer
+  cd PhaseTracer/
+  echo "Present Working Directory ${PWD}"
+  mkdir build
+  cd build
+  cmake ..
+  make 
+else
+    echo "Directory $PTDIR already exists"
+fi
+
 
