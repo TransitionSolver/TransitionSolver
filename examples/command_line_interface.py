@@ -11,12 +11,17 @@ from analysis.phase_structure import PhaseStructure
 from analysis.phase_history_analysis import AnalysisMetrics, PhaseHistoryAnalyser
 from analysis.transition_graph import ProperPath
 from analysis import phase_structure
+from gws.gw_analyser import GWAnalyser
+from gws.detectors.lisa import LISA
+from gws.gw_analyser import GWAnalysisSettings
 from typing import Type
 import numpy as np
 import subprocess
 import json
 import pathlib
 import sys
+
+
 
 from util.events import notifyHandler
 
@@ -43,7 +48,7 @@ def writePhaseHistoryReport(fileName: str, paths: list[ProperPath], phaseStructu
         print('Failed to write report.')
 
 
-def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script: str, PT_params: list[str],
+def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str, PT_script: str, PT_params: list[str],
         parameterPoint: list[float], bDebug: bool = False, bPlot: bool = False, bUseBoltzmannSuppression: bool =
         True) -> None:
     # Create the output folder if it doesn't exist already.
@@ -131,14 +136,24 @@ def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script
     print('V(0 , 0 , 100):', potential.Vtot(origin, 100))
     print('V(vh, vs, 100):', potential.Vtot(vev, 100))
     print('The potentials in  PhaseTracer and TransitionSolver need to match for TransitionSolver to work')
-    print('Now TransitionSOlver will analyse the phase history.')
+    print('Now TransitionSolver will analyse the phase history.')
     # Analyse the phase history.
     paths, _, analysisMetrics = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=1.)
 
     # Write the phase history report. Again, this will be handled within PhaseHistoryAnalysis in a future version of the
     # code.
     writePhaseHistoryReport(outputFolder + '/phase_history.json', paths, phaseStructure, analysisMetrics)
+    default_detector = LISA
+    gwa = GWAnalyser(default_detector, potentialClass, outputFolder+'/', bForceAllTransitionsRelevant=False)
 
+    # Determine GWs for a single point
+    if GWs > 0 and GWs < 3:
+       settings = GWAnalysisSettings()
+       if GWs == 2:
+          settings.kappaColl = 1.
+       gwa.determineGWs(settings)
+    elif GWs == 3:
+       gwa.determineGWs_withColl()
 
 if __name__ == "__main__":
     import sys
@@ -146,8 +161,8 @@ if __name__ == "__main__":
     print(sys.argv)
 
     # Check that the user has included enough parameters in the run command.
-    if len(sys.argv) < 4:
-        print('Please specify a model, an output folder, and a parameter point.')
+    if len(sys.argv) < 5:
+        print('Please specify a model (e.g. toy, rss, rss_ht, archil) whether you want GWs computed (0 no, 1 GWs sourced from sound waves and turbulence, see README for other options), an output folder, and a parameter point.')
         sys.exit(1)
 
     modelLabel = sys.argv[1].lower()
@@ -176,9 +191,15 @@ if __name__ == "__main__":
         print(f'Invalid model label: {modelLabel}. Valid model labels are: {modelLabels}')
         sys.exit(1)
 
-    outputFolder = sys.argv[2]
+    # Check for GWs
+    # if 0 no GWs, if 1 compute GWs for sound waves and turbulence
+    # if 2 compute for collsions
+    # if 3 compute for soundaves + turbulence and for collsions separately
+    GWs = int(sys.argv[2])
 
-    _parameterPoint = sys.argv[3]
+    outputFolder = sys.argv[3]
+
+    _parameterPoint = sys.argv[4]
     loadedParameterPoint = False
 
     # First, attempt to treat the parameter point as a file name.
@@ -201,4 +222,4 @@ if __name__ == "__main__":
             print('Failed to load parameter point defined by:', ' '.join(sys.argv[2:]))
             sys.exit(1)
 
-    main(_potentialClass, outputFolder, _PT_script, _PT_params, _parameterPoint, bDebug=False, bPlot=False)
+    main(_potentialClass, GWs, outputFolder, _PT_script, _PT_params, _parameterPoint, bDebug=False, bPlot=False)

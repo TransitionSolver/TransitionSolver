@@ -547,12 +547,14 @@ class GWAnalyser:
             frequencies = np.logspace(-11, 3, 1000)
             self.detector.constructSensitivityCurve(frequencies)
 
-    def determineGWs(self):
+    def determineGWs(self, settings: GWAnalysisSettings = None):
+        # If no settings are supplied, use default settings.
+        # If no settings are supplied, use default settings.
+        if settings is None:
+            settings = GWAnalysisSettings()
         for transitionReport in self.relevantTransitions:
             gws = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
                 self.detector)
-            settings = GWAnalysisSettings()
-            settings.kappaColl = 1.
             gws.determineGWs(settings)
             #gwFunc_regular = gws.getGWfunc_total(soundShell=False)
             gwFunc_soundShell = gws.getGWfunc_total(soundShell=True)
@@ -1685,7 +1687,11 @@ def compareBubRad():
 
 def main(potentialClass, GWsOutputFolder, TSOutputFolder, detectorClass = LISA):
     gwa = GWAnalyser(detectorClass, potentialClass, TSOutputFolder, bForceAllTransitionsRelevant=False)
+    # scan over reference temperature and make plots, as done in https://arxiv.org/abs/2309.05474
     gwa.scanGWs(GWsOutputFolder, bCombined=False)
+    # Just run a single point at percolation temperature
+    settings = GWAnalysisSettings()
+    gwa.determineGWs(settings)
     # Use this for evaluating GWs using thermal params at the onset of percolation.
     #gwa.determineGWs_withColl()
     #scanGWsWithParam(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=True)
