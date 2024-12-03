@@ -149,6 +149,8 @@ def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str,
     # Determine GWs for a single point
     if GWs > 0 and GWs < 3:
        settings = GWAnalysisSettings()
+       if GWs == 1:
+          settings.kappaTurb = 0.05
        if GWs == 2:
           settings.kappaColl = 1.
        gwa.determineGWs(settings)
