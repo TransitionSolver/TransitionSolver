@@ -1755,10 +1755,10 @@ if __name__ == "__main__":
         Detector = sys.argv[4]
     else:
         Detector = LISA
-    #PA: I think for  scanGWs this is then enough anc can call main - need to do that and then figure out calling with parameters after testing that works at least.
     main(RealScalarSingletModel_Boltz, output_dir, TS_output_dir, Detector)
 
-# TODO: develop an interface to run main part of TransitionSolver
+# TODO: decide if we really need to do this here also, after I added GWs to command line interface
+#      develop an interface to run main part of TransitionSolver
 #       and then GWs and the same time.  Should try to avoid writing to json
 #      file and then reading it in.
 #      Inreface can work something like this:
