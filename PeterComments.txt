@@ -63,7 +63,7 @@ When I run the barebones example I first get an empty figure pop up and then onl
 ## outputs.
 
 
-8)  Importance: low; type: code style
+8)  Importance: low; type: code style, status: just for discussion
 
 The notifyHandler and notify_TransitionAnalyser_on_create is something I am not used to.  After reading I think this could be replaced in barebones example by juts passing a Boolean flag (or set of flags) that is later used to set bComputeSubsampledThermalParams.  Maybe there is some utility to this fancy machinery later on, but in barebones it looks overengineered. 
 
@@ -81,7 +81,6 @@ is identifying high temp phases if their highest temp matches exactly hightemp. 
 Make sure we go through all TODO statements in code and either deal with them or at least make sure they do not sound alarming /  make things look bad / unfinished.  e.g. " # TODO: why was it necessary to do it this way?" (line 86, phase_history_analyser.py).  See also "# is it this simple? (added 15/11/2021)" (line 330, phase_history_analysis.py).
 
 
-
 11)  Importance: medium but long term only, type: other use cases
 
  """for i in range(len(phases)):
@@ -89,7 +88,7 @@ Make sure we go through all TODO statements in code and either deal with them or
                 bLowTemperaturePhase[i] = True"""
  (line 94--96, phase_history_analyser.py)
 
-This assumes the low temperature is T=0. This may not be desired if we consider higher scale PTs and maybe don't want to go to T=0?  i don't understand whats going in here anyway with the TODO comments etc.
+This assumes the low temperature is T=0. This may not be desired if we consider higher scale PTs and maybe don't want to go to T=0?  I don't understand whats going in here anyway with the TODO comments etc.
 
 12) Importance: low, type: code style, clarity
 
@@ -98,7 +97,7 @@ The method analysePhaseHistory_supplied has three outputs, paths, a bool and ana
 
 13) Importance: high, type: calculation consistency
 
-We need to make sure we are happy with the treatment of vw and that it is consistent throughout all parts of the code.  I hope we can allow the user to choose:
+We need to make sure  the treatment of vw is consistent throughout all parts of the code.  I hope we can allow the user to choose:
 
 i) to input any fixed value of vw between 0 and 1, throwing an error if exactly 1  or too close to q is used when it will cause  a problem for our numerics (this is in the hydrodynamics parts right?) 
 
@@ -110,7 +109,7 @@ a) I need to check carefully that the user input vw is not being used anywhere w
 
 b) Even if that is checked and all good, its a bit confusing for users  to do it this way and I think will lead to future developers wanting to carefully check the same thing or to potentially introduce bugs, so I think we should discuss other design options. 
 
-Edit later:  I think this is not done consistently in the gws module because there it still seems to use the determineBubbleWallVelocity which is just fixing it to a number!  This should really be fixed it takes the one from getBubbleWallVelocity and we just resect oit if its 1 to some thing clkose that works and flag this to the user (I think reset in getBubbleWallVelocity and use same value everyhwere).
+Edit later:  I think this is not done consistently in the gws module because there it still seems to use the determineBubbleWallVelocity which is just fixing it to a number!  This should really be fixed, it takes the one from getBubbleWallVelocity and we just resect it if its 1 to some thing clkose that works and flag this to the user (I think reset in getBubbleWallVelocity and use same value everyhwere).
 
 
 ## DONE
@@ -131,12 +130,11 @@ Edit later:  I think this is not done consistently in the gws module because the
 
 15) Importance: high, type: code base
 
-As well as the TODO statemenst there are many places in the code where triple quotes are around code.  See line 94--96 and lines 132-150  of phase_history_analysis.py and lines 796 -- 852, 1196--1228, 1328--1331, 1883-1893 of transition_analysis.py.  Sometimes but not always they are preceded by a #TODO and I presume they are effectively commented out code that is not ready yet, though technically triple quotes are not comments and are read by the interpreter as a long string.   
-Anyway obviously these need to be dealt with before release.
+As well as the TODO statemenst there are many places in the code where triple quotes are around code.  See line 94--96 and lines 132-150  of phase_history_analysis.py and lines 796 -- 852, 1196--1228, 1328--1331, 1883-1893 of transition_analysis.py.  Sometimes but not always they are preceded by a #TODO and I presume this is code that is not ready yet.  These need to be dealt with before release.
 
-16)  Importance: don't know, type: question
+16)  Importance: medium, type: generalise
 
-What is the meaning of the hard coded numbers here? Could they in any way be scenario specific?  
+Avoid hardcoding numbers here
 
 maxSonTThreshold = self.estimateMaximumSignificantSonT() + 80
 minSonTThreshold = 80.0
@@ -158,20 +156,20 @@ We have made booleans to do with contributions in the models a fundamental part 
  
 19) Importance: medium, type: user interface
 
--subcrit option never passed to PT in any of our user interfaces as far as I could tell when looking with Cheng. 
+-subcrit option never passed to PT in any of our user interfaces.
 
 
-20) Importance: low to medium, type: model RSS defaults
+20) Importance: low , type: model RSS defaults
 
 Why is temperature scale set to 300 for RSS?  In general I think this should just be the expected physics scale.  We should think what to say to user about these settings in general (Cheng has been asking about them a lot while writing a new model file).   PA: Could change to VEV or say explicitly when describing in RSS model bit that i write now that this is jist roughly the VEV but a bit bigger. 
 
 21) Importance: low to medium, type: settings / user understanding
 
-Need to decide what to tell users about the setting .massShiftHack. We need to somehow communicate details like this as the user will see these options when trying to follow how to add new models, though this is specific to our implementation of the potential.    This is to avoid problems when you want to consider very small masses and need to have minMassThreshold set very low (10^{-10} according to comment.  Then numerical noise may give a non-zero mass to the goldstone and that may affect our results.  PA: this is a bit ugly but specific to model file, maybe we do not need ti explain this, and that is an advanc=tahge of having the documentation rather than pointing people at these examples like I did Cheng.
+Need to decide what to tell users about the setting .massShiftHack. We need to somehow communicate details like this as the user will see these options when trying to follow how to add new models, though this is specific to our implementation of the potential.    This is to avoid problems when you want to consider very small masses and need to have minMassThreshold set very low (10^{-10} according to comment.  Then numerical noise may give a non-zero mass to the goldstone and that may affect our results.  PA: this is a bit ugly but specific to model file, maybe we do not need to explain this, and that is an advantage of having the documentation rather than pointing people at these examples like I did Cheng.
 
 22)  Importance: low to medium, type: user understanding
 
-forbidPhaseCrit --  I don't understand this one myself yet.  Why only check 0 component in RSS, in general why allow slightly negative, isn't this to avoid critical temps between z2 mirrors ?  PA: blocking off zero means the miss phi=0 minima due to numerics (slightly negative),
+forbidPhaseCrit --   explain purpose of this, ie explain why we allow slightly negative values, which is because blocking off zero means it misses phi=0 minima which due to numerics can be slightly negative.
 
 23) Importance: medium, type: error handling
 
@@ -179,7 +177,7 @@ The cause of errors being a PT failure  is not reported (and nor is the error fr
 
 24)  Importamce: medium, type: tidy
 
-We have an empty method in the TransitionFinder class of PhaseTracer TransitionFinder::validateTransition.  The comments are also odd, looks like Lachlan started writimng the explanation of what it should do in comments and them chnaged his mind in the middle of typing and wrote an alternative suggestion instead.
+We have an empty method in the TransitionFinder class of PhaseTracer TransitionFinder::validateTransition.  The comments are also odd, looks like Lachlan started writing the explanation of what it should do in comments and them chnaged his mind in the middle of typing and wrote an alternative suggestion instead.   Needs to be tidied up!
 
 We should probably just delete this...
 
@@ -196,7 +194,7 @@ We should probably just delete this...
 ## this Hubble tension... It can be easily changed in determineGWs
 ## right now (line 188).
 
-28) For future we can remove bag mnodel assumptions from evey place we use the time-temperature relatation, e.g. our most derived from of the JMAK equation.  
+28) For future we can remove bag mnodel assumptions from evey place we use the time-temperature relatation, e.g. our most derived form of the JMAK equation.  
 
 29) Importance: medium, but maybe for future, type: calculations
 We could easily add the other fit values for the bubble collisions from the paper we use.  Maybe its fast to do for this paper. Also can add analytical calculation of the Bubble collison, GW peak amplitide and peak frequency from https://arxiv.org/abs/2107.01845.  This requires coding up their integral as they don't give a fit formulae, so maybe a little mini project for student.   
@@ -220,13 +218,25 @@ We could easily add the other fit values for the bubble collisions from the pape
 ## self.redshiftAmp = (s0/s1)**(4/3) * H1**2 * hoverH0**2
 ##  and just hardcode hoverH0 which is really just a scaling factor. That way it  doesn't appear like we depend on data for h and simplifies things a little
 
-DONE but waiting on check from Lach;lan and then  I shoudl at least fix our GWreview on arxiv if not issue an erratum
-32)  The sound wave regular fit has a numerical prefactor for the peak amplitude which is missing a factor h^2, same as our review unfortunately.  The correct prefcator is given in the draft and I will fix this.
+## DONE 
+## But must fix in our GWreview on arxiv if not issue an erratum
+## 32) The sound wave regular fit has a numerical prefactor for the
+## peak amplitude which is missing a factor h^2, same as our review
+## unfortunately.  The correct prefcator is given in the draft and I
+## will fix this.
 
-DONE but waiting on Lachlan to confirm
-33) The sound shell model prefcator is OK but we use \tilde{\omega} = 0.01 there while we use 0.012 for regular fit (this is the exact number suggested in the numerical simulation paper erratum).  Of course they give a range of values from the simulations and I think Lachlan picked 0.01 based on the different values in that table as a resonable choice, but I feel we should go with their choice unless we really want another number from the table as more suitable.  Eitehr way we should use the same in both cases.
+## DONE
+## 33) The sound shell model prefcator is OK but we use \tilde{\omega}
+## = 0.01 there while we use 0.012 for regular fit (this is the exact
+## number suggested in the numerical simulation paper erratum).  Of
+## course they give a range of values from the simulations and I think
+## Lachlan picked 0.01 based on the different values in that table as
+## a resonable choice, but I feel we should go with their choice
+## unless we really want another number from the table as more
+## suitable.  Eitehr way we should use the same in both cases.
 
-34) For calculating the hubble paraneter we seem to have two methods in the TransitionAnalyser class and two functions defined at in transition_analyser.py presambly for use outside of the class.
+34) Importance: low,  type: tidy
+For calculating the hubble parameter we seem to have two methods in the TransitionAnalyser class and two functions defined at in transition_analyser.py presambly for use outside of the class.
 
 Inside class we have :
 calculateHubbleParameterSq(self, T: float) -> float
@@ -242,103 +252,55 @@ I guess these are when you don't want to use the transition_analysis class.  But
 
 
 
-35) I could not easily see where we are setting energyDensityFalse in HydroVars such that we subtract (or don't if thats the case) the ground state energy was. I think because I was searching for the full variabe name when its set as just ef.  I then realised in getHydroVars_new  we introduce FED_f and FED_t that we do this subtraction, but its easy to miss as we then redefine
+35)  Importance: low,  type: tidy
+
+It can be hard tp see where we are setting energyDensityFalse in HydroVars such that we subtract the ground state energy.  In getHydroVars_new  we introduce FED_f and FED_t that we do this subtraction, but its easy to miss as we then redefine
 Ffm = FED_f(T)
 Ftm = FED_t(T)
-In getHydroVars I don't see it being subtracted, so it must be this one? In fact it looks like getHydroVars is an old less efficient version of getHydroVars_new ?  Note here I mean the routines in hydrodynamics.py.  In transition_analysis.py there is a wrapper for calling getHydroVars_new from hydrodymnamics which is called getHydroVars.   Gets a bit confusing.
+Should be made more transparent if possible
+
+## DONE:
+## 36)
+
+37)  Importance: medium,  type: stabilty
+In hydrodybamics there are lots of places where we use the definition of the derivative to compute derivatives numerically.  But we don't ever check for problems.  it seems we are choosing step sizes carefully but still I expect these could fall over sometimes, shouldn't we catch such problems?  See e.g, calculateEnergyDensityAtT_singlePhase_supplied for an example!
 
 
-36) why does calculateEnergyDensityAtT_singlePhase take both phases as arguments and then calculate with only one after checking a boolean argument?  Why not just pass the phase you need?     Ah it needs the from_phase and the to_phase to compute Tstep.  I don't understand this part though...  Tstep seems to be for the numerical derivative.  I guess he can't use just one, as it might be at the origin and not give a good scale?  I'd like to understand the logic of Tstep though, but i don't follow looking at it quickly.
-
-
-37) In hydrodybamics there are lots of places where we use the definition of the derivative to compute derivatives numerically.  But we don't ever check for problems.  it seems we are choosing step sizes carefully but still I expect these could fall over sometimes, shouldn't we catch such problems?  See e.g, calculateEnergyDensityAtT_singlePhase_supplied for an example!
-
-
-38) In hydrodynamics there are two routines for getting the variables:
+38) Importance: low,  type: tidy
+In hydrodynamics there are two routines for getting the variables:
 * getHydroVars
-*getHydroVars_new
-The latter seems to be a new more efficient version and this one also subtracts off the ground state energy for the energy density while the former does not. Hwever the former still seems to be used in line 112 to gte the vakues for the reheating
+* getHydroVars_new
+The latter seems to be a new more efficient version and this one also subtracts off the ground state energy for the energy density while the former does not. However the former still seems to be used in line 112 to get the values for the reheating
 self.hydroVarsReh = hydrodynamics.getHydroVars(self.fromPhase, self.toPhase, self.potential, self.Treh)
-which is used to get the entropy.  I am not sure why the old version is used here though. Is this intentional or it just doesn't matter?
+which is used to get the entropy.
+Should be consistent. 
 
 
-39) completionThreshold is set to 1e-2 inside analyseTransition in transition_analysis.py.  We should instead replace this line with a call to get a setting and only the default of that setting should be 0.01.
+39) Importance: low to medium,  type: settings/hardcoding
+completionThreshold is set to 1e-2 inside analyseTransition in transition_analysis.py.  We should instead replace this line with a call to get a setting and only the default of that setting should be 0.01.
 
 
-40)  Some confusion below that I figurd out after reading and and have used to improve the comments in code (for other idiots like me).  But now I am worry -- how reliable is our routine transitionCouldComplete ?  Could this sometimes rule out completion  and be wriong based on the assumptions made inside it?  Maybe becauise we have a diferent action curve shape to what Lachlan expects?
-------
-## I don't understand in analyseTransition how the following line does
-## what the comment above says?
+40) Importance: medium,  type: samplimg/ generality
 
-## # Keep sampling until we have identified the end of the phase
-#         transition or that the transition doesn't complete.  while
-#         not self.bCheckPossibleCompletion or
-#         self.transitionCouldComplete(maxSonTThreshold +
-#         toleranceSonT, Pf):
-## The second bit is clear as long as that is true we continue. I
-## guess there is check inside the routine for completion being
-## reached.  But the firts bit seems to continue only if
-## bCheckPossibleCompletion is false, ie we keep the whle loop going
-## when we do *not* want to check completion?  I don't get it....
-## Also maybe some brackers around "not self.bCheckPossibleCompletion"
-## would avoid readers having to double check order of the not and or?
-
-## So the flag bCheckPossibleCompletion is currently true. This means
-## not bCheckPossibleCompletion is False. So the the logic of the OR
-## statement means its true if transitionCouldComplete is true and
-## false if its false.  So we continue as lonsg as the transition
-## could complete.  If bCheckPossibleCompletion is set to false then
-## we would always continue regardless so this would just eb an
-## infinte while loop that needs to be terminated by something in the
-## body of it.  Based on the comment avout this flag trhat will be
-## when T=0
+Check reliability of our routine transitionCouldComplete fpor models with different action curves.  make sure it does not sometimes rule out completion  incorrectly based on the assumptions made inside it. 
 
 
+41) Importance: high,  type: samplimg/ generality
 
-
-41) I may have already put a comment asking about unguarded numerical
+Make sure we catch and handle errors that come from  numerical
 routines that may throw errors / go wrong. For example we call toms748
-in calculateReheatTemperature.  I think we did have tio catch errors
+in calculateReheatTemperature.  I think we did have to catch errors
 from a C++ implementation of this (in boost I think?) so surely we can
 have issues from the scipy.optimise one too?
 
 
-42) I got confused about where we get the code for computing
-kappa_{sw} from. Since we only account for the speed of sound in the
-false vacuum varying (ie where they use the nu model), in priciple it
-ought to be possible to get it from the paper where this was firts
-done: 2004.06995 as they do supply a code snippet for this in that
-paper.  However, Lachlan made some comments that seemed to say it was
-from the follow up 2010.09744 where they do ythe numu model.  I
-thought this was probbaly a typo in his comment but then I looked at
-the code again (giese_kappa.py) and notcied the comment at the top
-which says its copied from 2010.09744 so mits unlikely he got this
-mixed up twice. i cpmpared the code to the code in the appendices and
-it does look more like the code in the appendix of 2010.09744, some
-bits are just identiocal but it seems he made some extra functions to
-also just do the nu model. So as far as I can tell giese_kappa.py
-comes from 2010.09744 but then has extra routines that ere wither
-modified from the ones there to work with the simpler nu model or were
-taken from 2004.06995 and repackaged to fit there?  IO don'yt know how
-to describe this so I need to chat to Lachlan and get clarification.
-
-43) I am concerned about our use of K in bubble collsions, doesn't
-that mean we use the efficiency factor from sound waves?  Shouldn't we
-replace K -> K / kappa ?  I am fairly sure we need to fix this.  PA: we were already doing something but PA will swutch ti nsuing version which inclorporates delta, but uses kappa_{coll}.
-
-44) I get this seemingly non-fatal error message output a number of times when running the gws part of the code:
+42) Importance: high,  type: error handling
+We get this non-fatal error message output a number of times when running the gws part of the code:
 
 intdy--  t (=r1) illegal      
       in above message,  r1 =  0.9937174800926D+00
       t not in interval tcur - hu (= r1) to tcur (=r2)       
       in above,  r1 =  0.9937174800926D+00   r2 =  0.9936930671188D+0
 
-I only noticed it yesterday but I checked I get it going all the way back to commit 19ad19244ae419e919636ed98b391d3c571e319e .  
-
-It seems like an error from a dependent package used for the integration but I haven't learned much chucking it into google.
-
-Possibly I really didn't see it before and its a new thing coming from an update to the dependent package i have installed locally?
-
-PA: we also noticed the rest of the output also has an (obsure) error message.  Both Lachlan and Peter will look into this again.
-
+Need to handle this
 
