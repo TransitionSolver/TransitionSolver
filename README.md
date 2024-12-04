@@ -122,4 +122,4 @@ Simply import `util.events.NotifyHandler` into a script to enable a global event
 Then, when `ActionSampler` is created, the `configureActionSampler` function will be called. This allows for very convenient configuration of objects that are not created directly from the main script. Note that the existing queried events currently all have a tag of the form `<className>-<eventName>`, and the event queried from the creation of an object always has the `eventName` of `on_create`. This is just a convention, and all other events can be named arbitrarily.
 
 # Support
-Until release of the full TransitionSolver manual, limited documentation and support is available.  However if you encouter problems you may contact [peter.athron@coepp.org.au](mailto:peter.athron@coepp.org.au) with queries or bug reports. 
+Until release of the full TransitionSolver manual, limited documentation and support is available.  However if you encouter problems you may contact [transitionsolver@gmail.com](mailto:transitionsolver@gmail.com) with queries or bug reports. 
