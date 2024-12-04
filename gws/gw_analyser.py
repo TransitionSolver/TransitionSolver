@@ -16,7 +16,7 @@ from gws.hydrodynamics import HydroVars
 from models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz
 from models.real_scalar_singlet_model_ht import RealScalarSingletModel_HT
 from models.toy_model import ToyModel
-from models.Archil_model import SMplusCubic
+from models.supercool_model import SMplusCubic
 from models.analysable_potential import AnalysablePotential
 from analysis import phase_structure
 from gws import giese_kappa, hydrodynamics
@@ -547,7 +547,7 @@ class GWAnalyser:
             frequencies = np.logspace(-11, 3, 1000)
             self.detector.constructSensitivityCurve(frequencies)
 
-    def determineGWs(self, settings: GWAnalysisSettings = None):
+    def determineGWs(self, GWsOutputFolder, settings: GWAnalysisSettings = None):
         # If no settings are supplied, use default settings.
         # If no settings are supplied, use default settings.
         if settings is None:
@@ -594,9 +594,9 @@ class GWAnalyser:
             plt.legend(['noise', 'total', 'sw', 'turb', 'coll'])
             plt.ylim(bottom=1e-20, top=1e5)
             plt.margins(0, 0)
-            plt.show()
+            plt.savefig(GWsOutputFolder+'GWs_SignalVsSensitiviy.pdf')
 
-    def determineGWs_withColl(self, file_name=None):
+    def determineGWs_withColl(self, GWsOutputFolder, file_name=None):
         for transitionReport in self.relevantTransitions:
             gws_noColl = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
                 self.detector)
@@ -662,8 +662,8 @@ class GWAnalyser:
             plt.margins(0, 0)
             plt.tight_layout(pad=1.8)
             pathlib.Path(str(pathlib.Path('output/plots'))).mkdir(parents=True, exist_ok=True)
-            #plt.savefig('output/plots/GWs_BP1.pdf')
-            plt.show()
+            plt.savefig(GWsOutputFolder+'GWs_SignalVsSensitiviy.pdf')
+            #plt.show()
 
     def getHackMeanBubbleRadius(self, transitionReport: dict):
         T = transitionReport['TSubsample']
@@ -1691,7 +1691,7 @@ def main(potentialClass, GWsOutputFolder, TSOutputFolder, detectorClass = LISA):
     gwa.scanGWs(GWsOutputFolder, bCombined=False)
     # Just run a single point at percolation temperature
     settings = GWAnalysisSettings()
-    gwa.determineGWs(settings)
+    gwa.determineGWs(GWsOutputFolder, settings)
     # Use this for evaluating GWs using thermal params at the onset of percolation.
     #gwa.determineGWs_withColl()
     #scanGWsWithParam(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=True)
@@ -1724,7 +1724,7 @@ if __name__ == "__main__":
     # read in model labels in lower case regardless of input case
     modelLabel = sys.argv[1].lower()
     print("modellabel set to ", modelLabel)
-    modelLabels = ['toy', 'rss', 'rss_ht', 'archil']
+    modelLabels = ['toy', 'rss', 'rss_ht', 'smpluscubic']
     # The AnalysablePotential subclass corresponding to a particular model label.
     models = [ToyModel, RealScalarSingletModel_Boltz, RealScalarSingletModel_HT, SMplusCubic]
     # PhaseTracer script to run, specific to a particular model label.
@@ -1798,7 +1798,7 @@ if __name__ == "__main__":
 #         # read in model labels in lower case regardless of input case
 #         modelLabel = sys.argv[1].lower()
 #         print("modellabel set to ", modelLabel)
-#         modelLabels = ['toy', 'rss', 'rss_ht', 'archil']
+#         modelLabels = ['toy', 'rss', 'rss_ht', 'smpluscubic']
 #         # The AnalysablePotential subclass corresponding to a particular model label.
 #         models = [ToyModel, RealScalarSingletModel_Boltz, RealScalarSingletModel_HT, SMplusCubic]
 #         # PhaseTracer script to run, specific to a particular model label.

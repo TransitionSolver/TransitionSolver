@@ -16,7 +16,7 @@ from analysis.phase_history_analysis import PhaseHistoryAnalyser, AnalysisMetric
 from analysis.phase_structure import PhaseStructure
 from analysis.transition_analysis import TransitionAnalyser
 from analysis.transition_graph import ProperPath
-from models.Archil_model import SMplusCubic
+from models.supercool_model import SMplusCubic
 from util.events import notifyHandler
 
 
@@ -235,7 +235,7 @@ def debugScanPoint(outputFolderName: str, scanIndex: int, pointIndex: int):
 
 
 def checkPotentialAtZeroT():
-    potential = SMplusCubic(*np.loadtxt('output/pipeline/archilBoltz/7/32/parameter_point.txt'), bUseBoltzmannSuppression=True)
+    potential = SMplusCubic(*np.loadtxt('output/pipeline/SMplusCubicBoltz/7/32/parameter_point.txt'), bUseBoltzmannSuppression=True)
     x = np.linspace(-10, 260, 1000)
     V = potential.Vtot([[X] for X in x], 0., include_radiation=False)
     plt.plot(x, V)
@@ -243,6 +243,6 @@ def checkPotentialAtZeroT():
 
 
 if __name__ == "__main__":
-    #scanWithPipeline('output/pipeline/archilBoltz', scanIndex=7)
-    plotPipeline('output/pipeline/archilBoltz', 6, 100)
-    #debugScanPoint('output/pipeline/archil', 3, 0)
+    #scanWithPipeline('output/pipeline/SMplusCubicBoltz', scanIndex=7)
+    plotPipeline('output/pipeline/SMplusCubicBoltz', 6, 100)
+    #debugScanPoint('output/pipeline/SMplusCubic', 3, 0)

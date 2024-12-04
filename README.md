@@ -71,19 +71,19 @@ For supported models `TransitionSolver` can also be run using `command_line_inte
 	python3 -m examples.command_line_interface <modelLabel> <GWs> <outputFolderName> <inputFileName>
 	python3 -m examples.command_line_interface <modelLabel> <GWs> <outputFolderName> <parameter value 1> <parameter value 2> ... <parameter value n>
 	
-The first method reads parameter values from an input text file `<inputFileName>`. It must be a `.txt` file. The second method reads parameter values 1 to n from the command line. Both methods save results in the folder specified by `<outputFolderName>`. The argument `<modelLabel>` specifies which model to use. Currently supported model labels are `rss` for the real scalar singlet model, `rss_ht` for the high temperature expansion, and `toy` for the toy model.
+The first method reads parameter values from an input text file `<inputFileName>`. It must be a `.txt` file. The second method reads parameter values 1 to n from the command line. Both methods save results in the folder specified by `<outputFolderName>`. The argument `<modelLabel>` specifies which model to use. Currently supported model labels are `rss` for the real scalar singlet model, `rss_ht` for the high temperature expansion, `toy` for the toy model and 'smpluscubic' for a model based upon a non-linear realisation of EWSB that can exibit strong supercooling.
 
 The second argument `<GWs>` should be an integer that specifies whether or not to use output of the basic functionality TransitionSolver to compute graviational waves (GWs),  and if yes with what sources.  0 means no GWs are computed, 1 means GWs with fluid contributions (sound waves and turbulence) only, 2 means gravitational waves from the scalar field / bubble collisions only, and 3 we present separate GWs predictions for bubble collisions and fluid contributions but we do not combine them. See Computing gravitational waves section below
 
 Here are some examples that can be run using the first method where the input file is passed:
 
-	python3 -m examples.command_line_interface rss 0 output/RSS/RSS_BP<n> input/RSS/RSS_BP<n>.txt
-	python3 -m examples.command_line_interface rss_ht 0 output/RSS_HT/RSS_HT_BP1 input/RSS_HT/RSS_HT_BP1.txt
-	python3 -m examples.command_line_interface toy 0 output/Toy/Toy_BP<n> input/Toy/Toy_BP<n>.txt
+	python3 -m examples.command_line_interface rss 1 output/RSS/RSS_BP<n> input/RSS/RSS_BP<n>.txt
+	python3 -m examples.command_line_interface rss_ht 1 output/RSS_HT/RSS_HT_BP1 input/RSS_HT/RSS_HT_BP1.txt
+	python3 -m examples.command_line_interface toy 1 output/Toy/Toy_BP<n> input/Toy/Toy_BP<n>.txt
 
 Here, `<n>` ranges from 1 to 5 because only five benchmarks for the `rss` and `toy` models have been provided in the `input` subdirectory. The `rss_ht` model currently only has one benchmark. Equivalently, using the second method for running `command_line_interface`, one could do e.g.\
 
-	python3 -m examples.command_line_interface toy output/Toy/Toy_BP5 0.1040047755 250 3.5 0.2
+	python3 -m examples.command_line_interface toy 0 output/Toy/Toy_BP5 0.1040047755 250 3.5 0.2
 
 # Computing gravitational waves
 

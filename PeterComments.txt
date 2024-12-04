@@ -1,48 +1,19 @@
 List of possible improvements
 
 1)  Importance: Not urgent ;  type: Interfacing improvement ; 
-Currently we only interface PhaseTracer and TranbsitionSolver via text file output.   This has some advantages in terms of simplicity but can be a pain for large scans that GAMBIT prefers to avoid.  Would be nice to also have a routine in PhaseTracer that passed out a phase)_structure object, avoiding the need to do this.
+Currently we only interface PhaseTracer and TranbsitionSolver via text file output, would be better to pass directly and ensure maximum effiency.    On PT side  should add a routine to return phase_structure object rather than writing to file.
 
 2) Importance: minor; type: examples tidy up 
 
-When I run the barebones example I first get an empty figure pop up and then only after I close it do i get the proper figures appearing.  i am not sure why, I don't think any plots are missing just some bug in the way we do this maybe.  I also get a long error message from the tex, so maybe I do miss one though.  Possibly its an issue with my texlive distribution.
+When I run the barebones example I first get an empty figure pop up and then only after I close it do i get the proper figures appearing.    Possibly its an issue with my texlive distribution.
 
-3) Importance: minor; type: examples tidy up ; status: maybe handled already 
-
-Actually this can be switched off by setting bPlot = False.  So maybe that is enough.
-
-I am not a fan of having examples pop up plots anyway.  I guess its nice as demo but I suggest at least only have pone do that.  Others should save these or even make plot a separate step such that also matplotlib is an optional dependency.  If you think about scanning, people do not want to be create plots for each point.
-
-Update: I switched bplot = False and bDevbug = False on in the command_line_interface.  I think thats how we want it for distribution, though locally we can put them to true while developing.  We aslo currenly output the potential for various phi and T values firts in PT and then in command_line_interface.  This is to cross check the potential matches in both.  I am adding comments to command_line_interface and the PT models tp m ake this clearer if we want to release like this. But we may also need to quantify the degree to which they match to avoid users thinking small deviations that come from numerical noise means it can't work
-
-4) Importance: medium; type: understanding numerics
-When I replace the line
-
-parameterPoint = np.loadtxt('input/RSS/RSS_BP1.txt')
-
-in barebones_example.py with what I believe to be exactly equivalent input
-
-#parameterPoint = np.array([-7.253805920400513969e+02, -1.142030590385311370e+02, 2.987030761010101010e-01, 6.999301941045084732e+02, 4.256276196807469319e+02, 2.780020068332878291e+05, 4.049553405540934909e+04, 5.828128166279837596e-02, 8.498960515918183023e-02, 4.516261190913655743e-01, 2.791372362500696909e+05, 4.081096031831684377e+04])
-
-I get slightly different results, ie
-
-< Transition strength: 1.021954047970647
-< Mean bubble separation (Tp): 351342943232572.44
-< Average bubble radius (Tp):  151208621569929.0
-< Hubble radius (Tp):          404816806134528.0
-< Mean bubble separation (Tf): 623021184326276.1
-< Average bubble radius (Tf):  642254104256177.4
-< Hubble radius (Tf):          545141730854802.4
----
-> Transition strength: 1.0219609945307169
-> Mean bubble separation (Tp): 351332428929661.9
-> Average bubble radius (Tp):  151189841295837.2
-> Hubble radius (Tp):          404803089764954.3
-> Mean bubble separation (Tf): 622986289888833.1
-> Average bubble radius (Tf):  642182978112612.1
-> Hubble radius (Tf):          545135676759565.5
-
-I see similar changes just running the same way several times and i also see these kind of differences in the json files. So I think the issue is we have random numerical uncertainty enter even with exact same input on same machine.  There is nothing wrong with this as long as its not too large and as long as we know about it and document it so users are forewarned and don't lose trust when they notice this themselves. 
+## DONE: variation is from PhaseTracer numerics, we know about these and can set seed  
+## 4 ) Importance: medium; type: understanding numerics
+##  Results vary slightly from run to run, which may make users
+##  suspicious and is annoying for testing.
+##  But we may also need to quantify the degree to which they match
+##  to avoid users thinking small deviations that come from numerical
+##  noise means it can't work
 
 ## IGNORE/RESOLVED
 ## 5) Importance: minor; type: output tidy up ;  status: addressed
@@ -53,11 +24,17 @@ I see similar changes just running the same way several times and i also see the
 ## the code runs.  Can we make an option to pipe to some log file.
 ## Check this is not already done in scan code.
 
-6) Importance: low ; type: user illustration improvement ; status: maybe addressed
+# 6) Importance: low ; type: user illustration improvement ; status:
+# addressed
+# I just added a comment explaining how to do this above the one in
+# barebones example. Maybe that is enough.
 
-I just added a comment explaining how to do this above the one in barebones example. Maybe that is enough. 
+# Do we or could we add an example where we just enter the
+# parameterPoint in code rather than loading from file? (I just
+# deleted some commented out code that looked like this...). Without
+# this I think a user would need to look into the code (check this
+# makes sense before adding)
 
-Do we or could we add an example where we just  enter the parameterPoint in code rather than loading from file? (I just deleted some commented out code that looked like this...). Without this I think a user would need to look into the code (check this makes sense before adding)   
 
 ## IGNORE/RESOLVED:
 ## 7)  Importance: low to medium; type: code confusion or memory efficiency

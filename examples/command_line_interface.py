@@ -2,7 +2,7 @@ from __future__ import annotations
 import traceback
 
 from analysis.transition_analysis import TransitionAnalyser
-from models.Archil_model import SMplusCubic
+from models.supercool_model import SMplusCubic
 from models.analysable_potential import AnalysablePotential
 from models.toy_model import ToyModel
 from models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz
@@ -153,9 +153,9 @@ def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str,
           settings.kappaTurb = 0.05
        if GWs == 2:
           settings.kappaColl = 1.
-       gwa.determineGWs(settings)
+       gwa.determineGWs(outputFolder+'/', settings)
     elif GWs == 3:
-       gwa.determineGWs_withColl()
+       gwa.determineGWs_withColl(outputFolder+'/')
 
 if __name__ == "__main__":
     import sys
@@ -164,13 +164,13 @@ if __name__ == "__main__":
 
     # Check that the user has included enough parameters in the run command.
     if len(sys.argv) < 5:
-        print('Please specify a model (e.g. toy, rss, rss_ht, archil) whether you want GWs computed (0 no, 1 GWs sourced from sound waves and turbulence, see README for other options), an output folder, and a parameter point.')
+        print('Please specify a model (e.g. toy, rss, rss_ht, smpluscubic) whether you want GWs computed (0 no, 1 GWs sourced from sound waves and turbulence, see README for other options), an output folder, and a parameter point.')
         sys.exit(1)
 
     modelLabel = sys.argv[1].lower()
 
     # Support model labels.
-    modelLabels = ['toy', 'rss', 'rss_ht', 'archil']
+    modelLabels = ['toy', 'rss', 'rss_ht', 'smpluscubic']
     # The AnalysablePotential subclass corresponding to a particular model label.
     models = [ToyModel, RealScalarSingletModel_Boltz, RealScalarSingletModel_HT, SMplusCubic]
     # PhaseTracer script to run, specific to a particular model label.
