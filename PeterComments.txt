@@ -103,7 +103,7 @@ i) to input any fixed value of vw between 0 and 1, throwing an error if exactly 
 
 ii) select the Chapman-Jouguet velocity which varies with temperature consistently throughout the code.
 
-I *think* it does mostly work this way now with getBubbleWallVelocity returning the CJ vw when theflag bUseChapmanJouguetVelocity is set True and the user set vw otherwise.  However the fact that the Chapman-Jouguet velocity is indicated via a flag bUseChapmanJouguetVelocity, but you still pass a vw to the phase history analyser (in e.g. line  137 of the command_line_interface so) means:
+Currently we have getBubbleWallVelocity returning the CJ vw when theflag bUseChapmanJouguetVelocity is set True and the user set vw otherwise.  However the fact that the Chapman-Jouguet velocity is indicated via a flag bUseChapmanJouguetVelocity, but you still pass a vw to the phase history analyser (in e.g. line  137 of the command_line_interface so) means:
 
 a) I need to check carefully that the user input vw is not being used anywhere when  bUseChapmanJouguetVelocity = True 
 
