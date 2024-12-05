@@ -64,11 +64,13 @@ def kappaNuMuModel(cs2b,cs2s,al,vw):
         almax,wow = getalNwow(0,vm,vw,cs2b,cs2s)
         if almax<al:
             print ("alpha too large for shock")
+            raise Exception("alpha too large for shock")
             return 0
         vp = min(cs2s/vw,vw)
         almin,wow = getalNwow(vp,vm,vw,cs2b,cs2s)
         if almin>al:
             print ("alpha too small for shock")
+            raise Exception("alpha too small for shock")
             return 0
         iv = [[vp,almin],[0,almax]]
         while (abs(iv[1][0]-iv[0][0])>1e-7):
@@ -96,6 +98,8 @@ def kappaNuModel(cs2,al,vp,n=501):
     disc = 4*vp**2*(1.-nu)+tmp**2
     if disc<0:
         print("vp too small for detonation")
+        print("vp = ", vp, "al = ", al, "cs2 = ", cs2, "disc =", disc)
+        raise Exception("vp too small for detonation")
         return 0
     vm = (tmp+np.sqrt(disc))/2/(nu-1.)/vp
     wm = (-1.+3.*al+(vp/vm)*(-1.+nu+3.*al))
