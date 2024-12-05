@@ -73,7 +73,7 @@ For supported models `TransitionSolver` can also be run using `command_line_inte
 	
 The first method reads parameter values from an input text file `<inputFileName>`. It must be a `.txt` file. The second method reads parameter values 1 to n from the command line. Both methods save results in the folder specified by `<outputFolderName>`. The argument `<modelLabel>` specifies which model to use. Currently supported model labels are `rss` for the real scalar singlet model, `rss_ht` for the high temperature expansion, `toy` for the toy model and 'smpluscubic' for a model based upon a non-linear realisation of EWSB that can exibit strong supercooling.
 
-The second argument `<GWs>` should be an integer that specifies whether or not to use output of the basic functionality TransitionSolver to compute graviational waves (GWs),  and if yes with what sources.  0 means no GWs are computed, 1 means GWs with fluid contributions (sound waves and turbulence) only, 2 means gravitational waves from the scalar field / bubble collisions only, and 3 we present separate GWs predictions for bubble collisions and fluid contributions but we do not combine them. See Computing gravitational waves section below
+The second argument `<GWs>` should be an integer that specifies whether or not to use output of the basic functionality TransitionSolver to compute graviational waves (GWs),  and if yes with what sources.  0 means no GWs are computed, 1 means GWs with fluid contributions (sound waves and turbulence) only, 2 means gravitational waves from the scalar field / bubble collisions only, and 3 we present separate GWs predictions for bubble collisions and fluid contributions but we do not combine them. See Computing gravitational waves section below for more details.
 
 Here are some examples that can be run using the first method where the input file is passed:
 
@@ -85,6 +85,8 @@ Here, `<n>` ranges from 1 to 5 because only five benchmarks for the `rss` and `t
 
 	python3 -m examples.command_line_interface toy 0 output/Toy/Toy_BP5 0.1040047755 250 3.5 0.2
 
+Note that for the bubble wall velocity the user may either choose to fix vw to the Chapman-Jouguet velocity which ensures it transforms as a detonation for which the TransitionSolver calculations code is most reliable or to a value input by the user.  Currently this is controlled by the transitionAnalyser boolean flag bUseChapmanJouguetVelocity and  GWAnalysisSetting  flag of same name. In the command line interface these are both controled by the bool bUseCJvw.  The input vw is passed as an argument of analysePhaseHistory_supplied which is called in all the example scripts and the command line interface.  However be warned that fro GWs choose a vw that is smaller than the Chapman Jouguet velocity will lead to an error being thrown as currenly only this is supported.  This will be chnaged in the near future.   
+
 # Computing gravitational waves
 
 TransitionSolver also comes with a module for computing the GW spectrum in the gws folder.  The GW spectra are computed from fit formulae as described in [arXiv:2309.05474](https://arxiv.org/abs/2309.05474) and [arXiv:2306.17239](https://arxiv.org/abs/2306.17239).  To compute gravitational waves while running basic functionality of PhaseTracer please use the command line arguments above, specifying 1, 2 or 3 for GWs. If GWs is set to:
@@ -94,6 +96,7 @@ TransitionSolver also comes with a module for computing the GW spectrum in the g
 2 the GWs are computed for only the bubble collisions  / scalar field source, where we assume a runaway bubble wall due to a lack of friction means all the energy remains in the scalar field.  For this source we assume the efficiency coefficient $\kappa_{coll} = 1$, though this can also be set by a user if they change the settings object passed in the command_line_interface.py.
 
 3  GWs predictions from both fluid only and from bubble collisions only are computed and presented separately.  
+
 
 
 To use the GW spectrum for a point after Transition has already been run and the results saved to an output folder <TS_Output_Directory> then you can compute (or recompute) the GWs spectrum and create plots showing how the results depend on the transition temperature (similar to plats that appear in https://arxiv.org/abs/2309.05474.  To do this one can use the following command:
