@@ -109,6 +109,8 @@ If no command line arguments are specified, ie
 
 then a default model and location will be used based on defaults that are specified in gw_analyser.py (search for default_model).
 
+Note if you use it this way, you must currently manually ensure that you set the bUseChapmanJouguetVelocity in the main routine of the gw_analyser script, to the same value as used in the original run of TransitionSolver.
+
 
 # Defining a model
 Unfortunately, defining a model currently requires double effort: it must be defined in `TransitionSolver` and `PhaseTracer`. In `PhaseTracer`, the model should extend either `Potential` or `OneLoopPotential`. In `TransitionSolver`, the model should extend `AnalysablePotential`, which in turn extends `CosmoTransitions`' `generic_potential`. See `ToyModel.hpp` in `PhaseTracer/EffectivePotential/include/models` and `toy_model.py` in `TransitionSolver` for a simple example model.  In future versions it should be possible to only enter one potential and use PhaseTracer to compute the bounce action.  In future versions this duplication of effort should be removed.
