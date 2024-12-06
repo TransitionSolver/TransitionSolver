@@ -85,7 +85,7 @@ Here, `<n>` ranges from 1 to 5 because only five benchmarks for the `rss` and `t
 
 	python3 -m examples.command_line_interface toy 0 output/Toy/Toy_BP5 0.1040047755 250 3.5 0.2
 
-Note that for the bubble wall velocity the user may either choose to fix vw to the Chapman-Jouguet velocity which ensures it transforms as a detonation for which the TransitionSolver calculations code is most reliable or to a value input by the user.  Currently this is controlled by the transitionAnalyser boolean flag bUseChapmanJouguetVelocity and  GWAnalysisSetting  flag of same name. In the command line interface these are both controled by the bool bUseCJvw.  The input vw is passed as an argument of analysePhaseHistory_supplied which is called in all the example scripts and the command line interface.  However be warned that fro GWs choose a vw that is smaller than the Chapman Jouguet velocity will lead to an error being thrown as currenly only this is supported.  This will be chnaged in the near future.   
+Note that for the bubble wall velocity the user may either choose to fix vw to the Chapman-Jouguet velocity which ensures it transforms as a detonation for which the TransitionSolver calculations code is most reliable or to a value input by the user.  Currently this is controlled by the transitionAnalyser boolean flag bUseChapmanJouguetVelocity and  GWAnalysisSetting  flag of same name. In the command line interface these are both controled by the bool bUseCJvw.  The input vw is passed as an argument of analysePhaseHistory_supplied which is called in all the example scripts and the command line interface.  However be warned that fro GWs choose a vw that is smaller than the Chapman Jouguet velocity will lead to an error being thrown as currenly only this is supported.  This will be chnaged in the near future.
 
 # Computing gravitational waves
 
@@ -107,7 +107,7 @@ If no command line arguments are specified, ie
 
       python3 -m gws.gw_analyser
 
-then a default model and location will be used based on defaults that are specified in gw_analyser.py (search for default_model).  By default the signal to noise ratio is computed for LISA.  However if there is an alternative class added in gws/detectors (see the gws/detectors/lisa.py for an example) then the name of this class can be passed as a final optional argument.  
+then a default model and location will be used based on defaults that are specified in gw_analyser.py (search for default_model).  By default the signal to noise ratio is computed for LISA.  However if there is an alternative class added in gws/detectors (see the gws/detectors/lisa.py for an example) then the name of this class can be passed as a final optional argument.
 
 Note if you use it this way, you must currently manually ensure that you set the bUseChapmanJouguetVelocity in the main routine of the gw_analyser script, to the same value as used in the original run of TransitionSolver.
 
@@ -132,10 +132,7 @@ Simply import `util.events.NotifyHandler` into a script to enable a global event
 Then, when `ActionSampler` is created, the `configureActionSampler` function will be called. This allows for very convenient configuration of objects that are not created directly from the main script. Note that the existing queried events currently all have a tag of the form `<className>-<eventName>`, and the event queried from the creation of an object always has the `eventName` of `on_create`. This is just a convention, and all other events can be named arbitrarily.
 
 # Support
-Until release of the full TransitionSolver manual, limited documentation and support is available.  However if you encouter problems you may contact [transitionsolver@gmail.com](mailto:transitionsolver@gmail.com) with queries or bug reports. 
+Until release of the full TransitionSolver manual, limited documentation and support is available.  However if you encouter problems you may contact [transitionsolver@gmail.com](mailto:transitionsolver@gmail.com) with queries or bug reports.
 
 # Credit and citations
-The authors of TransitionSolver are Peter Athron, Csaba Balazs, Lachlan Morris, with the bulk of the code having been developed by Lachlan Morris during his PhD.  The code will be documented in a forthcoming manual, but until then if you use TransitionSolver in your work please cite  Supercool subtleties of cosmological phase transitions, [JCAP 03 (2023) 006](https://inspirehep.net/literature/2614918),  [arXiv:2212.07559](https://arxiv.org/abs/2212.07559) where this code was first used and developed for.  Since TransitionSolver currently uses PhaseTracer and CosmoTransitions please also cite the manuals for these codes.  You can find the bibtex for the appropriate references in ToCite/citeifuse.bib  or latex snipets in ToCite/citeifuse.tex. 
-
- 
-
+The authors of TransitionSolver are Peter Athron, Csaba Balazs, Lachlan Morris, with the bulk of the code having been developed by Lachlan Morris during his PhD.  The code will be documented in a forthcoming manual, but until then if you use TransitionSolver in your work please cite  Supercool subtleties of cosmological phase transitions, [JCAP 03 (2023) 006](https://inspirehep.net/literature/2614918),  [arXiv:2212.07559](https://arxiv.org/abs/2212.07559) where this code was first used and developed for.  Since TransitionSolver currently uses PhaseTracer and CosmoTransitions please also cite the manuals for these codes.  You can find the bibtex for the appropriate references in ToCite/citeifuse.bib  or latex snipets in ToCite/citeifuse.tex.
