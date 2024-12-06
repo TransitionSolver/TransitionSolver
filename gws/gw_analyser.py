@@ -45,7 +45,7 @@ class GWAnalysisSettings:
         self.kappaTurb = 0.05
 
 
-class GWAnalyser_InidividualTransition:
+class GWAnalyser_IndividualTransition:
     potential: AnalysablePotential
     phaseStructure: PhaseStructure
     fromPhase: Phase
@@ -564,7 +564,7 @@ class GWAnalyser:
         if settings is None:
             settings = GWAnalysisSettings()
         for transitionReport in self.relevantTransitions:
-            gws = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
+            gws = GWAnalyser_IndividualTransition(self.phaseStructure, transitionReport, self.potential,
                 self.detector)
             gws.determineGWs(settings)
             #gwFunc_regular = gws.getGWfunc_total(soundShell=False)
@@ -612,9 +612,9 @@ class GWAnalyser:
         if settings is None:
             settings = GWAnalysisSettings()
         for transitionReport in self.relevantTransitions:
-            gws_noColl = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
+            gws_noColl = GWAnalyser_IndividualTransition(self.phaseStructure, transitionReport, self.potential,
                 self.detector)
-            gws_coll = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
+            gws_coll = GWAnalyser_IndividualTransition(self.phaseStructure, transitionReport, self.potential,
                 self.detector)
             # make two copies of settings as we need to modify them from user input in this method
             # maybe a mild design flaw to do that, but its fairly transparent here as point is to run
@@ -856,7 +856,7 @@ class GWAnalyser:
             for i in indices:
                 #if allT[i] > 83.87:
                 #    continue
-                gws = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
+                gws = GWAnalyser_IndividualTransition(self.phaseStructure, transitionReport, self.potential,
                     self.detector)
                 settings = GWAnalysisSettings()
                 settings.sampleIndex = i
@@ -909,7 +909,7 @@ class GWAnalyser:
                     lengthScale_beta.append((8*np.pi)**(1/3) * vw[-1] / beta[-1])
 
                 if bCombined:
-                    gws = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
+                    gws = GWAnalyser_IndividualTransition(self.phaseStructure, transitionReport, self.potential,
                         self.detector)
                     settings = GWAnalysisSettings()
                     settings.sampleIndex = i
@@ -1308,9 +1308,9 @@ def scanGWsWithParam(detectorClass, potentialClass, outputFolder, bForceAllTrans
         gwa = GWAnalyser(detectorClass, potentialClass, outputSubfolder,
             bForceAllTransitionsRelevant=bForceAllTransitionsRelevant)
         transitionReport = gwa.relevantTransitions[0]
-        gws_noColl = GWAnalyser_InidividualTransition(gwa.phaseStructure, transitionReport, gwa.potential,
+        gws_noColl = GWAnalyser_IndividualTransition(gwa.phaseStructure, transitionReport, gwa.potential,
                 gwa.detector)
-        gws_coll = GWAnalyser_InidividualTransition(gwa.phaseStructure, transitionReport, gwa.potential,
+        gws_coll = GWAnalyser_IndividualTransition(gwa.phaseStructure, transitionReport, gwa.potential,
             gwa.detector)
         settings_coll = GWAnalysisSettings()
         settings_coll.kappaColl = 1.

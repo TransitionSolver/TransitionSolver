@@ -111,11 +111,11 @@ then a default model and location will be used based on defaults that are specif
 
 Note if you use it this way, you must currently manually ensure that you set the bUseChapmanJouguetVelocity in the main routine of the gw_analyser script, to the same value as used in the original run of TransitionSolver.
 
-Running this command takes order then minutes as it computes at many different transiton temperatures. To compute the GW spectrum only at the percolation temperature for which the final SNR (signal to noise ratio) you can comment out the line
+Running this command takes order O(5 minutes) on a single core, as it computes at many different transiton temperatures. To compute the GW spectrum only at the percolation temperature for which the final SNR (signal to noise ratio)  is output to terminal, you can comment out the line
 
 gwa.scanGWs(GWsOutputFolder, bCombined=False)
 
-In the main routine of the gw_analyser module.
+in the main routine of the gw_analyser module.  This should run in order O(1 second).
 
 # Defining a model
 Unfortunately, defining a model currently requires double effort: it must be defined in `TransitionSolver` and `PhaseTracer`. In `PhaseTracer`, the model should extend either `Potential` or `OneLoopPotential`. In `TransitionSolver`, the model should extend `AnalysablePotential`, which in turn extends `CosmoTransitions`' `generic_potential`. See `ToyModel.hpp` in `PhaseTracer/EffectivePotential/include/models` and `toy_model.py` in `TransitionSolver` for a simple example model.  In future versions it should be possible to only enter one potential and use PhaseTracer to compute the bounce action.  In future versions this duplication of effort should be removed.
