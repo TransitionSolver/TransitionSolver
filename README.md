@@ -61,7 +61,7 @@ The `Windows` entry could be set to false if you are not using Windows, or can b
 # How to run
 Note: All scripts should be run from the root directory: `TransitionSolver/`. Before running any scripts, `TransitionSolver` must first be configured for the machine it is run on --- see the Configuration section.
 
-Two example scripts are provided in the `examples` subdirectory: `pipeline_example.py` and `barebones_example.py`. These examples These examples can be run from the terminal, but accept no arguments from the command line, so modification must be done within the code.  `pipeline_example.py` has two example functions that perform the same task in slightly different ways: `example` and `example_parameterPointFile`. See their respective documentation for details. To run, use the commands:
+Two example scripts are provided in the `examples` subdirectory: `pipeline_example.py` and `barebones_example.py`. These examples can be run from the terminal, but accept no arguments from the command line, so modification must be done within the code.  `pipeline_example.py` has two example functions that perform the same task in slightly different ways: `example` and `example_parameterPointFile`. See their respective documentation for details. To run, use the commands:
 
 	python3 -m examples.pipeline_example
 	python3 -m examples.barebones_example
