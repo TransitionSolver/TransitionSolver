@@ -1708,7 +1708,7 @@ def compareBubRad():
 def main(potentialClass, GWsOutputFolder, TSOutputFolder, detectorClass = LISA):
     gwa = GWAnalyser(detectorClass, potentialClass, TSOutputFolder, bForceAllTransitionsRelevant=False)
     # scan over reference temperature and make plots, as done in https://arxiv.org/abs/2309.05474
-    #gwa.scanGWs(GWsOutputFolder, bCombined=False)
+    gwa.scanGWs(GWsOutputFolder, bCombined=False)
     # Just run a single point at percolation temperature
     settings = GWAnalysisSettings()
     settings.bUseChapmanJouguetVelocity=True
