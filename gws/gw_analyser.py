@@ -448,14 +448,14 @@ class GWAnalyser_IndividualTransition:
 
         if self.kappaSound > 1:
             # should be an error thrown
-            print('Warning: kappaSound is too large, capping at 1.')
+            #print('Warning: kappaSound is too large, capping at 1.')
             raise Exception("kappaSound is larger than 1.")
-            self.kappaSound = 1
+            #self.kappaSound = 1
 
         if self.kappaSound <= 0:
-            print('Warning kappaSound is negative, setting it to 0')
+            #print('Warning kappaSound is negative, setting it to 0')
             raise Exception("kappaSound is less than 1.")
-            return 0
+            #return 0
 
         #if kappa > 1 or np.isnan(kappa):
         #    kappa = 1
@@ -541,14 +541,12 @@ class GWAnalyser:
             bForceAllTransitionsRelevant=bForceAllTransitionsRelevant)
 
         if len(self.relevantTransitions) == 0:
-            print('No relevant transition detected.')
-            return
+            raise Exception('No relevant transition detected in the phase history.')
 
         bSuccess, self.phaseStructure = phase_structure.load_data(outputFolder + 'phase_structure.dat')
 
         if not bSuccess:
-            print('Failed to load phase structure.')
-            return
+            raise Exception("Failed to load phase structure, please check this file exists in the relevant directory.")
 
         if potentialClass == SMplusCubic:
             self.potential = potentialClass(*np.loadtxt(outputFolder + 'parameter_point.txt'), bUseBoltzmannSuppression=True)
