@@ -99,7 +99,7 @@ def kappaNuModel(cs2,al,vp,n=501):
     if disc<0:
         print("vp too small for detonation")
         print("vp = ", vp, "al = ", al, "cs2 = ", cs2, "disc =", disc)
-        raise Exception("vp too small for detonation")
+        raise Exception("The bubble wall velocity is too small for detonation.   Currently the GWs module only supports detonations for the computation of sound wave sourced gravitational waves.  This requires going beyond the kappaNuModel from https://arxiv.org/abs/2004.069959 and needs the KappaNuMu model (https://arxiv.org/abs/2010.09744). We expect this to be addressed soon and the code will be updated.")
         return 0
     vm = (tmp+np.sqrt(disc))/2/(nu-1.)/vp
     wm = (-1.+3.*al+(vp/vm)*(-1.+nu+3.*al))
