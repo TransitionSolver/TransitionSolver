@@ -586,6 +586,8 @@ class TransitionAnalyser():
             cst = np.sqrt(cstSq)
             vw = (1 + np.sqrt(3*alpha*(1 - cstSq + 3*cstSq*alpha))) / (1/cst + 3*cst*alpha)
             if np.isnan(vw) or vw > 1.:
+                print("Warning: finding vw = ", vw, " error at T=", self.T, "adjusting to 1")
+                raise Exception("finding vw = ", vw, " error at T=", self.T)
                 return 1.
             return vw
         else:

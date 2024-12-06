@@ -118,11 +118,14 @@ def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str,
         potential = potentialClass(*parameterPoint, bUseBoltzmannSuppression=bUseBoltzmannSuppression)
     else:
         potential = potentialClass(*parameterPoint[:5])
-
+    # boolean value determines if we use the chapman Jouguet velocity of the vw passed
+    # to analysePhaseHistory_supplied if True the vw passed to analysePhaseHistory_supplied
+    # is not used
+    bUseCJvw = True
     def notify_TransitionAnalyser_on_create(transitionAnalyser: TransitionAnalyser):
         transitionAnalyser.bComputeSubsampledThermalParams = True
         transitionAnalyser.bCheckPossibleCompletion = False
-        transitionAnalyser.bUseChapmanJouguetVelocity = True
+        transitionAnalyser.bUseChapmanJouguetVelocity = bUseCJvw
 
     notifyHandler.addEvent('TransitionAnalyser-on_create', notify_TransitionAnalyser_on_create)
 
@@ -138,24 +141,24 @@ def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str,
     print('The potentials in  PhaseTracer and TransitionSolver need to match for TransitionSolver to work')
     print('Now TransitionSolver will analyse the phase history.')
     # Analyse the phase history.
-    paths, _, analysisMetrics = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=1.)
+    paths, _, analysisMetrics = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=0.96)
 
     # Write the phase history report. Again, this will be handled within PhaseHistoryAnalysis in a future version of the
     # code.
     writePhaseHistoryReport(outputFolder + '/phase_history.json', paths, phaseStructure, analysisMetrics)
     default_detector = LISA
     gwa = GWAnalyser(default_detector, potentialClass, outputFolder+'/', bForceAllTransitionsRelevant=False)
-
+    settings = GWAnalysisSettings()
+    settings.bUseChapmanJouguetVelocity = bUseCJvw
     # Determine GWs for a single point
     if GWs > 0 and GWs < 3:
-       settings = GWAnalysisSettings()
        if GWs == 1:
           settings.kappaTurb = 0.05
        if GWs == 2:
           settings.kappaColl = 1.
        gwa.determineGWs(outputFolder+'/', settings)
     elif GWs == 3:
-       gwa.determineGWs_withColl(outputFolder+'/')
+       gwa.determineGWs_withColl(GWsOutputFolder=outputFolder+'/', settings=settings)
 
 if __name__ == "__main__":
     import sys

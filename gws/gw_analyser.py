@@ -3,6 +3,7 @@ import pathlib
 import time
 import traceback
 import json
+import copy
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -29,6 +30,7 @@ GRAV_CONST = 6.7088e-39
 
 class GWAnalysisSettings:
     bUseBubbleSeparation: bool
+    bUseChapmanJouguetVelocity: bool
     sampleIndex: int
     suppliedRho_t: Optional[Callable[[float], float]]
     kappaColl: float
@@ -36,13 +38,14 @@ class GWAnalysisSettings:
 
     def __init__(self):
         self.bUseBubbleSeparation = True
+        self.bUseChapmanJouguetVelocity = True
         self.sampleIndex = -1
         self.suppliedRho_t = None
         self.kappaColl = 0.
         self.kappaTurb = 0.05
 
 
-class GWAnalyser_InidividualTransition:
+class GWAnalyser_IndividualTransition:
     potential: AnalysablePotential
     phaseStructure: PhaseStructure
     fromPhase: Phase
@@ -110,7 +113,9 @@ class GWAnalyser_InidividualTransition:
         self.hydroVars = hydrodynamics.getHydroVars_new(self.fromPhase, self.toPhase, self.potential, self.T,
             self.phaseStructure.groundStateEnergyDensity)
         self.hydroVarsReh = hydrodynamics.getHydroVars(self.fromPhase, self.toPhase, self.potential, self.Treh)
-        self.vw = self.determineBubbleWallVelocity()
+        # Note setting vw via determineBubbleWallVelocity, also sets alpha
+        # Todo:  refactor to make things more transparent
+        self.vw = self.determineBubbleWallVelocity(settings)
         self.kappaColl = settings.kappaColl
         self.kappaTurb = settings.kappaTurb
         self.kappaSound = 0.  # Calculated in determineKineticEnergyFraction.
@@ -390,43 +395,46 @@ class GWAnalyser_InidividualTransition:
 
     # TODO: Just pick a value for now. Should really read from the transition report but we can't trust that result
     #  anyway. We can't use vw = 1 because it breaks Giese's code for kappa.
-    def determineBubbleWallVelocity(self) -> float:
-        #return 0.99995
-        #return 0.999999988
-        #return 0.99993
-        #return 0.99
-        return 0.995
-        #return 0.9
+    def determineBubbleWallVelocity(self, settings: GWAnalysisSettings) -> float:
+        thetaf = (self.hydroVars.energyDensityFalse - self.hydroVars.pressureFalse/self.hydroVars.soundSpeedSqTrue) / 4
+        thetat = (self.hydroVars.energyDensityTrue - self.hydroVars.pressureTrue/self.hydroVars.soundSpeedSqTrue) / 4
+        alpha = 4*(thetaf - thetat) / (3*self.hydroVars.enthalpyDensityFalse)
+        self.alpha = alpha
+        if settings.bUseChapmanJouguetVelocity == False:
+            vbubwall = self.transitionReport['vw']
+        else:
+            cstSq = self.hydroVars.soundSpeedSqTrue
+            cst = np.sqrt(cstSq)
+            csfSq = self.hydroVars.soundSpeedSqFalse
+            csf = np.sqrt(csfSq)
+            vcj = (1 + np.sqrt(3*alpha*(1 - cstSq + 3*cstSq*alpha))) / (1/cst + 3*cst*alpha)
+            # Set the bubble wall velocity to the Chapman-Jouguet velocity.
+            vbubwall = vcj
+        return vbubwall
+    
 
     def determineKineticEnergyFraction(self) -> float:
         if self.hydroVars.soundSpeedSqTrue <= 0:
             return 0.
-
         # Pseudo-trace.
         thetaf = (self.hydroVars.energyDensityFalse - self.hydroVars.pressureFalse/self.hydroVars.soundSpeedSqTrue) / 4
         thetat = (self.hydroVars.energyDensityTrue - self.hydroVars.pressureTrue/self.hydroVars.soundSpeedSqTrue) / 4
-
-        alpha = 4*(thetaf - thetat) / (3*self.hydroVars.enthalpyDensityFalse)
-        self.alpha = alpha
-
         if self.kappaColl > 0:
             # return self.kappaColl * alpha / (1 + alpha)
             return (thetaf - thetat) / self.hydroVars.energyDensityFalse * self.kappaColl
 
-        #kappa = giese_kappa.kappaNuMuModel(self.hydroVars.soundSpeedSqTrue, self.hydroVars.soundSpeedSqFalse, alpha,
-        #    self.vw)
         cstSq = self.hydroVars.soundSpeedSqTrue
-        cst = np.sqrt(cstSq)
-        csfSq = self.hydroVars.soundSpeedSqFalse
-        csf = np.sqrt(csfSq)
-        vcj = (1 + np.sqrt(3*alpha*(1 - cstSq + 3*cstSq*alpha))) / (1/cst + 3*cst*alpha)
-        print("cstSq =", cstSq)
-        #print("csfSq =", csfSq)
-        print("vcj = ", vcj)
-        # Set the bubble wall velocity to the Chapman-Jouguet velocity.
-        self.vw = min(vcj+1e-10, 0.9*vcj + 0.1)
+        # adjust the vw value to avoid numerical instabilities
+        vwlocal = self.vw
+        # add tiny number to vwl to avoid numerical problems when
+        # disc in kappaNuModel is zero, while ensuring it never goes above 1
+        vwl = min(vwlocal+1e-6, 0.9*vwlocal + 0.1)
+        if vwl > 0.999999:
+            vwl = 0.999999
+            print("Warning: adjusting vw that enters the calculation of the sound wave effeciency coefficnet to ", vwl, " due to numerical problems with vw=1")
+
         nExp = 6
-        self.kappaSound = giese_kappa.kappaNuModel(cstSq, alpha, self.vw, 1+10**nExp)
+        self.kappaSound = giese_kappa.kappaNuModel(cstSq, self.alpha, vwl, 1+10**nExp)
         self.kappaSound_original = self.kappaSound
 
         #nExp += 1
@@ -439,11 +447,15 @@ class GWAnalyser_InidividualTransition:
         #    print('Final result: kappa =', self.kappaSound, 'using nExp =', nExp-1)
 
         if self.kappaSound > 1:
-            #print('Still too large, capping at 1.')
-            self.kappaSound = 1
+            # should be an error thrown
+            #print('Warning: kappaSound is too large, capping at 1.')
+            raise Exception("kappaSound is larger than 1.")
+            #self.kappaSound = 1
 
         if self.kappaSound <= 0:
-            return 0
+            #print('Warning kappaSound is negative, setting it to 0')
+            raise Exception("kappaSound is less than 1.")
+            #return 0
 
         #if kappa > 1 or np.isnan(kappa):
         #    kappa = 1
@@ -459,21 +471,21 @@ class GWAnalyser_InidividualTransition:
 
         print('---------------------------------------------')
         print('T:      ', self.T)
-        print('alpha:  ', alpha)
+        print('alpha:  ', self.alpha)
         print('v_w:    ', self.vw)
-        print('v_cj:   ', vcj)
-        print('c_sf:   ', csf)
         print('c2_st:  ', self.hydroVars.soundSpeedSqTrue)
         print('K:      ', K)
         #print('Kalt:   ', alternativeK)
         #print('denom:  ', denom)
-        print('kappa:  ', self.kappaSound)
-        #print('delta:  ', delta)
-        print('rho_f:  ', self.hydroVars.energyDensityFalse)
-        print('theta_f:', thetaf)
-        print('theta_t:', thetat)
-        print('w_f    :', self.hydroVars.enthalpyDensityFalse)
+        # print('kappa:  ', self.kappaSound)
+        # #print('delta:  ', delta)
+        # print('rho_f:  ', self.hydroVars.energyDensityFalse)
+        # print('theta_f:', thetaf)
+        # print('theta_t:', thetat)
+        # print('w_f    :', self.hydroVars.enthalpyDensityFalse)
+        # print("self.vw = ", self.vw,  "kappa sound = ",  self.kappaSound, "K= ", K)
         if K > 1:
+            print('Warning K > 1')
             print('p_f:    ', self.hydroVars.pressureFalse)
             print('p_t:    ', self.hydroVars.pressureTrue)
             print('rho_f:  ', self.hydroVars.energyDensityFalse)
@@ -529,14 +541,12 @@ class GWAnalyser:
             bForceAllTransitionsRelevant=bForceAllTransitionsRelevant)
 
         if len(self.relevantTransitions) == 0:
-            print('No relevant transition detected.')
-            return
+            raise Exception('No relevant transition detected in the phase history.')
 
         bSuccess, self.phaseStructure = phase_structure.load_data(outputFolder + 'phase_structure.dat')
 
         if not bSuccess:
-            print('Failed to load phase structure.')
-            return
+            raise Exception("Failed to load phase structure, please check this file exists in the relevant directory.")
 
         if potentialClass == SMplusCubic:
             self.potential = potentialClass(*np.loadtxt(outputFolder + 'parameter_point.txt'), bUseBoltzmannSuppression=True)
@@ -549,11 +559,10 @@ class GWAnalyser:
 
     def determineGWs(self, GWsOutputFolder, settings: GWAnalysisSettings = None):
         # If no settings are supplied, use default settings.
-        # If no settings are supplied, use default settings.
         if settings is None:
             settings = GWAnalysisSettings()
         for transitionReport in self.relevantTransitions:
-            gws = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
+            gws = GWAnalyser_IndividualTransition(self.phaseStructure, transitionReport, self.potential,
                 self.detector)
             gws.determineGWs(settings)
             #gwFunc_regular = gws.getGWfunc_total(soundShell=False)
@@ -596,16 +605,25 @@ class GWAnalyser:
             plt.margins(0, 0)
             plt.savefig(GWsOutputFolder+'GWs_SignalVsSensitiviy.pdf')
 
-    def determineGWs_withColl(self, GWsOutputFolder, file_name=None):
+    def determineGWs_withColl(self, GWsOutputFolder, file_name=None, settings: GWAnalysisSettings = None):
+         # If no settings are supplied, use default settings.
+        if settings is None:
+            settings = GWAnalysisSettings()
         for transitionReport in self.relevantTransitions:
-            gws_noColl = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
+            gws_noColl = GWAnalyser_IndividualTransition(self.phaseStructure, transitionReport, self.potential,
                 self.detector)
-            gws_coll = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
+            gws_coll = GWAnalyser_IndividualTransition(self.phaseStructure, transitionReport, self.potential,
                 self.detector)
-            settings_coll = GWAnalysisSettings()
+            # make two copies of settings as we need to modify them from user input in this method
+            # maybe a mild design flaw to do that, but its fairly transparent here as point is to run
+            # with two different kapaa_coll
+            settings_coll = copy.copy(settings)
+            settings_nocoll = copy.copy(settings)
+            # set kappacoll setting for each case (with collions only and without collsions)
             settings_coll.kappaColl = 1.
-            gws_noColl.determineGWs(settings=None)
-            gws_coll.determineGWs(settings=settings_coll)
+            settings_nocoll.kappaColl = 0
+            gws_noColl.determineGWs(settings_nocoll)
+            gws_coll.determineGWs(settings_coll)
             gwFunc_noColl = gws_noColl.getGWfunc_total(soundShell=True)
             gwFunc_coll = gws_coll.getGWfunc_total()
             SNR_noColl = gws_noColl.calculateSNR(gwFunc_noColl)
@@ -836,7 +854,7 @@ class GWAnalyser:
             for i in indices:
                 #if allT[i] > 83.87:
                 #    continue
-                gws = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
+                gws = GWAnalyser_IndividualTransition(self.phaseStructure, transitionReport, self.potential,
                     self.detector)
                 settings = GWAnalysisSettings()
                 settings.sampleIndex = i
@@ -889,7 +907,7 @@ class GWAnalyser:
                     lengthScale_beta.append((8*np.pi)**(1/3) * vw[-1] / beta[-1])
 
                 if bCombined:
-                    gws = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
+                    gws = GWAnalyser_IndividualTransition(self.phaseStructure, transitionReport, self.potential,
                         self.detector)
                     settings = GWAnalysisSettings()
                     settings.sampleIndex = i
@@ -1288,9 +1306,9 @@ def scanGWsWithParam(detectorClass, potentialClass, outputFolder, bForceAllTrans
         gwa = GWAnalyser(detectorClass, potentialClass, outputSubfolder,
             bForceAllTransitionsRelevant=bForceAllTransitionsRelevant)
         transitionReport = gwa.relevantTransitions[0]
-        gws_noColl = GWAnalyser_InidividualTransition(gwa.phaseStructure, transitionReport, gwa.potential,
+        gws_noColl = GWAnalyser_IndividualTransition(gwa.phaseStructure, transitionReport, gwa.potential,
                 gwa.detector)
-        gws_coll = GWAnalyser_InidividualTransition(gwa.phaseStructure, transitionReport, gwa.potential,
+        gws_coll = GWAnalyser_IndividualTransition(gwa.phaseStructure, transitionReport, gwa.potential,
             gwa.detector)
         settings_coll = GWAnalysisSettings()
         settings_coll.kappaColl = 1.
@@ -1691,6 +1709,7 @@ def main(potentialClass, GWsOutputFolder, TSOutputFolder, detectorClass = LISA):
     gwa.scanGWs(GWsOutputFolder, bCombined=False)
     # Just run a single point at percolation temperature
     settings = GWAnalysisSettings()
+    settings.bUseChapmanJouguetVelocity=True
     gwa.determineGWs(GWsOutputFolder, settings)
     # Use this for evaluating GWs using thermal params at the onset of percolation.
     #gwa.determineGWs_withColl()
