@@ -92,6 +92,8 @@ def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str,
     # from PhaseTracer. stderr is routed to STDOUT so that errors in PhaseTracer are printed here.
     command = (['wsl'] if windows else []) + [PhaseTracer_directory + f'bin/{PT_script}', outputFolder +
         '/parameter_point.txt', outputFolder] + PT_params
+    if bDebug == True:
+        print("Calling PhaseTracer with command ",  command)
     subprocess.call(command, timeout=60)#, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
     # Load the phase structure saved by PhaseTracer.
@@ -146,6 +148,8 @@ def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str,
     # Write the phase history report. Again, this will be handled within PhaseHistoryAnalysis in a future version of the
     # code.
     writePhaseHistoryReport(outputFolder + '/phase_history.json', paths, phaseStructure, analysisMetrics)
+    if GWs == 0:
+        return
     default_detector = LISA
     gwa = GWAnalyser(default_detector, potentialClass, outputFolder+'/', bForceAllTransitionsRelevant=False)
     settings = GWAnalysisSettings()
