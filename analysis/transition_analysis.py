@@ -585,9 +585,21 @@ class TransitionAnalyser():
             cstSq = hydroVars.soundSpeedSqTrue
             cst = np.sqrt(cstSq)
             vw = (1 + np.sqrt(3*alpha*(1 - cstSq + 3*cstSq*alpha))) / (1/cst + 3*cst*alpha)
+            print("thetaf = ", thetaf)
+            print("thetat = ", thetat)
+            print("alpha = ", alpha)
+            print("cstSq = ", cstSq)
+            print("cst = ", cst)
+            print("hydroVars.energyDensityFalse = ", hydroVars.energyDensityFalse)
+            print("hydroVars.energyDensityTrue = ", hydroVars.energyDensityTrue)
+            print("hydroVars.pressureFalse= ", hydroVars.pressureFalse)
+            print("hydroVars.pressureTrue= ", hydroVars.pressureTrue)
+            print("hydroVars.soundSpeedSqTrue= ", hydroVars.soundSpeedSqTrue)
+            print("hydroVars.soundSpeedSqFalse= ", hydroVars.soundSpeedSqFalse)
+            
             if np.isnan(vw) or vw > 1.:
-                print("Warning: finding vw = ", vw, " error at T=", self.T, "adjusting to 1")
-                raise Exception("finding vw = ", vw, " error at T=", self.T)
+                print("Warning: finding vw = ", vw,  " adjusting to 1")
+                #raise Exception("finding vw = ", vw)
                 return 1.
             return vw
         else:
@@ -687,6 +699,7 @@ class TransitionAnalyser():
         betaArray = [0.]
         hydroVars = [self.getHydroVars(self.actionSampler.T[0])]
         H = [np.sqrt(self.calculateHubbleParameterSq_fromHydro(hydroVars[0]))]
+        print("calling getBubbleWallVelocity in analyseTransition...")
         vw = [self.getBubbleWallVelocity(hydroVars[0])]
 
         radDensityPrefactor = np.pi**2/30
@@ -708,7 +721,7 @@ class TransitionAnalyser():
         TAtSonTmin = 0
 
         Teq = 0
-        SonTeq = np.infty
+        SonTeq = np.inf
 
         bFirst = True
 
@@ -921,6 +934,7 @@ class TransitionAnalyser():
                 #H.append(np.sqrt(self.calculateHubbleParameterSq(T[i])))
                 #H.append(np.sqrt(calculateHubbleParameterSq_supplied(rhof[i] - self.groundStateEnergyDensity)))
                 H.append(np.sqrt(self.calculateHubbleParameterSq_fromHydro(hydroVarsInterp[i])))
+                print("appending vw via getBubbleWallVelocity in alalyseTransition ")
                 vw.append(self.getBubbleWallVelocity(hydroVarsInterp[i]))
 
                 Gamma.append(self.calculateGamma(T[i], SonT[i]))
