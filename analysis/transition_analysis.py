@@ -1207,7 +1207,7 @@ class TransitionAnalyser():
 
             plt.plot(self.actionSampler.subT, vw)
             plt.xlabel('T')
-            plt.ylabel('v_w')
+            plt.ylabel('$v_w$')
             plt.ylim(0, 1)
             plt.show()
 
