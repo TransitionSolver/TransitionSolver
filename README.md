@@ -1,6 +1,6 @@
 # Warning
 
-TransitiionSolver 1.0 has not yet been released. If you are reading this you are looking at an in development version of the code. The code has been used in physics projects and performs rigorous state of the art calculations for phase transitions and GWs.  However it currently lacks complete documentation, may lack some user friendliness and require some adjustments to make it work for your own case, or even adaption of sampling algorithms (these are currently being generalised in another branch). Furthermore the caveats of what it can and can not handle may be unclear.
+TransitionSolver 1.0 has not yet been released. If you are reading this you are looking at an in development version of the code. The code has been used in physics projects and performs rigorous state of the art calculations for phase transitions and GWs.  However it currently lacks complete documentation, may lack some user friendliness and require some adjustments to make it work for your own case, or even adaption of sampling algorithms (these are currently being generalised in another branch). Furthermore the caveats of what it can and can not handle may be unclear.
 
 # Requirements and compatibility
 
