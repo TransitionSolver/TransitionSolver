@@ -10,7 +10,9 @@ dependencies = [
   "scipy",
   "numpy",
   "cosmoTransitions",
-  "pathos"
+  "pathos",
+  "click",
+  "rich",
 ]
 requires-python = ">=3.9"
 authors = [
@@ -40,3 +42,9 @@ Repository = "https://github.com/TransitionSolver/TransitionSolver"
 minversion = "6.0"
 norecursedirs = ["examples"]
 testpaths = ["tests"]
+
+[tool.setuptools.package-data]
+"TransitionSolver" = ["data/**/*"]
+
+[project.scripts]
+ts = "TransitionSolver.cli:cli"

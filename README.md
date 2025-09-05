@@ -1,3 +1,43 @@
+# Installation
+
+Install TransitionSolver
+
+```bash
+git clone https://github.com/TransitionSolver/TransitionSolver
+cd TransitionSolver
+pipx install .
+```
+This may require e.g.
+```
+apt install python3-pipx
+```
+
+Running TransitionSolver requires PhaseTracer, which can be installed by
+```bash
+# install PhaseTracer and dependencies on debian-based system e.g. Ubuntu
+bash debian_installer_phasetracer.bash  
+# or handle installation yourself and do
+# export PHASETRACER=/path/to/your/phasetracer/
+```
+
+You can now run TransitonSolver at the command-line
+```bash
+$ ts --help
+Usage: ts [OPTIONS]
+
+  Run TransitionSolver on a particular model and point
+
+Options:
+  --model [RSS]     Model name  [required]
+  --point PATH      Parameter point file  [required]
+  --vw FLOAT RANGE  Bubble wall velocity  [x>=0.0]
+  --help            Show this message and exit.
+```
+For example, try
+```bash
+ts --model RSS --point ./tests/rss_bp1.txt 
+```
+
 # Warning
 
 TransitionSolver 1.0 has not yet been released. If you are reading this you are looking at an in development version of the code. The code has been used in physics projects and performs rigorous state of the art calculations for phase transitions and GWs.  However it currently lacks complete documentation, may lack some user friendliness and require some adjustments to make it work for your own case, or even adaption of sampling algorithms (these are currently being generalised in another branch). Furthermore the caveats of what it can and can not handle may be unclear.
