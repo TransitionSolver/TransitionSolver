@@ -38,3 +38,8 @@ namespaces =  true
 [project.urls]
 Repository = "https://github.com/TransitionSolver/TransitionSolver"
 "Bug Tracker" = "https://github.com/TransitionSolver/TransitionSolver/issues"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+norecursedirs = ["examples"]
+testpaths = ["tests"]
