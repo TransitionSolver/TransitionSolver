@@ -1,9 +1,17 @@
+"""
+Analyse phase structure
+=======================
+"""
+
 from __future__ import annotations
+
+import traceback
 from typing import Optional, Union, TYPE_CHECKING, List
+
 import numpy as np
 from scipy import optimize
-import traceback
-# Avoids circular import issue.
+
+# Avoids circular import issue
 if TYPE_CHECKING:
     from models.analysable_potential import AnalysablePotential
     from analysis.transition_analysis import AnalysedTransition

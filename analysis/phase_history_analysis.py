@@ -1,12 +1,19 @@
+"""
+Analyse phase history
+=====================
+"""
+
 from __future__ import annotations
-from analysis import phase_structure
+
+import time
+from typing import Optional
+
+from util.events import notifyHandler
 from models.analysable_potential import AnalysablePotential
 from analysis.phase_structure import PhaseStructure, Phase, Transition, TransitionPath
 from analysis.transition_analysis import TransitionAnalyser, AnalysedTransition
 from analysis.transition_graph import ProperTransitionEdge, ProperPath, ProperPhaseNode
-import time
-from util.events import notifyHandler
-from typing import Optional
+from analysis import phase_structure
 
 
 # TODO: use this class.

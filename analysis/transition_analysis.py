@@ -1,6 +1,19 @@
+"""
+Transiton analysis
+=====================
+"""
+
 from __future__ import annotations
+
+import time
+import json
 import traceback
 from typing import Optional, Union
+
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy.optimize
+from scipy.interpolate import lagrange
 
 try:
     from cosmoTransitions.tunneling1D import ThinWallError
@@ -8,26 +21,15 @@ except:
     class ThinWallError(Exception):
         pass
 
+from cosmoTransitions import pathDeformation
+
 from gws import hydrodynamics
 from gws.hydrodynamics import HydroVars
 from util.print_suppressor import PrintSuppressor
-import numpy as np
-import scipy.optimize
-
-try:
-    from StringIO import StringIO  # for Python 2
-except ImportError:
-    from io import StringIO  # for Python 3
-from cosmoTransitions import pathDeformation
-from models.analysable_potential import AnalysablePotential
-from scipy.interpolate import lagrange
-import matplotlib.pyplot as plt
 from util import integration
-import time
-import json
-
-from analysis.phase_structure import Phase, Transition
 from util.events import notifyHandler
+from models.analysable_potential import AnalysablePotential
+from analysis.phase_structure import Phase, Transition
 
 
 totalActionEvaluations = 0
