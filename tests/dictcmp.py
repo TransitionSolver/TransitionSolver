@@ -32,10 +32,7 @@ def isclose(result, file_name, rtol=1e-3, atol=0., ignore=None):
         except TypeError:
             assert a == b
 
-    for i in ignore:
-        del expected[i]
-
-    return _isclose(result, expected, assert_approx_equal)
+    return _isclose(result, expected, assert_approx_equal, ignore)
 
 
 def is_list_dict(l):
@@ -45,21 +42,18 @@ def is_list_dict(l):
     return isinstance(l, list) and all([isinstance(e, dict) for e in l])
 
 
-def _isclose(result, expected, assert_equal):
+def _isclose(result, expected, assert_equal, ignore):
     """
     Walk through data and perform check
     """
     if not isinstance(expected, dict):
         return assert_equal(result, expected)
 
-    for k in expected:
-        if isinstance(expected[k], dict):
-            for l in expected[k]:
-                _isclose(result[k][l], expected[k][l], assert_equal)
-        elif is_list_dict(expected[k]):
+    for k in set(expected) - set(ignore):
+        if is_list_dict(expected[k]):
             for a, b in zip(result[k], expected[k]):
-                _isclose(a, b, assert_equal)
+                _isclose(a, b, assert_equal, ignore)
         else:
-            _isclose(result[k], expected[k], assert_equal)
+            _isclose(result[k], expected[k], assert_equal, ignore)
 
     return True
