@@ -26,17 +26,17 @@ def isclose(result, file_name, rtol=1e-3, atol=0., ignore=None):
     if ignore is None:
         ignore = []
 
-    def approx_equal(a, b):
+    def assert_approx_equal(a, b):
         try:
-            return np.all(np.isclose(a, b, rtol=rtol, atol=atol))
+            assert np.allclose(a, b, rtol=rtol, atol=atol)
         except TypeError:
-            return a == b
+            assert a == b
 
     for k in set(expected) - set(ignore):
         if isinstance(expected[k], dict):
             for l in expected[k]:
-                assert approx_equal(result[k][l], expected[k][l])
+                assert_approx_equal(result[k][l], expected[k][l])
         else:
-            assert approx_equal(result[k], expected[k])
+            assert_approx_equal(result[k], expected[k])
 
     return True
