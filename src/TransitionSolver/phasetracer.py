@@ -84,3 +84,23 @@ def phase_structure(potential, phase_structure_file, vw=0.9):
         potential, phase_structure)
 
     return make_report(paths, phase_structure, analysis_metrics)
+
+
+def trace_dof(potential, phase_structure_file):
+    """
+    @param potential Effective potential
+    @param phase_structure_file Phase strucure results file from PT
+
+    @returns DOF as a function of temperature for each phase
+    """
+    phase_structure = load_data(phase_structure_file)[1]
+
+    data = {}
+
+    for phase in phase_structure.phases:
+        t1 = phase.T[0] if phase.T[0] != 0 else phase.T[1]
+        T = np.geomspace(t1, phase.T[-1], 1000)
+        dof = [potential.getDegreesOfFreedomInPhase(phase, t) for t in T]
+        data[phase.key] = [T, dof]
+
+    return data
