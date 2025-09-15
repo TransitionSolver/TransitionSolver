@@ -101,6 +101,6 @@ def trace_dof(potential, phase_structure_file):
         t1 = phase.T[0] if phase.T[0] != 0 else phase.T[1]
         T = np.geomspace(t1, phase.T[-1], 1000)
         dof = [potential.getDegreesOfFreedomInPhase(phase, t) for t in T]
-        data[phase.key] = [T, dof]
+        data[phase.key] = {"T": T, "dof": dof}
 
     return data
