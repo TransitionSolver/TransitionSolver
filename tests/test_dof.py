@@ -36,7 +36,7 @@ def test_plot_dof():
     fig, ax = plt.subplots()
 
     for k, v in expected.items():
-        ax.plot(v["T"], v["dof"], linewidth=2.5, label=f'Phase {k}')
+        ax.plot(v["T"], v["dof"], label=f'Phase {k}')
 
     ax.invert_xaxis()
     ax.set_xscale('log')
