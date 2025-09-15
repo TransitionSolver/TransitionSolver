@@ -43,6 +43,7 @@ minversion = "6.0"
 norecursedirs = ["examples"]
 testpaths = ["tests"]
 pythonpath = ["."]
+addopts = "--mpl"
 
 [tool.setuptools.package-data]
 "TransitionSolver" = ["data/**/*"]
