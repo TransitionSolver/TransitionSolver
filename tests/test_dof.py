@@ -24,10 +24,10 @@ def test_dof():
     phase_structure_file = THIS / "rss_bp1_phase_structure.dat"
     potential = RealScalarSingletModel(*np.loadtxt(point))
     result = phasetracer.trace_dof(potential, phase_structure_file)
-    assert isclose(result, THIS / "rss_bp1_dof.json", tolerance=20)
+    assert isclose(result, THIS / "rss_bp1_dof.json")
 
 
-@pytest.mark.mpl_image_compare
+@pytest.mark.mpl_image_compare(tolerance=20)
 def test_plot_dof():
 
     with open(THIS / "rss_bp1_dof.json", "r") as f:
