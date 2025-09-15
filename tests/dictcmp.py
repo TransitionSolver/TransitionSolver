@@ -7,6 +7,13 @@ import json
 import numpy as np
 
 
+def key2int(d):
+    """
+    Interpret dictionary keys as integers - avoid ambiguity in JSON
+    """
+    return {int(k) if k.isdigit() else k: v for k, v in d.items()}
+
+
 def isclose(result, file_name, rtol=1e-3, atol=0., ignore=None):
     """
     @param result Dictionary of results from program
@@ -14,10 +21,7 @@ def isclose(result, file_name, rtol=1e-3, atol=0., ignore=None):
     @param ignore Any top-level dictionary keys to ignore
     """
     with open(file_name, "r") as f:
-        expected = json.load(f)
-
-    # sanitise to make sure dict keys match
-    result = json.loads(json.dumps(result))
+        expected = json.load(f, object_hook=key2int)
 
     if ignore is None:
         ignore = []
