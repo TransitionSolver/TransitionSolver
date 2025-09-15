@@ -936,7 +936,6 @@ class TransitionAnalyser():
                 #H.append(np.sqrt(self.calculateHubbleParameterSq(T[i])))
                 #H.append(np.sqrt(calculateHubbleParameterSq_supplied(rhof[i] - self.groundStateEnergyDensity)))
                 H.append(np.sqrt(self.calculateHubbleParameterSq_fromHydro(hydroVarsInterp[i])))
-                print("appending vw via getBubbleWallVelocity in alalyseTransition ")
                 vw.append(self.getBubbleWallVelocity(hydroVarsInterp[i]))
 
                 Gamma.append(self.calculateGamma(T[i], SonT[i]))
