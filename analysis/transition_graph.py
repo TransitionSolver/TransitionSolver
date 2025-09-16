@@ -10,7 +10,6 @@ from typing import Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     import phase_structure as PS
 
-
 class Path:
     phases: list[PS.Phase]
     transitions: list[PS.Transition]

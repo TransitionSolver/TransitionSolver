@@ -44,6 +44,18 @@ class HydroVars:
     def pseudotraceTrue(self):
         return (self.energyDensityTrue - self.pressureTrue / self.soundSpeedSqTrue) / 4
 
+    @property
+    def alpha(self):
+        return 4 / 3 * (self.pseudotraceFalse - self.pseudotraceTrue) / self.enthalpyDensityFalse
+
+    @property
+    def soundSpeedTrue(self):
+        return self.soundSpeedSqTrue**0.5
+
+    @property
+    def cj_velocity(self):
+        return (1. + np.sqrt(3. * self.alpha * (1. - self.soundSpeedSqTrue + 3. * self.soundSpeedSqTrue * self.alpha))) / (1. / self.soundSpeedTrue + 3. * self.soundSpeedTrue * self.alpha)
+
 
 def interpolate_hydro_vars(hv1: HydroVars, hv2: HydroVars, T1: float, T2: float, T: float) -> HydroVars:
     """

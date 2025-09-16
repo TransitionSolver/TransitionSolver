@@ -5,6 +5,7 @@ Transiton analysis
 
 from __future__ import annotations
 
+import logging
 import time
 import json
 import traceback
@@ -31,6 +32,7 @@ from util.events import notifyHandler
 from models.analysable_potential import AnalysablePotential
 from analysis.phase_structure import Phase, Transition
 
+logger = logging.getLogger(__name__)
 
 totalActionEvaluations = 0
 
@@ -183,8 +185,9 @@ class ActionSampler:
         stepFactor = max(0.5, 0.8 + 0.4*((linearity - 0.94)/(1 - 0.94))**3)
         self.stepSize = min(self.stepSizeMax, 1 - stepFactor*(1 - self.stepSize))
 
-        if self.bDebug:
-            print('size:', self.stepSize, 'factor:', stepFactor, 'lin:', linearity)
+        logging.debug(f'{self.stepSize=}')
+        logging.debug(f'{stepFactor=}')
+        logging.debug(f'{linearity=}')
 
     def getNextSample(self, sampleData: ActionSample, Gamma: list[float], numBubbles: float, Tmin: float)\
             -> (bool, str):
@@ -223,8 +226,7 @@ class ActionSampler:
         # If we are sampling the same point because we've reached Tmin, then the transition cannot progress any
         # further.
         if self.T[-1] == self.Tmin*1.001:
-            if self.bDebug:
-                print('Already sampled near Tmin =', sampleData.T, '-- transition analysis halted.')
+            logger.debug('Already sampled near Tmin ={}. Transition analysis halted', sampleData.T)
             return False, 'Reached Tmin'
 
         # Determine the nucleation rate for nearby temperatures under the assumption that quadratic extrapolation is
@@ -356,8 +358,7 @@ class ActionSampler:
         self.evaluateAction(sampleData)
 
         if not sampleData.bValid:
-            if self.bDebug:
-                print('Failed to evaluate action at trial temperature T=', sampleData.T)
+            logger.info('Failed to evaluate action at trial temperature T = {}', sampleData.T)
             return False, 'Action failed'
 
         self.T.append(sampleData.T)
@@ -400,8 +401,7 @@ class ActionSampler:
         actionFactor = abs(self.SonT[-2]/self.SonT[-1] - 1) / (1 - minSonTThreshold/maxSonTThreshold)
         dTFactor = abs(min(2,self.T[-2]/self.T[-1]) - 1) / (1 - self.Tmin/self.T[0])
         numSamples = max(1, int(quickFactor*(2 + np.sqrt(1000*(actionFactor + dTFactor)))))
-        if self.bDebug:
-            print('Num samples:', numSamples, actionFactor, dTFactor)
+        logger.debug('Num samples: {}, {},g {}', numSamples, actionFactor, dTFactor)
         return numSamples
 
     # Stores newData in lowerSonTData, maintaining the sorted order.
@@ -452,8 +452,7 @@ class ActionSampler:
         data.bValid = False
         startTime = time.perf_counter()
 
-        if self.bDebug:
-            print('Evaluating action at T =', T)
+        logger.debug('Evaluating action at T = {}', T)
 
         def V(X): return self.potential.Vtot(X, T)
         def gradV(X): return self.potential.gradV(X, T)
@@ -481,11 +480,10 @@ class ActionSampler:
         data.SonT = max(0, action / max(T, 0.001))
         data.bValid = data.SonT > 1e-10
 
-        if self.bDebug:
-            if data.bValid:
-                print(f'Successfully evaluated action S = {data.SonT} in {time.perf_counter() - startTime} seconds.')
-            else:
-                print(f'Obtained nonsensical action S = {data.SonT} in {time.perf_counter() - startTime} seconds.')
+        if data.bValid:
+            logger.debug(f'Successfully evaluated action S = {data.SonT} in {time.perf_counter() - startTime} seconds.')
+        else:
+            logger.debug(f'Obtained nonsensical action S = {data.SonT} in {time.perf_counter() - startTime} seconds.')
 
         return fromFieldConfig, toFieldConfig
 
@@ -577,35 +575,18 @@ class TransitionAnalyser():
 
         notifyHandler.handleEvent(self, 'on_create')
 
-    def getBubbleWallVelocity(self, hydroVars: HydroVars) -> float:
+    def getBubbleWallVelocity(self, hydrovars: HydroVars) -> float:
         if self.bUseChapmanJouguetVelocity:
-            thetaf = (hydroVars.energyDensityFalse - hydroVars.pressureFalse/hydroVars.soundSpeedSqTrue) / 4
-            thetat = (hydroVars.energyDensityTrue - hydroVars.pressureTrue/hydroVars.soundSpeedSqTrue) / 4
-
-            alpha = 4*(thetaf - thetat) / (3*hydroVars.enthalpyDensityFalse)
-
-            cstSq = hydroVars.soundSpeedSqTrue
-            cst = np.sqrt(cstSq)
-            vw = (1 + np.sqrt(3*alpha*(1 - cstSq + 3*cstSq*alpha))) / (1/cst + 3*cst*alpha)
-            print("thetaf = ", thetaf)
-            print("thetat = ", thetat)
-            print("alpha = ", alpha)
-            print("cstSq = ", cstSq)
-            print("cst = ", cst)
-            print("hydroVars.energyDensityFalse = ", hydroVars.energyDensityFalse)
-            print("hydroVars.energyDensityTrue = ", hydroVars.energyDensityTrue)
-            print("hydroVars.pressureFalse= ", hydroVars.pressureFalse)
-            print("hydroVars.pressureTrue= ", hydroVars.pressureTrue)
-            print("hydroVars.soundSpeedSqTrue= ", hydroVars.soundSpeedSqTrue)
-            print("hydroVars.soundSpeedSqFalse= ", hydroVars.soundSpeedSqFalse)
+            logging.debug(f'{hydrovars=}')
+            vw = hydrovars.cj_velocity
             
             if np.isnan(vw) or vw > 1.:
-                print("Warning: finding vw = ", vw,  " adjusting to 1")
-                #raise Exception("finding vw = ", vw)
+                logger.warning("vw = {}. Adjusting to 1", vw)
                 return 1.
+
             return vw
-        else:
-            return self.transition.vw
+
+        return self.transition.vw
 
     # TODO: need to handle subcritical transitions better. Shouldn't use integration if the max sampled action is well
     #  below the nucleation threshold. Should treat the action as constant or linearise it and estimate transition
@@ -628,13 +609,12 @@ class TransitionAnalyser():
         self.actionSampler = ActionSampler(self, minSonTThreshold, maxSonTThreshold, toleranceSonT,
             precomputedT=precomputedT, precomputedSonT=precomputedSonT)
 
-        if self.bDebug:
-            print('Tmin:', self.Tmin)
-            print('Tmax:', self.Tmax)
-            print('Tc:', self.transition.Tc)
-            print('vw:', self.transition.vw)
+        logging.debug(f'{self.Tmin=}')
+        logging.debug(f'{self.Tmax=}')
+        logging.debug(f'{self.transition.Tc=}')
+        logging.debug(f'{self.transition.vw=}')
 
-        if len(precomputedT) == 0:
+        if not precomputedT:
             # TODO: we don't use allSamples anymore.
             sampleData, allSamples = self.primeTransitionAnalysis(startTime)
 
@@ -652,7 +632,7 @@ class TransitionAnalyser():
             # Remove any lowerSonTData points that are very close together. We don't need to sample the S/T curve extremely
             # densely (a spacing of 1 is more than reasonable), and doing so causes problems with the subsequent steps along
             # the curve TODO: to be fixed anyway!
-            if len(self.actionSampler.lowerSonTData) > 0:
+            if self.actionSampler.lowerSonTData:
                 keepIndices = [len(self.actionSampler.lowerSonTData)-1]
                 for i in range(len(self.actionSampler.lowerSonTData)-2, -1, -1):
                     # Don't discard the point if it is separated in temperature from the almost degenerate S/T value already
@@ -663,9 +643,8 @@ class TransitionAnalyser():
                             self.actionSampler.lowerSonTData[keepIndices[-1]].T) >\
                             self.potential.temperatureScale*0.001:
                         keepIndices.append(i)
-                    elif self.bDebug:
-                        print('Removing stored lower S/T data:', self.actionSampler.lowerSonTData[i], 'because it is '
-                            'too close to', self.actionSampler.lowerSonTData[keepIndices[-1]])
+                    else:
+                        logger.debug('Removing stored lower S/T data {} because it is too close to {}', self.actionSampler.lowerSonTData[i], self.actionSampler.lowerSonTData[keepIndices[-1]])
 
                 self.actionSampler.lowerSonTData = [self.actionSampler.lowerSonTData[i] for i in keepIndices]
         else:
@@ -701,7 +680,7 @@ class TransitionAnalyser():
         betaArray = [0.]
         hydroVars = [self.getHydroVars(self.actionSampler.T[0])]
         H = [np.sqrt(self.calculateHubbleParameterSq_fromHydro(hydroVars[0]))]
-        print("calling getBubbleWallVelocity in analyseTransition...")
+        logger.debug("calling getBubbleWallVelocity in analyseTransition...")
         vw = [self.getBubbleWallVelocity(hydroVars[0])]
 
         radDensityPrefactor = np.pi**2/30
@@ -768,8 +747,8 @@ class TransitionAnalyser():
 
         bCheckForTeq = rho0 - 2*rhoR < 0
 
-        if self.bDebug and not bCheckForTeq:
-            print('Not checking for Teq since rho_V > rho_R at Tmax.')
+        if not bCheckForTeq:
+            logger.debug('Not checking for Teq since rho_V > rho_R at Tmax.')
 
         physicalVolume = [3]
 
@@ -1084,13 +1063,11 @@ class TransitionAnalyser():
             # ==========================================================================================================
 
             if Tf > 0 and not self.bAnalyseTransitionPastCompletion:
-                if self.bDebug:
-                    print('Found Tf, stopping sampling')
+                logger.debug('Found Tf, stopping sampling')
                 break
 
             if sampleData.T <= self.Tmin:
-                if self.bDebug:
-                    print('The transition does not complete before reaching Tmin.')
+                logger.debug('The transition does not complete before reaching Tmin')
                 break
 
             # Choose the next value of S/T we're aiming to sample.
@@ -1104,13 +1081,12 @@ class TransitionAnalyser():
                     return
 
             if not success:
-                if self.bDebug:
-                    print('Terminating transition analysis after failing to get next action sample. Reason:', message)
+                logger.debug('Terminating transition analysis after failing to get next action sample. Reason:', message)
 
-                if message == 'Freeze out' or message == 'Reached Tmin':
+                if message in ('Freeze out', 'Reached Tmin'):
                     break
 
-                if len(precomputedT) > 0:
+                if precomputedT:
                     self.transition.analysis.actionCurveFile = precomputedActionCurveFileName
                 self.transition.analysis.T = self.actionSampler.T
                 self.transition.analysis.SonT = self.actionSampler.SonT
@@ -1137,8 +1113,7 @@ class TransitionAnalyser():
             Shigh = self.actionSampler.subSonT[gammaMaxIndex-1]
             # TODO: should use proper formula for second derivative with non-uniform grid.
             d2SdT2 = (Shigh - 2*Smid + Slow) / (0.5*(Thigh - Tlow))**2
-            if self.bDebug:
-                print('Calculating betaV, d2SdT2:', d2SdT2)
+            logger.debug('Calculating betaV, d2SdT2 = {}', d2SdT2)
             if d2SdT2 > 0:
                 self.transition.analysis.betaV = H[gammaMaxIndex]*self.actionSampler.subT[gammaMaxIndex]*np.sqrt(d2SdT2)
 
@@ -2633,7 +2608,3 @@ def loadPrecomputedActionData(fileName: str, transition: Transition, maxSonTThre
             return [], [], True
 
     return precomputedT, precomputedSonT, False
-
-
-if __name__ == "__main__":
-    print('No script to run.')
