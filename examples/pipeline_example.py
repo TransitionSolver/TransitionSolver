@@ -309,7 +309,7 @@ def notify_ActionSampler_on_create(actionSampler: ActionSampler):
     # If the action sampling needs to be adjusted, it would be best to contact me to update the algorithm itself rather
     # than trying to adjust this parameter to extreme values.
     actionSampler.stepSizeMax = 0.9
-    actionSampler.actionTolerance = 1e-6
+    actionSampler.actionTargetTolerance = 1e-6
     actionSampler.bForcePhaseOnAxis = False
 
 

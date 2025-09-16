@@ -39,7 +39,7 @@ def plotHubbleParameter():
         rho_V = data[..., 2]
     else:
         T = transition['T']
-        SonT = transition['SonT']
+        SonT = transition['action']
         rho_V = transition['deltaV']
         T.reverse()
         SonT.reverse()
@@ -69,7 +69,7 @@ def plotHubbleParameter():
     plt.show()
 
     #T.reverse()
-    #SonT.reverse()
+    #action.reverse()
     #rho_V.reverse()
     deltaV = rho_V
 
@@ -223,7 +223,7 @@ def plotActionCurve(fileName, transitionID=-1):
 
             if transDict is not None:
                 T = transDict['T']
-                SonT = transDict['SonT']
+                SonT = transDict['action']
             else:
                 print('Unable to find transition with id =', transitionID, 'in the JSON file.')
                 return

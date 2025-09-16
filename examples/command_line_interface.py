@@ -157,6 +157,8 @@ def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str,
 
 if __name__ == "__main__":
     import sys
+    import numpy
+    numpy.seterr(all='raise')
 
     print(sys.argv)
 

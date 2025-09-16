@@ -32,9 +32,9 @@ class AnalysablePotential(generic_potential):
     groundStateEnergy: float = 0.
 
     # The characteristic scale of fields in the effective potential. For an electroweak phase transition this could be
-    # Higgs VEV. This scale is used to determine whether minima of the potential are distinct or have merged. E.g. for
-    # a phase transition involving VEVs of the order of 100 GeV, two minima separated in field space by less than 1 GeV
-    # may indicate numerical errors or that one minimum is spurious.
+    # the Higgs VEV. This scale is used to determine whether minima of the potential are distinct or have merged. E.g.
+    # for phase transition involving VEVs of the order of 100 GeV, two minima separated in field space by less than 1
+    # GeV may indicate numerical errors or that one minimum is spurious.
     fieldScale: float = 100.
 
     # The characteristic scale of temperature in the phase history. For an electroweak phase transition this should be
@@ -49,16 +49,17 @@ class AnalysablePotential(generic_potential):
     # particularly if one wishes the electroweak phase transition to complete before the QCD transition.
     minimumTemperature: float = 0.1
 
-    # If true, ndof will be used for the the degrees of freedom used in e.g. redshifting gravitational waves.
+    # If true, ndof will be used for the degrees of freedom used in e.g. redshifting gravitational waves.
     # If false, the degrees of freedom will be calculated from the field- and temperature-dependent mass spectrum.
     bUseSimpleDOF: bool = True
 
-    geffFunc_boson: Callable[[float], float]
-    geffFunc_fermion: Callable[[float], float]
+    # Functions for calculating the effective bosonic and fermionic degrees of freedom.
+    geffFunc_boson: Callable[[Union[float, np.ndarray]], np.ndarray]
+    geffFunc_fermion: Callable[[Union[float, np.ndarray]], np.ndarray]
 
     def __init__(self, *args, **dargs):
-        self.geffFunc_boson = lambda x: 1.
-        self.geffFunc_fermion = lambda x: 0.875
+        self.geffFunc_boson = lambda x: np.array(1.)
+        self.geffFunc_fermion = lambda x: np.array(0.875)
 
         super().__init__(*args, **dargs)
 
@@ -84,58 +85,66 @@ class AnalysablePotential(generic_potential):
     def getParameterPoint(self) -> List[float]:
         return []
 
+    # TODO: this only works if the model follows CosmoTransitions' usual potential implementation, where one-loop
+    #  corrections are handled by specify masses in the boson_ and fermion_massSq functions. Also, the temperature-
+    #  dependence would only be accounted for correctly if the user includes thermal corrections to the masses in these
+    #  functions according to the Parwani method.
     def getDegreesOfFreedom(self, X: Union[float, list[float], np.ndarray] = 0., T: Union[float, list[float],
             np.ndarray] = 0.) -> Union[float, np.ndarray]:
+        # TODO: This should check bUseSimpleDOF to see if we want to skip this entirely. Currently only the
+        #  getDegreesOfFreedomInPhase function checks bUseSimpleDOF, and we never use getDegreesOfFreedom in phase
+        #  even though we should. The only time we ever use the dof anywhere is in the GW calcs.
+
         m2b, nb, _ = self.boson_massSq(X, T)
         m2f, nf = self.fermion_massSq(X)
 
         dof = self.raddof
-        newMethod = True
+        #newMethod = True
 
         #for i in range(m2b.shape[1]):
         for i in range(len(m2b)):
-            if newMethod:
-                mask = m2b[..., i] < 1e-10
-                y = np.zeros(shape=m2b[..., i].shape)
-                y[..., mask] = np.inf
-                y[..., ~mask] = T/np.sqrt(np.abs(m2b[..., i][~mask]))
-            else:
+            #if newMethod:
+            mask = m2b[..., i] < 1e-10
+            y = np.zeros(shape=m2b[..., i].shape)
+            y[..., mask] = np.inf
+            y[..., ~mask] = T/np.sqrt(np.abs(m2b[..., i][~mask]))
+            """else:
                 if abs(m2b[i]) < 1e-10:
                     y = np.inf
                 else:
-                    y = T/np.sqrt(abs(m2b[i]))
+                    y = T/np.sqrt(abs(m2b[i]))"""
             factor = self.geffFunc_boson(y)
             dof += nb[i]*factor
 
         for i in range(len(m2f)):
-            if newMethod:
-                mask = m2f[i] < 1e-10
-                y = np.zeros(shape=m2f[i].shape)
-                y[mask] = np.inf
-                y[~mask] = T/np.sqrt(np.abs(m2f[i][~mask]))
-            else:
+            #if newMethod:
+            mask = m2f[i] < 1e-10
+            y = np.zeros(shape=m2f[i].shape)
+            y[mask] = np.inf
+            y[~mask] = T/np.sqrt(np.abs(m2f[i][~mask]))
+            """else:
                 if abs(m2f[i]) < 1e-10:
                     y = np.inf
                 else:
-                    y = T/np.sqrt(abs(m2f[i]))
+                    y = T/np.sqrt(abs(m2f[i]))"""
             factor = self.geffFunc_fermion(y)
             dof += nf[i]*factor
 
         return dof
 
     # Degrees of freedom not included in the one-loop corrections that should be treated as radiation.
-    def getRadiationDegreesOfFreedom(self, X: Union[float, list[float], np.ndarray] = 0., T: Union[float, list[float],
+    def getRadiationDegreesOfFreedom(self, X: Union[float, List[float], np.ndarray] = 0., T: Union[float, List[float],
             np.ndarray] = 0.) -> Union[float, np.ndarray]:
         return self.raddof
 
-    def getEntropicDegreesOfFreedom(self, X: Union[float, list[float], np.ndarray] = 0., T: Union[float, list[float],
+    def getEntropicDegreesOfFreedom(self, X: Union[float, List[float], np.ndarray] = 0., T: Union[float, List[float],
             np.ndarray] = 0.) -> Union[float, np.ndarray]:
         # Make the approximation that g_s ~= g_eff for T > 0.1 MeV. See https://arxiv.org/pdf/1609.04979.pdf, Fig 1.
         return self.getDegreesOfFreedom(X, T)
 
     # This is used in transition analysis and gravitational wave prediction for the energy density. The 'from' phase is
     # typically passed in.
-    def getDegreesOfFreedomInPhase(self, phase: Phase, T: Union[float, list[float],
+    def getDegreesOfFreedomInPhase(self, phase: Phase, T: Union[float, List[float],
             np.ndarray] = 0.) -> Union[float, np.ndarray]:
         if self.bUseSimpleDOF:
             return self.ndof

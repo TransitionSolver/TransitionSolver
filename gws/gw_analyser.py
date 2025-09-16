@@ -163,6 +163,7 @@ class GWAnalyser_IndividualTransition:
         self.lengthScale_shellThickness = self.lengthScale_bubbleSeparation\
             * abs(self.vw - np.sqrt(self.hydroVars.soundSpeedSqFalse)) / self.vw
 
+        # TODO: Should be using self.potential.getDegreesOfFreedomInPhase right?
         self.ndof = self.potential.getDegreesOfFreedom(self.toPhase.findPhaseAtT(self.T, self.potential), self.T)
         ndofReh = self.potential.getDegreesOfFreedom(self.toPhase.findPhaseAtT(self.Treh, self.potential), self.Treh)
         #print('T_p:', self.T)
@@ -688,7 +689,7 @@ class GWAnalyser:
         Tcoarse = transitionReport['T']
         H = transitionReport['H']
         Pf = transitionReport['Pf']
-        SonTcoarse = transitionReport['SonT']
+        SonTcoarse = transitionReport['action']
         interpSonT = scipy.interpolate.interp1d(Tcoarse, SonTcoarse)
         SonT = interpSonT(T)
         Gamma = [T[i]**4 * (SonT[i]/(2*np.pi))**(3/2) * np.exp(-SonT[i]) for i in range(len(T))]
@@ -1007,9 +1008,10 @@ class GWAnalyser:
                 plt.legend(handles=[soundWaves, turbulence], fontsize=28, loc='lower left', handletextpad=0.1)
             else:
                 plt.figure(figsize=(12, 8))
-                plt.plot(self.detector.sensitivityCurve[0], self.detector.sensitivityCurve[1], lw=2.5, label='_nolegend_')
-                plt.scatter(peakFrequency_sw_shellThickness, peakAmplitude_sw_soundShell, c=T, cmap='coolwarm', marker='o',
-                    s=49)
+                plt.plot(self.detector.sensitivityCurve[0], self.detector.sensitivityCurve[1], lw=2.5, color='purple',
+                    label='_nolegend_')
+                plt.scatter(peakFrequency_sw_shellThickness, peakAmplitude_sw_soundShell, c=T, cmap='coolwarm',
+                    marker='o', s=49)
                 plt.scatter(peakFrequency_sw_shellThickness_2, peakAmplitude_sw_soundShell_2, c=T, cmap='coolwarm',
                     marker='.', s=25)
                 plt.scatter(peakFrequency_turb, peakAmplitude_turb, c=T, cmap='coolwarm', marker='x', s=49)
@@ -1703,6 +1705,7 @@ def compareBubRad():
     plt.margins(0., 0.)
     plt.show()
 
+
 def main(potentialClass, GWsOutputFolder, TSOutputFolder, detectorClass = LISA):
     gwa = GWAnalyser(detectorClass, potentialClass, TSOutputFolder, bForceAllTransitionsRelevant=False)
     # scan over reference temperature and make plots, as done in https://arxiv.org/abs/2309.05474
@@ -1723,6 +1726,7 @@ def main(potentialClass, GWsOutputFolder, TSOutputFolder, detectorClass = LISA):
 # 4 and optionally the detector class, though only LISA is currently provided.
 # if no arguments are provided it will run with the defaults provided below
 if __name__ == "__main__":
+
     # new code
     default_model = RealScalarSingletModel_Boltz
     default_output_dir = 'GWsOutput/plots/'
