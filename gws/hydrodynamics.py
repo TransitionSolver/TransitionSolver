@@ -54,7 +54,7 @@ class HydroVars:
 
     @property
     def cj_velocity(self):
-        return (1. + np.sqrt(3. * self.alpha * (1. - self.soundSpeedSqTrue + 3. * self.soundSpeedSqTrue * self.alpha))) / (1. / self.soundSpeedTrue + 3. * self.soundSpeedTrue * self.alpha)
+        return (1. + (3. * self.alpha * (1. - self.soundSpeedSqTrue + 3. * self.soundSpeedSqTrue * self.alpha))**0.5) / (1. / self.soundSpeedTrue + 3. * self.soundSpeedTrue * self.alpha)
 
 
 def interpolate_hydro_vars(hv1: HydroVars, hv2: HydroVars, T1: float, T2: float, T: float) -> HydroVars:
