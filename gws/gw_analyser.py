@@ -1,17 +1,24 @@
+"""
+Analyse gravitational wave signals
+==================================
+"""
+
 from __future__ import annotations
+
 import pathlib
 import time
 import traceback
 import json
 import copy
+from typing import Callable, Type, Optional, List
 
 import matplotlib.pyplot as plt
 import numpy as np
-from typing import Callable, Type, Optional, List
-
 import scipy.integrate
 import scipy.optimize
+from scipy.interpolate import CubicSpline
 
+from analysis import phase_structure
 from analysis.phase_structure import Phase, PhaseStructure
 from gws.hydrodynamics import HydroVars
 from models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz
@@ -19,11 +26,10 @@ from models.real_scalar_singlet_model_ht import RealScalarSingletModel_HT
 from models.toy_model import ToyModel
 from models.supercool_model import SMplusCubic
 from models.analysable_potential import AnalysablePotential
-from analysis import phase_structure
 from gws import giese_kappa, hydrodynamics
 from gws.detectors.lisa import LISA
 from gws.detectors.gw_detector import GWDetector
-from scipy.interpolate import CubicSpline
+
 
 GRAV_CONST = 6.7088e-39
 
@@ -447,18 +453,10 @@ class GWAnalyser_IndividualTransition:
         #    print('Final result: kappa =', self.kappaSound, 'using nExp =', nExp-1)
 
         if self.kappaSound > 1:
-            # should be an error thrown
-            #print('Warning: kappaSound is too large, capping at 1.')
-            raise Exception("kappaSound is larger than 1.")
-            #self.kappaSound = 1
+            raise RuntimeError("kappaSound > 1: {self.kappaSound}.")
 
         if self.kappaSound <= 0:
-            #print('Warning kappaSound is negative, setting it to 0')
-            raise Exception("kappaSound is less than 1.")
-            #return 0
-
-        #if kappa > 1 or np.isnan(kappa):
-        #    kappa = 1
+            raise RuntimeError("kappaSound <= 0: {kappaSound}")
 
         #rho_gs = self.phaseStructure.groundStateEnergyDensity
         #delta = 4*(thetat - rho_gs) / (3*self.hydroVars.enthalpyDensityFalse)
