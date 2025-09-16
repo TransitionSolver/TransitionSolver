@@ -1,72 +1,70 @@
-from gws.detectors.gw_detector import GWDetector
-import math
+"""
+LISA detector
+=============
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
+from numpy import pi, cos, sin
+
+from gws.detectors.detector import Detector, FromDiskDetector
+
+SECONDS_PER_YEAR = 31556952
+LITTLE_H = 0.67
 
 
-# TODO: remember that we normally plot h^2 * Omega, not just Omega, where h~0.67
+class LISA(Detector):
+    """
+    Based on data and equations in 10.1088/1475-7516/2019/11/017
+    
+    Reconstructing the spectral shape of a stochastic gravitational wave background with LISA
+    e-Print: 1906.09244 [astro-ph.CO]
+    DOI: 10.1088/1475-7516/2019/11/017
+    Published in: JCAP 11 (2019), 017
+    """
+    detection_time = 3. * SECONDS_PER_YEAR
+    channels = 1
+
+    def __call__(self, f):
+
+        L = 2.5e9
+        c = 2.998e8
+        P = 15
+        A = 3
+        H0 = 2.2e-18
+
+        P_oms = (1e-12)**2 * P**2 * (1 + (2e-3 / f)**4) * (2*pi*f/c)**2
+        P_acc = (1e-15)**2 * A**2 * (1 + (4e-4 / f)**2) * \
+            (2*pi*f/c)**2 * (1 + (f/(8e-3))**4) / (2*pi*f)**4
+        P_n = 16*sin(2*pi*f*L/c)**2 * (P_oms + (3 + cos(4*pi*f*L/c)) * P_acc)
+        R_n = 16*sin(2*pi*f*L/c)**2 * 0.3 * (2*pi*f*L/c)**2 / \
+            (1 + 0.6*(2*pi*f*L/c)**2)
+        S_n = P_n / R_n
+        Omega_s = 4*pi**2 / (3*H0**2) * f**3 * S_n
+
+        # Compute h^2 Omega(f), since the GW signals also have the prefactor of h^2
+        return LITTLE_H**2 * Omega_s
 
 
-class LISA(GWDetector):
-    def __init__(self):
-        super().__init__()
-
-        # Convert years to seconds. Gregorian calendar has 31556952 seconds in a year.
-        self.detectionTime = 3. * 31556952
-        self.numIndependentChannels = 1
-
-    def constructSensitivityCurve(self, frequencies):
-        # Curve taken from "Reconstructing the spectral shape of a stochastic gravitational wave background with LISA".
-        L = 2.5*10**9
-        c = 2.998*10**8
-        p = 15
-        a = 3
-        H0 = 2.2*10**-18
-
-        P_oms = lambda f, P: (10**-12)**2 * P*P * (1 + (2*10**-3 / f)**4) * (2*np.pi*f/c)**2
-        P_acc = lambda f, A: (10**-15)**2 * A*A * (1 + (4*10**-4 / f)**2) * (2*np.pi*f/c)**2 * (1 + (f/(8*10**-3))**4)\
-                                / (2*np.pi*f)**4
-        P_n = lambda f: 16*np.sin(2*np.pi*f*L/c)**2 * (P_oms(f,p) + (3 + np.cos(4*np.pi*f*L/c)) * P_acc(f,a))
-        R_n = lambda f: 16*np.sin(2*np.pi*f*L/c)**2 * 0.3 * (2*np.pi*f*L/c)**2 / (1 + 0.6*(2*np.pi*f*L/c)**2)
-        S_n = lambda f: P_n(f) / R_n(f)
-        Omega_s = lambda f: 4*np.pi**2 / (3*H0**2) * f**3 * S_n(f)
-
-        #P = P_n(frequencies)
-        #Po = P_oms(frequencies, p)
-        #Pa = P_acc(frequencies, a)
-        #R = R_n(frequencies)
-        #S = S_n(frequencies)
-        #O = Omega_s(frequencies)
-
-        h = 0.67
-
-        self.sensitivityCurve = np.empty(shape=(2, len(frequencies)))
-        self.sensitivityCurve[0] = frequencies
-        # Compute h^2 Omega(f), since the GW signals also have the prefactor of h^2.
-        self.sensitivityCurve[1] = h*h * Omega_s(frequencies)
+lisa_analytic = LISA()
+# Compare the equation to the PLS from Thrane's Plcurves, LISA_noisepower
+lisa_thrane = FromDiskDetector('LISA_sensitivity_spectrum.txt')
+lisa_thrane_1_yr = FromDiskDetector('LISA_sensitivity_spectrum_1_yr.txt')
+# Compare the equation to the PLS from Thrane's Plcurves, LISA_noisepower, with the 2019 sensitivity equation
+lisa_thrane_2019 = FromDiskDetector('LISA_sensitivity_spectrum_2019.txt')
+lisa_thrane_2019_snr_1 = FromDiskDetector('LISA_sensitivity_spectrum_2019_SNR_1.txt')
+lisa_thrane_2019_snr_10 = FromDiskDetector('LISA_sensitivity_spectrum_2019_SNR_10.txt')
 
 
 if __name__ == "__main__":
-    detector = LISA()
-    detector.constructSensitivityCurve(np.logspace(-4, -1, 400))
 
-    plt.loglog(detector.sensitivityCurve[0], detector.sensitivityCurve[1])
+    f = np.logspace(-4, -1, 400)
 
-    # Compare the equation to the PLS from Thrane's Plcurves, LISA_noisepower.
-    detector.loadSensitivityCurveFromFile('LISA sensitivity spectrum.txt')
-    plt.loglog(detector.sensitivityCurve[0], detector.sensitivityCurve[1])
+    plt.loglog(f, lisa_analytic(f), label="Analytic")
+    plt.loglog(f, lisa_thrane(f), label="PLS")
+    plt.loglog(f, lisa_thrane_1_yr(f), label="PLS one-year")
+    plt.loglog(f, lisa_thrane_2019(f), label="PLS 2019")
+    plt.loglog(f, lisa_thrane_2019_snr_1(f), label="PLS 2019 (SNR=1)")
+    plt.loglog(f, lisa_thrane_2019_snr_10(f), label="PLS 2019 (SNR=10)")
 
-    # Compare the equation to the PLS from Thrane's Plcurves, LISA_noisepower, with the 2019 sensitivity equation.
-    detector.loadSensitivityCurveFromFile('LISA sensitivity spectrum 2019.txt')
-    plt.loglog(detector.sensitivityCurve[0], detector.sensitivityCurve[1])
-
-    # Compare the equation to the PLS from Thrane's Plcurves, LISA_noisepower, with the 2019 sensitivity equation.
-    detector.loadSensitivityCurveFromFile('LISA sensitivity spectrum 2019 PLS (lisa_plot) SNR=1.txt')
-    plt.loglog(detector.sensitivityCurve[0], detector.sensitivityCurve[1])
-
-    # Compare the equation to the PLS from Thrane's Plcurves, LISA_noisepower, with the 2019 sensitivity equation.
-    detector.loadSensitivityCurveFromFile('LISA sensitivity spectrum 2019 PLS (lisa_plot) SNR=10.txt')
-    plt.loglog(detector.sensitivityCurve[0], detector.sensitivityCurve[1])
-
-    plt.legend(['Eq', 'PLS', 'PLS of Eq',  '2019 PLS (SNR=1)', '2019 PLS (SNR=10)'])
     plt.show()
