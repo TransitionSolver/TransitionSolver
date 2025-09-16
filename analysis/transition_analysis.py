@@ -809,7 +809,7 @@ class TransitionAnalyser():
             T2 = self.actionSampler.T[simIndex+1]
             hydroVars1 = self.getHydroVars(T1)
             hydroVars2 = self.getHydroVars(T2)
-            hydroVarsInterp = [hydrodynamics.getInterpolatedHydroVars(hydroVars1, hydroVars2, T1, T2, t) for t in T]
+            hydroVarsInterp = [hydrodynamics.interpolate_hydro_vars(hydroVars1, hydroVars2, T1, T2, t) for t in T]
             
             # TODO: rather inefficient at the moment and we don't care about Teq (29/08/2023).
             """rhof = np.linspace(rhof1, rhof2, len(T))

@@ -1,11 +1,22 @@
+"""
+Hydrodynamic quantities for phase transitions and gravitational waves
+=====================================================================
+"""
+
 from __future__ import annotations
+
+from dataclasses import dataclass, fields
 from typing import Callable
 
 from analysis.phase_structure import Phase
 from models.analysable_potential import AnalysablePotential
 
 
+@dataclass
 class HydroVars:
+    """
+    Represent hydrodynnmic variables in true and false vacuum
+    """
     pressureFalse: float
     pressureTrue: float
     energyDensityFalse: float
@@ -16,49 +27,34 @@ class HydroVars:
     entropyDensityTrue: float
     soundSpeedSqFalse: float
     soundSpeedSqTrue: float
-    traceAnomalyFalse: float
-    traceAnomalyTrue: float
-    pseudotraceFalse: float
-    pseudotraceTrue: float
 
-    def __init__(self, pf: float, pt: float, ef: float, et: float, wf: float, wt: float, sf: float, st: float, csfSq:
-            float, cstSq: float):
-        self.pressureFalse = pf
-        self.pressureTrue = pt
-        self.energyDensityFalse = ef
-        self.energyDensityTrue = et
-        self.enthalpyDensityFalse = wf
-        self.enthalpyDensityTrue = wt
-        self.entropyDensityFalse = sf
-        self.entropyDensityTrue = st
-        self.soundSpeedSqFalse = csfSq
-        self.soundSpeedSqTrue = cstSq
+    @property
+    def traceAnomalyFalse(self):
+        return (self.energyDensityFalse - 3*self.pressureFalse) / 4
 
-        self.traceAnomalyFalse = (self.energyDensityFalse - 3*self.pressureFalse) / 4
-        self.traceAnomalyTrue = (self.energyDensityTrue - 3*self.pressureTrue) / 4
-        self.pseudotraceFalse = (self.energyDensityFalse - self.pressureFalse/self.soundSpeedSqTrue) / 4
-        self.pseudotraceTrue = (self.energyDensityTrue - self.pressureTrue/self.soundSpeedSqTrue) / 4
+    @property
+    def traceAnomalyTrue(self):
+        return (self.energyDensityTrue - 3*self.pressureTrue) / 4
+
+    @property
+    def pseudotraceFalse(self):
+        return (self.energyDensityFalse - self.pressureFalse / self.soundSpeedSqTrue) / 4
+
+    @property
+    def pseudotraceTrue(self):
+        return (self.energyDensityTrue - self.pressureTrue / self.soundSpeedSqTrue) / 4
 
 
-def getInterpolatedHydroVars(hv1: HydroVars, hv2: HydroVars, T1: float, T2: float, T: float) -> HydroVars:
-    fraction = (T - T1) / (T2 - T1)
+def interpolate_hydro_vars(hv1: HydroVars, hv2: HydroVars, T1: float, T2: float, T: float) -> HydroVars:
+    """
+    @returns Hydrodynamic variables from linear interpolation between two temperatures
+    """
+    def linear_interpolate(val1: float, val2: float) -> float:
+        f = (T - T1) / (T2 - T1)
+        return val1 + f * (val2 - val1)
 
-    def interpolate(val1: float, val2: float) -> float:
-        return val1 + fraction*(val2 - val1)
-
-    pressureFalse = interpolate(hv1.pressureFalse, hv2.pressureFalse)
-    pressureTrue = interpolate(hv1.pressureTrue, hv2.pressureTrue)
-    energyDensityFalse = interpolate(hv1.energyDensityFalse, hv2.energyDensityFalse)
-    energyDensityTrue = interpolate(hv1.energyDensityTrue, hv2.energyDensityTrue)
-    enthalpyDensityFalse = interpolate(hv1.enthalpyDensityFalse, hv2.enthalpyDensityFalse)
-    enthalpyDensityTrue = interpolate(hv1.enthalpyDensityTrue, hv2.enthalpyDensityTrue)
-    entropyDensityFalse = interpolate(hv1.entropyDensityFalse, hv2.entropyDensityFalse)
-    entropyDensityTrue = interpolate(hv1.entropyDensityTrue, hv2.entropyDensityTrue)
-    soundSpeedSqFalse = interpolate(hv1.soundSpeedSqFalse, hv2.soundSpeedSqFalse)
-    soundSpeedSqTrue = interpolate(hv1.soundSpeedSqTrue, hv2.soundSpeedSqTrue)
-
-    return HydroVars(pressureFalse, pressureTrue, energyDensityFalse, energyDensityTrue, enthalpyDensityFalse,
-        enthalpyDensityTrue, entropyDensityFalse, entropyDensityTrue, soundSpeedSqFalse, soundSpeedSqTrue)
+    data = [linear_interpolate(getattr(hv1, f.name), getattr(hv2, f.name)) for f in fields(HydroVars)]
+    return HydroVars(*data)
 
 
 # TODO: this probably belongs elsewhere, maybe in PhaseStructure or AnalysablePotential.
@@ -96,6 +92,7 @@ def d2fdx2(f: Callable[[float], float], x: float, dx: float, order=4) -> float:
 
 def getHydroVars_new(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float,
         groundStateEnergyDensity: float, order=4) -> HydroVars:
+    # TODO: if Tstep is too small, dF/dT and d2F/dT2 are zero and the sound speed calculation leads to division by zero.
     Tstep = getTstep(fromPhase, toPhase, potential, T)
 
     def FED_f(x: float) -> float:
