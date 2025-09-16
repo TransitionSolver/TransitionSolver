@@ -10,7 +10,7 @@ import numpy as np
 
 class Detector(ABC):
     @abstractmethod
-    def _call__(self, f):
+    def __call__(self, f):
         """
         :param f: Frequencies in Hz
         :return: Sensitivity at those frequencies ($\Omega h^2$)
