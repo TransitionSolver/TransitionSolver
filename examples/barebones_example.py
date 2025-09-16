@@ -112,7 +112,7 @@ def main():
     notifyHandler.addEvent('TransitionAnalyser-on_create', notify_TransitionAnalyser_on_create)
 
     # Analyse the phase history.
-    paths, _, analysisMetrics = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=1.)
+    paths, _, analysisMetrics = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=0.9)
 
     # Write the phase history report. Again, this will be handled within PhaseHistoryAnalysis in a future version of the
     # code.

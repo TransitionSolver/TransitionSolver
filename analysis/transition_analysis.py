@@ -1,7 +1,20 @@
+"""
+Transiton analysis
+=====================
+"""
+
 from __future__ import annotations
+
+import time
+import json
 import traceback
 from typing import Optional, Union, List
 import math
+
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy.optimize
+from scipy.interpolate import lagrange
 
 try:
     from cosmoTransitions.tunneling1D import ThinWallError
@@ -9,26 +22,16 @@ except:
     class ThinWallError(Exception):
         pass
 
+from cosmoTransitions import pathDeformation
+
 from gws import hydrodynamics
 from gws.hydrodynamics import HydroVars
 from util.print_suppressor import PrintSuppressor
-import numpy as np
-import scipy.optimize
-
-try:
-    from StringIO import StringIO  # for Python 2
-except ImportError:
-    from io import StringIO  # for Python 3
-from cosmoTransitions import pathDeformation
-from models.analysable_potential import AnalysablePotential
-from scipy.interpolate import lagrange
-import matplotlib.pyplot as plt
-from util.integration import LinearNestedNormalisedIntegrationHelper, CubedNestedIntegrationHelper
-import time
-import json
-
-from analysis.phase_structure import Phase, Transition
+from util import integration
 from util.events import notifyHandler
+from models.analysable_potential import AnalysablePotential
+from analysis.phase_structure import Phase, Transition
+from util.integration import LinearNestedNormalisedIntegrationHelper, CubedNestedIntegrationHelper
 
 
 totalActionEvaluations = 0
@@ -724,10 +727,24 @@ class TransitionAnalyser():
 
             alpha = 4*(thetaf - thetat) / (3*hydroVars.enthalpyDensityFalse)
 
-            csfSq = hydroVars.soundSpeedSqFalse
-            csf = np.sqrt(csfSq)
-            vw = (1 + np.sqrt(3*alpha*(1 - csfSq + 3*csfSq*alpha))) / (1/csf + 3*csf*alpha)
+            cstSq = hydroVars.soundSpeedSqTrue
+            cst = np.sqrt(cstSq)
+            vw = (1 + np.sqrt(3*alpha*(1 - cstSq + 3*cstSq*alpha))) / (1/cst + 3*cst*alpha)
+            print("thetaf = ", thetaf)
+            print("thetat = ", thetat)
+            print("alpha = ", alpha)
+            print("cstSq = ", cstSq)
+            print("cst = ", cst)
+            print("hydroVars.energyDensityFalse = ", hydroVars.energyDensityFalse)
+            print("hydroVars.energyDensityTrue = ", hydroVars.energyDensityTrue)
+            print("hydroVars.pressureFalse= ", hydroVars.pressureFalse)
+            print("hydroVars.pressureTrue= ", hydroVars.pressureTrue)
+            print("hydroVars.soundSpeedSqTrue= ", hydroVars.soundSpeedSqTrue)
+            print("hydroVars.soundSpeedSqFalse= ", hydroVars.soundSpeedSqFalse)
+            
             if np.isnan(vw) or vw > 1.:
+                print("Warning: finding vw = ", vw,  " adjusting to 1")
+                #raise Exception("finding vw = ", vw)
                 return 1.
             return vw
         else:
@@ -820,6 +837,7 @@ class TransitionAnalyser():
         self.numBubblesCorrectedIntegrand.append(0.)
         self.numBubblesIntegrand.append(0.)
         # TODO: need an initial value...
+        
         self.beta.append(0.)
 
         # We finally have a temperature where the action is not much smaller than the value we started with (which was

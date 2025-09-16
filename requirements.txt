@@ -1,5 +1,0 @@
-matplotlib
-scipy
-numpy
-cosmoTransitions
-pathos

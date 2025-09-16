@@ -391,7 +391,7 @@ class SMplusCubic(AnalysablePotential):
 
 
 if __name__ == "__main__":
-    #potential = SMplusCubic(*np.loadtxt('input/archil/archil_BP1.txt'))
+    #potential = SMplusCubic(*np.loadtxt('input/smpluscubic/smpluscubic_BP1.txt'))
     #print(potential.Vtot(np.array([0]), 0))
     #print(potential.Vtot(np.array([potential.v]), 0))
     #print(potential.Vtot(np.array([10.]), 10.))

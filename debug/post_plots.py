@@ -334,10 +334,10 @@ def plotPotentialBetweenPhases(potentialClass, folderName, transitionID, deltaT,
     def V(X): return potential.Vtot(X, T)
     def gradV(X): return potential.gradV(X, T)
 
-    minH = np.infty
-    minS = np.infty
-    maxH = -np.infty
-    maxS = -np.infty
+    minH = np.inf
+    minS = np.inf
+    maxH = -np.inf
+    maxS = -np.inf
 
     tunneling_findProfile_params = {'phitol': 1e-6, 'xtol': 1e-6}
 

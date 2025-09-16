@@ -3,6 +3,7 @@ import pathlib
 import time
 import traceback
 import json
+import copy
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,7 +17,7 @@ from gws.hydrodynamics import HydroVars
 from models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz
 from models.real_scalar_singlet_model_ht import RealScalarSingletModel_HT
 from models.toy_model import ToyModel
-from models.Archil_model import SMplusCubic
+from models.supercool_model import SMplusCubic
 from models.analysable_potential import AnalysablePotential
 from analysis import phase_structure
 from gws import giese_kappa, hydrodynamics
@@ -29,6 +30,7 @@ GRAV_CONST = 6.7088e-39
 
 class GWAnalysisSettings:
     bUseBubbleSeparation: bool
+    bUseChapmanJouguetVelocity: bool
     sampleIndex: int
     suppliedRho_t: Optional[Callable[[float], float]]
     kappaColl: float
@@ -36,13 +38,14 @@ class GWAnalysisSettings:
 
     def __init__(self):
         self.bUseBubbleSeparation = True
+        self.bUseChapmanJouguetVelocity = True
         self.sampleIndex = -1
         self.suppliedRho_t = None
         self.kappaColl = 0.
         self.kappaTurb = 0.05
 
 
-class GWAnalyser_InidividualTransition:
+class GWAnalyser_IndividualTransition:
     potential: AnalysablePotential
     phaseStructure: PhaseStructure
     fromPhase: Phase
@@ -110,7 +113,9 @@ class GWAnalyser_InidividualTransition:
         self.hydroVars = hydrodynamics.getHydroVars_new(self.fromPhase, self.toPhase, self.potential, self.T,
             self.phaseStructure.groundStateEnergyDensity)
         self.hydroVarsReh = hydrodynamics.getHydroVars(self.fromPhase, self.toPhase, self.potential, self.Treh)
-        self.vw = self.determineBubbleWallVelocity()
+        # Note setting vw via determineBubbleWallVelocity, also sets alpha
+        # Todo:  refactor to make things more transparent
+        self.vw = self.determineBubbleWallVelocity(settings)
         self.kappaColl = settings.kappaColl
         self.kappaTurb = settings.kappaTurb
         self.kappaSound = 0.  # Calculated in determineKineticEnergyFraction.
@@ -180,17 +185,16 @@ class GWAnalyser_InidividualTransition:
         Neff = 3.046
         g0 = 2 + 7/11*Neff
         s0 = 2*np.pi**2/45*g0*T0**3
-        h = 0.674
         kmtoMpc = 3.241e-20
         #perSectoGeV = 6.582e-25
-        H0 = 100*h*kmtoMpc/GeVtoHz
+        hoverH0 = 1.0 / (100*kmtoMpc/GeVtoHz)
         s1 = self.hydroVarsReh.entropyDensityTrue
         H1 = self.H
         # a1/a0 = (s0/s1)^(1/3) and convert from GeV to Hz.
         self.redshiftFreq = (s0/s1)**(1/3) * GeVtoHz
-        # (a1/a0)^4 (H0/H1)^2 = (s0/s1)^(4/3) * (H0/H1)^2, and absorb h^2 factor.
-        self.redshiftAmp = (s0/s1)**(4/3) * (H1/H0)**2 * h**2
+        # (a1/a0)^4 (H0/H1)^2 = (s0/s1)^(4/3) * (H0/H1)^2, and absorb h^2 factor
 
+        self.redshiftAmp = (s0/s1)**(4/3) * H1**2 * hoverH0**2
         #print('Redshift ratio (amp):', self.redshiftAmp / self.redshiftAmp_radDom)
         #print('Redshift ratio (freq):', self.redshiftFreq*self.H / self.redshiftFreq_radDom)
 
@@ -240,13 +244,14 @@ class GWAnalyser_InidividualTransition:
             #print('Alternative peak frequency (coll):', 0.77 * self.beta / (2*np.pi) * 4.28e11/(self.hydroVars.entropyDensityTrue)**(1/3))
 
     def getPeakAmplitude_regular(self) -> float:
-        # Fit from our GW review (but dividing length scale by soundSpeed in accordance with updated estimate of tau_c).
-        return 0.15509*self.redshiftAmp * self.K*self.K * self.H*(self.lengthScale_bubbleSeparation / (8*np.pi)**(1/3))\
-            / self.soundSpeed * self.upsilon
+        # Fit from https://arxiv.org/pdf/1704.05871 taking account of erratum.
+        Omega_gw = 0.012
+        return 2.061*Omega_gw*self.redshiftAmp * self.K*self.K * (self.H* self.lengthScale_bubbleSeparation / self.soundSpeed) * self.upsilon
 
     def getPeakAmplitude_soundShell(self) -> float:
         # Based on https://arxiv.org/pdf/1909.10040.pdf.
-        Omega_gw = 0.01  # From https://arxiv.org/pdf/1704.05871.pdf TABLE IV.
+        # Omega_gw = 0.01 # From https://arxiv.org/pdf/1704.05871.pdf TABLE IV.
+        Omega_gw = 0.012  # From erratum of https://arxiv.org/pdf/1704.05871.pdf TABLE IV.
         rb = self.peakFrequency_sw_bubbleSeparation / self.peakFrequency_sw_shellThickness
         mu_f = 4.78 - 6.27*rb + 3.34*rb**2
         Am = 3*self.K**2*Omega_gw / mu_f
@@ -391,38 +396,46 @@ class GWAnalyser_InidividualTransition:
 
     # TODO: Just pick a value for now. Should really read from the transition report but we can't trust that result
     #  anyway. We can't use vw = 1 because it breaks Giese's code for kappa.
-    def determineBubbleWallVelocity(self) -> float:
-        #return 0.99995
-        #return 0.999999988
-        #return 0.99993
-        #return 0.99
-        return 0.995
-        #return 0.9
+    def determineBubbleWallVelocity(self, settings: GWAnalysisSettings) -> float:
+        thetaf = (self.hydroVars.energyDensityFalse - self.hydroVars.pressureFalse/self.hydroVars.soundSpeedSqTrue) / 4
+        thetat = (self.hydroVars.energyDensityTrue - self.hydroVars.pressureTrue/self.hydroVars.soundSpeedSqTrue) / 4
+        alpha = 4*(thetaf - thetat) / (3*self.hydroVars.enthalpyDensityFalse)
+        self.alpha = alpha
+        if settings.bUseChapmanJouguetVelocity == False:
+            vbubwall = self.transitionReport['vw']
+        else:
+            cstSq = self.hydroVars.soundSpeedSqTrue
+            cst = np.sqrt(cstSq)
+            csfSq = self.hydroVars.soundSpeedSqFalse
+            csf = np.sqrt(csfSq)
+            vcj = (1 + np.sqrt(3*alpha*(1 - cstSq + 3*cstSq*alpha))) / (1/cst + 3*cst*alpha)
+            # Set the bubble wall velocity to the Chapman-Jouguet velocity.
+            vbubwall = vcj
+        return vbubwall
+    
 
     def determineKineticEnergyFraction(self) -> float:
         if self.hydroVars.soundSpeedSqTrue <= 0:
             return 0.
-
         # Pseudo-trace.
         thetaf = (self.hydroVars.energyDensityFalse - self.hydroVars.pressureFalse/self.hydroVars.soundSpeedSqTrue) / 4
         thetat = (self.hydroVars.energyDensityTrue - self.hydroVars.pressureTrue/self.hydroVars.soundSpeedSqTrue) / 4
-
-        alpha = 4*(thetaf - thetat) / (3*self.hydroVars.enthalpyDensityFalse)
-        self.alpha = alpha
-
         if self.kappaColl > 0:
-            #return self.kappaColl * alpha / (1 + alpha)
+            # return self.kappaColl * alpha / (1 + alpha)
             return (thetaf - thetat) / self.hydroVars.energyDensityFalse * self.kappaColl
 
-        #kappa = giese_kappa.kappaNuMuModel(self.hydroVars.soundSpeedSqTrue, self.hydroVars.soundSpeedSqFalse, alpha,
-        #    self.vw)
-        csfSq = self.hydroVars.soundSpeedSqFalse
-        csf = np.sqrt(csfSq)
-        vcj = (1 + np.sqrt(3*alpha*(1 - csfSq + 3*csfSq*alpha))) / (1/csf + 3*csf*alpha)
-        # Set the bubble wall velocity to the Chapman-Jouguet velocity.
-        self.vw = min(vcj+1e-10, 0.9*vcj + 0.1)
+        cstSq = self.hydroVars.soundSpeedSqTrue
+        # adjust the vw value to avoid numerical instabilities
+        vwlocal = self.vw
+        # add tiny number to vwl to avoid numerical problems when
+        # disc in kappaNuModel is zero, while ensuring it never goes above 1
+        vwl = min(vwlocal+1e-6, 0.9*vwlocal + 0.1)
+        if vwl > 0.999999:
+            vwl = 0.999999
+            print("Warning: adjusting vw that enters the calculation of the sound wave effeciency coefficnet to ", vwl, " due to numerical problems with vw=1")
+
         nExp = 6
-        self.kappaSound = giese_kappa.kappaNuModel(csfSq, alpha, self.vw, 1+10**nExp)
+        self.kappaSound = giese_kappa.kappaNuModel(cstSq, self.alpha, vwl, 1+10**nExp)
         self.kappaSound_original = self.kappaSound
 
         #nExp += 1
@@ -435,11 +448,15 @@ class GWAnalyser_InidividualTransition:
         #    print('Final result: kappa =', self.kappaSound, 'using nExp =', nExp-1)
 
         if self.kappaSound > 1:
-            #print('Still too large, capping at 1.')
-            self.kappaSound = 1
+            # should be an error thrown
+            #print('Warning: kappaSound is too large, capping at 1.')
+            raise Exception("kappaSound is larger than 1.")
+            #self.kappaSound = 1
 
         if self.kappaSound <= 0:
-            return 0
+            #print('Warning kappaSound is negative, setting it to 0')
+            raise Exception("kappaSound is less than 1.")
+            #return 0
 
         #if kappa > 1 or np.isnan(kappa):
         #    kappa = 1
@@ -455,21 +472,21 @@ class GWAnalyser_InidividualTransition:
 
         print('---------------------------------------------')
         print('T:      ', self.T)
-        print('alpha:  ', alpha)
+        print('alpha:  ', self.alpha)
         print('v_w:    ', self.vw)
-        print('v_cj:   ', vcj)
-        print('c_sf:   ', csf)
         print('c2_st:  ', self.hydroVars.soundSpeedSqTrue)
         print('K:      ', K)
         #print('Kalt:   ', alternativeK)
         #print('denom:  ', denom)
-        print('kappa:  ', self.kappaSound)
-        #print('delta:  ', delta)
-        print('rho_f:  ', self.hydroVars.energyDensityFalse)
-        print('theta_f:', thetaf)
-        print('theta_t:', thetat)
-        print('w_f    :', self.hydroVars.enthalpyDensityFalse)
+        # print('kappa:  ', self.kappaSound)
+        # #print('delta:  ', delta)
+        # print('rho_f:  ', self.hydroVars.energyDensityFalse)
+        # print('theta_f:', thetaf)
+        # print('theta_t:', thetat)
+        # print('w_f    :', self.hydroVars.enthalpyDensityFalse)
+        # print("self.vw = ", self.vw,  "kappa sound = ",  self.kappaSound, "K= ", K)
         if K > 1:
+            print('Warning K > 1')
             print('p_f:    ', self.hydroVars.pressureFalse)
             print('p_t:    ', self.hydroVars.pressureTrue)
             print('rho_f:  ', self.hydroVars.energyDensityFalse)
@@ -525,14 +542,12 @@ class GWAnalyser:
             bForceAllTransitionsRelevant=bForceAllTransitionsRelevant)
 
         if len(self.relevantTransitions) == 0:
-            print('No relevant transition detected.')
-            return
+            raise Exception('No relevant transition detected in the phase history.')
 
         bSuccess, self.phaseStructure = phase_structure.load_data(outputFolder + 'phase_structure.dat')
 
         if not bSuccess:
-            print('Failed to load phase structure.')
-            return
+            raise Exception("Failed to load phase structure, please check this file exists in the relevant directory.")
 
         if potentialClass == SMplusCubic:
             self.potential = potentialClass(*np.loadtxt(outputFolder + 'parameter_point.txt'), bUseBoltzmannSuppression=True)
@@ -543,12 +558,13 @@ class GWAnalyser:
             frequencies = np.logspace(-11, 3, 1000)
             self.detector.constructSensitivityCurve(frequencies)
 
-    def determineGWs(self):
-        for transitionReport in self.relevantTransitions:
-            gws = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
-                self.detector)
+    def determineGWs(self, GWsOutputFolder, settings: GWAnalysisSettings = None):
+        # If no settings are supplied, use default settings.
+        if settings is None:
             settings = GWAnalysisSettings()
-            settings.kappaColl = 1.
+        for transitionReport in self.relevantTransitions:
+            gws = GWAnalyser_IndividualTransition(self.phaseStructure, transitionReport, self.potential,
+                self.detector)
             gws.determineGWs(settings)
             #gwFunc_regular = gws.getGWfunc_total(soundShell=False)
             gwFunc_soundShell = gws.getGWfunc_total(soundShell=True)
@@ -588,18 +604,27 @@ class GWAnalyser:
             plt.legend(['noise', 'total', 'sw', 'turb', 'coll'])
             plt.ylim(bottom=1e-20, top=1e5)
             plt.margins(0, 0)
-            plt.show()
+            plt.savefig(GWsOutputFolder+'GWs_SignalVsSensitiviy.pdf')
 
-    def determineGWs_withColl(self, file_name=None):
+    def determineGWs_withColl(self, GWsOutputFolder, file_name=None, settings: GWAnalysisSettings = None):
+         # If no settings are supplied, use default settings.
+        if settings is None:
+            settings = GWAnalysisSettings()
         for transitionReport in self.relevantTransitions:
-            gws_noColl = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
+            gws_noColl = GWAnalyser_IndividualTransition(self.phaseStructure, transitionReport, self.potential,
                 self.detector)
-            gws_coll = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
+            gws_coll = GWAnalyser_IndividualTransition(self.phaseStructure, transitionReport, self.potential,
                 self.detector)
-            settings_coll = GWAnalysisSettings()
+            # make two copies of settings as we need to modify them from user input in this method
+            # maybe a mild design flaw to do that, but its fairly transparent here as point is to run
+            # with two different kapaa_coll
+            settings_coll = copy.copy(settings)
+            settings_nocoll = copy.copy(settings)
+            # set kappacoll setting for each case (with collions only and without collsions)
             settings_coll.kappaColl = 1.
-            gws_noColl.determineGWs(settings=None)
-            gws_coll.determineGWs(settings=settings_coll)
+            settings_nocoll.kappaColl = 0
+            gws_noColl.determineGWs(settings_nocoll)
+            gws_coll.determineGWs(settings_coll)
             gwFunc_noColl = gws_noColl.getGWfunc_total(soundShell=True)
             gwFunc_coll = gws_coll.getGWfunc_total()
             SNR_noColl = gws_noColl.calculateSNR(gwFunc_noColl)
@@ -656,8 +681,8 @@ class GWAnalyser:
             plt.margins(0, 0)
             plt.tight_layout(pad=1.8)
             pathlib.Path(str(pathlib.Path('output/plots'))).mkdir(parents=True, exist_ok=True)
-            #plt.savefig('output/plots/GWs_BP1.pdf')
-            plt.show()
+            plt.savefig(GWsOutputFolder+'GWs_SignalVsSensitiviy.pdf')
+            #plt.show()
 
     def getHackMeanBubbleRadius(self, transitionReport: dict):
         T = transitionReport['TSubsample']
@@ -830,7 +855,7 @@ class GWAnalyser:
             for i in indices:
                 #if allT[i] > 83.87:
                 #    continue
-                gws = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
+                gws = GWAnalyser_IndividualTransition(self.phaseStructure, transitionReport, self.potential,
                     self.detector)
                 settings = GWAnalysisSettings()
                 settings.sampleIndex = i
@@ -883,7 +908,7 @@ class GWAnalyser:
                     lengthScale_beta.append((8*np.pi)**(1/3) * vw[-1] / beta[-1])
 
                 if bCombined:
-                    gws = GWAnalyser_InidividualTransition(self.phaseStructure, transitionReport, self.potential,
+                    gws = GWAnalyser_IndividualTransition(self.phaseStructure, transitionReport, self.potential,
                         self.detector)
                     settings = GWAnalysisSettings()
                     settings.sampleIndex = i
@@ -1283,9 +1308,9 @@ def scanGWsWithParam(detectorClass, potentialClass, outputFolder, bForceAllTrans
         gwa = GWAnalyser(detectorClass, potentialClass, outputSubfolder,
             bForceAllTransitionsRelevant=bForceAllTransitionsRelevant)
         transitionReport = gwa.relevantTransitions[0]
-        gws_noColl = GWAnalyser_InidividualTransition(gwa.phaseStructure, transitionReport, gwa.potential,
+        gws_noColl = GWAnalyser_IndividualTransition(gwa.phaseStructure, transitionReport, gwa.potential,
                 gwa.detector)
-        gws_coll = GWAnalyser_InidividualTransition(gwa.phaseStructure, transitionReport, gwa.potential,
+        gws_coll = GWAnalyser_IndividualTransition(gwa.phaseStructure, transitionReport, gwa.potential,
             gwa.detector)
         settings_coll = GWAnalysisSettings()
         settings_coll.kappaColl = 1.
@@ -1681,25 +1706,162 @@ def compareBubRad():
     plt.show()
 
 
-def main(detectorClass, potentialClass, outputFolder):
-    gwa = GWAnalyser(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=False)
-    # Use this for scanning GWs and thermal params over temperature.
-    gwa.scanGWs('C:/Work/Monash/PhD/Documents/SupercoolGWs/Plots/redo_BP3/', bCombined=True)
-    #gwa.scanGWs()
+def main(potentialClass, GWsOutputFolder, TSOutputFolder, detectorClass = LISA):
+    gwa = GWAnalyser(detectorClass, potentialClass, TSOutputFolder, bForceAllTransitionsRelevant=False)
+    # scan over reference temperature and make plots, as done in https://arxiv.org/abs/2309.05474
+    gwa.scanGWs(GWsOutputFolder, bCombined=False)
+    # Just run a single point at percolation temperature
+    settings = GWAnalysisSettings()
+    settings.bUseChapmanJouguetVelocity=True
+    gwa.determineGWs(GWsOutputFolder, settings)
     # Use this for evaluating GWs using thermal params at the onset of percolation.
     #gwa.determineGWs_withColl()
     #scanGWsWithParam(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=True)
     #hydroTester(potentialClass, outputFolder)
 
-
+# when called as a script, read in arguments listed in the order
+# 1 the model,
+# 2 output directory,
+# 3 input (ie the TS output),
+# 4 and optionally the detector class, though only LISA is currently provided.
+# if no arguments are provided it will run with the defaults provided below
 if __name__ == "__main__":
-    main(LISA, RealScalarSingletModel_Boltz, 'output/RSS/RSS_new_BP3/')
-    #main(LISA, SMplusCubic, 'output/archil/archil_BP5/')
-    #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/3/40/')
-    #main(LISA, SMplusCubic, 'output/nanograv/BP1/')
-    #main(LISA, SMplusCubic, 'output/pipeline/archilBoltz/6/')
-    #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/1/13/')
-    #main(LISA, SMplusCubic, 'output/pipeline/archil-rerun/1/14/')
-    #main(LISA, RealScalarSingletModel_HT, 'output/RSS_HT/RSS_HT_BP1/')
-    #main(LISA, ToyModel, 'output/Toy/Toy_BP1/')
-    #main(LISA, SMplusCubic, 'BP1/')
+
+    # new code
+    default_model = RealScalarSingletModel_Boltz
+    default_output_dir = 'GWsOutput/plots/'
+    default_input_dir = 'output/RSS/RSS_BP3/'
+    default_detector = LISA
+    import sys
+
+    print(sys.argv)
+    print( "we have ", len(sys.argv), " arguments")
+    # Check that the user has included enough parameters in the run command.
+    if len(sys.argv) < 2:
+        print('Since no arguments have been specifed running default model for the default GW detector, with default input folder and output folder.')
+        print('If you wish to use a differemt model or input/output files or detector please either:')
+        print('a) edit the default model, input and outfolder strings or detector set just below if __name__ == "__main__": in gws/gw_analyser.py')
+        print('b) specify them at the command line as described in the README')
+        main(default_model, default_output_dir, default_input_dir, default_detector)
+        sys.exit(0)
+    # read in model labels in lower case regardless of input case
+    modelLabel = sys.argv[1].lower()
+    print("modellabel set to ", modelLabel)
+    modelLabels = ['toy', 'rss', 'rss_ht', 'smpluscubic']
+    # The AnalysablePotential subclass corresponding to a particular model label.
+    models = [ToyModel, RealScalarSingletModel_Boltz, RealScalarSingletModel_HT, SMplusCubic]
+    # PhaseTracer script to run, specific to a particular model label.
+    PT_scripts = ['run_ToyModel', 'run_RSS', 'run_RSS', 'run_supercool']
+    # Extra arguments to pass to PhaseTracer, specific to a particular model label.
+    PT_paramArrays = [[], ['-boltz'], ['-ht'], ['-boltz']]
+    _potentialClass = None
+    _PT_script = ''
+    _PT_params = []
+
+    # Attempt to match the input model label to the supported model labels.
+    for i in range(len(models)):
+        if modelLabel == modelLabels[i]:
+            _potentialClass = models[i]
+            _PT_script = PT_scripts[i]
+            _PT_params = PT_paramArrays[i]
+            break
+
+    if _potentialClass is None:
+        print(f'Invalid model label: {modelLabel}. Valid model labels are: {modelLabels}')
+        sys.exit(1)
+    # location for to utput GWs results.
+    output_dir = sys.argv[2]
+    print("output_dir set to ", output_dir)
+    # location for TS output to be used to as input here to compute GWs
+    TS_output_dir = sys.argv[3]
+    if len(sys.argv) > 4:
+        Detector = sys.argv[4]
+    else:
+        Detector = LISA
+    main(RealScalarSingletModel_Boltz, output_dir, TS_output_dir, Detector)
+
+# TODO: decide if we really need to do this here also, after I added GWs to command line interface
+#      develop an interface to run main part of TransitionSolver
+#       and then GWs and the same time.  Should try to avoid writing to json
+#      file and then reading it in.
+#      Inreface can work something like this:
+#      When called as a script, read in argument for
+#           # 1 the model,
+#           # 2 output directory,
+#           # 3 True if you want to run TransitionSolver from the beginning
+#           #        for an input file specifying the parameters OR
+#           #   False if you want run the gws module on results that have
+#           #         already been obtained from running basic functinality
+#           #         of TransitionSolver.
+#           # 4 input: if 3 is True this will be the name of a file
+#           #             specifying the input parameters of the model selected
+#           #             in 1.
+#           #          If 3 is False thsi will be the directory where output
+#           #             from runinng TS (without GWs) is located 
+#           #  5 optionally set the detector (default is LISA)
+#       Could works something like this:
+#       if __name__ == "__main__":                                                    
+#         # new code                                                                  
+#         default_output_dir = 'GWsOutput/plots/'                                     
+#         default_input_dir = 'output/RSS/RSS_BP3/'                                   
+#         default_model = RealScalarSingletModel_Boltz                                
+#         default_detector = LISA                                                     
+#         import sys                                                                  
+#                                                                                     
+#         print(sys.argv)                                                             
+#         print( "we have ", len(sys.argv), " arguments")                             
+#         # Check that the user has included enough parameters in the run command.    
+#        if len(sys.argv) < 2:
+#                print('Since no arguments have been specifed running default model for the default GW detector, with default input folder and output folder.')
+#                print('If you wish to use a differemt model or input/output files or detector please either:')
+#                print('a) edit the default model, input and outfolder strings or detector set just below if __name__ == "__main__": in gws/gw_analyser.py')
+#                print('b) specify them at the command line as described in the README')
+#                main(default_model, default_output_dir, default_input_dir, default_detector)
+#                sys.exit(0)
+#         # read in model labels in lower case regardless of input case
+#         modelLabel = sys.argv[1].lower()
+#         print("modellabel set to ", modelLabel)
+#         modelLabels = ['toy', 'rss', 'rss_ht', 'smpluscubic']
+#         # The AnalysablePotential subclass corresponding to a particular model label.
+#         models = [ToyModel, RealScalarSingletModel_Boltz, RealScalarSingletModel_HT, SMplusCubic]
+#         # PhaseTracer script to run, specific to a particular model label.
+#         PT_scripts = ['run_ToyModel', 'run_RSS', 'run_RSS', 'run_supercool']
+#         # Extra arguments to pass to PhaseTracer, specific to a particular model label.
+#         PT_paramArrays = [[], ['-boltz'], ['-ht'], ['-boltz']]
+#         _potentialClass = None
+#          _PT_script = ''
+#          _PT_params = []
+#      
+#          # Attempt to match the input model label to the supported model labels.
+#          for i in range(len(models)):
+#              if modelLabel == modelLabels[i]:
+#                  _potentialClass = models[i]
+#                  _PT_script = PT_scripts[i]
+#                  _PT_params = PT_paramArrays[i]
+#                  break
+#      
+#          if _potentialClass is None:
+#              print(f'Invalid model label: {modelLabel}. Valid model labels are: {modelLabels}')
+#              sys.exit(1)
+#      
+#          output_dir = sys.argv[2]
+#          print("output_dir set to ", output_dir)
+#          # boolean value indicat=ing whether we run TS from scratch or only run GWs for pre-exiting output
+#          run_TS_and_GWs =  sys.argv[3]
+#          # location for TS output to be used to as input here to compute GWs
+#          #inputs = sys.argv[3]
+#          if(run_TS_and_GWs == False):
+#              input_file = sys.argv[4]
+#          else:    
+#              TS_output_dir = sys.argv[4]
+#      # if an optional argument for detector is provided set it
+#          if len(sys.argv) > 5:
+#              Detector = sys.argv[5]
+#          else:
+#              # otherwise use default_detector (initially set to LISA but can be manually changed)
+#              Detector = default_detector
+#          #PA: I think for  scanGWs this is then enough and can call main - need to do that and then figure out calling with parameters after testing that works at least.
+#          if len(sys.argv) < 6:
+#              main(RealScalarSingletModel_Boltz, output_dir, TS_output_dir, Detector)      
+#      
+#      

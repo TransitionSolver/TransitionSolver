@@ -2,7 +2,7 @@ from __future__ import annotations
 import traceback
 
 from analysis.transition_analysis import TransitionAnalyser
-from models.Archil_model import SMplusCubic
+from models.supercool_model import SMplusCubic
 from models.analysable_potential import AnalysablePotential
 from models.toy_model import ToyModel
 from models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz
@@ -11,12 +11,17 @@ from analysis.phase_structure import PhaseStructure
 from analysis.phase_history_analysis import AnalysisMetrics, PhaseHistoryAnalyser
 from analysis.transition_graph import ProperPath
 from analysis import phase_structure
+from gws.gw_analyser import GWAnalyser
+from gws.detectors.lisa import LISA
+from gws.gw_analyser import GWAnalysisSettings
 from typing import Type
 import numpy as np
 import subprocess
 import json
 import pathlib
 import sys
+
+
 
 from util.events import notifyHandler
 
@@ -43,7 +48,7 @@ def writePhaseHistoryReport(fileName: str, paths: list[ProperPath], phaseStructu
         print('Failed to write report.')
 
 
-def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script: str, PT_params: list[str],
+def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str, PT_script: str, PT_params: list[str],
         parameterPoint: list[float], bDebug: bool = False, bPlot: bool = False, bUseBoltzmannSuppression: bool =
         True) -> None:
     # Create the output folder if it doesn't exist already.
@@ -87,6 +92,8 @@ def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script
     # from PhaseTracer. stderr is routed to STDOUT so that errors in PhaseTracer are printed here.
     command = (['wsl'] if windows else []) + [PhaseTracer_directory + f'bin/{PT_script}', outputFolder +
         '/parameter_point.txt', outputFolder] + PT_params
+    if bDebug == True:
+        print("Calling PhaseTracer with command ",  command)
     subprocess.call(command, timeout=60)#, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
     # Load the phase structure saved by PhaseTracer.
@@ -113,30 +120,40 @@ def main(potentialClass: Type[AnalysablePotential], outputFolder: str, PT_script
         potential = potentialClass(*parameterPoint, bUseBoltzmannSuppression=bUseBoltzmannSuppression)
     else:
         potential = potentialClass(*parameterPoint[:5])
-
+    # boolean value determines if we use the chapman Jouguet velocity of the vw passed
+    # to analysePhaseHistory_supplied if True the vw passed to analysePhaseHistory_supplied
+    # is not used
+    bUseCJvw = True
     def notify_TransitionAnalyser_on_create(transitionAnalyser: TransitionAnalyser):
         transitionAnalyser.bComputeSubsampledThermalParams = True
         transitionAnalyser.bCheckPossibleCompletion = False
-        transitionAnalyser.bUseChapmanJouguetVelocity = True
+        transitionAnalyser.bUseChapmanJouguetVelocity = bUseCJvw
 
     notifyHandler.addEvent('TransitionAnalyser-on_create', notify_TransitionAnalyser_on_create)
 
     origin = np.array([0, 0])
     vev = potential.approxZeroTMin()[0]
-    print('V0(0, 0)      :', potential.V0(origin))
-    print('V0(vh, vs)    :', potential.V0(vev))
-    print('V(0 , 0 , 0)  :', potential.Vtot(origin, 0))
-    print('V(vh, vs, 0)  :', potential.Vtot(vev, 0))
-    print('V(0 , 0 , 100):', potential.Vtot(origin, 100))
-    print('V(vh, vs, 100):', potential.Vtot(vev, 100))
-
     # Analyse the phase history.
-    paths, _, analysisMetrics = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=1.)
+    paths, _, analysisMetrics = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=0.96)
 
     # Write the phase history report. Again, this will be handled within PhaseHistoryAnalysis in a future version of the
     # code.
     writePhaseHistoryReport(outputFolder + '/phase_history.json', paths, phaseStructure, analysisMetrics)
-
+    if GWs == 0:
+        return
+    default_detector = LISA
+    gwa = GWAnalyser(default_detector, potentialClass, outputFolder+'/', bForceAllTransitionsRelevant=False)
+    settings = GWAnalysisSettings()
+    settings.bUseChapmanJouguetVelocity = bUseCJvw
+    # Determine GWs for a single point
+    if GWs > 0 and GWs < 3:
+       if GWs == 1:
+          settings.kappaTurb = 0.05
+       if GWs == 2:
+          settings.kappaColl = 1.
+       gwa.determineGWs(outputFolder+'/', settings)
+    elif GWs == 3:
+       gwa.determineGWs_withColl(GWsOutputFolder=outputFolder+'/', settings=settings)
 
 if __name__ == "__main__":
     import sys
@@ -144,14 +161,14 @@ if __name__ == "__main__":
     print(sys.argv)
 
     # Check that the user has included enough parameters in the run command.
-    if len(sys.argv) < 4:
-        print('Please specify a model, an output folder, and a parameter point.')
+    if len(sys.argv) < 5:
+        print('Please specify a model (e.g. toy, rss, rss_ht, smpluscubic) whether you want GWs computed (0 no, 1 GWs sourced from sound waves and turbulence, see README for other options), an output folder, and a parameter point.')
         sys.exit(1)
 
     modelLabel = sys.argv[1].lower()
 
     # Support model labels.
-    modelLabels = ['toy', 'rss', 'rss_ht', 'archil']
+    modelLabels = ['toy', 'rss', 'rss_ht', 'smpluscubic']
     # The AnalysablePotential subclass corresponding to a particular model label.
     models = [ToyModel, RealScalarSingletModel_Boltz, RealScalarSingletModel_HT, SMplusCubic]
     # PhaseTracer script to run, specific to a particular model label.
@@ -174,9 +191,15 @@ if __name__ == "__main__":
         print(f'Invalid model label: {modelLabel}. Valid model labels are: {modelLabels}')
         sys.exit(1)
 
-    outputFolder = sys.argv[2]
+    # Check for GWs
+    # if 0 no GWs, if 1 compute GWs for sound waves and turbulence
+    # if 2 compute for collsions
+    # if 3 compute for soundaves + turbulence and for collsions separately
+    GWs = int(sys.argv[2])
 
-    _parameterPoint = sys.argv[3]
+    outputFolder = sys.argv[3]
+
+    _parameterPoint = sys.argv[4]
     loadedParameterPoint = False
 
     # First, attempt to treat the parameter point as a file name.
@@ -199,4 +222,4 @@ if __name__ == "__main__":
             print('Failed to load parameter point defined by:', ' '.join(sys.argv[2:]))
             sys.exit(1)
 
-    main(_potentialClass, outputFolder, _PT_script, _PT_params, _parameterPoint, bDebug=True, bPlot=True)
+    main(_potentialClass, GWs, outputFolder, _PT_script, _PT_params, _parameterPoint, bDebug=False, bPlot=False)

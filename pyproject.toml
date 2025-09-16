@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "TransitionSolver"
+version = "0.0.0"
+dependencies = [
+  "matplotlib",
+  "scipy",
+  "numpy",
+  "cosmoTransitions",
+  "pathos",
+  "click",
+  "rich",
+]
+requires-python = ">=3.9"
+authors = [
+  {name = "Lachlan Morris"},
+]
+maintainers = [
+  {name = "Andrew Fowlie", email = "andrew.fowlie@xjtlu.edu.cn"}
+]
+description = "State of the art calculations for phase transitions and gravitational waves"
+readme = "README.md"
+license = "GPL-3.0"
+license-files = ["LICENSE"]
+keywords = ["physics", "phase transitions", "gravitational waves"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.urls]
+Repository = "https://github.com/TransitionSolver/TransitionSolver"
+"Bug Tracker" = "https://github.com/TransitionSolver/TransitionSolver/issues"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+norecursedirs = ["examples"]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "--mpl -vvvv --showlocals"
+
+[tool.setuptools.package-data]
+"TransitionSolver" = ["data/**/*"]
+
+[project.scripts]
+ts = "TransitionSolver.cli:cli"
