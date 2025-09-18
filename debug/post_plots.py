@@ -201,41 +201,6 @@ def plotHubbleParameter():
     plt.show()
 
 
-def plotActionCurve(fileName, transitionID=-1):
-    extension = fileName.split('.')[-1]
-    if extension == 'txt':
-        data = np.loadtxt(fileName)
-
-        T = data[..., 0]
-        SonT = data[..., 1]
-    elif extension == 'json':
-        if transitionID == -1:
-            print('Transition ID must be specified when loading JSON data.')
-            return
-        with open(fileName) as f:
-            data = json.load(f)
-
-            transDict = None
-            for tr in data['transitions']:
-                if tr['id'] == transitionID:
-                    transDict = tr
-                    break
-
-            if transDict is not None:
-                T = transDict['T']
-                SonT = transDict['SonT']
-            else:
-                print('Unable to find transition with id =', transitionID, 'in the JSON file.')
-                return
-    else:
-        print('Unsupported file type:', extension)
-        return
-
-    plt.plot(T, SonT, marker='.')
-    plt.xlabel('$T$')
-    plt.ylabel('$S(T)$')
-    plt.show()
-
 
 def plotPotentialBetweenPhases(potentialClass, folderName, transitionID, deltaT, actionTemps, plotPadding,
         numPoints=100):

@@ -3,11 +3,13 @@ Run PhaseTracer
 ===============
 """
 
+import json
 import os
 import subprocess
 from pathlib import Path
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 from .analysis.phase_structure import load_data
 from .analysis.phase_history_analysis import PhaseHistoryAnalyser
@@ -68,7 +70,7 @@ def make_report(paths, phase_structure, analysis_metrics):
 def phase_structure(potential, phase_structure_file, vw=0.9):
     """
     @param potential Effective potential
-    @param phase_structure_file Phase strucure results file from PT
+    @param phase_structure_file Phase structure results file from PT
     @param vw Assumed wall velocity
 
     @returns Report phase history from PhaseTracer output
@@ -89,7 +91,7 @@ def phase_structure(potential, phase_structure_file, vw=0.9):
 def trace_dof(potential, phase_structure_file):
     """
     @param potential Effective potential
-    @param phase_structure_file Phase strucure results file from PT
+    @param phase_structure_file Phase structure results file from PT
 
     @returns DOF as a function of temperature for each phase
     """
@@ -104,3 +106,38 @@ def trace_dof(potential, phase_structure_file):
         data[phase.key] = {"T": T, "dof": dof}
 
     return data
+
+
+def load_transition(transition_id, phase_structure_file):
+    """
+    @param transition_id ID of transition to load from disk
+    @param phase_structure_file Phase structure results file from PT
+
+    @returns Transition from data on disk
+    """
+    with open(phase_structure_file) as f:
+        phase_structure = json.load(f)
+
+    for tr in phase_structure['transitions']:
+        if tr['id'] == transition_id:
+            return tr
+
+    raise RuntimeError(f"Could not find {transition_id} transition")
+
+
+def plot_action_curve(transition_id, phase_structure_file, ax=None):
+    """
+    @param transition_id ID of transition to load from disk
+    @param phase_structure_file Phase structure results file from PT
+
+    @returns Axes of plot of axis curve
+    """
+    if ax is None:
+        ax = plt.gca()
+
+    transition = load_transition(transition_id, phase_structure_file)
+
+    ax.plot(transition['T'], transition['SonT'], marker='.')
+    ax.set_xlabel('$T$')
+    ax.set_ylabel('$S(T) / T$')
+    return ax
