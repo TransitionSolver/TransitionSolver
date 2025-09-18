@@ -5,6 +5,7 @@ Analyse gravitational wave signals
 
 from __future__ import annotations
 
+import os
 import pathlib
 import time
 import traceback
@@ -28,7 +29,7 @@ from models.supercool_model import SMplusCubic
 from models.analysable_potential import AnalysablePotential
 from gws import giese_kappa, hydrodynamics
 from gws.detectors.lisa import LISA
-from gws.detectors.gw_detector import GWDetector
+from gws.detectors.detector import Detector
 
 
 GRAV_CONST = 6.7088e-39
@@ -59,7 +60,7 @@ class GWAnalyser_IndividualTransition:
     transitionReport: dict
     hydroVars: HydroVars
     hydroVarsReh: HydroVars
-    detector: GWDetector
+    detector: Detector
     peakAmplitude_sw_regular: float = 0.
     peakAmplitude_sw_soundShell: float = 0.
     peakFrequency_sw_bubbleSeparation: float = 0.
@@ -92,7 +93,7 @@ class GWAnalyser_IndividualTransition:
     alpha: float = 0.
 
     def __init__(self, phaseStructure: PhaseStructure, transitionReport: dict, potential: AnalysablePotential, detector:
-            GWDetector):
+            Detector):
         self.transitionReport = transitionReport
         self.phaseStructure = phaseStructure
         self.fromPhase = self.phaseStructure.phases[self.transitionReport['falsePhase']]
@@ -524,12 +525,12 @@ class GWAnalyser_IndividualTransition:
 
 
 class GWAnalyser:
-    detector: Optional[GWDetector]
+    detector: Optional[Detector]
     potential: AnalysablePotential
     phaseHistoryReport: dict
     relevantTransitions: list[dict]
 
-    def __init__(self, detectorClass: Type[GWDetector], potentialClass=None, outputFolder=None,
+    def __init__(self, detectorClass: Type[Detector], potentialClass=None, outputFolder=None,
             bForceAllTransitionsRelevant: bool = False, phase_history=None, phase_structure_file=None, potential=None):
         self.detector = detectorClass()
         
