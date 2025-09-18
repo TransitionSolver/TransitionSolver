@@ -1,8 +1,14 @@
-# Currently copied straight from Appendix B of https://arxiv.org/pdf/2010.09744.pdf and Appendix A of 2004.06995.
+"""
+Currently copied straight from Appendix B of https://arxiv.org/pdf/2010.09744.pdf and Appendix A of 2004.06995.
+"""
 
 import numpy as np
 from scipy.integrate import odeint
-from scipy.integrate import simps
+
+try:
+    from scipy.integrate import simps
+except ImportError:
+    from scipy.integrate import simpson as simps
 
 
 def mu(a,b):

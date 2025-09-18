@@ -3,14 +3,18 @@ LISA detector
 =============
 """
 
+import os
+from pathlib import Path
+
 import numpy as np
 import matplotlib.pyplot as plt
 from numpy import pi, cos, sin
 
-from gws.detectors.detector import Detector, FromDiskDetector
+from .detector import Detector, FromDiskDetector
 
 SECONDS_PER_YEAR = 31556952
 LITTLE_H = 0.67
+THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 
 
 class LISA(Detector):
@@ -48,12 +52,12 @@ class LISA(Detector):
 
 lisa_analytic = LISA()
 # Compare the equation to the PLS from Thrane's Plcurves, LISA_noisepower
-lisa_thrane = FromDiskDetector('LISA_sensitivity_spectrum.txt')
-lisa_thrane_1_yr = FromDiskDetector('LISA_sensitivity_spectrum_1_yr.txt')
+lisa_thrane = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum.txt')
+lisa_thrane_1_yr = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum_1_yr.txt')
 # Compare the equation to the PLS from Thrane's Plcurves, LISA_noisepower, with the 2019 sensitivity equation
-lisa_thrane_2019 = FromDiskDetector('LISA_sensitivity_spectrum_2019.txt')
-lisa_thrane_2019_snr_1 = FromDiskDetector('LISA_sensitivity_spectrum_2019_SNR_1.txt')
-lisa_thrane_2019_snr_10 = FromDiskDetector('LISA_sensitivity_spectrum_2019_SNR_10.txt')
+lisa_thrane_2019 = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum_2019.txt')
+lisa_thrane_2019_snr_1 = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum_2019_SNR_1.txt')
+lisa_thrane_2019_snr_10 = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum_2019_SNR_10.txt')
 
 
 if __name__ == "__main__":

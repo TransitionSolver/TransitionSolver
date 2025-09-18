@@ -1,10 +1,21 @@
+"""
+Compute g_eff
+==============
+"""
+
 from __future__ import annotations
-from typing import Callable, List, Tuple
+
 import csv
+import os
+from pathlib import Path
+from typing import Callable, List, Tuple
+
 from scipy.interpolate import CubicSpline
 import matplotlib.pyplot as plt
 import numpy as np
 
+
+THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 
 # Currently using digitised curves from top panels of Fig 3 from https://arxiv.org/pdf/1609.04979.pdf.
 
@@ -72,19 +83,19 @@ def getGeffCurveFromFile(filename: str) -> Callable[[float], float]:
 
 
 def getGeffCurve_boson() -> Callable[[float], float]:
-    return getGeffCurveFromFile('models/util/boson_geff.csv')
+    return getGeffCurveFromFile(THIS / 'boson_geff.csv')
 
 
 def getGeffCurve_fermion() -> Callable[[float], float]:
-    return getGeffCurveFromFile('models/util/fermion_geff.csv')
+    return getGeffCurveFromFile(THIS / 'fermion_geff.csv')
 
 
 def getGeffCurve_total() -> Callable[[float], float]:
-    return getGeffCurveFromFile('models/util/SM_geff.csv')
+    return getGeffCurveFromFile(THIS / 'SM_geff.csv')
 
 
 if __name__ == "__main__":
-    x_, y_ = getRawGeffCurveFromFile('models/util/SM_geff.csv')
+    x_, y_ = getRawGeffCurveFromFile(THIS / 'SM_geff.csv')
     #myFunc = getGeffCurve_fermion()
     myFunc = getGeffCurve_total()
     #xSamples = np.linspace(x_[0], x_[-1], 1000)

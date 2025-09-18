@@ -273,9 +273,10 @@ class GWAnalyser_IndividualTransition:
     def getPeakAmplitude_turb(self) -> float:
         return 9.0*self.redshiftAmp * (self.H*self.lengthScale_bubbleSeparation) * (self.kappaTurb*self.K)**(3/2)
 
-    def calculateSNR(self, gwFunc: Callable[[float], float]) -> float:
-        frequencies = self.detector.sensitivityCurve[0]
-        sensitivityCurve = self.detector.sensitivityCurve[1]
+    def calculateSNR(self, gwFunc: Callable[[float], float], frequencies=None) -> float:
+        if frequencies is None:
+            frequencies = np.logspace(-11, 3, 1000)
+        sensitivityCurve = self.detector(frequencies)
 
         # TODO: vectorise.
         gwAmpl = np.array([gwFunc(f) for f in frequencies])
@@ -284,7 +285,7 @@ class GWAnalyser_IndividualTransition:
 
         integral = scipy.integrate.simpson(integrand, frequencies)
 
-        self.SNR = np.sqrt(self.detector.detectionTime * self.detector.numIndependentChannels * integral)
+        self.SNR = np.sqrt(self.detector.detection_time * self.detector.channels * integral)
 
         return self.SNR
 
@@ -528,32 +529,103 @@ class GWAnalyser:
     phaseHistoryReport: dict
     relevantTransitions: list[dict]
 
-    def __init__(self, detectorClass: Type[GWDetector], potentialClass: Type[AnalysablePotential], outputFolder: str,
-            bForceAllTransitionsRelevant: bool = False):
+    def __init__(self, detectorClass: Type[GWDetector], potentialClass=None, outputFolder=None,
+            bForceAllTransitionsRelevant: bool = False, phase_history=None, phase_structure_file=None, potential=None):
         self.detector = detectorClass()
+        
+        if phase_history is None:
+            phase_history_file = os.path.join(outputFolder, 'phase_history.json')
 
-        with open(outputFolder + 'phase_history.json', 'r') as f:
-            self.phaseHistoryReport = json.load(f)
+            with open(phase_history_file , 'r') as f:
+                self.phaseHistoryReport = json.load(f)
+        else:
+            self.phaseHistoryReport = phase_history
 
-        self.relevantTransitions = extractRelevantTransitions(self.phaseHistoryReport,
-            bForceAllTransitionsRelevant=bForceAllTransitionsRelevant)
+        if phase_structure_file is None:
+            phase_structure_file = os.path.join(outputFolder, 'phase_structure.dat')
 
-        if len(self.relevantTransitions) == 0:
-            raise Exception('No relevant transition detected in the phase history.')
-
-        bSuccess, self.phaseStructure = phase_structure.load_data(outputFolder + 'phase_structure.dat')
+        bSuccess, self.phaseStructure = phase_structure.load_data(phase_structure_file)
 
         if not bSuccess:
             raise Exception("Failed to load phase structure, please check this file exists in the relevant directory.")
 
-        if potentialClass == SMplusCubic:
-            self.potential = potentialClass(*np.loadtxt(outputFolder + 'parameter_point.txt'), bUseBoltzmannSuppression=True)
+        if potential is None:
+            parameter_point_file = os.path.join(outputFolder, 'parameter_point.txt')
+            parameter_point = np.loadtxt(parameter_point_file)
+            bUseBoltzmannSuppression = potentialClass == SMplusCubic
+            self.potential = potentialClass(*parameter_point, bUseBoltzmannSuppression=bUseBoltzmannSuppression)
         else:
-            self.potential = potentialClass(*np.loadtxt(outputFolder + 'parameter_point.txt'))
+            self.potential = potential
+                     
+        self.relevantTransitions = extractRelevantTransitions(self.phaseHistoryReport,
+            bForceAllTransitionsRelevant=bForceAllTransitionsRelevant)
 
-        if len(self.detector.sensitivityCurve) == 0:
+        if not self.relevantTransitions:
+            raise Exception('No relevant transition detected in the phase history')
+
+    def report(self, settings: GWAnalysisSettings = None):
+        """
+        @returns Data on GW spectrum
+        """
+        if settings is None:
+            settings = GWAnalysisSettings()
+        
+        report = {}
+        
+        for transition in self.relevantTransitions:
+            gws = GWAnalyser_IndividualTransition(self.phaseStructure, transition, self.potential, self.detector)
+            gws.determineGWs(settings)
+            sound_shell = gws.getGWfunc_total(soundShell=True)
+            
+            spectra = report[transition['id']] = {}
+            spectra['Peak amplitude (sw, sound shell)'] = gws.peakAmplitude_sw_soundShell
+            spectra['Peak frequency (sw, bubble separation)'] = gws.peakFrequency_sw_bubbleSeparation
+            spectra['Peak frequency (sw, shell thickness)'] = gws.peakFrequency_sw_shellThickness
+            spectra['Peak amplitude (turb)'] = gws.peakAmplitude_turb
+            spectra['Peak frequency (turb)'] = gws.peakFrequency_turb
+            spectra['Peak amplitude (coll)'] = gws.peakAmplitude_coll
+            spectra['Peak frequency (coll)'] = gws.peakFrequency_coll
+            spectra['SNR (double)'] = gws.calculateSNR(sound_shell)
+
+        return report
+
+    def plot(self, settings: GWAnalysisSettings = None, show=False, frequencies=None):
+        """
+        @returns Figure of plot of data on GW spectrum
+        """
+        if settings is None:
+            settings = GWAnalysisSettings()
+            
+        if frequencies is None:
             frequencies = np.logspace(-11, 3, 1000)
-            self.detector.constructSensitivityCurve(frequencies)
+        
+        n = len(self.relevantTransitions)
+        fig, ax = plt.subplots(n)
+        
+        if n <= 1:
+            ax = [ax]
+        
+        for a, transition in zip(ax, self.relevantTransitions):
+
+            gws = GWAnalyser_IndividualTransition(self.phaseStructure, transition, self.potential, self.detector)
+            gws.determineGWs(settings)
+            total = gws.getGWfunc_total(soundShell=True)
+            sw = np.vectorize(gws.getGWfunc_sw(soundShell=True))
+            turb = np.vectorize(gws.getGWfunc_turb())
+            coll = np.vectorize(gws.getGWfunc_coll())
+
+            a.loglog(frequencies, self.detector(frequencies), label="noise")
+            a.loglog(frequencies, total(frequencies), zorder=10, label="total")
+            a.loglog(frequencies, sw(frequencies), label="sw")
+            a.loglog(frequencies, turb(frequencies), label="turb")
+            a.loglog(frequencies, coll(frequencies), label="coll")
+            a.legend()
+        
+        if show:
+            plt.show()
+        
+        return fig
+
 
     def determineGWs(self, GWsOutputFolder, settings: GWAnalysisSettings = None):
         # If no settings are supplied, use default settings.
