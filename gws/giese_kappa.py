@@ -39,8 +39,8 @@ def kappa_nu_model(cs2, al, vp, n=None):
     
     nu = 1. / cs2 + 1.
     tmp = 1. - 3. * al + vp**2 * (1. / cs2 + 3. * al)
-    disc = 4 * vp**2 * (1. - nu) + tmp**2
-    
+    disc = (1 - 3 * al)**2 + vp**2 / cs2 * (-18 * al**2 * cs2 + 6 * al * (cs2 - 1) - 2) + vp**4 * (3 * al + 1 / cs2)**2
+
     if disc < 0:
         raise RuntimeError("vp too small for detonation")
 
