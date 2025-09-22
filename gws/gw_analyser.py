@@ -38,6 +38,7 @@ S0 = 2*np.pi**2/45*G0*T0**3
 KM_TO_MPC = 3.241e-20
 H_OVER_H0 = 1.0 / (100*KM_TO_MPC / GEV_TO_HZ)
 ZP = 10  # Sound wave peak frequency from simulations
+OMEGA_SW = 0.012  # From erratum of https://arxiv.org/abs/1704.05871 TABLE IV.
 
 logger = logging.getLogger(__name__)
 
@@ -64,9 +65,9 @@ class AnalyseIndividualTransition:
         self.potential = potential
         self.detector = detector
 
-        self.hydro_transition_temp = hydrodynamics.getHydroVars_new(self.from_phase, self.to_phase, self.potential, self.transition_temperature,
+        self.hydro_transition_temp = hydrodynamics.getHydroVars_new(self.from_phase, self.to_phase, self.potential, self.transition_temp,
             phase_structure.groundStateEnergyDensity)
-        self.hydro_reheat_temp = hydrodynamics.getHydroVars(self.from_phase, self.to_phase, self.potential, self.reheating_temperature)  # TODO why doesn't this one use getHydroVars_new?
+        self.hydro_reheat_temp = hydrodynamics.getHydroVars(self.from_phase, self.to_phase, self.potential, self.reheating_temp)  # TODO why doesn't this one use getHydroVars_new?
 
     @property
     def redshift_freq(self):
@@ -80,7 +81,7 @@ class AnalyseIndividualTransition:
         """
         (a1/a0)^4 (H0/H1)^2 = (s0/s1)^(4/3) * (H0/H1)^2, and absorb h^2 factor
         """
-        return (S0 / self.hydro_reheat_temp.entropyDensityTrue)**(4/3) * self.hydro_transition_temp.hubble_constant **2 * H_OVER_H0**2
+        return (S0 / self.hydro_reheat_temp.entropyDensityTrue)**(4/3) * self.hydro_transition_temp.hubble_constant**2 * H_OVER_H0**2
 
     @property
     def Pf(self):
@@ -94,13 +95,13 @@ class AnalyseIndividualTransition:
         return 1. - 1. / np.sqrt(1 + 2. * self.hydro_transition_temp.hubble_constant * tau_sw)
 
     @property
-    def transition_temperature(self) -> float:
+    def transition_temp(self) -> float:
         if self.sample_index is None:
             return self.transition_report['Tp']
         return self.transition_report['TSubsample'][self.sample_index]
 
     @property
-    def reheating_temperature(self) -> float:
+    def reheating_temp(self) -> float:
         if self.sample_index is None:
             return self.transition_report['Treh_p']
         return self.calculate_reheating_temp(self.transition_report['TSubsample'][self.sample_index], self.rho_t)
@@ -116,9 +117,15 @@ class AnalyseIndividualTransition:
         return 1.58 * self.redshift_freq / self.length_scale * ZP / 10
      
     @property
+    def rb(self):
+        """
+        @returns Ratio of shell thickness and bubble separation
+        """
+        return abs(self.bubble_wall_velocity - self.hydro_transition_temp.soundSpeedFalse) / self.bubble_wall_velocity
+     
+    @property
     def peak_frequency_sw_shell_thickness(self):
-        length_scale = self.length_scale * abs(self.bubble_wall_velocity - self.hydro_transition_temp.soundSpeedFalse) / self.bubble_wall_velocity
-        return 1.58 * self.redshift_freq / length_scale * ZP / 10
+        return self.peak_frequency_sw_bubble_separation / self.rb
 
     @property
     def peak_frequency_turb(self):
@@ -127,29 +134,24 @@ class AnalyseIndividualTransition:
     @property
     def peak_amplitude_sw(self) -> float:
         """
-        Fit from https://arxiv.org/pdf/1704.05871 taking account of erratum
+        Fit from https://arxiv.org/abs/1704.05871 taking account of erratum
         """
-        Omega_gw = 0.012
-        return 2.061 * Omega_gw * self.redshift_amp * self.kinetic_energy_fraction**2 * self.hydro_transition_temp.hubble_constant * self.length_scale / self.hydro_transition_temp.soundSpeedFalse * self.upsilon
+        A = 2.061
+        return A * OMEGA_SW * self.redshift_amp * self.kinetic_energy_fraction**2 * self.hydro_transition_temp.hubble_constant * self.length_scale / self.hydro_transition_temp.soundSpeedFalse * self.upsilon
 
     @property
     def peak_amplitude_sw_sound_shell(self) -> float:
         """
-        Based on https://arxiv.org/pdf/1909.10040.pdf.
-        """
-        # Omega_gw = 0.01  # From https://arxiv.org/pdf/1704.05871.pdf TABLE IV.
-        Omega_gw = 0.012  # From erratum of https://arxiv.org/pdf/1704.05871.pdf TABLE IV.
-        rb = self.peak_frequency_sw_bubble_separation / self.peak_frequency_sw_shell_thickness
-        mu_f = 4.78 - 6.27*rb + 3.34*rb**2
-        Am = 3*self.kinetic_energy_fraction**2*Omega_gw / mu_f
-        # Roughly a factor of 0.2 smaller than the regular sound wave peak amplitude. Coming from 3*Omega_gw/0.15509
-        # * (1/mu_f) * (8pi)^(1/3). For vw ~ 1 and soundSpeed ~ 1/sqrt(3), mu_f ~ 0.4.
-        return self.hydro_transition_temp.hubble_constant * self.length_scale / self.hydro_transition_temp.soundSpeedFalse * Am * self.redshift_amp * self.upsilon
+        Based on https://arxiv.org/abs/1909.10040
+        """  
+        mu_f = 4.78 - 6.27 * self.rb + 3.34 * self.rb**2
+        f = 3. / mu_f / 2.061
+        return f * self.peak_amplitude_sw
 
     @property
     def peak_amplitude_coll(self) -> float:
         """
-        Based on https://arxiv.org/pdf/2208.11697.pdf
+        Based on https://arxiv.org/abs/2208.11697
         """
         if self.kappa_coll <= 0:
             return 0.
@@ -167,18 +169,16 @@ class AnalyseIndividualTransition:
 
     def spectral_shape_sw_double_broken(self, f: float):
         """
-        From https://arxiv.org/pdf/2209.13551.pdf (Eq. 2.11), originally from https://arxiv.org/pdf/1909.10040.pdf
-        (Eq. 5.7)
+        From https://arxiv.org/abs/2209.13551 (Eq. 2.11), originally from https://arxiv.org/abs/1909.10040 (Eq. 5.7)
         """
         b = 1
-        rb = self.peak_frequency_sw_bubble_separation / self.peak_frequency_sw_shell_thickness
-        m = (9*rb**4 + b) / (rb**4 + 1)
+        m = (9*self.rb**4 + b) / (self.rb**4 + 1)
         x = f / self.peak_frequency_sw_shell_thickness
-        return x**9 * ((1 + rb**4) / (rb**4 + x**4))**((9 - b) / 4) * ((b + 4) / (b + 4 - m + m*x**2))**((b + 4) / 2)
+        return x**9 * ((1 + self.rb**4) / (self.rb**4 + x**4))**((9 - b) / 4) * ((b + 4) / (b + 4 - m + m*x**2))**((b + 4) / 2)
 
     def _unnormalised_spectral_shape_turb(self, f: float) -> float:
         x = f / self.peak_frequency_turb
-        return x**3 / ((1 + x)**(11/3) * (1 + 8*np.pi*f/(self.redshift_freq*self.hydro_transition_temp.hubble_constant)))
+        return x**3 / ((1 + x)**(11/3) * (1 + 8*np.pi*f/(self.redshift_freq * self.hydro_transition_temp.hubble_constant)))
 
     def spectral_shape_turb(self, f: float) -> float:
         return self._unnormalised_spectral_shape_turb(f) / self._unnormalised_spectral_shape_turb(self.peak_frequency_turb)
@@ -258,7 +258,7 @@ class AnalyseIndividualTransition:
         return self.hydro_transition_temp.cj_velocity
 
     @property
-    def kappa_sound(self) -> float:
+    def kappa_sw(self) -> float:
         """
         @returns Efficiency of sound waves using the kappa-nu model
         """
@@ -275,15 +275,15 @@ class AnalyseIndividualTransition:
         if vw != self.bubble_wall_velocity:
             logger.warn(f"vw adjusted from {self.bubble_wall_velocity} to {vw} to avoid numerical instability")
 
-        kappa_sound = kappa_nu_model(self.hydro_transition_temp.soundSpeedSqTrue, self.hydro_transition_temp.alpha, vw, self.use_cj_velocity)
+        kappa_sw = kappa_nu_model(self.hydro_transition_temp.soundSpeedSqTrue, self.hydro_transition_temp.alpha, vw, self.use_cj_velocity)
 
-        if kappa_sound > 1:
-            raise RuntimeError("kappa_sound > 1: {kappa_sound}")
+        if kappa_sw > 1:
+            raise RuntimeError("kappa_sw > 1: {kappa_sw}")
 
-        if kappa_sound <= 0:
-            raise RuntimeError("kappa_sound <= 0: {kappa_sound}")
+        if kappa_sw <= 0:
+            raise RuntimeError("kappa_sw <= 0: {kappa_sw}")
 
-        return kappa_sound
+        return kappa_sw
 
     @property
     def kinetic_energy_fraction(self) -> float:
@@ -295,7 +295,7 @@ class AnalyseIndividualTransition:
         if self.hydro_transition_temp.soundSpeedSqTrue <= 0:
             return 0.
 
-        factor = self.kappa_coll if self.kappa_coll > 0 else self.kappa_sound
+        factor = self.kappa_coll if self.kappa_coll > 0 else self.kappa_sw
         K = factor * self.hydro_transition_temp.K
 
         if K > 1:
@@ -710,7 +710,7 @@ class GWAnalyser:
                     SNR_regular.append(gws.SNR(gwFunc_regular))
                     SNR_sound_shell.append(gws.SNR(gwFunc_sound_shell))
                     K.append(gws.K)
-                    kappa.append(gws.kappa_sound())
+                    kappa.append(gws.kappa_sw())
                     alpha.append(gws.alpha)
                     vw.append(gws.vw)
                     Treh.append(gws.Treh)
@@ -750,7 +750,7 @@ class GWAnalyser:
                         SNR_regular_2.append(gws.SNR(gwFunc_regular))
                         SNR_sound_shell_2.append(gws.SNR(gwFunc_sound_shell))
                         K_2.append(gws.K)
-                        kappa_2.append(gws.kappa_sound())
+                        kappa_2.append(gws.kappa_sw())
                         alpha_2.append(gws.alpha)
                         vw_2.append(gws.vw)
                         Treh_2.append(gws.Treh)
