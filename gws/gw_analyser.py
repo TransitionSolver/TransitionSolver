@@ -733,7 +733,7 @@ class GWAnalyser:
 
                 if bCombined:
                     gws = AnalyseIndividualTransition(self.phaseStructure, transitionReport, self.potential,
-                        self.detector, use_bubble_sepFalse, suppliedRho_t=rhot_interp, sample_index=i)
+                        self.detector, use_bubble_sep=False, suppliedRho_t=rhot_interp, sample_index=i)
 
          
                     if gws.peak_amplitude_sw > 0 and gws.peak_amplitude_turb > 0:
