@@ -56,7 +56,7 @@ class AnalyseIndividualTransition:
         self.use_cj_velocity = use_cj_velocity
         self.use_bubble_sep = use_bubble_sep
         
-        if self.sample_index is not None and (not ('TSubsample' in transitionReport) or self.sample_index >= len(transitionReport['TSubsample'])):
+        if self.sample_index is not None and (not ('TSubsample' in transition_report) or self.sample_index >= len(transition_report['TSubsample'])):
             self.sample_index = None
         
         self.transition_report = transition_report
@@ -1512,9 +1512,7 @@ def main(potentialClass, GWsOutputFolder, TSOutputFolder, detectorClass = LISA):
     # scan over reference temperature and make plots, as done in https://arxiv.org/abs/2309.05474
     gwa.scanGWs(GWsOutputFolder, bCombined=False)
     # Just run a single point at percolation temperature
-    settings = GWAnalysisSettings()
-    settings.use_cj_velocity=True
-    gwa.determineGWs(GWsOutputFolder, settings)
+    gwa.determineGWs(GWsOutputFolder)
     # Use this for evaluating GWs using thermal params at the onset of percolation.
     #gwa.determineGWs_withColl()
     #scanGWsWithParam(detectorClass, potentialClass, outputFolder, bForceAllTransitionsRelevant=True)
