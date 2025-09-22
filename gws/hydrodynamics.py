@@ -8,9 +8,13 @@ from __future__ import annotations
 from dataclasses import dataclass, fields
 from typing import Callable
 
+from numpy import pi
+
 from analysis.phase_structure import Phase
 from models.analysable_potential import AnalysablePotential
 
+
+GRAV_CONST = 6.7088e-39
 
 @dataclass
 class HydroVars:
@@ -53,6 +57,10 @@ class HydroVars:
         return self.soundSpeedSqTrue**0.5
 
     @property
+    def soundSpeedFalse(self):
+        return self.soundSpeedSqFalse**0.5
+
+    @property
     def cj_velocity(self):
         """
         @returns Chapman-Jouguet velocity
@@ -66,6 +74,23 @@ class HydroVars:
         """
         return (self.pseudotraceFalse - self.pseudotraceTrue) / self.energyDensityFalse
 
+    @property
+    def hubble_constant(self):
+        return (8 * pi * GRAV_CONST / 3 * self.energyDensityFalse)**0.5
+
+    def average_pressure_density(self, pf):
+        """
+        """
+        pt = 1 - pf
+        return self.pressureFalse * pf + self.pressureTrue * pt
+
+    def adiabatic_index(self, pf):
+        """
+        Slightly better than averaging the enthalpy of each phase. Use energy conservation for the energy, and average
+        the pressure of each phase. Don't use totalEnergyDensity because we should not subtract off the ground state
+        energy density
+        """
+        return 1. + self.average_pressure_density(pf) / self.energyDensityFalse
 
 def interpolate_hydro_vars(hv1: HydroVars, hv2: HydroVars, T1: float, T2: float, T: float) -> HydroVars:
     """
