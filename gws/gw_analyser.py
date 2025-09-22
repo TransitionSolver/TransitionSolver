@@ -10,7 +10,6 @@ from typing import Callable, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.integrate
 import scipy.optimize
 
 from analysis import phase_structure
@@ -33,17 +32,6 @@ OMEGA_SW = 0.012  # From erratum of https://arxiv.org/abs/1704.05871 TABLE IV.
 
 logger = logging.getLogger(__name__)
 
-
-def SNR(detector, signal, a=1e-11, b=1e3):
-    """
-    @returns Signal to noise ratio for detector and given signal
-    """
-    def integrand(log_f):
-        f = np.exp(log_f)
-        return f * (signal(f) / detector(f))**2
-
-    integral = scipy.integrate.quad(integrand, np.log(a), np.log(b))[0]
-    return (detector.detection_time * detector.channels * integral)**0.5
 
 
 class AnalyseIndividualTransition:
@@ -83,9 +71,13 @@ class AnalyseIndividualTransition:
             self.potential,
             self.transition_temp,
             phase_structure.groundStateEnergyDensity)
-        self.hydro_reheat_temp = hydrodynamics.getHydroVars(
-            # TODO why doesn't this one use getHydroVars_new?
-            self.from_phase, self.to_phase, self.potential, self.reheating_temp)
+
+        self.hydro_reheat_temp = hydrodynamics.getHydroVars_new(
+            self.from_phase,
+            self.to_phase,
+            self.potential,
+            self.reheating_temp,
+            phase_structure.groundStateEnergyDensity)
 
     @property
     def redshift_freq(self):
@@ -246,7 +238,7 @@ class AnalyseIndividualTransition:
         """
         if signal is None:
             signal = self.gw_total
-        return SNR(detector, signal, **kwargs)
+        return detector.SNR(signal, **kwargs)
 
     # Copied from
     # transition_analysis.TransitionAnalyer.calculateReheatTemperature.
@@ -456,4 +448,4 @@ class GWAnalyser:
         """
         if signal is None:
             signal = self.gw_total
-        return SNR(detector, signal, **kwargs)
+        return detector.SNR(signal, **kwargs)
