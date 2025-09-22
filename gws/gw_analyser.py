@@ -18,7 +18,6 @@ from models.analysable_potential import AnalysablePotential
 from gws import kappa_nu_model, hydrodynamics
 
 
-GRAV_CONST = 6.7088e-39
 KELVIN_TO_GEV = 8.617e-14
 GEV_TO_HZ = 1.519e24
 T0 = 2.725 * KELVIN_TO_GEV
@@ -65,14 +64,14 @@ class AnalyseIndividualTransition:
         self.to_phase = phase_structure.phases[transition_report['truePhase']]
         self.potential = potential
 
-        self.hydro_transition_temp = hydrodynamics.getHydroVars_new(
+        self.hydro_transition_temp = hydrodynamics.make_hydro_vars(
             self.from_phase,
             self.to_phase,
             self.potential,
             self.transition_temp,
             phase_structure.groundStateEnergyDensity)
 
-        self.hydro_reheat_temp = hydrodynamics.getHydroVars_new(
+        self.hydro_reheat_temp = hydrodynamics.make_hydro_vars(
             self.from_phase,
             self.to_phase,
             self.potential,
