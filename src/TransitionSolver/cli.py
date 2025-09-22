@@ -9,12 +9,11 @@ import rich
 
 from . import phasetracer
 from .models.real_scalar_singlet_model import RealScalarSingletModel
-from .gws.gw_analyser import GWAnalyser
-from .gws.detectors.lisa import LISA
+from .gws import lisa, GWAnalyser
 
 
 MODELS = {"RSS": ("run_RSS", RealScalarSingletModel)}
-DETECTORS = {"LISA": LISA}
+DETECTORS = {"LISA": lisa}
 
 
 @click.command()
@@ -42,9 +41,7 @@ def cli(model, point, vw, detector, show):
     # now consider GW spectrum
 
     detector = DETECTORS[detector]
-    analyser = GWAnalyser(detector, potential=potential,
-                          phase_structure_file=phase_structure_file, phase_history=phase_history)
-    report = analyser.report()
-
-    analyser.plot(show=show)
+    analyser = GWAnalyser(potential, phase_structure_file, phase_history)
+    report = analyser.report(detector=detector)
+    analyser.plot(detector=detector, show=show)
     rich.print(report)
