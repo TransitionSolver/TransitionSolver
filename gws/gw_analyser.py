@@ -419,6 +419,7 @@ class AnalyseIndividualTransition:
         if vw != self.vw:
             logger.warn(f"vw adjusted from {self.vw} to {vw} to avoid numerical instability")
 
+        # TODO pass setting about CJ velocity
         kappa_sound = kappa_nu_model(self.hydroVars.soundSpeedSqTrue, self.hydroVars.alpha, vw)
 
         if kappa_sound > 1:
