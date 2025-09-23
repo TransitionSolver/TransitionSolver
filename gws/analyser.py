@@ -352,17 +352,18 @@ class AnalyseIndividualTransition:
             report['SNR (double)'] = self.SNR(detector)
         return report
 
-    def plot(self, frequencies, detector=None, ax=None):
+    def plot(self, frequencies, detector=None, pta=None, ax=None):
         if ax is None:
             ax = plt.gca()
         if detector is not None:
-            ax.loglog(frequencies, detector(frequencies), label="noise")
-        ax.loglog(frequencies, self.gw_total(
-            frequencies), zorder=10, label="total")
+            ax.loglog(frequencies, detector(frequencies), label=detector.label)
+        if pta is not None:
+            pta.plot(ax)
+        ax.loglog(frequencies, self.gw_total(frequencies), label="total")
         ax.loglog(frequencies, self.gw_sw(frequencies), label="sw")
         ax.loglog(frequencies, self.gw_turb(frequencies), label="turb")
         ax.loglog(frequencies, self.gw_coll(frequencies), label="coll")
-        ax.legend()
+        ax.legend(scatterpoints=1)
 
 
 def extract_relevant_transitions(report: dict) -> list[dict]:
@@ -408,7 +409,7 @@ class GWAnalyser:
         """
         return {k: v.report(detector) for k, v in self.gws.items()}
 
-    def plot(self, frequencies=None, detector=None, show=False):
+    def plot(self, frequencies=None, detector=None, pta=None, show=False):
         """
         @returns Figure of plot of data on GW spectrum
         """
@@ -422,7 +423,7 @@ class GWAnalyser:
             ax = [ax]
 
         for a, gw in zip(ax, self.gws.values()):
-            gw.plot(frequencies, detector=detector, ax=a)
+            gw.plot(frequencies, detector=detector, pta=pta, ax=a)
 
         if show:
             plt.show()

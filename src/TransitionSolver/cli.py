@@ -9,11 +9,12 @@ import rich
 
 from . import phasetracer
 from .models.real_scalar_singlet_model import RealScalarSingletModel
-from .gws import lisa, GWAnalyser
+from .gws import nanograv_15, lisa, GWAnalyser
 
 
 MODELS = {"RSS": ("run_RSS", RealScalarSingletModel)}
-DETECTORS = {"LISA": lisa}
+DETECTORS = {"LISA": lisa, "none": None}
+PTAS = {"NANOGrav": nanograv_15, "none": None}
 
 
 @click.command()
@@ -21,8 +22,9 @@ DETECTORS = {"LISA": lisa}
 @click.option('--point', help='Parameter point file', type=click.Path(exists=True), required=True)
 @click.option('--vw', default=0.9, help='Bubble wall velocity', type=click.FloatRange(0.))
 @click.option('--detector', default="LISA", help='Gravitational wave detector', type=click.Choice(DETECTORS.keys()))
+@click.option('--pta', default="NANOGrav", help='Pulsar Timing Array', type=click.Choice(PTAS.keys()))
 @click.option('--show', default=True, help='Whether to show plots', type=bool)
-def cli(model, point, vw, detector, show):
+def cli(model, point, vw, detector, pta, show):
     """
     Run TransitionSolver on a particular model and point
     """
@@ -41,7 +43,8 @@ def cli(model, point, vw, detector, show):
     # now consider GW spectrum
 
     detector = DETECTORS[detector]
+    pta = PTAS[pta]
     analyser = GWAnalyser(potential, phase_structure_file, phase_history)
     report = analyser.report(detector=detector)
-    analyser.plot(detector=detector, show=show)
+    analyser.plot(detector=detector, pta=pta, show=show)
     rich.print(report)

@@ -47,11 +47,11 @@ class LISA(Detector):
         return LITTLE_H**2 * Omega_s
 
 
-lisa = LISA(detection_time=3. * SECONDS_PER_YEAR, channels=1)
+lisa = LISA(detection_time=3. * SECONDS_PER_YEAR, channels=1, label="LISA --- Analytic")
 # Compare the equation to the PLS from Thrane's Plcurves, LISA_noisepower
-lisa_thrane = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum.txt')
-lisa_thrane_1_yr = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum_1_yr.txt')
+lisa_thrane = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum.txt', label="LISA --- PLS")
+lisa_thrane_1_yr = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum_1_yr.txt', label="LISA --- PLS one-year")
 # Compare the equation to the PLS from Thrane's Plcurves, LISA_noisepower, with the 2019 sensitivity equation
-lisa_thrane_2019 = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum_2019.txt')
-lisa_thrane_2019_snr_1 = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum_2019_SNR_1.txt')
-lisa_thrane_2019_snr_10 = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum_2019_SNR_10.txt')
+lisa_thrane_2019 = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum_2019.txt', label="LISA --- PLS 2019")
+lisa_thrane_2019_snr_1 = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum_2019_SNR_1.txt', label="LISA --- PLS 2019 (SNR=1)")
+lisa_thrane_2019_snr_10 = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum_2019_SNR_10.txt', label="LISA --- PLS 2019 (SNR=10)")

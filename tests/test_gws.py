@@ -37,8 +37,8 @@ def test_report():
 
 
 @pytest.mark.mpl_image_compare
-def test_gw():
-    return analyser.plot(detector=lisa)
+def test_plot_gw():
+    return analyser.plot(detector=lisa, pta=gws.nanograv_15)
 
 
 def test_snr():
@@ -69,12 +69,12 @@ def test_plot_lisa():
     f = np.logspace(-4, -1, 400)
     fig, ax = plt.subplots()
 
-    ax.loglog(f, gws.lisa(f), label="Analytic")
-    ax.loglog(f, gws.lisa_thrane(f), label="PLS")
-    ax.loglog(f, gws.lisa_thrane_1_yr(f), label="PLS one-year")
-    ax.loglog(f, gws.lisa_thrane_2019(f), label="PLS 2019")
-    ax.loglog(f, gws.lisa_thrane_2019_snr_1(f), label="PLS 2019 (SNR=1)")
-    ax.loglog(f, gws.lisa_thrane_2019_snr_10(f), label="PLS 2019 (SNR=10)")
+    ax.loglog(f, gws.lisa(f), label=gws.lisa.label)
+    ax.loglog(f, gws.lisa_thrane(f), label=gws.lisa_thrane.label)
+    ax.loglog(f, gws.lisa_thrane_1_yr(f), label=gws.lisa_thrane_1_yr.label)
+    ax.loglog(f, gws.lisa_thrane_2019(f), label=gws.lisa_thrane_2019.label)
+    ax.loglog(f, gws.lisa_thrane_2019_snr_1(f), label=gws.lisa_thrane_2019_snr_1.label)
+    ax.loglog(f, gws.lisa_thrane_2019_snr_10(f), label=gws.lisa_thrane_2019_snr_10.label)
     ax.legend(loc="upper left")
     ax.set_xlabel("Frequency")
 

@@ -15,9 +15,10 @@ SECONDS_PER_YEAR = 31556952
 
 class Detector(ABC):
 
-    def __init__(self, detection_time=1. * SECONDS_PER_YEAR, channels=1):
+    def __init__(self, detection_time=1. * SECONDS_PER_YEAR, channels=1, label=None):
         self.detection_time = detection_time
         self.channels = channels
+        self.label = label
 
     @abstractmethod
     def __call__(self, f):
