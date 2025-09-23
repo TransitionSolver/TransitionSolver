@@ -10,10 +10,13 @@ from scipy.integrate import quad
 from scipy.interpolate import interp1d
 
 
+SECONDS_PER_YEAR = 31556952
+
+
 class Detector(ABC):
 
-    def __init__(self, detector_time=1., channels=1):
-        self.detector_time = detector_time
+    def __init__(self, detection_time=1. * SECONDS_PER_YEAR, channels=1):
+        self.detection_time = detection_time
         self.channels = channels
 
     @abstractmethod

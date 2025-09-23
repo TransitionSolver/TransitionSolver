@@ -10,9 +10,10 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
+from .detector import SECONDS_PER_YEAR
 
-YEAR_IN_SECONDS = 365 * 24 * 60 * 60
-DAY_IN_SECONDS = 24 * 60 * 60
+
+SECONDS_PER_DAY = 24 * 60 * 60
 THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -65,19 +66,18 @@ class PTAFromDisk:
 
 # NANOGrav 15yr
 
-
-f = np.arange(1, 9) / (16.03 * YEAR_IN_SECONDS)
+f = np.arange(1, 9) / (16.03 * SECONDS_PER_YEAR)
 nanograv_15 = PTAFromDisk(
     f, THIS / "logOmegah2_NANO15_0708.csv", label="NANOGrav 15 yr")
 
 # PPTA DR3
 
-f = np.arange(1, 9) / (6605 * DAY_IN_SECONDS)
+f = np.arange(1, 9) / (6605 * SECONDS_PER_DAY)
 ppta_dr3 = PTAFromDisk(
     f, THIS / "logOmegah2_PPTADR3_0708.csv", label="PPTA DR3")
 
 # EPTA DR2 Full
 
-f = np.arange(1, 11) / (24.7 * YEAR_IN_SECONDS)
+f = np.arange(1, 11) / (24.7 * SECONDS_PER_YEAR)
 epta_dr2_full = PTAFromDisk(
     f, THIS / "logOmegah2_EPTADR2FULL_0708.csv", label="EPTA DR2 Full")
