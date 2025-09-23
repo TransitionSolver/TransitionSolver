@@ -6,6 +6,7 @@ Run TransitionSolver on a known model
 import click
 import numpy as np
 import rich
+from rich.status import Status
 
 from . import phasetracer
 from .models.real_scalar_singlet_model import RealScalarSingletModel
@@ -30,21 +31,22 @@ def cli(model, point, vw, detector, pta, show):
     """
     program, model = MODELS[model]
     point = np.loadtxt(point)
-    phase_structure_file = phasetracer.pt_run(program, point)
     potential = model(*point)
+   
+    with Status("Running PhaseTracer"):
+        phase_structure_file = phasetracer.pt_run(program, point)
 
-    # consider phase history
-
-    phase_history = phasetracer.phase_structure(
-        potential, phase_structure_file, vw=vw)
+    with Status("Analyzing phase history"):
+        phase_history = phasetracer.phase_structure(
+            potential, phase_structure_file, vw=vw)
 
     rich.print(phase_history)
 
-    # now consider GW spectrum
+    with Status("Analyzing gravitational wave signal"):
+        detector = DETECTORS[detector]
+        pta = PTAS[pta]
+        analyser = GWAnalyser(potential, phase_structure_file, phase_history)
+        report = analyser.report(detector=detector)
 
-    detector = DETECTORS[detector]
-    pta = PTAS[pta]
-    analyser = GWAnalyser(potential, phase_structure_file, phase_history)
-    report = analyser.report(detector=detector)
-    analyser.plot(detector=detector, pta=pta, show=show)
     rich.print(report)
+    analyser.plot(detector=detector, pta=pta, show=show)

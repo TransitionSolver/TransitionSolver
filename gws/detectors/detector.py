@@ -22,7 +22,7 @@ class Detector(ABC):
 
     @abstractmethod
     def __call__(self, f):
-        """
+        r"""
         :param f: Frequencies in Hz
         :return: Sensitivity at those frequencies ($\Omega h^2$)
         """
