@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from TransitionSolver.models.real_scalar_singlet_model import RealScalarSingletModel
-from TransitionSolver.gws import GWAnalyser
+from TransitionSolver.gws import GWAnalyser, lisa
 from TransitionSolver import gws
 from dictcmp import isclose
 
