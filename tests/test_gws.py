@@ -8,10 +8,12 @@ import os
 from pathlib import Path
 
 import pytest
+import matplotlib.pyplot as plt
 import numpy as np
 
 from TransitionSolver.models.real_scalar_singlet_model import RealScalarSingletModel
-from TransitionSolver.gws import lisa, GWAnalyser
+from TransitionSolver.gws import GWAnalyser
+from TransitionSolver import gws
 from dictcmp import isclose
 
 
@@ -42,3 +44,20 @@ def test_gw():
 def test_snr():
     snr = analyser.SNR(lisa)
     assert np.isclose(snr, 254.0820401210814)
+    
+    
+@pytest.mark.mpl_image_compare
+def test_plot_lisa():
+    f = np.logspace(-4, -1, 400)
+    fig, ax = plt.subplots()
+
+    ax.loglog(f, gws.lisa(f), label="Analytic")
+    ax.loglog(f, gws.lisa_thrane(f), label="PLS")
+    ax.loglog(f, gws.lisa_thrane_1_yr(f), label="PLS one-year")
+    ax.loglog(f, gws.lisa_thrane_2019(f), label="PLS 2019")
+    ax.loglog(f, gws.lisa_thrane_2019_snr_1(f), label="PLS 2019 (SNR=1)")
+    ax.loglog(f, gws.lisa_thrane_2019_snr_10(f), label="PLS 2019 (SNR=10)")
+    ax.legend(loc="upper left")
+    ax.set_xlabel("Frequency")
+
+    return fig

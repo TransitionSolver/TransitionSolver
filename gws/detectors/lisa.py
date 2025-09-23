@@ -50,7 +50,7 @@ class LISA(Detector):
         return LITTLE_H**2 * Omega_s
 
 
-lisa_analytic = LISA()
+lisa = LISA()
 # Compare the equation to the PLS from Thrane's Plcurves, LISA_noisepower
 lisa_thrane = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum.txt')
 lisa_thrane_1_yr = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum_1_yr.txt')
@@ -58,17 +58,3 @@ lisa_thrane_1_yr = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum_1_yr.txt')
 lisa_thrane_2019 = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum_2019.txt')
 lisa_thrane_2019_snr_1 = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum_2019_SNR_1.txt')
 lisa_thrane_2019_snr_10 = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum_2019_SNR_10.txt')
-
-
-if __name__ == "__main__":
-
-    f = np.logspace(-4, -1, 400)
-
-    plt.loglog(f, lisa_analytic(f), label="Analytic")
-    plt.loglog(f, lisa_thrane(f), label="PLS")
-    plt.loglog(f, lisa_thrane_1_yr(f), label="PLS one-year")
-    plt.loglog(f, lisa_thrane_2019(f), label="PLS 2019")
-    plt.loglog(f, lisa_thrane_2019_snr_1(f), label="PLS 2019 (SNR=1)")
-    plt.loglog(f, lisa_thrane_2019_snr_10(f), label="PLS 2019 (SNR=10)")
-
-    plt.show()

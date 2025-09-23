@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 from scipy.integrate import quad
+from scipy.interpolate import interp1d
 
 
 class Detector(ABC):
@@ -42,6 +43,7 @@ class FromDiskDetector(Detector):
         self.f, self.omega_h2 = np.loadtxt(file_name, unpack=True)
         self.detector_time = detector_time
         self.channels = channels
+        self._interp = interp1d(self.f, self.omega_h2, fill_value="extrapolate")
 
     def __call__(self, f):
-        return np.interp(f, self.f, self.omega_h2, left=0, right=0)
+        return self._interp(f)
