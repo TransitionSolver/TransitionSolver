@@ -46,7 +46,7 @@ pythonpath = ["."]
 addopts = "--mpl -vvvv --showlocals"
 
 [tool.setuptools.package-data]
-"TransitionSolver" = ["data/**/*", "gws/detectors/*.txt", "models/util/*.csv"]
+"TransitionSolver" = ["data/**/*", "gws/detectors/*.txt", "gws/detectors/*.csv", "models/util/*.csv"]
 
 [project.scripts]
 ts = "TransitionSolver.cli:cli"

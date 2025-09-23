@@ -47,6 +47,24 @@ def test_snr():
     
     
 @pytest.mark.mpl_image_compare
+def test_plot_pta():
+    f = np.logspace(-4, -1, 400)
+    fig, ax = plt.subplots()
+
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.set_xlabel("Frequency")
+
+    gws.nanograv_15.plot(ax, color="red")
+    gws.ppta_dr3.plot(ax, color="green")
+    gws.epta_dr2_full.plot(ax, color="blue")
+
+    ax.legend(scatterpoints=1)
+
+    return fig
+
+
+@pytest.mark.mpl_image_compare
 def test_plot_lisa():
     f = np.logspace(-4, -1, 400)
     fig, ax = plt.subplots()

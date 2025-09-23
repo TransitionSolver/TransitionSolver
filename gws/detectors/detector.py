@@ -12,8 +12,9 @@ from scipy.interpolate import interp1d
 
 class Detector(ABC):
 
-    detector_time = 1.
-    channels = 1
+    def __init__(self, detector_time=1., channels=1):
+        self.detector_time = detector_time
+        self.channels = channels
 
     @abstractmethod
     def __call__(self, f):
@@ -39,11 +40,10 @@ class FromDiskDetector(Detector):
     Detector data from disk
     """
 
-    def __init__(self, file_name, detector_time=1., channels=1):
+    def __init__(self, file_name, **kwargs):
         self.f, self.omega_h2 = np.loadtxt(file_name, unpack=True)
-        self.detector_time = detector_time
-        self.channels = channels
         self._interp = interp1d(self.f, self.omega_h2, fill_value="extrapolate")
+        super().__init__(self, **kwargs)
 
     def __call__(self, f):
         return self._interp(f)
