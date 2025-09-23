@@ -4,7 +4,7 @@ Efficiency formula
 """
 
 import numpy as np
-from scipy.integrate import odeint
+from scipy.integrate import odeint  # TODO odeint deprecated, use solve_ivp
 
 try:
     from scipy.integrate import simps
