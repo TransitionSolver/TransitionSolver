@@ -133,7 +133,7 @@ def getTstep(from_phase: Phase, to_phase: Phase,
                0.5 * (T - Tmin), 0.5 * (Tmax - T))
 
 
-def _make_hydro_vars(phase, potential, ground_state_energy, T, Tstep):
+def _make_hydro_vars(phase, potential, T, Tstep, ground_state_energy=0.):
 
     def free_energy(x: float) -> float:
         phi = phase.findPhaseAtT(x, potential)
@@ -156,7 +156,7 @@ def _make_hydro_vars(phase, potential, ground_state_energy, T, Tstep):
     # Sound speed squared
     c2 = df / (T * d2f)
 
-    return p, e, w, s, c2
+    return {"p": p, "e": e, "w": w, "s": s, "c2": c2}
 
 
 def make_hydro_vars(from_phase: Phase, to_phase: Phase, potential: AnalysablePotential, T: float,
@@ -168,14 +168,14 @@ def make_hydro_vars(from_phase: Phase, to_phase: Phase, potential: AnalysablePot
     # speed calculation leads to division by zero.
     Tstep = getTstep(from_phase, to_phase, potential, T)
 
-    hvt = _make_hydro_vars(to_phase, potential, ground_state_energy, T, Tstep)
-    hvf = _make_hydro_vars(from_phase, potential, ground_state_energy, T, Tstep)
+    hvt = _make_hydro_vars(to_phase, potential, T, Tstep, ground_state_energy)
+    hvf = _make_hydro_vars(from_phase, potential, T, Tstep, ground_state_energy)
 
-    return HydroVars(*hvf, *hvt, T)
+    return HydroVars(*hvf.values(), *hvt.values(), T)
 
 
 def _energy_density(from_phase: Phase, to_phase: Phase,
-                    potential: AnalysablePotential, T: float, use_from_phase) -> float:
+                    potential: AnalysablePotential, T: float, use_from_phase, ground_state_energy=0.) -> float:
     """
     To and from phase are required to deduce appropriate step in numerical derivative
 
@@ -183,13 +183,7 @@ def _energy_density(from_phase: Phase, to_phase: Phase,
     """
     Tstep = getTstep(from_phase, to_phase, potential, T)
     phase = from_phase if use_from_phase else to_phase
-
-    def free_energy(x: float) -> float:
-        phi = phase.findPhaseAtT(x, potential)
-        return potential.freeEnergyDensity(phi, x)
-
-    F, dFdT, _ = derivatives(free_energy, T, Tstep)
-    return F - T * dFdT
+    return _make_hydro_vars(phase, potential, T, Tstep, ground_state_energy)["e"]
 
 
 def energy_density_from_phase(*args, **kwargs) -> float:
