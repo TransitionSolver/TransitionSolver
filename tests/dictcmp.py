@@ -14,12 +14,16 @@ def key2int(d):
     return {int(k) if k.isdigit() else k: v for k, v in d.items()}
 
 
-def isclose(result, file_name, rtol=1e-3, atol=0., ignore=None):
+def isclose(result, file_name, rtol=1e-3, atol=0., ignore=None, generate_baseline=False):
     """
     @param result Dictionary of results from program
     @param file_name Name of JSON file containing expected results
     @param ignore Any top-level dictionary keys to ignore
     """
+    if generate_baseline:
+        with open(file_name, "w") as f:
+            json.dump(result, f)
+
     with open(file_name, "r") as f:
         expected = json.load(f, object_hook=key2int)
 
