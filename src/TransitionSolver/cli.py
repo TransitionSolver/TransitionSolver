@@ -26,7 +26,7 @@ LEVELS = {k.lower(): getattr(logging, k) for k in ["DEBUG", "INFO", "WARNING", "
 @click.command()
 @click.option('--model', help='Model name', required=True, type=click.Choice(MODELS.keys()))
 @click.option('--point', help='Parameter point file', type=click.Path(exists=True), required=True)
-@click.option('--vw', default=0.9, help='Bubble wall velocity', type=click.FloatRange(0.))
+@click.option('--vw', default=None, help='Bubble wall velocity', type=click.FloatRange(0.))
 @click.option('--detector', default="LISA", help='Gravitational wave detector', type=click.Choice(DETECTORS.keys()))
 @click.option('--pta', default="NANOGrav", help='Pulsar Timing Array', type=click.Choice(PTAS.keys()))
 @click.option('--show', default=True, help='Whether to show plots', type=bool)
@@ -47,14 +47,14 @@ def cli(model, point, vw, detector, pta, show, level):
 
     with Status("Analyzing phase history"):
         phase_history = phasetracer.phase_structure(
-            potential, phase_structure_file, vw=vw)
+            potential, phase_structure_file)
 
     rich.print(phase_history)
 
     with Status("Analyzing gravitational wave signal"):
         detector = DETECTORS[detector]
         pta = PTAS[pta]
-        analyser = GWAnalyser(potential, phase_structure_file, phase_history)
+        analyser = GWAnalyser(potential, phase_structure_file, phase_history, vw=vw)
         report = analyser.report(detector=detector)
 
     rich.print(report)

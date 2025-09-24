@@ -45,7 +45,7 @@ class AnalyseIndividualTransition:
             transition_report: dict,
             potential: AnalysablePotential,
             use_bubble_sep=True,
-            use_cj_velocity=True,
+            vw=None,
             sample_index=None,
             rho_t=None,
             kappa_coll=None,
@@ -57,7 +57,7 @@ class AnalyseIndividualTransition:
         self.kappa_coll = kappa_coll
         self.rho_t = rho_t
         self.sample_index = sample_index
-        self.use_cj_velocity = use_cj_velocity
+        self._vw = vw
         self.use_bubble_sep = use_bubble_sep
 
         self.transition_report = transition_report
@@ -124,7 +124,7 @@ class AnalyseIndividualTransition:
         if self.peak_amplitude_coll == 0:
             return 0.
         return self.redshift_freq * \
-            (0.77 * (8 * np.pi)**(1 / 3) * self.bubble_wall_velocity /
+            (0.77 * (8 * np.pi)**(1 / 3) * self.vw /
              (2 * np.pi * self.length_scale))
 
     @property
@@ -136,8 +136,8 @@ class AnalyseIndividualTransition:
         """
         @returns Ratio of shell thickness and bubble separation
         """
-        return abs(self.bubble_wall_velocity -
-                   self.hydro_transition_temp.soundSpeedFalse) / self.bubble_wall_velocity
+        return abs(self.vw -
+                   self.hydro_transition_temp.soundSpeedFalse) / self.vw
 
     @property
     def peak_frequency_sw_shell_thickness(self):
@@ -174,7 +174,7 @@ class AnalyseIndividualTransition:
             return 0.
         A = 5.13e-2
         return A * self.redshift_amp * (self.hydro_transition_temp.hubble_constant * self.length_scale / (
-            (8 * np.pi)**(1 / 3) * self.bubble_wall_velocity))**2 * self.kinetic_energy_fraction**2
+            (8 * np.pi)**(1 / 3) * self.vw))**2 * self.kinetic_energy_fraction**2
 
     @property
     def peak_amplitude_turb(self) -> float:
@@ -272,12 +272,12 @@ class AnalyseIndividualTransition:
         return scipy.optimize.toms748(objective, T, Tc)
 
     @property
-    def bubble_wall_velocity(self) -> float:
+    def vw(self) -> float:
         """
         Using either Chapman-Jouguet hydrodynamical estimate or value from transition report
         """
-        if not self.use_cj_velocity:
-            return self.transition_report['vw']
+        if self._vw is not None:
+            return self._vw 
         return self.hydro_transition_temp.cj_velocity
 
     @cached_property
@@ -287,19 +287,19 @@ class AnalyseIndividualTransition:
         """
         # adjust the vw value to avoid numerical instabilities
 
-        vw = self.bubble_wall_velocity
+        vw = self.vw
         vw = max(vw, 1e-6)
         vw = min(vw, 0.999999)
 
-        if vw != self.bubble_wall_velocity:
+        if vw != self.vw:
             logger.warning(
-                "vw adjusted from %s to %s to avoid numerical instability", self.bubble_wall_velocity, vw)
+                "vw adjusted from %s to %s to avoid numerical instability", self.vw, vw)
 
         kappa_sw = kappa_nu_model(
             self.hydro_transition_temp.soundSpeedSqTrue,
             self.hydro_transition_temp.alpha,
             vw,
-            self.use_cj_velocity)
+            self._vw is None)
 
         if kappa_sw > 1:
             raise RuntimeError("kappa_sw > 1: {kappa_sw}")
