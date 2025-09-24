@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 from typing import Callable, Optional
+from functools import cached_property
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -111,7 +112,7 @@ class AnalyseIndividualTransition:
             return self.transition_report['Tp']
         return self.transition_report['TSubsample'][self.sample_index]
 
-    @property
+    @cached_property
     def reheating_temp(self) -> float:
         if self.sample_index is None:
             return self.transition_report['Treh_p']
@@ -195,7 +196,6 @@ class AnalyseIndividualTransition:
         x = f / self.peak_frequency_sw_shell_thickness
         return x**9 * ((1 + self.rb**4) / (self.rb**4 + x**4))**((9 - b) /
                                                                  4) * ((b + 4) / (b + 4 - m + m * x**2))**((b + 4) / 2)
-
     def _unnormalised_spectral_shape_turb(self, f: float) -> float:
         x = f / self.peak_frequency_turb
         return x**3 / ((1 + x)**(11 / 3) * (1 + 8 * np.pi * f /
@@ -280,7 +280,7 @@ class AnalyseIndividualTransition:
             return self.transition_report['vw']
         return self.hydro_transition_temp.cj_velocity
 
-    @property
+    @cached_property
     def kappa_sw(self) -> float:
         """
         @returns Efficiency of sound waves using the kappa-nu model
