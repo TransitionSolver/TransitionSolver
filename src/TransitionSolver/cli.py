@@ -13,6 +13,9 @@ from .models.real_scalar_singlet_model import RealScalarSingletModel
 from .gws import nanograv_15, lisa, GWAnalyser
 
 
+np.set_printoptions(legacy='1.25')
+
+
 MODELS = {"RSS": ("run_RSS", RealScalarSingletModel)}
 DETECTORS = {"LISA": lisa, "none": None}
 PTAS = {"NANOGrav": nanograv_15, "none": None}

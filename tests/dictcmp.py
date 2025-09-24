@@ -7,6 +7,9 @@ import json
 import numpy as np
 
 
+np.set_printoptions(legacy='1.25')
+
+
 def key2int(d):
     """
     Interpret dictionary keys as integers - avoid ambiguity in JSON
