@@ -3,6 +3,8 @@ Run TransitionSolver on a known model
 =====================================
 """
 
+import logging
+
 import click
 import numpy as np
 import rich
@@ -14,12 +16,12 @@ from .gws import nanograv_15, lisa, GWAnalyser
 
 
 np.set_printoptions(legacy='1.25')
-
+logging.captureWarnings(True)
 
 MODELS = {"RSS": ("run_RSS", RealScalarSingletModel)}
 DETECTORS = {"LISA": lisa, "none": None}
 PTAS = {"NANOGrav": nanograv_15, "none": None}
-
+LEVELS = {k.lower(): getattr(logging, k) for k in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]}
 
 @click.command()
 @click.option('--model', help='Model name', required=True, type=click.Choice(MODELS.keys()))
@@ -28,10 +30,14 @@ PTAS = {"NANOGrav": nanograv_15, "none": None}
 @click.option('--detector', default="LISA", help='Gravitational wave detector', type=click.Choice(DETECTORS.keys()))
 @click.option('--pta', default="NANOGrav", help='Pulsar Timing Array', type=click.Choice(PTAS.keys()))
 @click.option('--show', default=True, help='Whether to show plots', type=bool)
-def cli(model, point, vw, detector, pta, show):
+@click.option('--level', default="critical", help='Logging level', type=click.Choice(LEVELS.keys()))
+def cli(model, point, vw, detector, pta, show, level):
     """
     Run TransitionSolver on a particular model and point
     """
+
+    logging.getLogger().setLevel(LEVELS[level])
+
     program, model = MODELS[model]
     point = np.loadtxt(point)
     potential = model(*point)
