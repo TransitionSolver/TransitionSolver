@@ -231,14 +231,6 @@ class AnalyseIndividualTransition:
     def gw_coll(self, f):
         return self.peak_amplitude_coll * self.spectral_shape_coll(f)
 
-    def SNR(self, detector, signal=None, **kwargs) -> float:
-        """
-        @returns Signal to noise ratio for detector and given signal
-        """
-        if signal is None:
-            signal = self.gw_total
-        return detector.SNR(signal, **kwargs)
-
     # Copied from
     # transition_analysis.TransitionAnalyer.calculateReheatTemperature.
     def calculate_reheating_temp(
@@ -339,7 +331,7 @@ class AnalyseIndividualTransition:
             return scale
         return scale[self.sample_index]
 
-    def report(self, detector=None):
+    def report(self, *detectors):
         report = {}
         report['Peak amplitude (sw, sound shell)'] = self.peak_amplitude_sw_sound_shell
         report['Peak frequency (sw, bubble separation)'] = self.peak_frequency_sw_bubble_separation
@@ -348,17 +340,21 @@ class AnalyseIndividualTransition:
         report['Peak frequency (turb)'] = self.peak_frequency_turb
         report['Peak amplitude (coll)'] = self.peak_amplitude_coll
         report['Peak frequency (coll)'] = self.peak_frequency_coll
-        if detector is not None:
-            report['SNR (double)'] = self.SNR(detector)
+        report["SNR"] = {d.label: d.SNR(self.gw_total) for d in detectors}
         return report
 
-    def plot(self, frequencies, detector=None, pta=None, ax=None):
+    def plot(self, frequencies, detectors=None, ptas=None, ax=None):
         if ax is None:
             ax = plt.gca()
-        if detector is not None:
-            ax.loglog(frequencies, detector(frequencies), label=detector.label)
-        if pta is not None:
-            pta.plot(ax)
+
+        if detectors is not None:
+            for detector in detectors:
+                ax.loglog(frequencies, detector(frequencies), label=detector.label)
+
+        if ptas is not None:
+            for i, pta in enumerate(ptas):
+                pta.plot(ax, color=f"C{i}")
+
         ax.loglog(frequencies, self.gw_total(frequencies), label="total")
         ax.loglog(frequencies, self.gw_sw(frequencies), label="sw")
         ax.loglog(frequencies, self.gw_turb(frequencies), label="turb")
@@ -403,13 +399,15 @@ class GWAnalyser:
         self.gws = {t['id']: AnalyseIndividualTransition(
             phase_structure_, t, potential, **kwargs) for t in relevant_transitions}
 
-    def report(self, detector=None):
+    def report(self, *detectors):
         """
         @returns Data on GW spectrum
         """
-        return {k: v.report(detector) for k, v in self.gws.items()}
+        reports = {k: v.report(*detectors) for k, v in self.gws.items()}
+        reports["SNR"] = {d.label: d.SNR(self.gw_total) for d in detectors}
+        return reports
 
-    def plot(self, frequencies=None, detector=None, pta=None, show=False):
+    def plot(self, frequencies=None, detectors=None, ptas=None, show=False):
         """
         @returns Figure of plot of data on GW spectrum
         """
@@ -423,7 +421,7 @@ class GWAnalyser:
             ax = [ax]
 
         for a, gw in zip(ax, self.gws.values()):
-            gw.plot(frequencies, detector=detector, pta=pta, ax=a)
+            gw.plot(frequencies, detectors, ptas, ax=a)
 
         if show:
             plt.show()
@@ -441,11 +439,3 @@ class GWAnalyser:
 
     def gw_coll(self, f):
         return np.sum([g.gw_coll(f) for g in self.gws.values()], axis=-1)
-
-    def SNR(self, detector, signal=None, **kwargs) -> float:
-        """
-        @returns Signal to noise ratio for detector and given signal
-        """
-        if signal is None:
-            signal = self.gw_total
-        return detector.SNR(signal, **kwargs)

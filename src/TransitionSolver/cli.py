@@ -12,23 +12,23 @@ from rich.status import Status
 
 from . import phasetracer
 from .models.real_scalar_singlet_model import RealScalarSingletModel
-from .gws import nanograv_15, lisa, GWAnalyser
+from . import gws
 
 
 np.set_printoptions(legacy='1.25')
 logging.captureWarnings(True)
 
 MODELS = {"RSS": ("run_RSS", RealScalarSingletModel)}
-DETECTORS = {"LISA": lisa, "none": None}
-PTAS = {"NANOGrav": nanograv_15, "none": None}
+DETECTORS = {"LISA": gws.lisa, "LISA_SNR_10": gws.lisa_thrane_2019_snr_10}
+PTAS = {"NANOGrav": gws.nanograv_15, "PPTA": gws.ppta_dr3, "EPTA": gws.epta_dr2_full}
 LEVELS = {k.lower(): getattr(logging, k) for k in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]}
 
 @click.command()
 @click.option('--model', help='Model name', required=True, type=click.Choice(MODELS.keys()))
 @click.option('--point', help='Parameter point file', type=click.Path(exists=True), required=True)
 @click.option('--vw', default=None, help='Bubble wall velocity', type=click.FloatRange(0.))
-@click.option('--detector', default="LISA", help='Gravitational wave detector', type=click.Choice(DETECTORS.keys()))
-@click.option('--pta', default="NANOGrav", help='Pulsar Timing Array', type=click.Choice(PTAS.keys()))
+@click.option('--detector', default=[], help='Gravitational wave detector', type=click.Choice(DETECTORS.keys()), multiple=True)
+@click.option('--pta', default=[], help='Pulsar Timing Array', type=click.Choice(PTAS.keys()), multiple=True)
 @click.option('--show', default=True, help='Whether to show plots', type=bool)
 @click.option('--level', default="critical", help='Logging level', type=click.Choice(LEVELS.keys()))
 def cli(model, point, vw, detector, pta, show, level):
@@ -51,11 +51,12 @@ def cli(model, point, vw, detector, pta, show, level):
 
     rich.print(phase_history)
 
+    detectors = [DETECTORS[d] for d in detector]
+    ptas = [PTAS[p] for p in pta]
+
     with Status("Analyzing gravitational wave signal"):
-        detector = DETECTORS[detector]
-        pta = PTAS[pta]
-        analyser = GWAnalyser(potential, phase_structure_file, phase_history, vw=vw)
-        report = analyser.report(detector=detector)
+        analyser = gws.GWAnalyser(potential, phase_structure_file, phase_history, vw=vw)
+        report = analyser.report(*detectors)
 
     rich.print(report)
-    analyser.plot(detector=detector, pta=pta, show=show)
+    analyser.plot(detectors=detectors, ptas=ptas, show=show)

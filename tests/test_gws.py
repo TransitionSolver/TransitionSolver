@@ -32,17 +32,17 @@ analyser = GWAnalyser(potential, phase_structure_file, phase_history)
 
 
 def test_report():
-    report = analyser.report(detector=lisa)
+    report = analyser.report(lisa)
     assert isclose(report, THIS / "rss_bp1_gw.json")
 
 
 @pytest.mark.mpl_image_compare
 def test_plot_gw():
-    return analyser.plot(detector=lisa, pta=gws.nanograv_15)
+    return analyser.plot(detectors=[lisa], ptas=[gws.nanograv_15])
 
 
 def test_snr():
-    snr = analyser.SNR(lisa)
+    snr = lisa.SNR(analyser.gw_total)
     assert np.isclose(snr, 254.61811602652202)
     
     

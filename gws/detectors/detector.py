@@ -15,8 +15,8 @@ SECONDS_PER_YEAR = 31556952
 
 class Detector(ABC):
 
-    def __init__(self, detection_time=1. * SECONDS_PER_YEAR, channels=1, label=None):
-        self.detection_time = detection_time
+    def __init__(self, years=1, channels=1, label=None):
+        self.years = years
         self.channels = channels
         self.label = label
 
@@ -36,7 +36,7 @@ class Detector(ABC):
             return f * (signal(f) / self(f))**2
 
         integral = quad(integrand, np.log(a), np.log(b))[0]
-        return (self.detection_time * self.channels * integral)**0.5
+        return (self.years * SECONDS_PER_YEAR * self.channels * integral)**0.5
 
 
 class FromDiskDetector(Detector):
@@ -46,8 +46,8 @@ class FromDiskDetector(Detector):
 
     def __init__(self, file_name, **kwargs):
         self.f, self.omega_h2 = np.loadtxt(file_name, unpack=True)
-        self._interp = interp1d(self.f, self.omega_h2, fill_value="extrapolate")
-        super().__init__(self, **kwargs)
+        self._interp = interp1d(self.f, self.omega_h2, fill_value=np.inf, bounds_error=False)
+        super().__init__(**kwargs)
 
     def __call__(self, f):
         return self._interp(f)

@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from numpy import pi, cos, sin
 
-from .detector import Detector, FromDiskDetector, SECONDS_PER_YEAR
+from .detector import Detector, FromDiskDetector
 
 
 LITTLE_H = 0.67
@@ -47,7 +47,7 @@ class LISA(Detector):
         return LITTLE_H**2 * Omega_s
 
 
-lisa = LISA(detection_time=3. * SECONDS_PER_YEAR, channels=1, label="LISA --- Analytic")
+lisa = LISA(years=3, channels=1, label="LISA --- Analytic")
 # Compare the equation to the PLS from Thrane's Plcurves, LISA_noisepower
 lisa_thrane = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum.txt', label="LISA --- PLS")
 lisa_thrane_1_yr = FromDiskDetector(THIS / 'LISA_sensitivity_spectrum_1_yr.txt', label="LISA --- PLS one-year")
