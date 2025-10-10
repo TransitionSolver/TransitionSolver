@@ -11,9 +11,7 @@ from analysis.phase_structure import PhaseStructure
 from analysis.phase_history_analysis import AnalysisMetrics, PhaseHistoryAnalyser
 from analysis.transition_graph import ProperPath
 from analysis import phase_structure
-from gws.gw_analyser import GWAnalyser
-from gws.detectors.lisa import LISA
-from gws.gw_analyser import GWAnalysisSettings
+from gws import GWAnalyser, lisa
 from typing import Type
 import numpy as np
 import subprocess
@@ -47,6 +45,7 @@ def writePhaseHistoryReport(fileName: str, paths: list[ProperPath], phaseStructu
         print(report)
         print('Failed to write report.')
 
+    return report
 
 def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str, PT_script: str, PT_params: list[str],
         parameterPoint: list[float], bDebug: bool = False, bPlot: bool = False, bUseBoltzmannSuppression: bool =
@@ -138,22 +137,17 @@ def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str,
 
     # Write the phase history report. Again, this will be handled within PhaseHistoryAnalysis in a future version of the
     # code.
-    writePhaseHistoryReport(outputFolder + '/phase_history.json', paths, phaseStructure, analysisMetrics)
+    report = writePhaseHistoryReport(outputFolder + '/phase_history.json', paths, phaseStructure, analysisMetrics)
+    
     if GWs == 0:
         return
-    default_detector = LISA
-    gwa = GWAnalyser(default_detector, potentialClass, outputFolder+'/', bForceAllTransitionsRelevant=False)
-    settings = GWAnalysisSettings()
-    settings.bUseChapmanJouguetVelocity = bUseCJvw
-    # Determine GWs for a single point
-    if GWs > 0 and GWs < 3:
-       if GWs == 1:
-          settings.kappaTurb = 0.05
-       if GWs == 2:
-          settings.kappaColl = 1.
-       gwa.determineGWs(outputFolder+'/', settings)
-    elif GWs == 3:
-       gwa.determineGWs_withColl(GWsOutputFolder=outputFolder+'/', settings=settings)
+    elif GWs == 1:
+        analyser = GWAnalyser(potential, outputFolder + '/phase_structure.dat', report, kappa_turb=0.05)  
+    elif GWs == 2:
+        analyser = GWAnalyser(potential, outputFolder + '/phase_structure.dat', report, kappa_coll=1)
+          
+    report = analyser.report(lisa)
+    print(report)
 
 if __name__ == "__main__":
     import sys
