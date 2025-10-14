@@ -3,6 +3,7 @@ PhaseTracer interface
 =====================
 """
 
+import os
 from pathlib import Path
 
 import cppyy
@@ -23,8 +24,8 @@ from cppyy.gbl import PhaseTracer
 
 def run_phase_tracer(potential):
     pf = PhaseTracer.PhaseFinder(potential)
-    pf.find_phases();
+    phases = pf.find_phases();
     tf = PhaseTracer.TransitionFinder(pf)
-    tf.find_transitions();
-    return pt, tf
+    transitions = tf.find_transitions();
+    return phases, transitions
 
