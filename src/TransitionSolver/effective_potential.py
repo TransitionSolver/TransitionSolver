@@ -8,10 +8,8 @@ from pathlib import Path
 import cppyy
 import numpy as np
 
-from .phasetracer import PT_HOME
 
-
-EP_HOME = PT_HOME / "EffectivePotential"
+EP_HOME = Path(os.getenv("PHASETRACER", Path.home() / ".PhaseTracer")) / "EffectivePotential"
 EP_INCLUDE = EP_HOME / "include" / "effectivepotential"
 EP_MODELS = EP_HOME / "include" / "models"
 EP_LIB = EP_HOME / "lib" / "libeffectivepotential.so"
