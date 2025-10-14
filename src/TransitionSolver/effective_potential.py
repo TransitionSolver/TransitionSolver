@@ -3,6 +3,7 @@ Access effective potentials from PhaseTracer
 ============================================
 """
 
+import os
 from pathlib import Path
 
 import cppyy
