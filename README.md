@@ -1,4 +1,5 @@
-# Installation
+
+# Installation 
 
 Install TransitionSolver
 
@@ -10,6 +11,7 @@ pipx install .
 This may require e.g.
 ```
 apt install python3-pipx
+
 ```
 
 Running TransitionSolver requires PhaseTracer, which can be installed by
@@ -20,23 +22,6 @@ bash debian_installer_phasetracer.bash
 # export PHASETRACER=/path/to/your/phasetracer/
 ```
 
-You can now run TransitonSolver at the command-line
-```bash
-$ ts --help
-Usage: ts [OPTIONS]
-
-  Run TransitionSolver on a particular model and point
-
-Options:
-  --model [RSS]     Model name  [required]
-  --point PATH      Parameter point file  [required]
-  --vw FLOAT RANGE  Bubble wall velocity  [x>=0.0]
-  --help            Show this message and exit.
-```
-For example, try
-```bash
-ts --model RSS --point ./tests/rss_bp1.txt 
-```
 
 # Warning
 
@@ -176,3 +161,24 @@ Until release of the full TransitionSolver manual, limited documentation and sup
 
 # Credit and citations
 The authors of TransitionSolver are Peter Athron, Csaba Balazs, Lachlan Morris, with the bulk of the code having been developed by Lachlan Morris during his PhD.  The code will be documented in a forthcoming manual, but until then if you use TransitionSolver in your work please cite  Supercool subtleties of cosmological phase transitions, [JCAP 03 (2023) 006](https://inspirehep.net/literature/2614918),  [arXiv:2212.07559](https://arxiv.org/abs/2212.07559) where this code was first used and developed for.  Since TransitionSolver currently uses PhaseTracer and CosmoTransitions please also cite the manuals for these codes.  You can find the bibtex for the appropriate references in ToCite/citeifuse.bib  or latex snipets in ToCite/citeifuse.tex.
+
+
+
+We are developer a new, simpler  way to run TransitonSolver at the command-line
+
+```bash
+$ ts --help
+Usage: ts [OPTIONS]
+
+  Run TransitionSolver on a particular model and point
+
+Options:
+  --model [RSS]     Model name  [required]
+  --point PATH      Parameter point file  [required]
+  --vw FLOAT RANGE  Bubble wall velocity  [x>=0.0]
+  --help            Show this message and exit.
+```
+For example, try
+```bash
+ts --model RSS --point ./tests/rss_bp1.txt 
+``
