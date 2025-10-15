@@ -199,7 +199,7 @@ class ActionSampler:
         # If we are already near the minimum temperature allowed for phase transitions in this potential, we assume the
         # transition will not progress from here. Or, if it does, we cannot accurately determine its progress due to
         # external effects (like other cosmological events) that we don't handle.
-        if len(self.T) > 0 and sampleData.T <= self.potential.minimumTemperature:
+        if len(self.T) > 0 and sampleData.T <= self.potential.minimum_temperature:
             return False, 'Reached minimum temperature'
 
         # Remove all stored data points whose temperature is larger than the last sampled temperature.
@@ -339,7 +339,7 @@ class ActionSampler:
                 stepFactor *= 0.85
 
         Tnew = max(self.Tmin*1.001, self.T[-1] - max(stepFactor*(self.T[-2] - self.T[-1]),
-            self.potential.minimumTemperature))
+            self.potential.minimum_temperature))
 
         # Prevent large steps near T=Tmin causing large errors in the interpolated action from affecting ultracooled
         # transitions.
@@ -425,7 +425,7 @@ class ActionSampler:
         fromFieldConfig = self.fromPhase.findPhaseAtT(T, self.potential)
         toFieldConfig = self.toPhase.findPhaseAtT(T, self.potential)
 
-        fieldSeparationScale = 0.001*self.potential.fieldScale
+        fieldSeparationScale = 0.001*self.potential.get_field_scale()
 
         # If the phases merge together, reset them to their previous values. This can happen for subcritical transitions,
         # where there is virtually no potential barrier when a new phase appears.
@@ -454,9 +454,9 @@ class ActionSampler:
 
         logger.debug('Evaluating action at T = {}', T)
 
-        def V(X): return self.potential.Vtot(X, T)
-        def gradV(X): return self.potential.gradV(X, T)
-
+        def V(X): return self.potential(X, T)
+        def gradV(X): return self.potential.grad(X, T)
+        
         global totalActionEvaluations
         totalActionEvaluations += 1
 
@@ -563,13 +563,13 @@ class TransitionAnalyser():
             # The minimum temperature for which both phases exist, and prevent analysis below the effective potential's
             # cutoff temperature. Below this cutoff temperature, external effects may dramatically affect the phase
             # transition and cannot be captured here in a generic way.
-            self.Tmin = max(self.fromPhase.T[0], self.toPhase.T[0], self.potential.minimumTemperature)
+            self.Tmin = max(self.fromPhase.T[0], self.toPhase.T[0], self.potential.minimum_temperature)
 
         if self.Tmax == 0:
             # The transition is not evaluated subcritically.
             self.Tmax = self.transition.Tc
 
-        self.Tstep = max(0.0005*min(self.fromPhase.T[-1], self.toPhase.T[-1]), 0.0001*self.potential.temperatureScale)
+        self.Tstep = max(0.0005*min(self.fromPhase.T[-1], self.toPhase.T[-1]), 0.0001*self.potential.get_temperature_scale())
 
         self.bComputeSubsampledThermalParams = False
 
@@ -641,7 +641,7 @@ class TransitionAnalyser():
                             self.actionSampler.lowerSonTData[keepIndices[-1]].SonT) > 1 or\
                             abs(self.actionSampler.lowerSonTData[i].T -
                             self.actionSampler.lowerSonTData[keepIndices[-1]].T) >\
-                            self.potential.temperatureScale*0.001:
+                            self.potential.get_temperature_scale()*0.001:
                         keepIndices.append(i)
                     else:
                         logger.debug('Removing stored lower S/T data {} because it is too close to {}', self.actionSampler.lowerSonTData[i], self.actionSampler.lowerSonTData[keepIndices[-1]])
@@ -743,7 +743,7 @@ class TransitionAnalyser():
         #    self.actionSampler.T[0], forFromPhase=True) - self.groundStateEnergyDensity
         rho0 = hydroVars[0].energyDensityFalse
         Temp = self.actionSampler.T[0]
-        rhoR = radDensityPrefactor * self.potential.getDegreesOfFreedomInPhase(self.fromPhase, Temp) * Temp**4
+        rhoR = radDensityPrefactor * self.potential.dof_in_phase(self.fromPhase, Temp) * Temp**4
 
         bCheckForTeq = rho0 - 2*rhoR < 0
 
@@ -2128,7 +2128,7 @@ class TransitionAnalyser():
         radDensityPrefactor = np.pi**2/30
 
         def radiationEnergyDensity(T: float) -> float:
-            return radDensityPrefactor*self.potential.getDegreesOfFreedomInPhase(self.fromPhase, T)*T**4
+            return radDensityPrefactor*self.potential.dof_in_phase(self.fromPhase, T)*T**4
 
         # 0 at Teq, +ve for vacuum domination, -ve for radiation domination.
         def energyEra(T: float) -> float:
@@ -2296,7 +2296,7 @@ class TransitionAnalyser():
         Tsep = min(0.001*(self.transition.Tc - self.Tmin), 0.5*(T - self.Tmin))
         # TODO: [2023] surely this should be handled earlier.
         #if self.Tmin == 0:
-        #    self.Tmin = self.potential.minimumTemperature #0.001 #2*Tsep
+        #    self.Tmin = self.potential.minimum_temperature #0.001 #2*Tsep
         # Can't use supplied version of energy density calculation because T is changing. Default is from phase.
         rhof = hydrodynamics.energy_density_from_phase(self.fromPhase, self.toPhase, self.potential, T)
         def objective(t):
@@ -2324,7 +2324,7 @@ class TransitionAnalyser():
                 low = T
                 high = self.toPhase.T[-1]-2*Tsep
                 mid = 0.5*(low + high)
-                while (high - low) > 0.0001*self.potential.temperatureScale:
+                while (high - low) > 0.0001*self.potential.get_temperature_scale():
                     try:
                         result = objective(mid)
                     except:
@@ -2342,7 +2342,7 @@ class TransitionAnalyser():
         return scipy.optimize.toms748(objective, T, self.transition.Tc)
 
     def transitionCouldComplete(self, maxAction: float, Pf: list[float]) -> bool:
-        if self.actionSampler.T[-1] <= self.potential.minimumTemperature:
+        if self.actionSampler.T[-1] <= self.potential.minimum_temperature:
             return False
 
         # If the nucleation rate is still high.

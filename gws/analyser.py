@@ -294,10 +294,10 @@ class AnalyseIndividualTransition:
             self._vw is None)
 
         if kappa_sw > 1:
-            raise RuntimeError("kappa_sw > 1: {kappa_sw}")
+            raise RuntimeError(f"kappa_sw > 1: {kappa_sw}")
 
         if kappa_sw <= 0:
-            raise RuntimeError("kappa_sw <= 0: {kappa_sw}")
+            raise RuntimeError(f"kappa_sw <= 0: {kappa_sw}")
 
         return kappa_sw
 

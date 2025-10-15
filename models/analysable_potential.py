@@ -56,6 +56,28 @@ class AnalysablePotential(generic_potential):
     geffFunc_boson: Callable[[float], float]
     geffFunc_fermion: Callable[[float], float]
 
+    def grad(self, *args, **kwargs):
+        return self.gradV(*args, **kwargs)
+
+    @property
+    def minimum_temperature(self):
+        return self.minimumTemperature
+
+    def free_energy_density(self, *args, **kwargs):
+        return self.freeEnergyDensity(*args, **kwargs)
+
+    def get_field_scale(self):
+        return self.fieldScale
+
+    def get_temperature_scale(self):
+        return self.temperatureScale
+        
+    def get_n_scalars(self):
+        return self.Ndim
+        
+    def __call__(self, *args, **kwargs):
+        return self.Vtot(*args, **kwargs)
+
     def __init__(self, *args, **dargs):
         self.geffFunc_boson = lambda x: 1.
         self.geffFunc_fermion = lambda x: 0.875
@@ -141,3 +163,6 @@ class AnalysablePotential(generic_potential):
             return self.ndof
         else:
             return self.getDegreesOfFreedom(phase.findPhaseAtT(T, self), T)
+            
+    def dof_in_phase(self, *args, **kwargs):
+        return self.getDegreesOfFreedomInPhase(*args, **kwargs)

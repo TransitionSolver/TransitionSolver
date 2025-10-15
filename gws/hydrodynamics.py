@@ -129,7 +129,8 @@ def getTstep(from_phase: Phase, to_phase: Phase,
     # Make sure the step in either direction doesn't take us past Tmin or where one phase disappears. We don't care
     # about Tc because we can sample in the region Tc < T < Tmax for the
     # purpose of differentiation.
-    return min(max(0.0005 * Tmax, 0.0001 * potential.temperatureScale),
+   
+    return min(max(0.0005 * Tmax, 0.0001 * potential.get_temperature_scale()),
                0.5 * (T - Tmin), 0.5 * (Tmax - T))
 
 
@@ -137,7 +138,7 @@ def _make_hydro_vars(phase, potential, T, Tstep, ground_state_energy=0.):
 
     def free_energy(x: float) -> float:
         phi = phase.findPhaseAtT(x, potential)
-        return potential.freeEnergyDensity(phi, x) - ground_state_energy
+        return potential.free_energy_density(phi, x) - ground_state_energy
 
     f, df, d2f = derivatives(free_energy, T, Tstep)
 

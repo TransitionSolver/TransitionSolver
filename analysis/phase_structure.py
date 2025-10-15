@@ -56,8 +56,8 @@ class Phase:
             else:
                 maxIndex = midpoint
 
-        def V(X) -> Union[float, np.ndarray]: return potential.Vtot(X, T)
-        offset = 0.001*potential.fieldScale
+        def V(X) -> Union[float, np.ndarray]: return potential(X, T)
+        offset = 0.001*potential.get_field_scale()
 
         # Interpolate between the most relevant data points.
         if minIndex == maxIndex:
@@ -66,14 +66,14 @@ class Phase:
             interpFactor = (T - self.T[minIndex]) / (self.T[maxIndex] - self.T[minIndex])
             interpPoint = self.phi[..., minIndex] + interpFactor*(self.phi[..., maxIndex] - self.phi[..., minIndex])
 
-        direction = np.diag(np.ones(potential.Ndim)*offset)
+        direction = np.diag(np.ones(potential.get_n_scalars())*offset)
         optimisedPoint = optimize.fmin_powell(V, interpPoint, disp=False, direc=direction)
 
         if len(optimisedPoint.shape) == 0:
             optimisedPoint = optimisedPoint.ravel()
 
-        if abs(T - self.T[minIndex]) < 0.2*potential.temperatureScale and \
-                np.linalg.norm(optimisedPoint - interpPoint) > 0.2*potential.fieldScale:
+        if abs(T - self.T[minIndex]) < 0.2*potential.get_temperature_scale() and \
+                np.linalg.norm(optimisedPoint - interpPoint) > 0.2*potential.get_field_scale():
             # The minimum shifted too far, so the optimiser probably found a different phase.
             # Return the previous point.
             return interpPoint
