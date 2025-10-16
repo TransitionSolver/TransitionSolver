@@ -11,7 +11,7 @@ from .models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz
 
 
 point = np.loadtxt('rss_bp1.txt')
-boltz = False
+boltz = True
 
 
 def reorder(point):
@@ -22,6 +22,7 @@ def reorder(point):
 python_potential = RealScalarSingletModel_Boltz(*point) if boltz else RealScalarSingletModel(*point)
 cpp_potential = load_potential(reorder(point), "RSS.hpp")
 cpp_potential.set_bUseBoltzmannSuppression(boltz)
+cpp_potential.set_daisy_method(2)
 
 temperatures = [0, 100, 500, 1000]
 field_values = [-1000, -500, -100, 0, 100, 500, 1000]
@@ -32,8 +33,8 @@ for a in field_values:
         for T in temperatures:
         
             phi = np.array([a, b])
-            python = python_potential(phi, T)
-            cpp = cpp_potential(phi, T)
+            python = python_potential(phi, T) - python_potential(0*phi, T)
+            cpp = cpp_potential(phi, T) - cpp_potential(0*phi, T)
             
             rel_diff = (python - cpp) / (python + cpp)
             max_rel_diff = max(max_rel_diff, abs(rel_diff))
