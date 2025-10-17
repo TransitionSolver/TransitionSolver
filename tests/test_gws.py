@@ -11,7 +11,7 @@ import pytest
 import matplotlib.pyplot as plt
 import numpy as np
 
-from TransitionSolver.models.real_scalar_singlet_model import RealScalarSingletModel
+from TransitionSolver.models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz as RealScalarSingletModel
 from TransitionSolver.gws import GWAnalyser, lisa
 from TransitionSolver import gws
 from dictcmp import isclose
@@ -43,7 +43,7 @@ def test_plot_gw():
 
 def test_snr():
     snr = lisa.SNR(analyser.gw_total)
-    assert np.isclose(snr, 254.61811602652202)
+    assert np.isclose(snr, 303.07220537950616)
     
     
 @pytest.mark.mpl_image_compare

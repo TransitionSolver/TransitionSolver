@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from TransitionSolver import phasetracer
-from TransitionSolver.models.real_scalar_singlet_model import RealScalarSingletModel
+from TransitionSolver import phasetracer, RSS_BP1
+from TransitionSolver.models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz as RealScalarSingletModel
 
 from dictcmp import isclose
 
@@ -29,7 +29,6 @@ def test_dof():
 
 @pytest.mark.mpl_image_compare(tolerance=20)
 def test_plot_dof():
-
     with open(THIS / "rss_bp1_dof.json", "r") as f:
         expected = json.load(f)
 

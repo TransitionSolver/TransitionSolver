@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 
 from TransitionSolver import phasetracer
-from TransitionSolver.models.real_scalar_singlet_model import RealScalarSingletModel
+from TransitionSolver.models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz as RealScalarSingletModel
 from dictcmp import isclose
 
 THIS = Path(os.path.dirname(os.path.abspath(__file__)))
