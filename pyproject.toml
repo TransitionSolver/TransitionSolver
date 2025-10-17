@@ -44,7 +44,7 @@ minversion = "6.0"
 norecursedirs = ["examples"]
 testpaths = ["tests"]
 pythonpath = ["."]
-addopts = "--mpl -vvvv --showlocals"
+addopts = "--mpl"
 
 [tool.setuptools.package-data]
 "TransitionSolver" = ["data/**/*", "gws/detectors/*.txt", "gws/detectors/*.csv", "models/util/*.csv"]
