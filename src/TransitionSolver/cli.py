@@ -13,7 +13,7 @@ from rich.status import Status
 
 from . import phasetracer
 from . import gws
-from .effective_potential import load_potential
+from . import load_potential
 
 
 np.set_printoptions(legacy='1.25')
