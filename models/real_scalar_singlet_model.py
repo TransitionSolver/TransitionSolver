@@ -18,6 +18,7 @@ class MassMatrixData:
 class RealScalarSingletModel(AnalysablePotential):
     def init(self, c1, b3, theta, vs, ms, muh=0, mus=0, lh=0, ls=0, c2=0, muh0=0, mus0=0, bDebugIteration=False,
             bStoreParameterEvolution=False, bSkipOneLoop=False):
+        raise RuntimeError("This model is slated for deletion")
         # We have two fields: h and s.
         self.Ndim = 2
 
