@@ -11,6 +11,7 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
+from .analysis import geff
 from .analysis.phase_structure import load_data
 from .analysis.phase_history_analysis import PhaseHistoryAnalyser
 
@@ -102,7 +103,8 @@ def trace_dof(potential, phase_structure_file):
     for phase in phase_structure.phases:
         t1 = phase.T[0] if phase.T[0] != 0 else phase.T[1]
         T = np.geomspace(t1, phase.T[-1], 1000)
-        dof = [potential.dof_in_phase(phase, t) for t in T]
+        phi = [phase.findPhaseAtT(t, potential) for t in T]
+        dof = [geff.field_dependent_dof(potential, p, t) for p, t in zip(phi, T)]
         data[phase.key] = {"T": T, "dof": dof}
 
     return data

@@ -74,4 +74,7 @@ def assert_isclose(result, expected, rtol, atol, ignore):
         elif isinstance(expected[k], dict):
             assert_isclose(result[k], expected[k], rtol, atol, ignore)
         elif not approx_equal(result[k], expected[k], rtol, atol):
-            raise AssertionError(f"Disagreement for {k}. Expected {expected[k]}; found {result[k]}")
+            e = np.array(expected[k])
+            r = np.array(result[k])
+            rdiff = (r - e) / (r + e)
+            raise AssertionError(f"Disagreement for {k}\nExpected: {e}\nFound: {r}\nRelative difference: {rdiff}")

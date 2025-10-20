@@ -12,7 +12,6 @@ import numpy as np
 import pytest
 
 from TransitionSolver import phasetracer, RSS_BP1
-from TransitionSolver.models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz as RealScalarSingletModel
 
 from dictcmp import isclose
 
@@ -20,10 +19,8 @@ THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 
 
 def test_dof():
-    point = THIS / 'rss_bp1.txt'
     phase_structure_file = THIS / "rss_bp1_phase_structure.dat"
-    potential = RealScalarSingletModel(*np.loadtxt(point))
-    result = phasetracer.trace_dof(potential, phase_structure_file)
+    result = phasetracer.trace_dof(RSS_BP1, phase_structure_file)
     assert isclose(result, THIS / "rss_bp1_dof.json")
 
 

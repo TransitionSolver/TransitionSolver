@@ -31,10 +31,10 @@ def geff_from_disk(file_name):
 
     interpolator = CubicSpline(x, y)
 
-    def clamped(x):
-        result = interpolator(x)
-        result[x > x.max()] = y[np.argmax(x)]
-        result[x < x.min()] = y[np.argmin(x)]
+    def clamped(e):
+        result = interpolator(e)
+        result[e > x.max()] = y[np.argmax(x)]
+        result[e < x.min()] = y[np.argmin(x)]
         return result
 
     return clamped

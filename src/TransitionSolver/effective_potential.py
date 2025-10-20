@@ -44,7 +44,7 @@ class MixinPotential:
 
     @property
     def raddof(self):
-        return 80.25 # TODO this is real scalar singlet specific
+        return 22.25 # TODO this is real scalar singlet specific
 
     def free_energy_density(self, phi, T):
         """
