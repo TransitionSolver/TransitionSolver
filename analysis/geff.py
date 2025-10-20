@@ -1,8 +1,8 @@
 """
-Compute g_eff
-==============
+Compute geff
+============
 
-Currently using digitised curves from top panels 
+Using digitised curves for fermions and bosons from top panels 
 of Fig. 3 from https://arxiv.org/abs/1609.04979
 """
 
@@ -20,21 +20,24 @@ THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 
 def geff_from_disk(file_name):
     """
-    @returns Interpolated g_eff from file on disk
+    @returns Interpolated geff from file on disk
     """
-    x, y = np.loadtxt(file_name, delimiter=",", unpack=True)
-    y[y < 0.] = 0.  # TODO why not allow negative, it's in data files
+    t_over_m, geff = np.loadtxt(file_name, delimiter=",", unpack=True)
+    geff[geff < 0.] = 0.  # geff cannot be negative
 
-    order = np.argsort(x)
-    x = x[order]
-    y = y[order]
+    order = np.argsort(t_over_m)
+    t_over_m = t_over_m[order]
+    geff = geff[order]
 
-    interpolator = CubicSpline(x, y)
+    interpolator = CubicSpline(t_over_m, geff)
 
-    def clamped(e):
-        result = interpolator(e)
-        result[e > x.max()] = y[np.argmax(x)]
-        result[e < x.min()] = y[np.argmin(x)]
+    def clamped(t):
+        """
+        @returns Cubic-split with no extrapolation
+        """
+        result = interpolator(t)
+        result[t > t_over_m.max()] = geff[np.argmax(t_over_m)]
+        result[t < t_over_m.min()] = geff[np.argmin(t_over_m)]
         return result
 
     return clamped
