@@ -31,6 +31,7 @@ from util import integration
 from util.events import notifyHandler
 from models.analysable_potential import AnalysablePotential
 from analysis.phase_structure import Phase, Transition
+from . import geff
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,8 @@ class ActionSample:
 
     def __repr__(self):
         return str(self)
+
+
 
 
 # TODO: either move this all to Transition, or move all analysis quantities from Transition to here.
@@ -743,7 +746,8 @@ class TransitionAnalyser():
         #    self.actionSampler.T[0], forFromPhase=True) - self.groundStateEnergyDensity
         rho0 = hydroVars[0].energyDensityFalse
         Temp = self.actionSampler.T[0]
-        rhoR = radDensityPrefactor * self.potential.dof_in_phase(self.fromPhase, Temp) * Temp**4
+        phi = self.fromPhase.findPhaseAtT(Temp, self.potential)
+        rhoR = radDensityPrefactor * geff.field_dependent_dof(self.potential, phi, Temp) * Temp**4
 
         bCheckForTeq = rho0 - 2*rhoR < 0
 
@@ -2128,7 +2132,8 @@ class TransitionAnalyser():
         radDensityPrefactor = np.pi**2/30
 
         def radiationEnergyDensity(T: float) -> float:
-            return radDensityPrefactor*self.potential.dof_in_phase(self.fromPhase, T)*T**4
+            phi = self.fromPhase.findPhaseAtT(T, self.potential)
+            return radDensityPrefactor * geff.field_dependent_dof(self.potential, phi, T) * T**4
 
         # 0 at Teq, +ve for vacuum domination, -ve for radiation domination.
         def energyEra(T: float) -> float:

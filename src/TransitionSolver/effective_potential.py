@@ -42,19 +42,20 @@ class MixinPotential:
             return np.array([self.grad(p, T) for p in phi])
         return eigen.to_numpy(self.dV_dx(eigen.vector(phi), T))
 
-    def free_energy_density(self, X, T):
+    @property
+    def raddof(self):
+        return 80.25 # TODO this is real scalar singlet specific
+
+    def free_energy_density(self, phi, T):
         """
         @returns Free energy density by subtracting radiation contributions
         """
-        self.raddof = 80.25  # TODO this is real scalar singlet specific
-        return self(X, T) - pi**2 / 90 * self.raddof * T**4
+        return self(phi, T) - pi**2 / 90 * self.raddof * T**4
 
     @property
     def minimum_temperature(self):
         return 0.1  # TODO what is this
 
-    def dof_in_phase(self, *args, **kwargs):
-        return 106.75  # TODO this is real scalar singlet specific and an approximation
 
 
 def load_potential(params, header_file, class_name=None, lib_name=None):
