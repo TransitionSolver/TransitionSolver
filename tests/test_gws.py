@@ -11,24 +11,20 @@ import pytest
 import matplotlib.pyplot as plt
 import numpy as np
 
-from TransitionSolver.models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz as RealScalarSingletModel
 from TransitionSolver.gws import GWAnalyser, lisa
-from TransitionSolver import gws
+from TransitionSolver import gws, RSS_BP1
 from dictcmp import isclose
 
 
 THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 
-
-point = THIS / 'rss_bp1.txt'
-potential = RealScalarSingletModel(*np.loadtxt(point))
 phase_structure_file = THIS / "rss_bp1_phase_structure.dat"
 phase_history_file = THIS / "rss_bp1_phase_structure.json"
 
 with open(THIS / phase_history_file, 'r') as f:
     phase_history = json.load(f)
 
-analyser = GWAnalyser(potential, phase_structure_file, phase_history)
+analyser = GWAnalyser(RSS_BP1, phase_structure_file, phase_history)
 
 
 def test_report():
@@ -43,7 +39,7 @@ def test_plot_gw():
 
 def test_snr():
     snr = lisa.SNR(analyser.gw_total)
-    assert np.isclose(snr, 303.07220537950616)
+    assert np.isclose(snr, 302.98903223016237)
     
     
 @pytest.mark.mpl_image_compare
