@@ -37,10 +37,6 @@ class CubedNestedIntegrationHelper(IntegrationHelper):
         g = self.g
         tr = self.tr
 
-        xn1 = tr(x[0])
-        xn2 = tr(x[1])
-        xn3 = tr(x[2])
-
         dxn2 = tr(x[0]) - tr(x[1])
         dxn3 = tr(x[1]) - tr(x[2])
         #dxn3 = tr(x[2]) - tr(x[3])

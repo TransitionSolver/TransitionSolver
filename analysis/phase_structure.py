@@ -26,14 +26,12 @@ class Phase:
     T: np.ndarray
     V: np.ndarray
     phi: np.ndarray
-    n_field: int
 
     def __init__(self, key: float, phase: np.ndarray):
         self.key = int(key)
         self.T = phase[:, 0].T
         self.V = phase[:, 1].T
         self.phi = phase[:, 2:].T
-        self.n_field = phase.shape[1] - 2
 
     # Returns the location of the phase at the given temperature by using interpolation between the stored data points,
     # and local optimisation from that interpolated point.
@@ -83,7 +81,6 @@ class Phase:
 
 class Transition:
     analysis: Optional[AnalysedTransition]
-    n_field: int
     Tc: float
     Tn: float
     # The nucleation temperature calculated using Nbar, the actual number of bubbles nucleated, taking into account
@@ -108,7 +105,6 @@ class Transition:
     Teq: float
     SonTmin: float
     SonTGammaMax: float
-    SonTeq: float
 
     GammaMax: float
 
@@ -118,7 +114,6 @@ class Transition:
     key: int
     ID: int
     vw: float
-    gammaTn: float
     meanBubbleRadius: float
     meanBubbleSeparation: float
     energyWeightedBubbleRadius: float
@@ -139,18 +134,13 @@ class Transition:
     bFoundNucleationWindow: bool
 
     def __init__(self, transition: np.ndarray):
-        self.n_field = (len(transition)+1 - 7) // 2
         self.Tc = transition[2]
-        self.true_vacuum = transition[3:3+self.n_field]
-        self.false_vacuum = transition[3+self.n_field:3+self.n_field*2]
         self.key = transition[-3]
         # The ID is used to match up the indices in a transition path (which is a list of transition ids).
         self.ID = int(transition[-2])
         self.subcritical = transition[-1] > 0
         self.false_phase = int(transition[0])
         self.true_phase = int(transition[1])
-
-        self.gammaTc = np.linalg.norm(self.true_vacuum - self.false_vacuum) / self.Tc
 
         self.Tn = -1.
         self.Tnbar = -1.
@@ -170,7 +160,6 @@ class Transition:
         self.Teq = -1.
         self.SonTmin = -1.
         self.SonTGammaMax = -1.
-        self.SonTeq = -1.
 
         self.Gamma = -1.
 
@@ -178,7 +167,6 @@ class Transition:
         self.decreasingVphysAtTf = False
 
         self.vw = -1.
-        self.gammaTn = -1.
         self.analysis = None
 
         self.meanBubbleRadius = -1.
@@ -199,28 +187,6 @@ class Transition:
         self.meanBubbleRadiusArray = []
         self.HArray = []
         self.Pf = []
-
-    def starts(self) -> bool:
-        # Changed from Tn.
-        return self.Tp > 0
-
-    def completes(self) -> bool:
-        return self.Tf > 0
-
-    def successful(self) -> bool:
-        return self.Tf > 0 and self.decreasingVphysAtTf
-
-    def halts(self) -> bool:
-        return self.starts() and not self.completes()
-
-    # Whether the completed transition leaves pockets of false vacuum.
-    def leavesRemnants(self) -> bool:
-        return self.completes() and not self.decreasingVphysAtTf
-
-    # TODO: [2023] shouldn't all of these properties be in AnalysedTransition?
-    def getOutputList(self) -> list[float]:
-        return [self.Tn, self.Tp, self.Te, self.Tf, self.meanBubbleRadius, self.meanBubbleSeparation,
-                self.energyWeightedBubbleRadius, self.volumeWeightedBubbleRadius, self.transitionStrength]
 
     def getReport(self, reportFileName) -> dict:
         report = {}
@@ -324,14 +290,12 @@ class PhaseStructure:
     phases: list[Phase]
     transitions: list[Transition]
     transitionPaths: list[TransitionPath]
-    reportMessage: str
     groundStateEnergyDensity: float
 
     def __init__(self):
         self.phases = []
         self.transitions = []
         self.transitionPaths = []
-        self.reportMessage = ''
         self.groundStateEnergyDensity = 0.
 
     def determineGroundStateEnergyDensity(self):
@@ -396,4 +360,3 @@ def constructTransitionPath(text) -> TransitionPath:
     for i in range(len(path)):
         path[i] = int(pathElements[i]) if pathElements[i][0] != '-' else int(pathElements[i][1:])-1
     return TransitionPath(list(path))
-    #return TransitionPath(np.array([int(string) for string in text[1].split()]))

@@ -9,7 +9,9 @@ import logging
 import time
 import json
 import traceback
+import sys
 from typing import Optional, Union
+from contextlib import redirect_stdout
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,7 +28,6 @@ from cosmoTransitions import pathDeformation
 
 from gws import hydrodynamics
 from gws.hydrodynamics import HydroVars
-from util.print_suppressor import PrintSuppressor
 from util import integration
 from util.events import notifyHandler
 from models.analysable_potential import AnalysablePotential
@@ -39,11 +40,6 @@ totalActionEvaluations = 0
 
 # TODO: should move to a constants file.
 GRAV_CONST = 6.7088e-39
-
-
-# TODO: not currently thrown anywhere. Replace fail flags and messages with exceptions.
-class FailedActionCalculationException(Exception):
-    pass
 
 
 class ActionSample:
@@ -100,7 +96,6 @@ class AnalysedTransition:
 
         self.T = []
         self.SonT = []
-        self.lowestSonT = -1
         self.error = ''
         self.actionCurveFile = ''
 
@@ -153,7 +148,6 @@ class ActionSampler:
 
         self.subT = []
         self.subSonT = []
-        self.subRhoV = []
         self.subRhof = []
         self.subRhot = []
 
@@ -463,15 +457,11 @@ class ActionSampler:
         global totalActionEvaluations
         totalActionEvaluations += 1
 
-        if not self.bVerbose:
-            with PrintSuppressor():
-                action = pathDeformation.fullTunneling([toFieldConfig, fromFieldConfig], V, gradV,
-                    V_spline_samples=self.numSplineSamples, maxiter=self.maxIter,
-                    verbose=self.bVerbose, tunneling_findProfile_params=tunneling_findProfile_params).action
-        else:
+        with redirect_stdout(sys.stdout if self.bVerbose else None):
             action = pathDeformation.fullTunneling([toFieldConfig, fromFieldConfig], V, gradV,
                 V_spline_samples=self.numSplineSamples, maxiter=self.maxIter,
                 verbose=self.bVerbose, tunneling_findProfile_params=tunneling_findProfile_params).action
+
 
         # Update the data, including changes to the phases and temperature if the calculation previously failed.
         data.T = T
@@ -501,7 +491,6 @@ class ActionCurveShapeAnalysisData:
         #  continue the transition analysis? Maybe for fine-tuned subcritical transitions that nucleate quickly but
         #  don't complete quickly?
         self.bBarrierAtTmin = False
-        self.confidentNoNucleation = False
         self.error = False
 
     def copyDesiredData(self, sample):
@@ -705,7 +694,6 @@ class TransitionAnalyser():
         TAtSonTmin = 0
 
         Teq = 0
-        SonTeq = np.inf
 
         bFirst = True
 
@@ -793,65 +781,6 @@ class TransitionAnalyser():
             hydroVars1 = self.getHydroVars(T1)
             hydroVars2 = self.getHydroVars(T2)
             hydroVarsInterp = [hydrodynamics.interpolate_hydro_vars(hydroVars1, hydroVars2, t) for t in T]
-            
-            # TODO: rather inefficient at the moment and we don't care about Teq (29/08/2023).
-            """rhof = np.linspace(rhof1, rhof2, len(T))
-            rhot = np.linspace(rhot1, rhot2, len(T))
-            # TODO: could optimise this for field-dependent degrees of freedom by interpolating the field configuration.
-            rhoR = [radDensityPrefactor*self.potential.getDegreesOfFreedomInPhase(self.fromPhase, T[i])*T[i]**4
-                for i in range(len(T))]
-            rhoV = rhof - rhoR - self.groundStateEnergyDensity
-
-            # rhoR[0] is evaluated at T[simIndex] and rhoR[-1] is evaluated at T[simIndex+1]
-            if bCheckForTeq and Teq == 0 and rhof2 - self.groundStateEnergyDensity >= 2*rhoR[-1]:
-                # The 1 suffix is for T[simIndex+1] and the 2 suffix is for T[simIndex] (noting that T[simIndex+1] is
-                # smaller than T[simIndex]). So these points are ordered with ascending temperature.
-                T1, T2 = self.actionSampler.T[simIndex+1], self.actionSampler.T[simIndex]
-                # Note that rhof1 and rhof2 suffixes are backwards!
-                rhoV1 = rhof2 - rhoR[-1] - self.groundStateEnergyDensity
-                rhoV2 = rhof1 - rhoR[0] - self.groundStateEnergyDensity
-
-                if self.bDebug:
-                    print('Searching for Teq')
-                    print('T:', T1, T2)
-                    print('rhoV:', rhoV1, rhoV2)
-                    print('rhoR:', rhoR[-1], rhoR[0])
-
-                # We can use 'pseudo-quadratic' interpolation on rhoV to give a quadratic equation to solve for Teq^2.
-                #   rhoV(T) = rhoV1 + (rhoV2 - rhoV1)*(T^2 - T1^2)/(T2^2 - T1^2) == rhoR(T)
-                # This has two solutions for Teq^2:
-                # TODO: averaging degrees of freedom between T1 and T2. Can use tomsolve (or just callcalculateTeq) to
-                #  solve this more generally. That would also avoid the need for interpolating rhoV here.
-                a = 0.5*(rhoR[-1]/T2**4 + rhoR[0]/T1**4)
-                b = -(rhoV2 - rhoV1)/(T2**2 - T1**2)
-                c = -rhoV1 + T1**2*(rhoV2 - rhoV1)/(T2**2 - T1**2)
-                TeqSq1 = (-b + np.sqrt(b*b - 4*a*c))/(2*a)
-                TeqSq2 = (-b - np.sqrt(b*b - 4*a*c))/(2*a)
-                chosenTeq = -1
-
-                if TeqSq1 > T1 and np.sqrt(TeqSq1) < T2:
-                    if TeqSq2 > T1 and np.sqrt(TeqSq2) < T2:
-                        chosenTeq = np.sqrt(max(TeqSq1, TeqSq2))
-                    else:
-                        chosenTeq = np.sqrt(TeqSq1)
-                elif TeqSq2 > T1 and np.sqrt(TeqSq2) < T2:
-                    chosenTeq = np.sqrt(TeqSq2)
-
-                if chosenTeq < 0 and self.bDebug:
-                    print(f'Failed to find Teq in temperature window [{T1}, {T2}], with solutions '
-                          + (str(np.sqrt(TeqSq1)) if TeqSq1 > 0 else f'sqrt({TeqSq1})') + ' and '
-                          + (str(np.sqrt(TeqSq2)) if TeqSq2 > 0 else f'sqrt({TeqSq2})'))
-                    bCheckForTeq = False
-                else:
-                    Teq = chosenTeq
-                    self.transition.Teq = Teq
-                    S1, S2 = self.actionSampler.SonT[simIndex], self.actionSampler.SonT[simIndex+1]
-                    # Linearly interpolate the action to find S(Teq).
-                    self.transition.SonTeq = S1 + (S2 - S1)*(Teq - T1)/(T2 - T1)
-
-                    if self.bDebug:
-                        print('Teq:', Teq)
-                        print('SonTeq:', self.transition.SonTeq)"""
 
             dT = T[0] - T[1]
 
@@ -862,9 +791,6 @@ class TransitionAnalyser():
             if bFirst:
                 self.actionSampler.subT.append(T[0])
                 self.actionSampler.subSonT.append(SonT[0])
-                #self.actionSampler.subRhoV.append(rhoV[0])
-                #self.actionSampler.subRhof.append(rhof[0])
-                #self.actionSampler.subRhot.append(rhot[0])
                 self.actionSampler.subRhof.append(hydroVarsInterp[0].energyDensityFalse)
                 self.actionSampler.subRhot.append(hydroVarsInterp[0].energyDensityTrue)
                 bFirst = False
@@ -878,9 +804,6 @@ class TransitionAnalyser():
             for i in range(1, len(T)):
                 self.actionSampler.subT.append(T[i])
                 self.actionSampler.subSonT.append(SonT[i])
-                #self.actionSampler.subRhoV.append(rhoV[i])
-                #self.actionSampler.subRhof.append(rhof[i])
-                #self.actionSampler.subRhot.append(rhot[i])
                 self.actionSampler.subRhof.append(hydroVarsInterp[i].energyDensityFalse)
                 self.actionSampler.subRhot.append(hydroVarsInterp[i].energyDensityTrue)
 
@@ -1191,40 +1114,6 @@ class TransitionAnalyser():
             plt.ylim(0, 1)
             plt.show()
 
-            """rhoV = self.actionSampler.subRhoV
-            # TODO: now that rhoR is more expensive to calculate if the degrees of freedom are field dependent, we
-            #  should store rhoR during analysis.
-            rhoR = [radDensityPrefactor*self.potential.getDegreesOfFreedomInPhase(self.fromPhase, t)*t**4 for t in
-                self.actionSampler.subT]
-            rhoTot = [rhoR[i]+rhoV[i] for i in range(len(self.actionSampler.subT))]
-            plt.plot(self.actionSampler.subT, rhoV)
-            plt.plot(self.actionSampler.subT, rhoR)
-            plt.plot(self.actionSampler.subT, rhoTot)
-            plt.xlabel('$T$')
-            plt.ylabel('$\\rho$')
-            plt.legend(['$\\rho_V$', '$\\rho_R$', '$\\rho_{\\mathrm{tot}}$'])
-            plt.ylim(bottom=0)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()"""
-
-            """drhoVdT = (rhoV[-2] - rhoV[-1]) / (self.actionSampler.subT[-2] - self.actionSampler.subT[-1])
-            extrapRhoV = lambda x: rhoV[-1] + (x - self.actionSampler.subT[-1])*drhoVdT
-            extraT = list(np.linspace(2*self.actionSampler.subT[-1]-self.actionSampler.subT[-2], 0, 100))
-            fullT = self.actionSampler.subT + extraT
-            fullRhoR = rhoR + [radDensityPrefactor*self.potential.getDegreesOfFreedomInPhase(self.fromPhase, t)*t**4
-                for t in extraT]
-            fullRhoV = rhoV + [extrapRhoV(t) for t in extraT]
-            fullRhoTot = [fullRhoR[i] + fullRhoV[i] for i in range(len(fullT))]
-            plt.plot(fullT, fullRhoV)
-            plt.plot(fullT, fullRhoR)
-            plt.plot(fullT, fullRhoTot)
-            plt.axvline(self.actionSampler.subT[-1], ls='--')
-            plt.xlabel('$T$')
-            plt.ylabel('$\\rho$')
-            plt.legend(['$\\rho_V$', '$\\rho_R$', '$\\rho_{\\mathrm{tot}}$'])
-            plt.show()"""
-
             if Tf > 0:
                 maxIndex = len(self.actionSampler.subT)
                 maxIndex = min(len(self.actionSampler.subT)-1, maxIndex - (maxIndex - indexTf)//2)
@@ -1238,8 +1127,7 @@ class TransitionAnalyser():
 
                 plt.figure(figsize=(14, 11))
                 plt.plot(self.actionSampler.subT[:maxIndex+1], physicalVolumeRelative, zorder=3, lw=3.5)
-                #if TVphysDecr_high > 0: plt.axvline(TVphysDecr_high, c='r', ls='--', lw=2)
-                #if TVphysDecr_low > 0: plt.axvline(TVphysDecr_low, c='r', ls='--', lw=2)
+
                 if Ts1 > 0 and Ts2 > 0: plt.axvspan(Ts2, Ts1, alpha=0.3, color='r', zorder=-1)
                 if Tp > 0:
                     plt.axvline(Tp, c='g', ls='--', lw=2)
@@ -1511,12 +1399,9 @@ class TransitionAnalyser():
 
     def primeTransitionAnalysis(self, startTime: float) -> (Optional[ActionSample], list[ActionSample]):
         TcData = ActionSample(self.transition.Tc)
-        TminData = ActionSample(self.Tmin)
 
         if self.bDebug:
-            # \u00B1 is the plus/minus symbol.
-            print('Bisecting to find S/T =', self.actionSampler.maxSonTThreshold, u'\u00B1',
-                self.actionSampler.toleranceSonT)
+            print(f'Bisecting to find S/T = {self.actionSampler.maxSonTThreshold} ± {self.actionSampler.toleranceSonT}')
 
         # Use bisection to find the temperature at which S/T ~ maxSonTThreshold.
         actionCurveShapeAnalysisData = self.findNucleationTemperatureWindow_refined(startTime=startTime)
@@ -1544,7 +1429,6 @@ class TransitionAnalyser():
             allSamples = np.array(allSamples)
             minSonTIndex = np.argmin(allSamples[:, 1])
 
-            self.transition.analysis.lowestSonT = allSamples[minSonTIndex, 1]
 
             if self.bReportAnalysis:
                 print('No transition')
@@ -1877,19 +1761,6 @@ class TransitionAnalyser():
 
         labelLow = getSignLabel()
 
-        # If the action calculation failed at the low temperature, step along the curve slightly and try again.
-        """if labelLow == 'unknown':
-            data.T += 5*Tstep
-            evaluateAction()
-            labelLow = getSignLabel()
-    
-            # If we still can't calculate the action, give up.
-            if labelLow == 'unknown':
-                saveCurveShapeAnalysisData()
-                return actionCurveShapeAnalysisData
-    
-            TLow = data.T"""
-
         # TODO: the assumption is that if the action calculation fails, it's probably because the barrier becomes too small,
         #  hence the action would be very low.
         if labelLow == 'unknown':
@@ -1926,8 +1797,7 @@ class TransitionAnalyser():
                         data.T = minT
                         data.SonT = minAction
                         actionCurveShapeAnalysisData.copyDesiredData(data)
-                    else:
-                        actionCurveShapeAnalysisData.confidentNoNucleation = True
+                        
 
                     saveCurveShapeAnalysisData()
                     return actionCurveShapeAnalysisData
@@ -2061,7 +1931,6 @@ class TransitionAnalyser():
                     print('S/T will not go below', self.actionSampler.maxSonTThreshold, 'based on linear extrapolation.')
 
                 saveCurveShapeAnalysisData()
-                actionCurveShapeAnalysisData.confidentNoNucleation = True
                 return actionCurveShapeAnalysisData
 
             TMid = 0.5*(TLow + THigh)
@@ -2126,176 +1995,6 @@ class TransitionAnalyser():
     def getHydroVars(self, T: float) -> HydroVars:
         return hydrodynamics.make_hydro_vars(self.fromPhase, self.toPhase, self.potential, T,
             self.groundStateEnergyDensity)
-
-    # Ignore IDE warnings about type of return value, Teq. toms748 returns only a float if full_output=False as is default.
-    def predictTeq(self) -> float:
-        radDensityPrefactor = np.pi**2/30
-
-        def radiationEnergyDensity(T: float) -> float:
-            phi = self.fromPhase.findPhaseAtT(T, self.potential)
-            return radDensityPrefactor * geff.field_dependent_dof(self.potential, phi, T) * T**4
-
-        # 0 at Teq, +ve for vacuum domination, -ve for radiation domination.
-        def energyEra(T: float) -> float:
-            # Can't use supplied version of energy density calculation because T is changing. Default is from phase.
-            return hydrodynamics.energy_density_from_phase(self.fromPhase, self.toPhase, self.potential, T)\
-                - self.groundStateEnergyDensity - 2*radiationEnergyDensity(T)
-
-        # If the transition is subcritical and the energy density already exceeds the radiation density at Tc, then there is
-        # no Teq.
-        #upperLimit = transition.Tc
-        upperLimit = min(self.actionSampler.fromPhase.T[-1], self.actionSampler.toPhase.T[-1])
-        Tmax = max(upperLimit - 0.01*(upperLimit - self.actionSampler.T[0]), 0.999*upperLimit)
-        Tsep = upperLimit - Tmax
-
-        # TODO: this assumes the rhoV contribution monotonically increases with decreasing T below Tc.
-        # This could hold even for regular (non-subcritical) transitions, particularly those with a low Tc.
-        energyAtTmax = energyEra(Tmax)
-        if energyAtTmax > 0:
-            rhoRatTmax = radiationEnergyDensity(Tmax)
-            rhoVatTmax = energyAtTmax + rhoRatTmax
-
-            if self.bDebug:
-                print('Teq cannot be found, as the Universe is vacuum dominated when the \'to phase\' first appears.')
-                print(f'rho_V(Tmax) = {rhoVatTmax}, rho_R(Tmax) = {rhoRatTmax}, and '
-                      f'rho_V/rho = {rhoVatTmax/(energyAtTmax + 2*rhoRatTmax)}')
-                print('Extrapolating (with linear rho_V) to find Teq > Tmax...')
-
-            drhoV = (energyEra(Tmax-Tsep) + radiationEnergyDensity(Tmax - Tsep) - rhoVatTmax) / Tsep
-
-            # 0 at Teq, +ve for vacuum domination, -ve for radiation domination.
-            approxEnergyEra = lambda T: rhoVatTmax + (T - Tmax)*drhoV - radiationEnergyDensity(T)
-
-            if drhoV < 0:
-                if self.bDebug:
-                    print('rhoV is predicted to continue decreasing with increasing temperature.')
-
-                # If rhoV is decreasing with T at Tmax, then we can naively predict when rhoV reaches zero. We know Teq must
-                # be found before this temperature is reached.
-                TforZeroRhoV = Tmax - rhoVatTmax/drhoV
-
-                if self.bDebug:
-                    print(f'Searching for Teq in the range [{Tmax}, {TforZeroRhoV}]...')
-
-                # Negate the result to indicate this value is obtained via extrapolation.
-                Teq = -scipy.optimize.toms748(approxEnergyEra, Tmax, TforZeroRhoV)
-
-                if self.bDebug:
-                    print('Predicting Teq =', -Teq)
-
-                return Teq
-            else:
-                # If rhoV is increasing with T at Tmax, then we naively predict rhoV to (linearly) increase for all
-                # temperatures above Tmax. We can find a loose upper bound on where Teq could lie by the following approach.
-
-                if self.bDebug:
-                    print('rhoV is predicted to continue increasing with increasing temperature.')
-
-                # Find the temperature for which rhoR = rhoV(Tmax). We are guaranteed that rhoV > rhoR here since rhoV
-                # will have increased from rhoV(Tmax).
-                # TODO: for now, assume the degrees of freedom are constant above Tmax. This allows us to treat rhoR
-                #  as a simple quartic function of T: rhoR = a*T^4.
-                a = radiationEnergyDensity(Tmax)/Tmax**4
-                Tstar = (rhoVatTmax / a)**(1/4)
-                Tstep = Tstar - Tmax
-
-                # Step forwards in temperature by progressively larger amounts until we have rhoR(T) > rhoV(T) using the
-                # linear extrapolation of rhoV.
-
-                factor = 2
-
-                # While the Universe is still vacuum dominated at T = Tmax + factor*Tstep.
-                while approxEnergyEra(Tmax + factor*Tstep) > 0:
-                    factor *= 2
-
-                if self.bDebug:
-                    print(f'Searching for Teq in the range [{Tmax}, {Tmax + factor*Tstep}]...')
-
-                # Negate the result to indicate this value is obtained via extrapolation.
-                Teq = -scipy.optimize.toms748(approxEnergyEra, Tmax, Tmax + factor*Tstep)
-
-                if self.bDebug:
-                    print('Predicting Teq =', -Teq)
-
-                return Teq
-
-        # Now we need to determine whether we couldn't find Teq because we didn't sample a *low enough* or *high enough*
-        # temperature. actionSampler.T[0] is the maximum sampled temperature.
-        sampledTmax = self.actionSampler.T[0]
-
-        if energyEra(sampledTmax) > 0:
-            # We have identified that we didn't sample a high enough temperature, so we must have sampledTmax < Teq < Tc.
-            # Find the root in this temperature window.
-            Teq = scipy.optimize.toms748(energyEra, sampledTmax, Tmax)
-            if self.bDebug:
-                print('Teq was found above the maximum sampled temperature. Teq:', Teq)
-            return Teq
-        else:
-            # We have identified that we didn't sample a low enough temperature, so we could have Tmin < Teq < sampledTmin.
-            # But it's also possible that Teq would be below Tmin if the phases existed below Tmin.
-
-            # Redefine Tmin so we can take derivatives around Tmin. actionSampler.subT[-1] is the lowest temperature we have
-            # sampled.
-            newTmin = min(self.Tmin + Tsep, self.actionSampler.subT[-1] + 0.1*(self.actionSampler.T[-1] - self.Tmin))
-
-            energyAtTmin = energyEra(newTmin)
-
-            # If we're still in the radiation dominated era at Tmin, then we cannot find Teq.
-            if energyAtTmin < 0:
-                rhoRatTmin = radiationEnergyDensity(newTmin)
-                rhoVatTmin = energyAtTmin + rhoRatTmin
-
-                if self.bDebug:
-                    print('Teq cannot be found, as the Universe is radiation dominated at Tmin.')
-                    print(f'rho_V(Tmin) = {rhoVatTmin}, rho_R(Tmin) = {rhoRatTmin}, and '
-                          f'rho_V/rho = {rhoVatTmin/(energyAtTmin + 2*rhoRatTmin)}')
-                    print('Extrapolating (with linear rho_V) to find Teq < Tmin...')
-
-                # Tmin must be non-zero, otherwise we would have rhoR = 0 and therefore vacuum domination. So we can
-                # extrapolate rhoV to find Teq.
-
-                #drhoV = (energyEra(Tmax-Tsep) + radDensity*(Tmax - Tsep)**4 - rhoVatTmin) / Tsep
-                Tsample = newTmin + Tsep
-                rhoVsample = energyEra(Tsample) + radiationEnergyDensity(Tsample)
-                drhoVdT = (rhoVsample - rhoVatTmin) / Tsep
-
-                # 0 at Teq, +ve for vacuum domination, -ve for radiation domination.
-                # TODO: after an issue where we tried to evalute the dof below Tmin, make it so that dof remains
-                #  constant below Tmin. The calculation of dof requires the phase, which ceases to exist below Tmin.
-                approxEnergyEra = lambda T: rhoVatTmin + (T - newTmin)*drhoVdT - radiationEnergyDensity(max(T, newTmin))
-
-                if approxEnergyEra(0) < 0:  # => rhoV(0) < 0.
-                    # We can't bracket a root, so use fsolve instead. There may not be a solution.
-                    try:
-                        root = scipy.optimize.fsolve(approxEnergyEra, newTmin)
-                    except:
-                        traceback.print_exc()
-                        print('Here')
-
-                    # If there is a solution.
-                    if len(root) > 0 and approxEnergyEra(root[0]) >= 1e-10:
-                        if self.bDebug:
-                            print('Found Teq using unbracketed root finding.')
-                        # Negate the result to indicate this value is obtained via extrapolation.
-                        Teq = -root[0]
-                    else:
-                        if self.bDebug:
-                            print('Unable to find Teq from unbracketed root finding.')
-                        Teq = 0
-                else:
-                    # Negate the result to indicate this value is obtained via extrapolation.
-                    Teq = -scipy.optimize.toms748(approxEnergyEra, 0, newTmin)
-
-                if self.bDebug:
-                    print('Predicting Teq =', -Teq)
-
-                return Teq
-
-            # Negate the result to indicate this value is obtained via extrapolation.
-            Teq = scipy.optimize.toms748(energyEra, newTmin, self.actionSampler.subT[-1])
-            if self.bDebug:
-                print('Teq was found below the minimum sampled temperature. Teq:', Teq)
-            return Teq
 
     def calculateReheatTemperature(self, T: float) -> float:
         Tsep = min(0.001*(self.transition.Tc - self.Tmin), 0.5*(T - self.Tmin))
@@ -2383,183 +2082,6 @@ def calculateHubbleParameterSq(fromPhase: Phase, toPhase: Phase, potential: Anal
 #        -> Union[list[float], np.ndarray]:
 def calculateHubbleParameterSq_supplied(energyDensity: float) -> float:
     return 8*np.pi*GRAV_CONST/3*energyDensity
-
-
-# TODO: This assumes vw = const and H(T) = H(1)*T**2. We can integrate to avoid these assumptions and hopefully better
-#  handle supercooled phase transitions.
-# TODO: [2023] just remove this?
-def calculateTprime(T, R, vw, H):
-    # Take H(T) = H(1)*T^2, vw(T) = const, a(T)/a(T') = T'/T.
-    # R(T,T') = a(T) * int_T^T' vw(T'') / (T''*H(T'')*a(T'')) dT''
-    #         = vw/T * int_T^T' 1 / H(T'') dT''
-    #         = vw*T/H(T) * (1/T - 1/T')
-    # T'(T,R) = T / (1 - R*H(T)/vw)
-    return T / (1 - R*H/vw)
-
-
-# TODO: currently unused. Is this necessary anymore?
-# Note that the input H and Gamma are evaluated at the input T, i.e. H(T), Gamma(T).
-def getEnergyForRadius(Tp, Tc, R, vw, H, GammaEff, T):
-    # Find the nucleation time corresponding to the input radius R, such that a bubble that nucleated at time Tp would
-    # have a radius of R at the current time T.
-    Tprime = calculateTprime(Tp, R, vw, H)
-
-    # If this bubble radius must have nucleated above the critical temperature, such bubbles cannot exist.
-    if Tprime > Tc:
-        return 0
-
-    # If this bubble radius must have nucleated above the first temperature we sampled (which is above Tn), then we
-    # assume the bubble has negligible chance of having nucleated and so doesn't contribute to the overall distribution.
-    if Tprime > T[0]:
-        return 0
-
-    # Interpolation search:
-    lowIndex = 0
-    highIndex = len(T)-1
-    index = 0
-
-    while highIndex - lowIndex > 0:
-        interpFactor = (T[lowIndex] - Tprime) / (T[lowIndex] - T[highIndex])
-        index = int(round(lowIndex + interpFactor*(highIndex - lowIndex)))
-
-        if T[index] == Tprime:
-            break
-        elif T[index] > Tprime:
-            if lowIndex == index:
-                break
-            lowIndex = index
-        else:
-            if highIndex == index:
-                break
-            highIndex = index
-
-    if T[index] > Tprime:
-        interpFactor = (T[index] - Tprime) / (T[index] - T[index+1])
-        Gammap = GammaEff[index] + interpFactor*(GammaEff[index+1] - GammaEff[index])
-    else:
-        interpFactor = (Tprime - T[index]) / (T[index-1] - T[index])
-        Gammap = GammaEff[index] + interpFactor*(GammaEff[index-1] - GammaEff[index])
-
-    # energy = R^3*dn/dR
-    return R**3 * (Tp/Tprime)**4 * Gammap/vw
-
-
-# TODO: currently unused. Need to verify correctness then use again.
-def calculateTypicalLengthScale(Tp, indexTp, indexTn, Tc, meanBubbleSeparation, vw, Hin, rhoVin, GammaEffin, Tin,
-        bPlot=False, bDebug=False):
-    # Search for R that maximises the volume distribution: R^3 * dn/dR,
-    #                         and the energy distribution: e(T, R) * dn/dR.
-
-    # First, find the bubble radius at Tp for each temperature above Tp at which it could have nucleated.
-    # That is, a bubble that nucleated at T' > Tp would have a radius of R(Tp, T') at Tp. We wish to find R.
-
-    numSamples = 500
-
-    if len(Tin) < numSamples:
-        T = np.linspace(Tin[-1], Tin[0], numSamples)
-        H = lagrange(Tin, Hin)(T)
-        rhoV = lagrange(Tin, rhoVin)(T)
-        GammaEff = lagrange(Tin, GammaEffin)(T)
-    else:
-        T = Tin
-        H = Hin
-        rhoV = rhoVin
-        GammaEff = GammaEffin
-
-    g = 100.0
-    Mpl = 2.435e18
-    xi = np.sqrt(np.pi**2*g/(90*Mpl**2))
-    HradatTp = xi*Tp**2
-
-    HatTp = H[indexTp]
-
-    integralApprox = np.zeros(indexTp)
-    #integralExact = np.zeros(indexTp)
-
-    R = np.zeros(indexTp)
-    Rapprox = np.zeros(indexTp)
-    Rexact = np.zeros(indexTp)
-    vol = np.zeros(indexTp)
-    energy = np.zeros(indexTp)
-
-    f = lambda x: vw/H[x]/T[x]
-
-    for i in range(indexTp-2, -1, -1):
-        # As temperature is increasing from Tp, the radius is increased according to the standard integral for R.
-        R[i] = R[i+1] + 0.5*(f(i+1) + f(i))*(T[i] - T[i+1])
-        Rapprox[i] = vw/HradatTp*(1 - Tp/T[i])
-        vol[i] = 4*np.pi/3 * R[i]**3 * (Tp/T[i])**4 * GammaEff[i] / vw
-
-        integralApprox[i] = (Tp - Tp**2/T[i]) / HatTp
-
-    for i in range(indexTp-2, -1, -1):
-        # Here T[i] = Tnuc.
-        Rp = np.zeros(indexTp)
-
-        # For a given R[i], we have T[i] = Tnuc(Tp, R[i]).
-        # We still need R'(T', Tnuc) = R'(T[j], T[i])
-
-        # calculate the R' array.
-        for j in range(indexTp-2, max(0, i-1), -1):
-            Rp[j] = T[j+1]/T[j]*Rp[j+1] + vw/T[j] * (1/H[j+1] + 1/H[j])*(T[j] - T[j+1])
-
-        for j in range(indexTp-2, max(0, i-1), -1):
-            energy[i] += 0.5*(T[j] - T[j+1]) * (1/T[j+1]*(vw/H[j+1] + Rp[j+1])*Rp[j+1]**2*rhoV[j+1]
-                + 1/T[j]*(vw/H[j] + Rp[j])*Rp[j]**2*rhoV[j])
-
-        energy[i] *= 4*np.pi/vw * GammaEff[i] * (Tp/T[i])**4
-
-    TpApprox = np.zeros(len(R))
-
-    for i in range(len(R)):
-        TpApprox[i] = Tp/(1 - R[i]*HradatTp/vw)
-
-    maxVolumeIndex = vol.argmax()
-    maxEnergyIndex = energy.argmax()
-    RVolMax = R[maxVolumeIndex]
-    REnergyMax = R[maxEnergyIndex]
-
-    REnergyScaled = R/REnergyMax
-
-    if bDebug:
-        print('Maximum energy radius:', REnergyMax, 'Energy:', energy.max(initial=0))
-        print('Maximum volume radius:', RVolMax, 'Volume:', vol.max(initial=0))
-        #print('Mean bubble separation:', meanBubbleSeparation, 'Energy:', energyFromAvgRad)
-        print('Maximum energy nucleation temp:', T[maxEnergyIndex])
-        print('Maximum volume nucleation temp:', T[maxVolumeIndex])
-        #print('Mean separation nucleation temp:', calculateTprime(Tp, meanBubbleSeparation, vw, H))
-
-    if bPlot:
-        fig = plt.figure(figsize=(12, 8))
-        plt.plot(R, T[:indexTp], lw=2.5)
-        plt.plot(R, TpApprox, lw=2.5)
-        plt.legend(['Numerical', 'Approx'])
-        plt.xlabel('$R \,\, \\mathrm{[GeV^{-1}]}$', fontsize=24)
-        plt.ylabel('$T\'(T_p,R) \,\, \\mathrm{[GeV]}$', fontsize=24)
-        plt.tick_params(size=5, labelsize=16)
-        plt.margins(0, 0)
-        plt.show()
-
-        plt.plot(T[:indexTp-1], R[:-1], c='b')
-        plt.plot(T[:indexTp-1], Rapprox[:-1], c='r', ls='--')
-        #plt.plot(T[:indexTp-1], np.log10(Rexact[:-1]), c='g', ls=':')
-        plt.legend(['Numerical', 'Approx'])
-        plt.xlabel('$T$')
-        plt.ylabel('$R(T,T_{pw})$')
-        plt.yscale('log')
-        plt.show()
-
-        # Don't specify 'initial' for the max functions here. These are likely to be well below 1 but we don't know how
-        # much by, so there is no reasonable general choice for 'initial'.
-        plt.plot(REnergyScaled, energy / energy.max())
-        plt.plot(REnergyScaled, vol / vol.max())
-        plt.axvline(meanBubbleSeparation / REnergyMax, ls='--')
-        plt.xlabel('$R/R_{max}$')
-        #plt.ylabel('$E(T,R)$')
-        plt.legend(['Energy-weighted', 'Volume-weighted'])
-        plt.show()
-
-    return REnergyMax, RVolMax
 
 
 # Returns T, SonT, bFinishedAnalysis.

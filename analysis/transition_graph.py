@@ -54,50 +54,12 @@ class Path:
         return outputString
 
     def __str__(self) -> str:
-        """if len(self.transitions) == 0 and self.pathLink is not None:
-            return str(self.pathLink)
-
-        outputString = str(self.phases[0])
-
-        maxIndex = len(self.transitions) - (0 if self.pathLink is None else 1)
-
-        for i in range(maxIndex):
-            outputString += " --(" + str(self.transitions[i]) + ")--> " + str(self.phases[i+1])
-
-        if self.pathLink is not None:
-            outputString += str(self.pathLink)"""
-
         return self.customPrint(bPrintPrefix=True, bPrintSuffix=True)
 
     def __repr__(self) -> str:
         return str(self)
 
 
-# TODO: [2023] figure out if we really need Node, ProperPhaseNode and FrontierNode. If so, document their uses and
-#  differences.
-class Node:
-    transitions: list[PS.Transition]
-
-    def __init__(self):
-        self.transitions = []
-
-    def sortTransitions(self, transitions):
-        self.transitions.sort(key=lambda index: transitions[index].Tc, reverse=True)
-
-
-class OptimalFrontierNode:
-    transition: PS.Transition
-    path: Path
-
-    def __init__(self, transition: PS.Transition, path: Path):
-        self.transition = transition
-        self.path = path
-
-    def __str__(self) -> str:
-        return f'{self.transition}({self.path})'
-
-    def __repr__(self) -> str:
-        return str(self)
 
 
 class ProperPhaseNode:
@@ -237,15 +199,3 @@ class ProperTransitionEdge:
         return str(self)
 
 
-class FrontierNode:
-    transitionPathIndex: int
-    pathIndex: int
-    Tc: float
-
-    def __init__(self, transitionPathIndex: int, pathIndex: int, Tc: float):
-        self.transitionPathIndex = transitionPathIndex
-        self.pathIndex = pathIndex
-        self.Tc = Tc
-
-    def __lt__(self, other) -> bool:
-        return self.Tc > other.Tc

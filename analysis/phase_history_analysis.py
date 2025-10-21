@@ -35,25 +35,13 @@ class PhaseHistoryAnalyser:
     timeout_phaseHistoryAnalysis: float = 200.
     # TODO: implement this timeout for an individual transition. We would need separate start times. One for the entire
     #  phase history analysis, and one for the current transition analysis.
-    timeout_transitionAnalysis: float = 100.
     fileName_precomputedActionCurve: list[str] = []
     precomputedTransitionIDs: list[int] = []
-    actionStepSizeMax: float = 0.95
-    actionTolerance: float = 1e-6
     analysisMetrics: AnalysisMetrics
 
     def __init__(self):
         self.analysisMetrics = AnalysisMetrics()
         notifyHandler.handleEvent(self, 'on_create')
-
-    def analysePhaseHistory(self, potential: AnalysablePotential, phaseTracerDataFileName: str, vw: float = 1.) ->\
-            tuple[list[ProperPath], bool, Optional[AnalysisMetrics]]:
-        bSuccess, phaseStructure = phase_structure.load_data(phaseTracerDataFileName)
-
-        if not bSuccess:
-            return [], False, None
-
-        return self.analysePhaseHistory_supplied(potential, phaseStructure, vw=vw)
 
     # Second return value is whether we timed out.
     def analysePhaseHistory_supplied(self, potential: AnalysablePotential, phaseStructure: PhaseStructure, vw: float =
@@ -549,19 +537,3 @@ class PhaseHistoryAnalyser:
 
             for path in pathStrings:
                 print(path)
-
-    def calculateTmin(self, transition: Transition, transitions: list[Transition], phases: list[Phase]) -> float:
-        Tmin = 0
-
-        for i in range(len(transitions)):
-            if transitions[i].ID == transition.ID:
-                continue
-
-            # If this is the reverse transition.
-            if transitions[i].false_phase == transition.true_phase and transitions[i].true_phase ==\
-                    transition.false_phase and transitions[i].Tc < transition.Tc:
-                Tmin = max(Tmin, transitions[i].Tc)
-
-        Tmin = max(Tmin, phases[transition.false_phase].T.min(), phases[transition.true_phase].T.min())
-
-        return Tmin
