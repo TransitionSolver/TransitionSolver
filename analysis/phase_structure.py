@@ -211,12 +211,34 @@ class Transition:
 
         return report
 
+class PTTransition(Transition):
+    def __init__(self, transition):
+        super().__init__(np.zeros(100))
+        self.Tc = transition.TC
+        self.key = transition.key
+        self.ID = transition.id
+        self.subcritical = transition.subcritical
+        self.false_phase = transition.false_phase.key
+        self.true_phase = transition.true_phase.key
+
+
+class PTPhase:
+    def __init__(self, phase):
+        self.phase = phase
+        self.key = phase.key
+        self.T = phase.T
+        self.V = phase.V
+        self.phi = phase.X
+
+    def findPhaseAtT(self, T: float, potential) -> np.ndarray:
+        return self.phase.FindPhaseAtT(T)
+
 class PhaseStructure:
 
-    def __init__(self):
-        self.phases = []
-        self.transitions = []
-        self.transitionPaths = []
+    def __init__(self, phases=None, transitions=None, paths=None):
+        self.phases = [] if not phases else phases
+        self.transitions = [] if not transitions else transitions
+        self.transitionPaths = [] if not paths else paths
         self.groundStateEnergyDensity = 0.
 
     def determineGroundStateEnergyDensity(self):
@@ -270,9 +292,40 @@ def constructTransition(text) -> Transition:
     return Transition(np.array([float(string) for string in text[1].split()]))
 
 
-def constructTransitionPath(text) -> TransitionPath:
+def constructTransitionPath(text) :
     pathElements = text[1].split()
     path = np.zeros(len(pathElements), dtype='int')
     for i in range(len(path)):
         path[i] = int(pathElements[i]) if pathElements[i][0] != '-' else int(pathElements[i][1:])-1
     return list(path)
+    
+    
+def data(dat_name) -> tuple[bool, Optional[PhaseStructure]]:
+
+    with open(dat_name) as d:
+        data = d.read()
+
+    parts = data.split("\n\n")
+    parts = [part.split("\n") for part in parts]
+
+    phaseStructure = PhaseStructure()
+
+    for part in parts:
+        if len(part) < 2:
+            continue
+
+        label = part[0].split(" ")
+        if label[1] == "phase":
+            phaseStructure.phases.append(constructPhase(part))
+        elif label[1] == "transition":
+            phaseStructure.transitions.append(constructTransition(part))
+        elif label[1] == "transition-path":
+            phaseStructure.transitionPaths.append(constructTransitionPath(part))
+        else:
+            raise(Exception("Invalid header for phase, transition or transition path: " + part[0]))
+
+    phaseStructure.transitions.sort(key=lambda x: x.ID)
+
+    phaseStructure.determineGroundStateEnergyDensity()
+
+    return True, phaseStructure

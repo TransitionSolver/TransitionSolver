@@ -10,7 +10,7 @@ from typing import Optional
 
 from util.events import notifyHandler
 from models.analysable_potential import AnalysablePotential
-from analysis.phase_structure import PhaseStructure, Phase, Transition, TransitionPath
+from analysis.phase_structure import PhaseStructure, Phase, Transition
 from analysis.transition_analysis import TransitionAnalyser, AnalysedTransition
 from analysis.transition_graph import TransitionEdge, Path, PhaseNode
 from analysis import phase_structure
