@@ -12,7 +12,7 @@ from util.events import notifyHandler
 from models.analysable_potential import AnalysablePotential
 from analysis.phase_structure import PhaseStructure, Phase, Transition, TransitionPath
 from analysis.transition_analysis import TransitionAnalyser, AnalysedTransition
-from analysis.transition_graph import ProperTransitionEdge, ProperPath, ProperPhaseNode
+from analysis.transition_graph import TransitionEdge, Path, PhaseNode
 from analysis import phase_structure
 
 
@@ -45,7 +45,7 @@ class PhaseHistoryAnalyser:
 
     # Second return value is whether we timed out.
     def analysePhaseHistory_supplied(self, potential: AnalysablePotential, phaseStructure: PhaseStructure, vw: float =
-            1.) -> tuple[list[ProperPath], bool, Optional[AnalysisMetrics]]:
+            1.) -> tuple[list[Path], bool, Optional[AnalysisMetrics]]:
         # Time how long the analysis takes.
         self.analysisMetrics.analysisStartTime = time.perf_counter()
 
@@ -100,9 +100,8 @@ class PhaseHistoryAnalyser:
 
             for i in range(len(phases)):
                 if bLowTemperaturePhase[i] and bHighTemperaturePhase[i]:
-                    #validPaths.append(TG.ProperPath(i))
                     # The temperature of this phase might as well be the highest sampled temperature.
-                    validPaths.append(ProperPath(ProperPhaseNode(i, phases[i].T[-1])))
+                    validPaths.append(Path(PhaseNode(i, phases[i].T[-1])))
 
             if self.bReportPaths:
                 print('No transitions.')
@@ -122,7 +121,7 @@ class PhaseHistoryAnalyser:
 
         transitionLists = [[] for _ in range(len(uniqueTransitionTemperatures))]
         # The first dimension is the phase index.
-        phaseIndexedTransitions: list[list[ProperTransitionEdge]] = [[] for _ in range(len(phases))]
+        phaseIndexedTransitions: list[list[TransitionEdge]] = [[] for _ in range(len(phases))]
 
         """uniqueTransitionTemperatureIndex = 0
     
@@ -144,13 +143,13 @@ class PhaseHistoryAnalyser:
     
                 transitionLists[j].append(i)"""
 
-        phaseNodes: list[list[ProperPhaseNode]] = [[] for _ in range(len(phases))]
+        phaseNodes: list[list[PhaseNode]] = [[] for _ in range(len(phases))]
 
         # Construct phase nodes segmenting each phase at each unique transition temperature.
         for i in range(len(phases)):
             for j in range(len(uniqueTransitionTemperatures)):
                 if phases[i].T[-1] >= uniqueTransitionTemperatures[j] >= phases[i].T[0]:
-                    phaseNodes[i].append(ProperPhaseNode(i, uniqueTransitionTemperatures[j]))
+                    phaseNodes[i].append(PhaseNode(i, uniqueTransitionTemperatures[j]))
 
         for i in range(len(uniqueTransitionTemperatures)):
             if i == len(uniqueTransitionTemperatures)-1:
@@ -175,7 +174,7 @@ class PhaseHistoryAnalyser:
                         truePhaseNodeIndex = k
                         break
 
-                transitionEdge = ProperTransitionEdge(phaseNodes[falsePhase][falsePhaseNodeIndex],
+                transitionEdge = TransitionEdge(phaseNodes[falsePhase][falsePhaseNodeIndex],
                     phaseNodes[truePhase][truePhaseNodeIndex], transitions[j], len(phaseIndexedTransitions[falsePhase]))
 
                 transitionLists[i].append(transitionEdge)
@@ -190,7 +189,7 @@ class PhaseHistoryAnalyser:
 
         for i in range(len(phases)):
             if bHighTemperaturePhase[i]:
-                paths.append(ProperPath(phaseNodes[i][0]))
+                paths.append(Path(phaseNodes[i][0]))
                 phaseNodes[i][0].paths.append(paths[-1])
 
                 # Find the highest temperature transition from this phase and add it to the frontier.
@@ -201,7 +200,7 @@ class PhaseHistoryAnalyser:
                     j = 1
                     while j < len(phaseIndexedTransitions[i]) and phaseIndexedTransitions[i][j].transition.Tc ==\
                             highTemp:
-                        paths.append(ProperPath(phaseNodes[i][0]))
+                        paths.append(Path(phaseNodes[i][0]))
                         phaseNodes[i][0].paths.append(paths[-1])
 
                         frontier.append(phaseIndexedTransitions[i][j])
@@ -317,7 +316,7 @@ class PhaseHistoryAnalyser:
 
                     # Create a new path for this recently handled transition.
                     prevPath = path
-                    path = ProperPath(transitionEdge.falsePhaseNode)
+                    path = Path(transitionEdge.falsePhaseNode)
                     paths.append(path)
                     # Add this path to the phase node where this divergence occurs.
                     # TODO: changed on 15/11/2021 because pipeline/noNucleation_msScan-BP4_1/24 was breaking here.
@@ -332,11 +331,11 @@ class PhaseHistoryAnalyser:
                     # path and the new path. Whatever path is a prefix of the previous path is also a previous of the
                     # new path.
                     if not bSplit:
-                        path.prefixLinks = prevPath.prefixLinks
+                        path.prefix_links = prevPath.prefix_links
 
                         # This new path is also the suffix of all its prefixes.
-                        for prefix in path.prefixLinks:
-                            prefix.suffixLinks.append(path)
+                        for prefix in path.prefix_links:
+                            prefix.suffix_links.append(path)
 
                 # Now we need to handle the true phase side. If the transition takes the path to a phase node that is
                 # not currently occupied by another path, then the path can be freely extended there. If there are
@@ -378,22 +377,22 @@ class PhaseHistoryAnalyser:
                     # If the intersection point is the start of the other path, simply set the other path as the suffix
                     # of this path.
                     if truePhase.paths[0].phases[0] == truePhase:
-                        path.suffixLinks.append(truePhase.paths[0])
-                        truePhase.paths[0].prefixLinks.append(path)
+                        path.suffix_links.append(truePhase.paths[0])
+                        truePhase.paths[0].prefix_links.append(path)
                     # Otherwise, the other path needs to be split at the intersection point.
                     else:
-                        prefix, suffix = truePhase.paths[0].splitAtNode(truePhase)
+                        prefix, suffix = truePhase.paths[0].split_at_node(truePhase)
                         # Add this path as a prefix of the suffix, and the suffix as a suffix of this path.
-                        suffix.prefixLinks.append(path)
-                        path.suffixLinks.append(suffix)
+                        suffix.prefix_links.append(path)
+                        path.suffix_links.append(suffix)
                 # If there are already multiple paths going through the true phase node, we are guaranteed that they all
                 # begin at that node (i.e. they have been split already as necessary). Simply add those paths as
                 # suffixes of this path.
                 else:
-                    path.suffixLinks += truePhase.paths
+                    path.suffix_links += truePhase.paths
 
                     for suffix in truePhase.paths:
-                        suffix.prefixLinks.append(path)
+                        suffix.prefix_links.append(path)
             # TODO: I only just added this part (as of 20/01/2021). It was completely missing before. Need to make sure
             #  this does all that it needs to, and that a suffix wouldn't have already handled this frontier extension.
             # If the transition doesn't begin.
@@ -416,11 +415,9 @@ class PhaseHistoryAnalyser:
         validPaths = []
 
         for p in paths:
-            if len(p.suffixLinks) == 0 and bLowTemperaturePhase[p.phases[-1].phase]:
+            if len(p.suffix_links) == 0 and bLowTemperaturePhase[p.phases[-1].phase]:
                 p.bValid = True
                 validPaths.append(p)
-
-        #validPaths = [p for p in paths if len(p.suffixLinks) == 0 and bLowTemperaturePhase[p.phases[-1].phase]]
 
         if self.bReportPaths:
             print('\nAll paths:')
@@ -431,9 +428,6 @@ class PhaseHistoryAnalyser:
             for i in range(len(validPaths)):
                 print(f'{i}: {validPaths[i]}')
 
-            print('\nValid paths (reformatted):')
-            self.printValidPaths(validPaths)
-
         if self.bReportAnalysis:
             print('\nAnalysed transitions:', [transitions[i].ID for i in range(len(transitions))
                 if transitions[i].analysis is not None])
@@ -441,10 +435,10 @@ class PhaseHistoryAnalyser:
         self.analysisMetrics.analysisElapsedTime = time.perf_counter() - self.analysisMetrics.analysisStartTime
         return paths, False, self.analysisMetrics
 
-    def getNewFrontier(self, transitionEdge: ProperTransitionEdge, phaseIndexedTransitions:
-            list[list[ProperTransitionEdge]], path: ProperPath, bTransitionStarts: bool, phases: list[Phase])\
-            -> list[ProperTransitionEdge]:
-        newFrontier: list[ProperTransitionEdge] = []
+    def getNewFrontier(self, transitionEdge: TransitionEdge, phaseIndexedTransitions:
+            list[list[TransitionEdge]], path: Path, bTransitionStarts: bool, phases: list[Phase])\
+            -> list[TransitionEdge]:
+        newFrontier: list[TransitionEdge] = []
         falsePhase: int = transitionEdge.falsePhaseNode.phase
         truePhase: int = transitionEdge.truePhaseNode.phase
 
@@ -517,7 +511,7 @@ class PhaseHistoryAnalyser:
         return newFrontier
 
     def getMinTransitionTemperature_indexed(self, phases: list[Phase], phaseIndexedTransitions:
-            list[list[ProperTransitionEdge]], transitionEdge: ProperTransitionEdge) -> float:
+            list[list[TransitionEdge]], transitionEdge: TransitionEdge) -> float:
         Tmin = 0
         transition = transitionEdge.transition
 
@@ -531,9 +525,3 @@ class PhaseHistoryAnalyser:
 
         return max(Tmin, phases[transition.false_phase].T.min(), phases[transition.true_phase].T.min())
 
-    def printValidPaths(self, validPaths: list[ProperPath]) -> None:
-        for i in range(len(validPaths)):
-            pathStrings = validPaths[i].getAllPaths()
-
-            for path in pathStrings:
-                print(path)
