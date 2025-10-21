@@ -3,29 +3,14 @@ Analyse phase structure
 =======================
 """
 
-from __future__ import annotations
-
 import traceback
-from typing import Optional, Union, TYPE_CHECKING, List
+from typing import Optional, Union, List
 
 import numpy as np
 from scipy import optimize
 
-# Avoids circular import issue
-if TYPE_CHECKING:
-    from models.analysable_potential import AnalysablePotential
-    from analysis.transition_analysis import AnalysedTransition
-
-
-class InvalidTemperatureException(Exception):
-    pass
-
 
 class Phase:
-    key: int
-    T: np.ndarray
-    V: np.ndarray
-    phi: np.ndarray
 
     def __init__(self, key: float, phase: np.ndarray):
         self.key = int(key)
@@ -35,9 +20,9 @@ class Phase:
 
     # Returns the location of the phase at the given temperature by using interpolation between the stored data points,
     # and local optimisation from that interpolated point.
-    def findPhaseAtT(self, T: float, potential: AnalysablePotential) -> np.ndarray:
+    def findPhaseAtT(self, T: float, potential) -> np.ndarray:
         if T < self.T[0] or T > self.T[-1]:
-            raise InvalidTemperatureException(f'Attempted to find phase {self.key} at T={T}, while defined only for'
+            raise ValueError(f'Attempted to find phase {self.key} at T={T}, while defined only for'
                 f'[{self.T[0]}, {self.T[-1]}]')
 
         minIndex = 0
@@ -80,58 +65,6 @@ class Phase:
 
 
 class Transition:
-    analysis: Optional[AnalysedTransition]
-    Tc: float
-    Tn: float
-    # The nucleation temperature calculated using Nbar, the actual number of bubbles nucleated, taking into account
-    # diminishing false vacuum volume within which to nucleate.
-    Tnbar: float
-    Tp: float
-    Te: float
-    Tf: float
-    # The temperature at which the physical volume of the false vacuum starts shrinking.
-    TVphysDecr_high: float
-    # The temperature at which the physical volume of the false vacuum stops shrinking.
-    TVphysDecr_low: float
-    # Reheating temperature evaluated at different original temperatures.
-    Treh_n: float
-    Treh_nbar: float
-    Treh_p: float
-    Treh_e: float
-    Treh_f: float
-
-    Tmin: float
-    TGammaMax: float
-    Teq: float
-    SonTmin: float
-    SonTGammaMax: float
-
-    GammaMax: float
-
-    decreasingVphysAtTp: bool
-    decreasingVphysAtTf: bool
-
-    key: int
-    ID: int
-    vw: float
-    meanBubbleRadius: float
-    meanBubbleSeparation: float
-    energyWeightedBubbleRadius: float
-    volumeWeightedBubbleRadius: float
-
-    TSubampleArray: List[float]
-    betaArray: List[float]
-    meanBubbleSeparationArray: List[float]
-    meanBubbleRadiusArray: List[float]
-    HArray: List[float]
-    Pf: List[float]
-
-    transitionStrength: float
-
-    totalNumBubbles: float
-    totalNumBubblesCorrected: float
-
-    bFoundNucleationWindow: bool
 
     def __init__(self, transition: np.ndarray):
         self.Tc = transition[2]
@@ -278,19 +211,7 @@ class Transition:
 
         return report
 
-
-class TransitionPath:
-    path: list[int]
-
-    def __init__(self, path: list[int]):
-        self.path = path
-
-
 class PhaseStructure:
-    phases: list[Phase]
-    transitions: list[Transition]
-    transitionPaths: list[TransitionPath]
-    groundStateEnergyDensity: float
 
     def __init__(self):
         self.phases = []
@@ -309,15 +230,10 @@ class PhaseStructure:
             self.groundStateEnergyDensity = 0.
 
 
-def load_data(dat_name, bExpectFile=True) -> tuple[bool, Optional[PhaseStructure]]:
-    try:
-        with open(dat_name) as d:
-            data = d.read()
-    except FileNotFoundError:
-        if bExpectFile:
-            traceback.print_exc()
-        # TODO: should probably return an empty PhaseStructure object with just its reportMessage set.
-        return False, None
+def load_data(dat_name) -> tuple[bool, Optional[PhaseStructure]]:
+
+    with open(dat_name) as d:
+        data = d.read()
 
     parts = data.split("\n\n")
     parts = [part.split("\n") for part in parts]
@@ -359,4 +275,4 @@ def constructTransitionPath(text) -> TransitionPath:
     path = np.zeros(len(pathElements), dtype='int')
     for i in range(len(path)):
         path[i] = int(pathElements[i]) if pathElements[i][0] != '-' else int(pathElements[i][1:])-1
-    return TransitionPath(list(path))
+    return list(path)

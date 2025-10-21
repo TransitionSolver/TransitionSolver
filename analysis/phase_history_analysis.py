@@ -80,15 +80,11 @@ class PhaseHistoryAnalyser:
         # temperature phase.
         # TODO: why was it necessary to do it this way?
         for i in range(len(transitionPaths)):
-            if transitionPaths[i].path[-1] < 0:
-                phase = -(transitionPaths[i].path[-1]+1)
+            if transitionPaths[i][-1] < 0:
+                phase = -(transitionPaths[i][-1]+1)
             else:
-                phase = transitions[transitionPaths[i].path[-1]].true_phase
+                phase = transitions[transitionPaths[i][-1]].true_phase
             bLowTemperaturePhase[phase] = True
-        # TODO: updated to: (on 16/06/21)
-        """for i in range(len(phases)):
-            if phases[i].T[0] == 0.0:
-                bLowTemperaturePhase[i] = True"""
 
         if self.bDebug:
             print('Low temperature phases:', [i for i in range(len(phases)) if bLowTemperaturePhase[i]])
@@ -122,26 +118,6 @@ class PhaseHistoryAnalyser:
         transitionLists = [[] for _ in range(len(uniqueTransitionTemperatures))]
         # The first dimension is the phase index.
         phaseIndexedTransitions: list[list[TransitionEdge]] = [[] for _ in range(len(phases))]
-
-        """uniqueTransitionTemperatureIndex = 0
-    
-        for i in range(len(transitions)):
-            if i > 0 and transitions[i].Tc != transitions[i-1].Tc:
-                uniqueTransitionTemperatureIndex += 1
-    
-            reverseTemperature = -1
-            # Find where the reverse transition is.
-            for j in range(i+1, len(transitions)):
-                if transitions[j].false_phase == transitions[i].true_phase\
-                    and transitions[j].true_phase == transitions[i].false_phase:
-                    reverseTemperature = transitions[j].Tc
-                    break
-    
-            for j in range(uniqueTransitionTemperatureIndex, len(uniqueTransitionTemperatures)):
-                if uniqueTransitionTemperatures[j] <= reverseTemperature:
-                    break
-    
-                transitionLists[j].append(i)"""
 
         phaseNodes: list[list[PhaseNode]] = [[] for _ in range(len(phases))]
 
