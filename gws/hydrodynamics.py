@@ -10,7 +10,6 @@ from dataclasses import dataclass, fields
 from numpy import pi
 
 from analysis.phase_structure import Phase
-from models.analysable_potential import AnalysablePotential
 from .numdiff import derivatives
 
 
@@ -20,7 +19,7 @@ GRAV_CONST = 6.7088e-39
 @dataclass
 class HydroVars:
     """
-    Represent hydrodynnmic variables in true and false vacuum
+    Represent hydrodynamic variables in true and false vacuum
     """
     pressureFalse: float
     energyDensityFalse: float
@@ -119,28 +118,29 @@ def interpolate_hydro_vars(
     return HydroVars(*data)
 
 
-# TODO: this probably belongs elsewhere, maybe in PhaseStructure or
-# AnalysablePotential.
-def getTstep(from_phase: Phase, to_phase: Phase,
-             potential: AnalysablePotential, T: float) -> float:
+def guess_delta_t(from_phase: Phase, to_phase: Phase, potential, T: float) -> float:
+    """
+    @returns Delta T that wouldn't take us below Tmin or above Tmax
+
+    N.B. we make 2 steps f(x +/- 2 * dx) to compute second derivatives hence
+    factors of 0.5 below.
+
+    We don't care about Tc because we can sample in the region
+    Tc < T < Tmax for the purpose of differentiation
+    """
+    delta_t = max(0.0005 * Tmax, 0.0001 * potential.get_temperature_scale())
     Tmin = max(from_phase.T[0], to_phase.T[0])
     Tmax = min(from_phase.T[-1], to_phase.T[-1])
-
-    # Make sure the step in either direction doesn't take us past Tmin or where one phase disappears. We don't care
-    # about Tc because we can sample in the region Tc < T < Tmax for the
-    # purpose of differentiation.
-   
-    return min(max(0.0005 * Tmax, 0.0001 * potential.get_temperature_scale()),
-               0.5 * (T - Tmin), 0.5 * (Tmax - T))
+    return min(delta_t, 0.5 * (T - Tmin), 0.5 * (Tmax - T))
 
 
-def _make_hydro_vars(phase, potential, T, Tstep, ground_state_energy=0.):
+def _make_hydro_vars(phase, potential, T, delta_t, ground_state_energy=0.):
 
     def free_energy(x: float) -> float:
         phi = phase.findPhaseAtT(x, potential)
         return potential.free_energy_density(phi, x) - ground_state_energy
 
-    f, df, d2f = derivatives(free_energy, T, Tstep)
+    f, df, d2f = derivatives(free_energy, T, delta_t)
 
     # Pressure
     p = -f
@@ -160,31 +160,29 @@ def _make_hydro_vars(phase, potential, T, Tstep, ground_state_energy=0.):
     return {"p": p, "e": e, "w": w, "s": s, "c2": c2}
 
 
-def make_hydro_vars(from_phase: Phase, to_phase: Phase, potential: AnalysablePotential, T: float,
+def make_hydro_vars(from_phase: Phase, to_phase: Phase, potential, T: float,
                     ground_state_energy=0.) -> HydroVars:
     """
     @returns Hydrodynamical variables in true and false vacuum
     """
-    # TODO: if Tstep is too small, dF/dT and d2F/dT2 are zero and the sound
-    # speed calculation leads to division by zero.
-    Tstep = getTstep(from_phase, to_phase, potential, T)
+    delta_t = guess_delta_t(from_phase, to_phase, potential, T)
 
-    hvt = _make_hydro_vars(to_phase, potential, T, Tstep, ground_state_energy)
-    hvf = _make_hydro_vars(from_phase, potential, T, Tstep, ground_state_energy)
+    hvt = _make_hydro_vars(to_phase, potential, T, delta_t, ground_state_energy)
+    hvf = _make_hydro_vars(from_phase, potential, T, delta_t, ground_state_energy)
 
     return HydroVars(*hvf.values(), *hvt.values(), T)
 
 
 def _energy_density(from_phase: Phase, to_phase: Phase,
-                    potential: AnalysablePotential, T: float, use_from_phase, ground_state_energy=0.) -> float:
+                    potential, T: float, use_from_phase, ground_state_energy=0.) -> float:
     """
     To and from phase are required to deduce appropriate step in numerical derivative
 
     @returns Energy density in from or to phase
     """
-    Tstep = getTstep(from_phase, to_phase, potential, T)
+    delta_t = guess_delta_t(from_phase, to_phase, potential, T)
     phase = from_phase if use_from_phase else to_phase
-    return _make_hydro_vars(phase, potential, T, Tstep, ground_state_energy)["e"]
+    return _make_hydro_vars(phase, potential, T, delta_t, ground_state_energy)["e"]
 
 
 def energy_density_from_phase(*args, **kwargs) -> float:
