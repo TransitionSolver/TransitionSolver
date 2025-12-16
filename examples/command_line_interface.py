@@ -9,7 +9,7 @@ from models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz
 from models.real_scalar_singlet_model_ht import RealScalarSingletModel_HT
 from analysis.phase_structure import PhaseStructure
 from analysis.phase_history_analysis import AnalysisMetrics, PhaseHistoryAnalyser
-from analysis.transition_graph import ProperPath
+from analysis.transition_graph import Path
 from analysis import phase_structure
 from gws import GWAnalyser, lisa
 from typing import Type
@@ -19,12 +19,10 @@ import json
 import pathlib
 import sys
 
-
-
 from util.events import notifyHandler
 
 
-def writePhaseHistoryReport(fileName: str, paths: list[ProperPath], phaseStructure: PhaseStructure, analysisMetrics:
+def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: PhaseStructure, analysisMetrics:
         AnalysisMetrics) -> None:
     report = {}
 

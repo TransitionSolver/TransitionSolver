@@ -28,7 +28,7 @@ from models.toy_model import ToyModel
 from analysis.transition_analysis import FailedActionCalculationException
 from analysis.phase_structure import PhaseStructure
 from analysis.phase_history_analysis import PhaseHistoryAnalyser, AnalysisMetrics
-from analysis.transition_graph import ProperPath
+from analysis.transition_graph import Path
 from analysis.transition_analysis import TransitionAnalyser, ActionSampler
 from analysis import phase_structure
 from models.analysable_potential import AnalysablePotential
@@ -272,7 +272,7 @@ def pipeline_analysePhaseHistory(potential, phaseStructure, settings: PipelineSe
         return 'Failed action calculation'
 
 
-def writePhaseHistoryReport(paths: list[ProperPath], phaseStructure: PhaseStructure, settings: PipelineSettings,
+def writePhaseHistoryReport(paths: list[Path], phaseStructure: PhaseStructure, settings: PipelineSettings,
         analysisMetrics: AnalysisMetrics):
     report = {}
     fileName = settings.fileName_phaseHistoryReport

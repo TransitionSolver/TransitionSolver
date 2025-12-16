@@ -4,7 +4,7 @@ from models.toy_model import ToyModel
 from models.real_scalar_singlet_model import RealScalarSingletModel
 from analysis.phase_structure import PhaseStructure
 from analysis.phase_history_analysis import PhaseHistoryAnalyser, AnalysisMetrics
-from analysis.transition_graph import ProperPath
+from analysis.transition_graph import Path
 from analysis import phase_structure
 import numpy as np
 import subprocess
@@ -15,7 +15,7 @@ import sys
 from util.events import notifyHandler
 
 
-def writePhaseHistoryReport(fileName: str, paths: list[ProperPath], phaseStructure: PhaseStructure, analysisMetrics:
+def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: PhaseStructure, analysisMetrics:
         AnalysisMetrics) -> None:
     report = {}
 

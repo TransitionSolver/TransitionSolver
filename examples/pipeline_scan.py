@@ -15,12 +15,12 @@ from analysis import phase_structure
 from analysis.phase_history_analysis import PhaseHistoryAnalyser, AnalysisMetrics
 from analysis.phase_structure import PhaseStructure
 from analysis.transition_analysis import TransitionAnalyser
-from analysis.transition_graph import ProperPath
+from analysis.transition_graph import Path
 from models.supercool_model import SMplusCubic
 from util.events import notifyHandler
 
 
-def writePhaseHistoryReport(fileName: str, paths: list[ProperPath], phaseStructure: PhaseStructure, analysisMetrics:
+def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: PhaseStructure, analysisMetrics:
         AnalysisMetrics) -> None:
     report = {}
 
