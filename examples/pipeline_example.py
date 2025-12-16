@@ -244,7 +244,7 @@ def pipeline_getPhaseStructure(settings: PipelineSettings):
                 stderr=subprocess.STDOUT)
 
         # Check if the output file exists.
-        bFileExists, phaseStructure = phase_structure.load_data(settings.fileName_phaseStructure, bExpectFile=False)
+        bFileExists, phaseStructure = phase_structure.load_data(settings.fileName_phaseStructure)
 
         if not bFileExists:
             return 'Invalid phase structure', None

@@ -9,6 +9,8 @@ class NotifyHandler:
         if fullName in self.events:
             self.events[fullName](caller)
 
+    def addEvent(self, name: str, reaction: Callable[[Any], None]):
+        self.events[name] = reaction
 
 # Create a global singleton when this module is imported.
 if not 'notifyHandler' in globals():

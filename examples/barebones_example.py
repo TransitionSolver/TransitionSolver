@@ -85,7 +85,7 @@ def main():
     subprocess.call(command, timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
     # Load the phase structure saved by PhaseTracer.
-    bFileExists, phaseStructure = phase_structure.load_data(outputFolder + '/phase_structure.dat', bExpectFile=True)
+    bFileExists, phaseStructure = phase_structure.load_data(outputFolder + '/phase_structure.dat')
 
     # Validate the phase structure.
     if not bFileExists:
