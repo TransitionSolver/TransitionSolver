@@ -128,9 +128,9 @@ def guess_delta_t(from_phase: Phase, to_phase: Phase, potential, T: float) -> fl
     We don't care about Tc because we can sample in the region
     Tc < T < Tmax for the purpose of differentiation
     """
-    delta_t = max(0.0005 * Tmax, 0.0001 * potential.get_temperature_scale())
     Tmin = max(from_phase.T[0], to_phase.T[0])
     Tmax = min(from_phase.T[-1], to_phase.T[-1])
+    delta_t = max(0.0005 * Tmax, 0.0001 * potential.get_temperature_scale())
     return min(delta_t, 0.5 * (T - Tmin), 0.5 * (Tmax - T))
 
 
