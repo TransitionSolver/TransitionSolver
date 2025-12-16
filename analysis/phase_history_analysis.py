@@ -55,7 +55,7 @@ class PhaseHistoryAnalyser:
         # Extract high and low temperature phases.
         phases = phaseStructure.phases
         transitions = phaseStructure.transitions
-        transitionPaths: list[TransitionPath] = phaseStructure.transitionPaths
+        transitionPaths = phaseStructure.transitionPaths
 
         # TODO: added on 23/06/2022 to handle the case where PhaseTracer reports no possible transition paths. Need to
         #  make sure PhaseTracer would have handled the case where we could stay in the same phase.

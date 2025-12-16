@@ -41,5 +41,5 @@ def run_phase_tracer(potential):
         tobjs = [PTTransition(t) for t in transitions]
         phobjs = [PTPhase(p) for p in phases]
 
-    return PhaseStructure(phobjs, tobjs, pobjs)
+    return PhaseStructure(phobjs, tobjs, phobjs)
 
