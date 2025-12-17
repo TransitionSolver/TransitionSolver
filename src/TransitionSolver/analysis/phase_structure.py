@@ -218,93 +218,16 @@ class PhaseStructure:
         self.phases = [] if not phases else phases
         self.transitions = [] if not transitions else transitions
         self.transitionPaths = [] if not paths else paths
-        self.groundStateEnergyDensity = 0.
 
-    def determineGroundStateEnergyDensity(self):
-        self.groundStateEnergyDensity = np.inf
+    @property
+    def ground_state_energy(self):
+        ground_state_energy = np.inf
 
         for phase in self.phases:
-            if phase.T[0] == 0 and phase.V[0] < self.groundStateEnergyDensity:
-                self.groundStateEnergyDensity = phase.V[0]
+            if phase.T[0] == 0 and phase.V[0] < ground_state_energy:
+                ground_state_energy = phase.V[0]
 
-        if self.groundStateEnergyDensity == np.inf:
-            self.groundStateEnergyDensity = 0.
+        if ground_state_energy == np.inf:
+            return 0.
 
-
-def load_data(dat_name) -> tuple[bool, Optional[PhaseStructure]]:
-
-    with open(dat_name) as d:
-        data = d.read()
-
-    parts = data.split("\n\n")
-    parts = [part.split("\n") for part in parts]
-
-    phaseStructure = PhaseStructure()
-
-    for part in parts:
-        if len(part) < 2:
-            continue
-
-        label = part[0].split(" ")
-        if label[1] == "phase":
-            phaseStructure.phases.append(constructPhase(part))
-        elif label[1] == "transition":
-            phaseStructure.transitions.append(constructTransition(part))
-        elif label[1] == "transition-path":
-            phaseStructure.transitionPaths.append(constructTransitionPath(part))
-        else:
-            raise(Exception("Invalid header for phase, transition or transition path: " + part[0]))
-
-    phaseStructure.transitions.sort(key=lambda x: x.ID)
-
-    phaseStructure.determineGroundStateEnergyDensity()
-
-    return True, phaseStructure
-
-
-def constructPhase(text) -> Phase:
-    return Phase(text[0].split()[2], np.array([[float(string) for string in text[i].split()]
-        for i in range(1, len(text))]))
-
-
-def constructTransition(text) -> Transition:
-    return Transition(np.array([float(string) for string in text[1].split()]))
-
-
-def constructTransitionPath(text) :
-    pathElements = text[1].split()
-    path = np.zeros(len(pathElements), dtype='int')
-    for i in range(len(path)):
-        path[i] = int(pathElements[i]) if pathElements[i][0] != '-' else int(pathElements[i][1:])-1
-    return list(path)
-    
-    
-def data(dat_name) -> tuple[bool, Optional[PhaseStructure]]:
-
-    with open(dat_name) as d:
-        data = d.read()
-
-    parts = data.split("\n\n")
-    parts = [part.split("\n") for part in parts]
-
-    phaseStructure = PhaseStructure()
-
-    for part in parts:
-        if len(part) < 2:
-            continue
-
-        label = part[0].split(" ")
-        if label[1] == "phase":
-            phaseStructure.phases.append(constructPhase(part))
-        elif label[1] == "transition":
-            phaseStructure.transitions.append(constructTransition(part))
-        elif label[1] == "transition-path":
-            phaseStructure.transitionPaths.append(constructTransitionPath(part))
-        else:
-            raise(Exception("Invalid header for phase, transition or transition path: " + part[0]))
-
-    phaseStructure.transitions.sort(key=lambda x: x.ID)
-
-    phaseStructure.determineGroundStateEnergyDensity()
-
-    return True, phaseStructure
+      return ground_state_energy

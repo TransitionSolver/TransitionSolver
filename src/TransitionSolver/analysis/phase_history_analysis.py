@@ -244,7 +244,7 @@ class PhaseHistoryAnalyser:
 
                     transitionAnalyser: TransitionAnalyser = TransitionAnalyser(potential, transition,
                         phases[transition.false_phase], phases[transition.true_phase],
-                        phaseStructure.groundStateEnergyDensity, Tmin=Tmin, Tmax=Tmax)
+                        phaseStructure.ground_state_energy, Tmin=Tmin, Tmax=Tmax)
 
                     transitionAnalyser.bDebug = self.bDebug
                     transitionAnalyser.bPlot = self.bPlot

@@ -70,14 +70,14 @@ class AnalyseIndividualTransition:
             self.to_phase,
             self.potential,
             self.transition_temp,
-            phase_structure.groundStateEnergyDensity)
+            phase_structure.ground_state_energy)
 
         self.hydro_reheat_temp = hydrodynamics.make_hydro_vars(
             self.from_phase,
             self.to_phase,
             self.potential,
             self.reheating_temp,
-            phase_structure.groundStateEnergyDensity)
+            phase_structure.ground_state_energy)
 
     @property
     def redshift_freq(self):
