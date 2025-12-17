@@ -106,8 +106,56 @@ class AnalysablePotential(generic_potential):
     def getParameterPoint(self) -> List[float]:
         return []
 
-    def getDegreesOfFreedom(self, X: Union[float, list[float], np.ndarray] = 0., T: Union[float, list[float],
-            np.ndarray] = 0.) -> Union[float, np.ndarray]:
+    # Wrappers needed to get new geff.py to work for analysable potentials
+    # ( was written for PT potentials)
+    # it might be better long term to handle these issues upsream in geff
+    # but its simpler to solve here for now
+
+    # Since cosmoTransitions(CT) just gives bosons, we put all bososns into
+    # the scalar functions as the vector and scalar lists from these will just
+    # be added together upstream in field_dependent_dof from geff.py
+    # would be better to handle this upstrteam long term if we keep the option
+    # to use CT potentials long term (we may not)
+    def get_scalar_masses_sq(self, X: Union[float, list[float], np.ndarray] = 0.0, T: Union[float, list[float], np.ndarray] = 0.0) -> Union[float, np.ndarray]:
+        if not isinstance(X, (list, tuple, np.ndarray)):
+            X = np.array(list(X), dtype=float)
+        else:
+            X = np.asarray(X, dtype=float)
+        m2b, nb, _ = self.boson_massSq(X,T)
+        return m2b
+
+    def get_scalar_dofs(self):
+        X = np.zeros(self.Ndim)
+        T=0.0
+        _, nb, _ = self.boson_massSq(X, T)
+        return nb
+
+    # since the geff.py field_dependent_dof just adds scalar and vector lists
+    # together we can just pass all boson states as scalar as above and pass
+    # the vector masses and dofs as zero
+    def get_vector_masses_sq(self, X):
+        return []
+
+    def get_vector_dofs(self):
+        return []
+
+    # fermions are simular to boosns but in CT and PT they do not need T as an
+    # argument, only scalars and bosons get T passed to give Debye masses
+    # in the Daisy resummation
+    def get_fermion_masses_sq(self, X: Union[float, list[float], np.ndarray] = 0.0) -> Union[float, np.ndarray]:
+        if not isinstance(X, (list, tuple, np.ndarray)):
+            X = np.array(list(X), dtype=float)
+        else:
+            X = np.asarray(X, dtype=float)
+        m2f, nf = self.fermion_massSq(X)
+        return m2f
+
+    def get_fermion_dofs(self):
+        X = np.zeros(self.Ndim)
+        _, nf = self.fermion_massSq(X)
+        return nf
+
+    def getDegreesOfFreedom(self, X: Union[float, list[float], np.ndarray] = 0.0, T: Union[float, list[float], np.ndarray] = 0.0) -> Union[float, np.ndarray]:
         m2b, nb, _ = self.boson_massSq(X, T)
         m2f, nf = self.fermion_massSq(X)
 
