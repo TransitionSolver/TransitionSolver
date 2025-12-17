@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize
 
-from analysis import phase_structure
 from analysis.phase_structure import PhaseStructure
 from models.analysable_potential import AnalysablePotential
 from gws import kappa_nu_model, hydrodynamics

@@ -3,8 +3,7 @@ Analyse phase structure
 =======================
 """
 
-import traceback
-from typing import Optional, Union, List
+from typing import Union
 
 import numpy as np
 from scipy import optimize
@@ -230,4 +229,4 @@ class PhaseStructure:
         if ground_state_energy == np.inf:
             return 0.
 
-      return ground_state_energy
+        return ground_state_energy

@@ -13,7 +13,6 @@ import sys
 from typing import Optional, Union
 from contextlib import redirect_stdout
 
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize
 from scipy.interpolate import lagrange
@@ -34,8 +33,6 @@ from analysis.phase_structure import Phase, Transition
 from . import geff
 
 logger = logging.getLogger(__name__)
-
-totalActionEvaluations = 0
 
 # TODO: should move to a constants file.
 GRAV_CONST = 6.7088e-39
@@ -75,18 +72,6 @@ class ActionSample:
 class AnalysedTransition:
     def __init__(self):
         self.SonTn = -1
-        self.SonTnbar = -1
-        self.SonTp = -1
-        self.SonTe = -1
-        self.SonTf = -1
-
-        self.betaTn = -1
-        self.betaTnbar = -1
-        self.betaTp = -1
-        self.betaTe = -1
-        self.betaTf = -1
-        self.betaV = -1
-
         self.Hn = -1
         self.Hnbar = -1
         self.Hp = -1
@@ -95,9 +80,6 @@ class AnalysedTransition:
 
         self.T = []
         self.SonT = []
-        self.error = ''
-
-
 class ActionSampler:
     transitionAnalyser: 'TransitionAnalyser'
 
@@ -449,9 +431,6 @@ class ActionSampler:
 
         def V(X): return self.potential(X, T)
         def gradV(X): return self.potential.grad(X, T)
-        
-        global totalActionEvaluations
-        totalActionEvaluations += 1
 
         with redirect_stdout(sys.stdout if self.bVerbose else None):
             action = pathDeformation.fullTunneling([toFieldConfig, fromFieldConfig], V, gradV,
@@ -487,7 +466,6 @@ class ActionCurveShapeAnalysisData:
         #  continue the transition analysis? Maybe for fine-tuned subcritical transitions that nucleate quickly but
         #  don't complete quickly?
         self.bBarrierAtTmin = False
-        self.error = False
 
     def copyDesiredData(self, sample):
         self.desiredData = ActionSample.copyData(sample)
@@ -534,7 +512,6 @@ class TransitionAnalyser():
 
     actionSampler: ActionSampler
 
-    bComputeSubsampledThermalParams: bool
 
     # TODO: make vw a function of this class that can be overriden. Currently it is obtained from the transition.
     def __init__(self, potential: AnalysablePotential, transition: Transition, fromPhase: Phase, toPhase: Phase,
@@ -558,8 +535,6 @@ class TransitionAnalyser():
             self.Tmax = self.transition.Tc
 
         self.Tstep = max(0.0005*min(self.fromPhase.T[-1], self.toPhase.T[-1]), 0.0001*self.potential.get_temperature_scale())
-
-        self.bComputeSubsampledThermalParams = False
 
         notifyHandler.handleEvent(self, 'on_create')
 
@@ -612,10 +587,7 @@ class TransitionAnalyser():
                     return
 
             if sampleData is None:
-                self.transition.bFoundNucleationWindow = False
                 return
-
-            self.transition.bFoundNucleationWindow = True
 
             # Remove any lowerSonTData points that are very close together. We don't need to sample the S/T curve extremely
             # densely (a spacing of 1 is more than reasonable), and doing so causes problems with the subsequent steps along
@@ -636,8 +608,6 @@ class TransitionAnalyser():
 
                 self.actionSampler.lowerSonTData = [self.actionSampler.lowerSonTData[i] for i in keepIndices]
         else:
-            self.transition.bFoundNucleationWindow = True
-
             sampleData = ActionSample(-1, -1)
             self.actionSampler.getNextSample(sampleData, [], 0., self.Tmin)
             self.actionSampler.getNextSample(sampleData, [], 0., self.Tmin)
@@ -689,8 +659,6 @@ class TransitionAnalyser():
         # if it occurs before percolation.
         TAtSonTmin = 0
 
-        Teq = 0
-
         bFirst = True
 
         # When the fraction of space remaining in the false vacuum falls below this threshold, the transition is considered
@@ -719,7 +687,7 @@ class TransitionAnalyser():
         integrationHelper_avgBubRad = None
 
         Tn = Tnbar = Tp = Te = Tf = Ts1 = Ts2 = -1
-        indexTp = indexTf = -1
+        indexTp = -1
 
         # Don't check for Teq if the transition is subcritical (or evaluated subcritically) and the vacuum energy density
         # already exceeds the radiation energy density at the maximum temperature.
@@ -875,52 +843,28 @@ class TransitionAnalyser():
                 # Unit nucleation (including phantom bubbles).
                 if Tn < 0 and numBubblesIntegral[-1] >= 1:
                     interpFactor = (numBubblesIntegral[-1] - 1) / (numBubblesIntegral[-1] - numBubblesIntegral[-2])
-                    Tn = Tprev + interpFactor*(Tnew - Tprev)
-                    Hn = H[-2] + interpFactor*(H[-1] - H[-2])
+                    self.transition.Tn = Tprev + interpFactor*(Tnew - Tprev)
+                    self.transition.analysis.Hn = H[-2] + interpFactor*(H[-1] - H[-2])
                     self.transition.analysis.SonTn = SonTprev + (SonTnew - SonTprev) * (numBubblesIntegral[-1] - 1)\
                         / (numBubblesIntegral[-1] - numBubblesIntegral[-2])
-                    self.transition.Tn = Tn
-                    self.transition.analysis.Hn = Hn
-                    self.transition.analysis.betaTn = Hn*Tn*(SonTprev - SonTnew)/dT
-                    # Store the reheating temperature from this point, using conservation of energy.
-                    Tn_reh = self.calculateReheatTemperature(Tn)
-                    self.transition.Treh_n = Tn_reh
-
                 # Unit nucleation (excluding phantom bubbles).
                 if Tnbar < 0 and numBubblesCorrectedIntegral[-1] >= 1:
                     interpFactor = (numBubblesCorrectedIntegral[-1] - 1) / (numBubblesCorrectedIntegral[-1] -
                         numBubblesCorrectedIntegral[-2])
-                    Tnbar = Tprev + interpFactor*(Tnew - Tprev)
-                    Hnbar = H[-2] + interpFactor*(H[-1] - H[-2])
-                    self.transition.analysis.SonTnbar = SonTprev + (SonTnew - SonTprev)\
-                        * (numBubblesCorrectedIntegral[-1] - 1) / (numBubblesCorrectedIntegral[-1]
+                    self.transition.Tnbar = Tprev + interpFactor*(Tnew - Tprev)
+                    self.transition.analysis.Hnbar = H[-2] + interpFactor*(H[-1] - H[-2]) * (numBubblesCorrectedIntegral[-1] - 1) / (numBubblesCorrectedIntegral[-1]
                         - numBubblesCorrectedIntegral[-2])
-                    self.transition.Tnbar = Tnbar
-                    self.transition.analysis.Hnbar = Hnbar
-                    self.transition.analysis.betaTnbar = Hnbar*Tnbar*(SonTprev - SonTnew)/dT
-                    # Store the reheating temperature from this point, using conservation of energy.
-                    Tnbar_reh = self.calculateReheatTemperature(Tnbar)
-                    self.transition.Treh_nbar = Tnbar_reh
-
                 # Percolation.
                 if Tp < 0 and Vext[-1] >= percolationThreshold_Vext:
                     indexTp = len(H)-1
                     # max(0, ...) for subcritical transitions, where it is possible that Vext[-2] > percThresh.
                     interpFactor = max(0, (percolationThreshold_Vext - Vext[-2]) / (Vext[-1] - Vext[-2]))
-                    Tp = Tprev + interpFactor*(Tnew - Tprev)
-                    Hp = H[-2] + interpFactor*(H[-1] - H[-2])
-                    self.transition.analysis.SonTp = SonTprev + interpFactor*(SonTnew - SonTprev)
-                    self.transition.Tp = Tp
-                    self.transition.analysis.Hp = Hp
-                    self.transition.analysis.betaTp = Hp*Tp*(SonTprev - SonTnew)/dT
-
+                    self.transition.Tp = Tprev + interpFactor*(Tnew - Tprev)
+                    self.transition.analysis.Hp = H[-2] + interpFactor*(H[-1] - H[-2])
                     # Also store whether the physical volume of the false vacuum was decreasing at Tp.
                     # Make sure to cast to a bool, because JSON doesn't like encoding the numpy.bool type.
-                    self.transition.decreasingVphysAtTp = bool(physicalVolume[-1] < 0)
-
                     # Store the reheating temperature from this point, using conservation of energy.
-                    Tp_reh = self.calculateReheatTemperature(Tp)
-                    self.transition.Treh_p = Tp_reh
+                    self.transition.Treh_p = self.calculateReheatTemperature(Tp)
 
                 # Pf = 1/e.
                 if Te < 0 and Vext[-1] >= 1:
@@ -928,18 +872,14 @@ class TransitionAnalyser():
                     interpFactor = max(0, (1 - Vext[-2]) / (Vext[-1] - Vext[-2]))
                     Te = Tprev + interpFactor*(Tnew - Tprev)
                     He = H[-2] + interpFactor*(H[-1] - H[-2])
-                    self.transition.analysis.SonTe = SonTprev + interpFactor*(SonTnew - SonTprev)
                     self.transition.Te = Te
                     self.transition.analysis.He = He
-                    self.transition.analysis.betaTe = He*Te*(SonTprev - SonTnew)/dT
-
                     # Store the reheating temperature from this point, using conservation of energy.
                     Te_reh = self.calculateReheatTemperature(Te)
                     self.transition.Treh_e = Te_reh
 
                 # Completion.
                 if Tf < 0 and Pf[-1] <= completionThreshold:
-                    indexTf = len(H)-1
                     if Pf[-1] == Pf[-2]:
                         interpFactor = 0
                     else:
@@ -947,15 +887,10 @@ class TransitionAnalyser():
                             / (Pf[-1] - Pf[-2])
                     Tf = Tprev + interpFactor*(Tnew - Tprev)
                     Hf = H[-2] + interpFactor*(H[-1] - H[-2])
-                    self.transition.analysis.SonTf = SonTprev + interpFactor*(SonTnew - SonTprev)
                     self.transition.Tf = Tf
                     self.transition.analysis.Hf = Hf
-                    self.transition.analysis.betaTf = Hf*Tf*(SonTprev - SonTnew)/dT
-
                     # Also store whether the physical volume of the false vacuum was decreasing at Tf.
                     # Make sure to cast to a bool, because JSON doesn't like encoding the numpy.bool type.
-                    self.transition.decreasingVphysAtTf = bool(physicalVolume[-1] < 0)
-
                     # Store the reheating temperature from this point, using conservation of energy.
                     Tf_reh = self.calculateReheatTemperature(Tf)
                     self.transition.Treh_f = Tf_reh
@@ -1009,25 +944,18 @@ class TransitionAnalyser():
                 if message in ('Freeze out', 'Reached Tmin'):
                     break
 
-                if precomputedT:
-                    self.transition.analysis.actionCurveFile = precomputedActionCurveFileName
                 self.transition.analysis.T = self.actionSampler.T
                 self.transition.analysis.SonT = self.actionSampler.SonT
-                self.transition.analysis.error = f'Failed to get next sample at T={sampleData.T}'
                 return
 
         # ==============================================================================================================
         # End transition analysis.
         # ==============================================================================================================
 
-        GammaEff = np.array([Pf[i] * Gamma[i] for i in range(len(Gamma))])
-
         # Find the maximum nucleation rate to find TGammaMax. Only do so if there is a minimum in the action.
         if TAtSonTmin > 0:
             gammaMaxIndex = np.argmax(Gamma)
             self.transition.TGammaMax = self.actionSampler.subT[gammaMaxIndex]
-            self.transition.SonTGammaMax = self.actionSampler.subSonT[gammaMaxIndex]
-            self.transition.GammaMax = Gamma[gammaMaxIndex]
             Tlow = self.actionSampler.subT[gammaMaxIndex+1]
             #Tmid = self.actionSampler.subT[gammaMaxIndex]
             Thigh = self.actionSampler.subT[gammaMaxIndex-1]
@@ -1038,360 +966,18 @@ class TransitionAnalyser():
             d2SdT2 = (Shigh - 2*Smid + Slow) / (0.5*(Thigh - Tlow))**2
             logger.debug('Calculating betaV, d2SdT2 = {}', d2SdT2)
             if d2SdT2 > 0:
-                self.transition.analysis.betaV = H[gammaMaxIndex]*self.actionSampler.subT[gammaMaxIndex]*np.sqrt(d2SdT2)
+                pass
 
         meanBubbleSeparation = (bubbleNumberDensity[indexTp])**(-1/3)
 
-        if self.bReportAnalysis:
-            Tn = self.transition.Tn
-            Tp = self.transition.Tp
-            Te = self.transition.Te
-            Tf = self.transition.Tf
-            Ts1 = self.transition.TVphysDecr_high
-            Ts2 = self.transition.TVphysDecr_low
-            Tp_reh = self.transition.Treh_p
-            Te_reh = self.transition.Treh_e
-            Tf_reh = self.transition.Treh_f
-
-            print('-------------------------------------------------------------------------------------------')
-
-            print('N(T_0): ', numBubblesIntegral[-1])
-            print('T_0: ', self.actionSampler.subT[-1])
-            print('Tc: ', self.transition.Tc)
-            if Tn > 0:
-                print(f'Unit nucleation at T = {Tn}, where S = {self.transition.analysis.SonTn}')
-            else:
-                print('No unit nucleation.')
-            if Tp > 0:
-                print(f'Percolation at T = {Tp}, where S = {self.transition.analysis.SonTp}')
-            else:
-                print('No percolation. Terminated analysis at T =', self.actionSampler.subT[-1], 'where Pf =', Pf[-1])
-            if Te > 0:
-                print(f'Vext = 1 at T = {Te}, where S = {self.transition.analysis.SonTe}')
-            if Tf > 0:
-                print(f'Completion at T = {Tf}, where S = {self.transition.analysis.SonTf}')
-            else:
-                if Tp > 0:
-                    print('No completion. Terminated analysis at T =', self.actionSampler.subT[-1], 'where Pf =',
-                        Pf[-1])
-                else:
-                    print('No completion.')
-            if Ts1 > 0:
-                if Ts2 > 0:
-                    print('Physical volume of the false vacuum decreases between', Ts2, 'and', Ts1)
-                else:
-                    print('Physical volume of the false vacuum decreases below', Ts1)
-            if Tn > 0:
-                print(f'Reheating from unit nucleation: Treh(Tn): {Tn} -> {Tn_reh}')
-            if Tp > 0:
-                print(f'Reheating from percolation: Treh(Tp): {Tp} -> {Tp_reh}')
-            if Te > 0:
-                print(f'Reheating from Vext=1: Treh(Te): {Te} -> {Te_reh}')
-            if Tf > 0:
-                print(f'Reheating from completion: Treh(Tf): {Tf} -> {Tf_reh}')
-            if TAtSonTmin > 0:
-                print('Action minimised at T =', TAtSonTmin)
-            if self.transition.TGammaMax > 0:
-                print('Nucleation rate maximised at T =', self.transition.TGammaMax)
-
-            print('Mean bubble separation:', meanBubbleSeparation)
-
-            print('-------------------------------------------------------------------------------------------')
-
-        if self.bDebug:
-            print('Total action evaluations:', totalActionEvaluations)
-
-        if self.bPlot:
-            plt.rcParams.update({"text.usetex": True})
-
-            plt.plot(self.actionSampler.subT, vw)
-            plt.xlabel('T')
-            plt.ylabel('$v_w$')
-            plt.ylim(0, 1)
-            plt.show()
-
-            if Tf > 0:
-                maxIndex = len(self.actionSampler.subT)
-                maxIndex = min(len(self.actionSampler.subT)-1, maxIndex - (maxIndex - indexTf)//2)
-                physicalVolumeRelative = [100 * (Tf/self.actionSampler.subT[i])**3 * Pf[i]
-                    for i in range(maxIndex+1)]
-
-                ylim = np.array(physicalVolumeRelative[:min(indexTf+1, maxIndex)]).max(initial=1.)*1.2
-
-                textXOffset = 0.01*(self.actionSampler.subT[0] - self.actionSampler.subT[maxIndex])
-                textY = 0.1
-
-                plt.figure(figsize=(14, 11))
-                plt.plot(self.actionSampler.subT[:maxIndex+1], physicalVolumeRelative, zorder=3, lw=3.5)
-
-                if Ts1 > 0 and Ts2 > 0: plt.axvspan(Ts2, Ts1, alpha=0.3, color='r', zorder=-1)
-                if Tp > 0:
-                    plt.axvline(Tp, c='g', ls='--', lw=2)
-                    plt.text(Tp + textXOffset, textY, '$T_p$', fontsize=44, horizontalalignment='left')
-                if Te > 0:
-                    plt.axvline(Te, c='b', ls='--', lw=2)
-                    plt.text(Te + textXOffset, textY, '$T_e$', fontsize=44, horizontalalignment='left')
-                if Tf > 0:
-                    plt.axvline(Tf, c='k', ls='--', lw=2)
-                    plt.text(Tf - textXOffset, textY, '$T_f$', fontsize=44, horizontalalignment='right')
-                plt.axhline(1., c='gray', ls=':', lw=2, zorder=-1)
-                plt.xlabel('$T \,\, \\mathrm{[GeV]}$', fontsize=52)
-                plt.ylabel('$\\mathcal{V}_{\\mathrm{phys}}(T)/\\mathcal{V}_{\\mathrm{phys}}(T_f)$', fontsize=52,
-                    labelpad=20)
-                plt.xlim(0, self.actionSampler.subT[0])
-                plt.ylim(0, ylim)
-                plt.tick_params(size=10, labelsize=40)
-                plt.margins(0, 0)
-                plt.tight_layout()
-                plt.show()
-                #saveFolder = 'C:/Work/Monash/PhD/Documents/Subtleties of supercooled cosmological first-order phase transitions/images/'
-                #plt.savefig(saveFolder + 'Relative physical volume.png', bbox_inches='tight', pad_inches=0.1)
-
-            ylim = np.array(physicalVolume).min(initial=0.)
-            ylim *= 1.2 if ylim < 0 else 0.8
-            if -0.5 < ylim < 0:
-                ylim = -0.5
-
-            textXOffset = 0.01*(self.actionSampler.subT[0] - 0)
-            textY = ylim + 0.07*(3.5 - ylim)
-
-            plt.figure(figsize=(14, 11))
-            plt.plot(self.actionSampler.subT, physicalVolume, zorder=3, lw=3.5)
-            #if TVphysDecr_high > 0: plt.axvline(TVphysDecr_high, c='r', ls='--', lw=2)
-            #if TVphysDecr_low > 0: plt.axvline(TVphysDecr_low, c='r', ls='--', lw=2)
-            if Ts1 > 0 and Ts2 > 0: plt.axvspan(Ts2, Ts1, alpha=0.3, color='r', zorder=-1)
-            if Tp > 0:
-                plt.axvline(Tp, c='g', ls='--', lw=2)
-                plt.text(Tp + textXOffset, textY, '$T_p$', fontsize=44, horizontalalignment='left')
-            if Te > 0:
-                plt.axvline(Te, c='b', ls='--', lw=2)
-                plt.text(Te + textXOffset, textY, '$T_e$', fontsize=44, horizontalalignment='left')
-            if Tf > 0:
-                plt.axvline(Tf, c='k', ls='--', lw=2)
-                plt.text(Tf - textXOffset, textY, '$T_f$', fontsize=44, horizontalalignment='right')
-            plt.axhline(3., c='gray', ls=':', lw=2, zorder=-1)
-            plt.axhline(0., c='gray', ls=':', lw=2, zorder=-1)
-            plt.xlabel('$T \,\, \\mathrm{[GeV]}$', fontsize=50)
-            plt.ylabel('$\\frac{\\displaystyle d}{\\displaystyle dt} \\mathcal{V}_{\\mathrm{phys}} \,\, \\mathrm{[GeV]}$',
-                fontsize=50, labelpad=20)
-            plt.xlim(0, self.actionSampler.subT[0])
-            plt.ylim(ylim, 3.5)
-            plt.tick_params(size=10, labelsize=40)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()
-            #saveFolder = 'C:/Work/Monash/PhD/Documents/Subtleties of supercooled cosmological first-order phase transitions/images/'
-            #plt.savefig(saveFolder + 'Decreasing physical volume.png', bbox_inches='tight', pad_inches=0.1)
-
         if self.transition.Tp > 0:
-            #transitionStrength, _, _ = calculateTransitionStrength(self.potential, self.fromPhase, self.toPhase,
-            #    self.transition.Tp)
             # TODO: do this elsewhere, maybe a thermal params file.
             hydroVars = hydrodynamics.make_hydro_vars(self.fromPhase, self.toPhase, self.potential, Tp)  # TODO why not pass vacuum energy
             thetaf = (hydroVars.energyDensityFalse - hydroVars.pressureFalse/hydroVars.soundSpeedSqTrue) / 4
             thetat = (hydroVars.energyDensityTrue - hydroVars.pressureTrue/hydroVars.soundSpeedSqTrue) / 4
             transitionStrength = 4*(thetaf - thetat) / (3*hydroVars.enthalpyDensityFalse)
-
-            #energyWeightedBubbleRadius, volumeWeightedBubbleRadius = calculateTypicalLengthScale(transition.Tp, indexTp,
-            #    indexTn, transition.Tc, meanBubbleSeparation, vw, H, actionSampler.subRhoV, GammaEff, actionSampler.subT,
-            #    bPlot=bPlot, bDebug=bDebug)
-
             self.transition.transitionStrength = transitionStrength
-            self.transition.meanBubbleRadius = meanBubbleRadiusArray[indexTp]
             self.transition.meanBubbleSeparation = meanBubbleSeparation
-            #transition.energyWeightedBubbleRadius = energyWeightedBubbleRadius
-            #transition.volumeWeightedBubbleRadius = volumeWeightedBubbleRadius
-
-            if self.bDebug:
-                print('Transition strength:', transitionStrength)
-
-        # If the transition has completed before Teq was identified, predict the value of Teq through extrapolation.
-        # TODO: don't worry about Teq at the moment (29/08/2023).
-        """if Teq == 0 and len(self.actionSampler.T) > 2:
-            Teq = self.predictTeq()
-            self.transition.Teq = Teq
-            # Don't worry about SonTeq."""
-
-        if self.bReportAnalysis:
-            print('Mean bubble separation (Tp):', meanBubbleSeparationArray[indexTp])
-            print('Average bubble radius (Tp): ', meanBubbleRadiusArray[indexTp])
-            print('Hubble radius (Tp):         ', 1/H[indexTp])
-            print('Mean bubble separation (Tf):', meanBubbleSeparationArray[indexTf])
-            print('Average bubble radius (Tf): ', meanBubbleRadiusArray[indexTf])
-            print('Hubble radius (Tf):         ', 1/H[indexTf])
-
-        if self.bPlot:
-            Tn = self.transition.Tn
-            Tp = self.transition.Tp
-            Te = self.transition.Te
-            Tf = self.transition.Tf
-            SonTn = self.transition.analysis.SonTn
-            SonTp = self.transition.analysis.SonTp
-            SonTe = self.transition.analysis.SonTe
-            SonTf = self.transition.analysis.SonTf
-            #plt.rcParams.update({"text.usetex": True})
-            #plt.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}']  # for \text command
-
-            plt.figure(figsize=(12, 8))
-            plt.plot(self.actionSampler.subT, Gamma)
-            plt.plot(self.actionSampler.subT, GammaEff)
-            #plt.plot(actionSampler.subT, approxGamma)
-            #plt.plot(actionSampler.subT, taylorExpGamma)
-            plt.xlabel('$T$', fontsize=24)
-            plt.ylabel('$\\Gamma(T)$', fontsize=24)
-            if self.transition.TGammaMax > 0: plt.axvline(self.transition.TGammaMax, c='g', ls=':')
-            if self.transition.Tmin > 0: plt.axvline(self.transition.Tmin, c='r', ls=':')
-            if Tp > 0: plt.axvline(Tp, c='g', ls=':')
-            if Te > 0: plt.axvline(Te, c='b', ls=':')
-            if Tf > 0: plt.axvline(Tf, c='k', ls=':')
-            plt.legend(['$\\mathrm{standard}$', '$\\mathrm{effective}$'], fontsize=24)
-            plt.tick_params(size=5, labelsize=16)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()
-
-            plt.figure(figsize=(12, 8))
-            plt.plot(self.actionSampler.subT, bubbleNumberDensity, linewidth=2.5)
-            plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
-            plt.ylabel('$n_B(T)$', fontsize=24)
-            if Tn > 0: plt.axvline(Tn, c='r', ls=':')
-            if Tp > 0: plt.axvline(Tp, c='g', ls=':')
-            if Te > 0: plt.axvline(Te, c='b', ls=':')
-            if Tf > 0: plt.axvline(Tf, c='k', ls=':')
-            plt.tick_params(size=5, labelsize=16)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()
-
-            highTempIndex = 1
-
-            # Search for the highest temperature for which the mean bubble separation is not larger than it is at the
-            # lowest sampled temperature.
-            for i in range(1, len(self.actionSampler.subT)):
-                if meanBubbleSeparationArray[i] <= meanBubbleSeparationArray[-1]:
-                    highTempIndex = i
-                    break
-
-            # If the mean bubble separation is always larger than it is at the lowest sampled temperature, plot the
-            # entire range of sampled temperatures.
-            if highTempIndex == len(self.actionSampler.subT)-1:
-                highTempIndex = 0
-
-            plt.figure(figsize=(12, 8))
-            plt.plot(self.actionSampler.subT, meanBubbleRadiusArray, linewidth=2.5)
-            plt.plot(self.actionSampler.subT, meanBubbleSeparationArray, linewidth=2.5)
-            plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
-            #plt.ylabel('$\\overline{R}_B(T)$', fontsize=24)
-            plt.legend(['$\\overline{R}_B(T)$', '$R_*(T)$'], fontsize=24)
-            if Tn > 0: plt.axvline(Tn, c='r', ls=':')
-            if Tp > 0: plt.axvline(Tp, c='g', ls=':')
-            if Te > 0: plt.axvline(Te, c='b', ls=':')
-            if Tf > 0: plt.axvline(Tf, c='k', ls=':')
-            plt.xlim(self.actionSampler.subT[-1], self.actionSampler.subT[highTempIndex])
-            plt.ylim(0, 1.2*max(meanBubbleSeparationArray[-1], meanBubbleRadiusArray[-1]))
-            plt.tick_params(size=5, labelsize=16)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()
-
-            highTempIndex = 0
-            lowTempIndex = len(self.actionSampler.SonT)
-
-            minAction = min(self.actionSampler.SonT)
-            maxAction = self.actionSampler.maxSonTThreshold
-
-            # Search for the lowest temperature for which the action is not significantly larger than the maximum
-            # significant action.
-            for i in range(len(self.actionSampler.SonT)):
-                if self.actionSampler.SonT[i] <= maxAction:
-                    highTempIndex = i
-                    break
-
-            # Search for the lowest temperature for which the action is not significantly larger than the maximum
-            # significant action.
-            for i in range(len(self.actionSampler.SonT)-1, -1, -1):
-                if self.actionSampler.SonT[i] <= maxAction:
-                    lowTempIndex = i
-                    break
-
-            plt.figure(figsize=(12,8))
-            plt.plot(self.actionSampler.subT, self.actionSampler.subSonT, linewidth=2.5)
-            #plt.plot(actionSampler.subT, approxSonT, linewidth=2.5)
-            plt.scatter(self.actionSampler.T, self.actionSampler.SonT)
-            if Tn > -1:
-                plt.axvline(Tn, c='r', ls=':')
-                plt.axhline(SonTn, c='r', ls=':')
-            if Tp > -1:
-                plt.axvline(Tp, c='g', ls=':')
-                plt.axhline(SonTp, c='g', ls=':')
-            if Te > -1:
-                plt.axvline(Te, c='b', ls=':')
-                plt.axhline(SonTe, c='b', ls=':')
-            if Tf > -1:
-                plt.axvline(Tf, c='k', ls=':')
-                plt.axhline(SonTf, c='k', ls=':')
-            plt.minorticks_on()
-            plt.grid(visible=True, which='major', color='k', linestyle='--')
-            plt.grid(visible=True, which='minor', color='gray', linestyle=':')
-            plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
-            plt.ylabel('$S(T)$', fontsize=24)
-            #plt.legend(['precise', 'approx'])
-            plt.xlim(self.actionSampler.T[lowTempIndex], self.actionSampler.T[highTempIndex])
-            plt.ylim(minAction - 0.05*(maxAction - minAction), maxAction)
-            plt.tick_params(size=5, labelsize=16)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()
-
-            # Number of bubbles plotted over entire sampled temperature range, using log scale for number of bubbles.
-            plt.figure(figsize=(12, 8))
-            plt.plot(self.actionSampler.subT, numBubblesCorrectedIntegral, linewidth=2.5)
-            plt.plot(self.actionSampler.subT, numBubblesIntegral, linewidth=2.5)
-            #plt.plot(actionSampler.subT, numBubblesApprox, linewidth=2.5)
-            if Tn > 0: plt.axvline(Tn, c='r', ls=':')
-            if Tp > 0: plt.axvline(Tp, c='g', ls=':')
-            if Te > 0: plt.axvline(Te, c='b', ls=':')
-            if Tf > 0: plt.axvline(Tf, c='k', ls=':')
-            plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
-            #plt.ylabel('$N(T)$', fontsize=24)
-            plt.yscale('log')
-            #plt.legend(['precise', 'approx'])
-            plt.legend(['$N(T)$', '$N^{\\mathrm{ext}}(T)$'], fontsize=24)
-            plt.tick_params(size=5, labelsize=16)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()
-
-            plt.figure(figsize=(12, 8))
-            plt.plot(self.actionSampler.subT, Pf, linewidth=2.5)
-            if Tn > 0: plt.axvline(Tn, c='r', ls=':')
-            if Tp > 0: plt.axvline(Tp, c='g', ls=':')
-            if Te > 0: plt.axvline(Te, c='b', ls=':')
-            if Tf > 0: plt.axvline(Tf, c='k', ls=':')
-            plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=40)
-            plt.ylabel('$P_f(T)$', fontsize=40)
-            plt.tick_params(size=8, labelsize=28)
-            plt.margins(0,0)
-            plt.tight_layout()
-            plt.show()
-            #plt.savefig("output/plots/Pf_vs_T_BP2.pdf")
-            #plt.savefig('E:/Monash/PhD/Milestones/Confirmation Review/images/xSM P(T) vs T.png', bbox_inches='tight',
-            #    pad_inches=0.05)
-
-        if len(precomputedT) > 0:
-            self.transition.analysis.actionCurveFile = precomputedActionCurveFileName
-        self.transition.analysis.T = self.actionSampler.T
-        self.transition.analysis.SonT = self.actionSampler.SonT
-        self.transition.totalNumBubbles = numBubblesIntegral[-1]
-        self.transition.totalNumBubblesCorrected = numBubblesCorrectedIntegral[-1]
-
-        if self.bComputeSubsampledThermalParams:
-            self.transition.TSubampleArray = self.actionSampler.subT
-            self.transition.HArray = H
-            self.transition.betaArray = betaArray
-            self.transition.meanBubbleSeparationArray = meanBubbleSeparationArray
-            self.transition.meanBubbleRadiusArray = meanBubbleRadiusArray
-            self.transition.Pf = Pf
 
     def primeTransitionAnalysis(self, startTime: float) -> (Optional[ActionSample], list[ActionSample]):
         TcData = ActionSample(self.transition.Tc)
@@ -1423,13 +1009,6 @@ class TransitionAnalyser():
                 return None, []
 
             allSamples = np.array(allSamples)
-            minSonTIndex = np.argmin(allSamples[:, 1])
-
-
-            if self.bReportAnalysis:
-                print('No transition')
-                print('Lowest sampled S/T =', allSamples[minSonTIndex, 1], 'at T =', allSamples[minSonTIndex, 0])
-
             # if bDebug or bPlot:
             # This is a little confusing at first, but what this does is:
             # - allSamples.argsort(axis=0): sort the indices of both columns (T and S/T) based on the values stored in
@@ -1442,34 +1021,13 @@ class TransitionAnalyser():
 
             T = [sample[0] for sample in allSamples]
             SonT = [sample[1] for sample in allSamples]
-
-            if self.bDebug:
-                print('T:', T)
-                print('SonT:', SonT)
-
-            if self.bPlot:
-                plt.plot(T, SonT)
-                plt.xlabel('$T$')
-                plt.ylabel('$S_3/T$')
-                plt.yscale('log')
-                # plt.ylim(bottom=2)
-                plt.show()
-
             self.transition.analysis.T = T
             self.transition.analysis.SonT = SonT
             return None, []
-        else:
-            if self.bPlot:
-                print(f'Data: (T: {data.T}, S/T: {data.SonT})')
-                print('len(lowerSonTData):', len(lowerSonTData))
 
         intermediateData = ActionSample.copyData(data)
 
         self.actionSampler.lowerSonTData = lowerSonTData
-
-        if self.bDebug:
-            print('Attempting to find next reasonable (T, S/T) sample below maxSonTThreshold...')
-
         if data.SonT > self.actionSampler.minSonTThreshold + 0.8 * (
                 self.actionSampler.maxSonTThreshold - self.actionSampler.minSonTThreshold):
             if self.bDebug:
@@ -1504,7 +1062,6 @@ class TransitionAnalyser():
                     return None, []
 
             if not intermediateData.bValid:
-                self.transition.analysis.error = f'Failed to evaluate action at trial temperature T={intermediateData.T}'
                 return None, []
 
             # If we happen to sample too far away from 'data' (which can happen if S/T is very steep near maxSonTThreshold),
@@ -1575,7 +1132,6 @@ class TransitionAnalyser():
             # Don't accept cases where S/T is negative (translated to 0) for the last two evaluations. This suggests the
             # bounce solver is failing and we cannot proceed reliably.
             if not intermediateData.bValid or intermediateData.SonT == 0 and TcData.SonT == 0:
-                self.transition.analysis.error = f'Failed to evaluate action at trial temperature T={intermediateData.T}'
                 # print('This was for a subcritical transition with initial S/T:', data.SonT, 'at T:', data.T)
                 return None, []
 

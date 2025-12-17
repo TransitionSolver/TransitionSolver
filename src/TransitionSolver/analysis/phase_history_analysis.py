@@ -9,15 +9,13 @@ import time
 from typing import Optional
 
 from models.analysable_potential import AnalysablePotential
-from analysis.phase_structure import PhaseStructure, Phase, Transition
+from analysis.phase_structure import Phase
 from analysis.transition_analysis import TransitionAnalyser, AnalysedTransition
 from analysis.transition_graph import TransitionEdge, Path, PhaseNode
-from analysis import phase_structure
 
 
 # TODO: use this class.
 class AnalysisMetrics:
-    totalActionEvaluations: int = 0
     analysisStartTime: float = 0
     analysisElapsedTime: float = 0
 
@@ -498,4 +496,3 @@ class PhaseHistoryAnalyser:
                 break
 
         return max(Tmin, phases[transition.false_phase].T.min(), phases[transition.true_phase].T.min())
-
