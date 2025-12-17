@@ -383,12 +383,11 @@ class GWAnalyser:
     def __init__(
             self,
             potential,
-            phase_structure_file,
+            phase_structure,
             phase_history,
             force_relevant=False,
             **kwargs):
 
-        _, phase_structure_ = phase_structure.load_data(phase_structure_file)
         relevant_transitions = phase_history['transitions'] if force_relevant else extract_relevant_transitions(
             phase_history)
 
@@ -397,7 +396,7 @@ class GWAnalyser:
                 'No relevant transition detected in the phase history')
 
         self.gws = {t['id']: AnalyseIndividualTransition(
-            phase_structure_, t, potential, **kwargs) for t in relevant_transitions}
+            phase_structure, t, potential, **kwargs) for t in relevant_transitions}
 
     def report(self, *detectors):
         """

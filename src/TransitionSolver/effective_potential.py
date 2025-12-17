@@ -91,4 +91,4 @@ def load_potential(params, header_file, class_name=None, lib_name=None):
     class ExtendedPotential(MixinPotential, Potential):
         pass
 
-    return ExtendedPotential(*params)
+    return ExtendedPotential(params)

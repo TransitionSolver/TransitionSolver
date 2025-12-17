@@ -24,17 +24,21 @@ EP_MODELS = EP_HOME / "include" / "models"
 EP_LIB = EP_HOME / "lib" / "libeffectivepotential.so"
 CXX = "g++"
 TEMPLATE_CPP = os.path.join(CWD, "interface.cpp")
-LIBS = ["-lboost_log", "-lboost_filesystem", "-lnlopt"]
+LIBS = [EP_LIB, PT_LIB, "-lboost_log", "-lboost_filesystem", "-lnlopt"]
+
+
+def rpath(name):
+    return f"-Wl,-rpath={name}"
 
 
 def build_phase_tracer(model, model_header=None, model_lib=None, model_namespace="EffectivePotential", force=False):
 
-    exe_name = os.path.join(CWD, model)
+    exe_name = os.path.join(PT_HOME, model)
 
     if os.path.exists(exe_name) and not force:
         return exe_name
 
-    cpp_name = os.path.join(CWD, f"{model}.cpp")
+    cpp_name = os.path.join(PT_HOME, f"{model}.cpp")
 
     with open(TEMPLATE_CPP, 'r', encoding='utf-8') as f:
         template = f.read()
@@ -47,7 +51,7 @@ def build_phase_tracer(model, model_header=None, model_lib=None, model_namespace
     with open(cpp_name, 'w', encoding='utf-8') as f:
         f.write(to_add + template)
 
-    cmd = [CXX, cpp_name, "-o", exe_name, "-I", PT_INCLUDE, "-I", EP_MODELS, "-I", EP_INCLUDE, EP_LIB, PT_LIB, f"-Wl,-rpath={EP_HOME / 'lib' }", f"-Wl,-rpath={PT_HOME / 'lib' }"] + LIBS
+    cmd = [CXX, cpp_name, "-o", exe_name, "-I", PT_INCLUDE, "-I", EP_MODELS, "-I", EP_INCLUDE, rpath(EP_HOME / 'lib'), rpath(PT_HOME / 'lib')] + LIBS
     
     if model_lib:
         cmd.append(model_lib)
@@ -65,11 +69,13 @@ def build_phase_tracer(model, model_header=None, model_lib=None, model_namespace
     return exe_name
 
 
-def run_phase_tracer(exe_name, point) -> PhaseStructure:
+def run_phase_tracer(exe_name, point_file_name) -> PhaseStructure:
     """
     Run PhaseTracer and read serialzied data
     """
-    run = subprocess.run([exe_name], capture_output=True, text=True)
+    run = subprocess.run([exe_name, point_file_name], capture_output=True, text=True)
+    if run.returncode != 0:
+        raise RuntimeError(run.stderr)
     return read_phase_tracer(run.stdout.strip())
 
 
@@ -92,12 +98,15 @@ def read_phase_tracer(data) -> PhaseStructure:
     parts = [part.split("\n") for part in data.split("\n\n")]
 
     for part in parts:
-    
-        if len(part) < 2:
-            continue
+
+        if not part[0].startswith("#"):
+            raise RuntimeError(f"Could not read {part}")
 
         metadata = part[0].lstrip("#").strip()
         arr = part[1:]
+
+        if not arr:
+            continue
 
         try:
             label, key = metadata.split()
@@ -118,7 +127,7 @@ def read_phase_tracer(data) -> PhaseStructure:
     return PhaseStructure(phases, transitions, paths)
 
 
-def make_report(paths, phase_structure, analysis_metrics):
+def _make_report(paths, phase_structure, analysis_metrics):
     """
     @returns Report phase history from TransitionSolver objects
     """
@@ -131,7 +140,7 @@ def make_report(paths, phase_structure, analysis_metrics):
     return report
 
 
-def phase_history(potential, phase_structure):
+def make_phase_history(potential, phase_structure):
     """
     @param potential Effective potential
     @param phase_structure_file Phase structure results file from PT
@@ -146,8 +155,4 @@ def phase_history(potential, phase_structure):
     paths, _, analysis_metrics = analyser.analysePhaseHistory_supplied(
         potential, phase_structure)
 
-    return make_report(paths, phase_structure, analysis_metrics)
-
-if __name__ == "__main__":
-    exe_name = build_phase_tracer("RSS")
-    run_phase_tracer(exe_name)
+    return _make_report(paths, phase_structure, analysis_metrics)
