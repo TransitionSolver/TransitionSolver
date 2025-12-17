@@ -18,7 +18,7 @@ class Path:
         self.transitions = [] if transitions is None else transitions
         self.suffix_links = [] if suffix_links is None else suffix_links
         self.prefix_links = [] if prefix_links is None else prefix_links
-        self.bValid = False
+        self.is_valid = False
 
     def split_at_index(self, index: int):
         """
@@ -47,7 +47,7 @@ class Path:
 
     def report(self) -> dict:
         report = {}
-        report['valid'] = self.bValid
+        report['valid'] = self.is_valid
         report['phases'] = [p.phase for p in self.phases]
         report['transitions'] = [t.ID for t in self.transitions]
         return report
