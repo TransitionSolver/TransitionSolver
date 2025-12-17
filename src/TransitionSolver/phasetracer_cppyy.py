@@ -1,9 +1,10 @@
 """
-PhaseTracer interface
-=====================
+PhaseTracer interface using cppyy
+=================================
 """
 
 import os
+import warnings
 from pathlib import Path
 
 import cppyy
@@ -27,6 +28,8 @@ from cppyy.gbl import PhaseTracer
 
 def run_phase_tracer(potential):
 
+    warnings.warn("This cppyy interface is experimental")
+
     with Status("Running PhaseFinder"):
         pf = PhaseTracer.PhaseFinder(potential)
         phases = pf.find_phases()
@@ -43,3 +46,7 @@ def run_phase_tracer(potential):
 
     return PhaseStructure(phobjs, tobjs, phobjs)
 
+
+if __name__ == "__main__":
+    from .benchmarks import RSS_BP1
+    run_phase_tracer(RSS_BP1)

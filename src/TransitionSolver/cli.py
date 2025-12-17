@@ -63,9 +63,6 @@ def cli(model, model_header, model_lib, point, vw, detector, pta, show, level, a
     for s, t in apply:
         getattr(potential, s)(t)
 
-    with Status("Running PhaseTracer cppyy"):
-        pass#phase_structure = run_phase_tracer(potential)
-
     program = MODELS[model]
 
     with Status("Running PhaseTracer"):
