@@ -15,7 +15,7 @@ class PhaseHistoryAnalyser:
     bAllowErrorsForTn: bool = True
 
     def analyse(self, potential: AnalysablePotential, phaseStructure: PhaseStructure, vw: float =
-            1.) -> list[Path]:
+                1.) -> list[Path]:
 
         # Extract high and low temperature phases.
         phases = phaseStructure.phases
@@ -108,7 +108,7 @@ class PhaseHistoryAnalyser:
                         break
 
                 transitionEdge = TransitionEdge(phaseNodes[falsePhase][falsePhaseNodeIndex],
-                    phaseNodes[truePhase][truePhaseNodeIndex], transitions[j], len(phaseIndexedTransitions[falsePhase]))
+                                                phaseNodes[truePhase][truePhaseNodeIndex], transitions[j], len(phaseIndexedTransitions[falsePhase]))
 
                 transitionLists[i].append(transitionEdge)
 
@@ -149,7 +149,7 @@ class PhaseHistoryAnalyser:
             path = transitionEdge.path
 
             if transition.analysis is None:
-     
+
                 Tmin = self.getMinTransitionTemperature_indexed(phases, phaseIndexedTransitions, transitionEdge)
 
                 if len(path.transitions) > 0:
@@ -167,11 +167,10 @@ class PhaseHistoryAnalyser:
                     transition.analysis = AnalysedTransition()
                     transition.vw = vw
                     transitionAnalyser: TransitionAnalyser = TransitionAnalyser(potential, transition,
-                        phases[transition.false_phase], phases[transition.true_phase],
-                        phaseStructure.ground_state_energy, Tmin=Tmin, Tmax=Tmax)
+                                                                                phases[transition.false_phase], phases[transition.true_phase],
+                                                                                phaseStructure.ground_state_energy, Tmin=Tmin, Tmax=Tmax)
 
                     transitionAnalyser.analyseTransition()
-
 
             # If the transition begins.
             if transition.Tp > 0:
@@ -206,7 +205,7 @@ class PhaseHistoryAnalyser:
                     path = Path(transitionEdge.falsePhaseNode)
                     paths.append(path)
                     # Add this path to the phase node where this divergence occurs.
-                    transitionEdge.falsePhaseNode.paths.append(path)  
+                    transitionEdge.falsePhaseNode.paths.append(path)
 
                     # If we don't split the path, we still need to handle links between the prefixes of the previous
                     # path and the new path. Whatever path is a prefix of the previous path is also a previous of the
@@ -296,7 +295,7 @@ class PhaseHistoryAnalyser:
         return paths
 
     def getNewFrontier(self, transitionEdge: TransitionEdge, phaseIndexedTransitions:
-            list[list[TransitionEdge]], path: Path, bTransitionStarts: bool, phases: list[Phase])\
+                       list[list[TransitionEdge]], path: Path, bTransitionStarts: bool, phases: list[Phase])\
             -> list[TransitionEdge]:
         newFrontier: list[TransitionEdge] = []
         falsePhase: int = transitionEdge.falsePhaseNode.phase
@@ -368,7 +367,7 @@ class PhaseHistoryAnalyser:
         return newFrontier
 
     def getMinTransitionTemperature_indexed(self, phases: list[Phase], phaseIndexedTransitions:
-            list[list[TransitionEdge]], transitionEdge: TransitionEdge) -> float:
+                                            list[list[TransitionEdge]], transitionEdge: TransitionEdge) -> float:
         Tmin = 0
         transition = transitionEdge.transition
 

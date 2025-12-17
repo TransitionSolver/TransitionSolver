@@ -47,24 +47,24 @@ def build_phase_tracer(model, model_header=None, model_lib=None, model_namespace
 
     if model_header is not None:
         to_add += f"#include \"{model_header}\"\n\n"
-        
+
     with open(cpp_name, 'w', encoding='utf-8') as f:
         f.write(to_add + template)
 
     cmd = [CXX, cpp_name, "-o", exe_name, "-I", PT_INCLUDE, "-I", EP_MODELS, "-I", EP_INCLUDE, rpath(EP_HOME / 'lib'), rpath(PT_HOME / 'lib')] + LIBS
-    
+
     if model_lib:
         cmd.append(model_lib)
-        
+
     if model_namespace:
         model = f"{model_namespace}::{model}"
-        
+
     cmd.append(f"-DMODEL_NAME_WITH_NAMEPSPACE={model}")
-        
+
     compile_ = subprocess.run(cmd, capture_output=True, text=True)
 
     if compile_.returncode != 0:
-        raise RuntimeError(compile_.stderr)    
+        raise RuntimeError(compile_.stderr)
 
     return exe_name
 
@@ -91,8 +91,8 @@ def read_phase_tracer(data) -> PhaseStructure:
     """
     Read serialised data from PhaseTracer
     """
-    phases = [] 
-    transitions = [] 
+    phases = []
+    transitions = []
     paths = []
 
     parts = [part.split("\n") for part in data.strip().split("\n\n")]

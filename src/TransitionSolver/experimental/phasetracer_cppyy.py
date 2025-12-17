@@ -3,6 +3,7 @@ PhaseTracer interface using cppyy
 =================================
 """
 
+from cppyy.gbl import PhaseTracer
 import os
 from pathlib import Path
 
@@ -19,8 +20,6 @@ cppyy.load_library(str(PT_LIB))
 cppyy.add_include_path(str(PT_INCLUDE))
 cppyy.include(str(PT_INCLUDE / 'phase_finder.hpp'))
 cppyy.include(str(PT_INCLUDE / 'transition_finder.hpp'))
-
-from cppyy.gbl import PhaseTracer
 
 
 def run_phase_tracer(potential):

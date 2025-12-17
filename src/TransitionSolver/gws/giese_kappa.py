@@ -26,15 +26,15 @@ def gamma(v):
 def kappa_nu_model(cs2, al, vp, use_cj=True):
     r"""
     Based on code from Appendix A of https://arxiv.org/abs/2004.06995
-    
+
     @param cs2  $c_s^2$, the speed of sound squared
     @param al $\alpha_\bar\theta$, the strength of PT
     @param vp $v_p \equiv \xi_w$, the bubble wall velocity
-    
+
     @returns $\kappa_{\bar\theta}$, the efficiency
     """
     nu = 1. / cs2 + 1.
-    
+
     if not use_cj:
         # eq. 52
         c = 1. - 3. * al + vp**2 * (1. / cs2 + 3. * al)
@@ -66,11 +66,11 @@ def kappa_nu_model(cs2, al, vp, use_cj=True):
         r"""
         @returns Eq. 14 and 15
         """
-        xi, w= xi_w
+        xi, w = xi_w
         return [dxi_dv(v, xi), dw_dv(v, xi, w)]
 
     # eq. 54 for enthalpy
-    wm = (vp / vm) * (1. / cs2 + 3. * al) - 1. + 3. * al 
+    wm = (vp / vm) * (1. / cs2 + 3. * al) - 1. + 3. * al
     wp = 1. / cs2 - vp / vm
 
     # boundary condition for \xi
@@ -86,7 +86,7 @@ def kappa_nu_model(cs2, al, vp, use_cj=True):
     def rho_fl_integrand(v):
         """
         Note that integrating wrt v hence dxidv factor
-        
+
         @returns Eq. 5 integrand
         """
         xi, w = sol.sol(v)

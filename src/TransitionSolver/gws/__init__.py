@@ -8,6 +8,3 @@ from .detectors.detector import Detector
 from .analyser import GWAnalyser
 from .hydrodynamics import HydroVars
 from . import hydrodynamics
-
-
-

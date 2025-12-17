@@ -22,7 +22,7 @@ class Phase:
     def findPhaseAtT(self, T: float, potential) -> np.ndarray:
         if T < self.T[0] or T > self.T[-1]:
             raise ValueError(f'Attempted to find phase {self.key} at T={T}, while defined only for'
-                f'[{self.T[0]}, {self.T[-1]}]')
+                             f'[{self.T[0]}, {self.T[-1]}]')
 
         minIndex = 0
         maxIndex = len(self.T)
