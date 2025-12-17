@@ -29,7 +29,7 @@ def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: Ph
     if len(phaseStructure.transitions) > 0:
         report['transitions'] = [t.getReport(fileName) for t in phaseStructure.transitions]
     if len(paths) > 0:
-        report['paths'] = [p.getReport() for p in paths]
+        report['paths'] = [p.report() for p in paths]
     report['valid'] = any([p.bValid for p in paths])
     report['analysisTime'] = analysisMetrics.analysisElapsedTime
 
