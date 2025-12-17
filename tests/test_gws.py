@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from TransitionSolver.gws import GWAnalyser, lisa
-from TransitionSolver import gws, RSS_BP1
+from TransitionSolver import gws, RSS_BP1, read_phase_tracer
 from dictcmp import isclose
 
 
@@ -21,10 +21,13 @@ THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 phase_structure_file = THIS / "rss_bp1_phase_structure.dat"
 phase_history_file = THIS / "rss_bp1_phase_structure.json"
 
-with open(THIS / phase_history_file, 'r') as f:
+with open(phase_history_file, 'r') as f:
     phase_history = json.load(f)
 
-analyser = GWAnalyser(RSS_BP1, phase_structure_file, phase_history)
+with open(phase_structure_file, "r") as f:
+    phase_structure = read_phase_tracer(f.read())
+
+analyser = GWAnalyser(RSS_BP1, phase_structure, phase_history)
 
 
 def test_report():

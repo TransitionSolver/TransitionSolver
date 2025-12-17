@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
-from TransitionSolver import phasetracer, RSS_BP1
+from TransitionSolver import read_phase_tracer, trace_dof, RSS_BP1
 
 from dictcmp import isclose
 
@@ -19,8 +19,9 @@ THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 
 
 def test_dof():
-    phase_structure_file = THIS / "rss_bp1_phase_structure.dat"
-    result = phasetracer.trace_dof(RSS_BP1, phase_structure_file)
+    with open(THIS / "rss_bp1_phase_structure.dat", "r") as f:
+        phase_structure = read_phase_tracer(f.read())
+    result = trace_dof(RSS_BP1, phase_structure)
     assert isclose(result, THIS / "rss_bp1_dof.json")
 
 

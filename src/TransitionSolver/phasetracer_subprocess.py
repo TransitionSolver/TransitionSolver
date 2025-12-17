@@ -95,7 +95,7 @@ def read_phase_tracer(data) -> PhaseStructure:
     transitions = [] 
     paths = []
 
-    parts = [part.split("\n") for part in data.split("\n\n")]
+    parts = [part.split("\n") for part in data.strip().split("\n\n")]
 
     for part in parts:
 
