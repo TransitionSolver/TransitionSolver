@@ -8,27 +8,6 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .analysis import geff
-
-
-def trace_dof(potential, phase_structure):
-    """
-    @param potential Effective potential
-    @param phase_structure Phase structure from PT
-
-    @returns DOF as a function of temperature for each phase
-    """
-    data = {}
-
-    for phase in phase_structure.phases:
-        t1 = phase.T[0] if phase.T[0] != 0 else phase.T[1]
-        T = np.geomspace(t1, phase.T[-1], 1000)
-        phi = [phase.findPhaseAtT(t, potential) for t in T]
-        dof = [geff.field_dependent_dof(potential, p, t) for p, t in zip(phi, T)]
-        data[phase.key] = {"T": T, "dof": dof}
-
-    return data
-
 
 def _load_transition(transition_id, phase_history_file):
     """
