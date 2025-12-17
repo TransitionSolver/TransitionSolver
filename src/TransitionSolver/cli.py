@@ -14,7 +14,6 @@ from rich.status import Status
 from . import phasetracer
 from . import gws
 from . import load_potential
-from . import run_phase_tracer
 
 
 np.set_printoptions(legacy='1.25')
