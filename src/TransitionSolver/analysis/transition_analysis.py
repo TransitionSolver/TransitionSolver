@@ -13,12 +13,7 @@ import numpy as np
 import scipy.optimize
 from scipy.interpolate import lagrange
 
-try:
-    from cosmoTransitions.tunneling1D import ThinWallError
-except:
-    class ThinWallError(Exception):
-        pass
-
+from cosmoTransitions.tunneling1D import ThinWallError
 from cosmoTransitions import pathDeformation
 
 from gws import hydrodynamics
