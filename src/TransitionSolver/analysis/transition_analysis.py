@@ -28,8 +28,7 @@ from cosmoTransitions import pathDeformation
 
 from gws import hydrodynamics
 from gws.hydrodynamics import HydroVars
-from util import integration
-from util.events import notifyHandler
+import integration
 from models.analysable_potential import AnalysablePotential
 from analysis.phase_structure import Phase, Transition
 from . import geff
@@ -97,7 +96,6 @@ class AnalysedTransition:
         self.T = []
         self.SonT = []
         self.error = ''
-        self.actionCurveFile = ''
 
 
 class ActionSampler:
@@ -159,8 +157,6 @@ class ActionSampler:
         self.minSonTThreshold = minSonTThreshold
         self.maxSonTThreshold = maxSonTThreshold
         self.toleranceSonT = toleranceSonT
-
-        notifyHandler.handleEvent(self, 'on_create')
 
     def calculateStepSize(self, low=None, mid=None, high=None):
         lowT = self.T[-1] if low is None else low.T
@@ -2130,7 +2126,6 @@ def loadPrecomputedActionData(fileName: str, transition: Transition, maxSonTThre
         if min(precomputedSonT) > maxSonTThreshold:
             transition.analysis.T = precomputedT
             transition.analysis.SonT = precomputedSonT
-            transition.analysis.actionCurveFile = fileName
             return [], [], True
 
     return precomputedT, precomputedSonT, False

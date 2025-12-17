@@ -8,7 +8,6 @@ from __future__ import annotations
 import time
 from typing import Optional
 
-from util.events import notifyHandler
 from models.analysable_potential import AnalysablePotential
 from analysis.phase_structure import PhaseStructure, Phase, Transition
 from analysis.transition_analysis import TransitionAnalyser, AnalysedTransition
@@ -41,7 +40,6 @@ class PhaseHistoryAnalyser:
 
     def __init__(self):
         self.analysisMetrics = AnalysisMetrics()
-        notifyHandler.handleEvent(self, 'on_create')
 
     # Second return value is whether we timed out.
     def analysePhaseHistory_supplied(self, potential: AnalysablePotential, phaseStructure: PhaseStructure, vw: float =
