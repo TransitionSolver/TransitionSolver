@@ -76,7 +76,7 @@ def run_phase_tracer(exe_name, point_file_name) -> PhaseStructure:
     run = subprocess.run([exe_name, point_file_name], capture_output=True, text=True)
     if run.returncode != 0:
         raise RuntimeError(run.stderr)
-    return read_phase_tracer(run.stdout.strip())
+    return run.stdout.strip()
 
 
 def read_path(data):

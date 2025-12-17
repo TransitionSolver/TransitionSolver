@@ -14,7 +14,7 @@ from rich.status import Status
 from . import phasetracer
 from . import gws
 from . import load_potential
-from . import build_phase_tracer, run_phase_tracer, make_phase_history
+from . import build_phase_tracer, run_phase_tracer, read_phase_tracer, make_phase_history
 
 
 np.set_printoptions(legacy='1.25')
@@ -61,7 +61,8 @@ def cli(model, model_header, model_lib, model_namespace, point_file_name, vw, de
         exe_name = build_phase_tracer(model, model_header, model_lib, model_namespace, force)
 
     with Status(f"Running PhaseTracer {exe_name}"):
-        phase_structure = run_phase_tracer(exe_name, point_file_name)
+        phase_structure_raw = run_phase_tracer(exe_name, point_file_name)
+        phae_structure = read_phase_tracer(phase_structure_raw)
 
     with Status("Analyzing phase history"):
         phase_history = make_phase_history(potential, phase_structure)

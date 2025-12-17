@@ -39,9 +39,9 @@ def _load_transition(transition_id, phase_history_file):
     @returns Transition from data on disk
     """
     with open(phase_history_file) as f:
-        phase_structure = json.load(f)
+        phase_history = json.load(f)
 
-    for tr in phase_structure['transitions']:
+    for tr in phase_history['transitions']:
         if tr['id'] == transition_id:
             return tr
 
