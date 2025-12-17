@@ -32,6 +32,12 @@ classifiers = [
   "Programming Language :: Python"
 ]
 
+[project.optional-dependencies]
+test = [
+  "pytest",
+  "pytest-mpl"
+]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

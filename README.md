@@ -1,4 +1,3 @@
-
 # Installation 
 
 Install TransitionSolver
@@ -11,7 +10,6 @@ pipx install .
 This may require e.g.
 ```
 apt install python3-pipx
-
 ```
 
 Running TransitionSolver requires PhaseTracer, which can be installed by
@@ -21,7 +19,6 @@ bash debian_installer_phasetracer.bash
 # or handle installation yourself and do
 # export PHASETRACER=/path/to/your/phasetracer/
 ```
-
 
 # Warning
 

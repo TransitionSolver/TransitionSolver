@@ -3,6 +3,8 @@ Implementation of numerical derivatives
 =======================================
 """
 
+import warnings
+
 
 def derivatives(f, x, dx, order_4=True):
     """
@@ -22,4 +24,8 @@ def derivatives(f, x, dx, order_4=True):
 
     dfdx = (-f2 + 8 * f1 - 8 * fm1 + fm2) / (12 * dx)
     d2fdx2 = (-f2 + 16 * f1 - 30 * f0 + 16 * fm1 - fm2) / (12 * dx * dx)
+
+    if dfdx == 0. or d2fdx2 == 0.:
+        warnings.warn("Derivatives were zero - step size may be too small")
+
     return f0, dfdx, d2fdx2
