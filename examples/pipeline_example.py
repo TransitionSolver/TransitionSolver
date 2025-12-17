@@ -25,7 +25,6 @@ import inspect
 import sys
 
 from models.toy_model import ToyModel
-from analysis.transition_analysis import FailedActionCalculationException
 from analysis.phase_structure import PhaseStructure
 from analysis.phase_history_analysis import PhaseHistoryAnalyser, AnalysisMetrics
 from analysis.transition_graph import Path
@@ -268,8 +267,10 @@ def pipeline_analysePhaseHistory(potential, phaseStructure, settings: PipelineSe
         writePhaseHistoryReport(paths, phaseStructure, settings, analysisMetrics)
 
         return 'Success'
-    except FailedActionCalculationException as e:
-        return 'Failed action calculation'
+    # catch errors like this to preserve scans, just get rid of try and catch if debugging to get the stack traces. 
+    except Exception as e:
+        return f'Phase history analysis failed: {e}'
+    
 
 
 def writePhaseHistoryReport(paths: list[Path], phaseStructure: PhaseStructure, settings: PipelineSettings,
