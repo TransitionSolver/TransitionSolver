@@ -120,7 +120,7 @@ class Transition:
         self.HArray = []
         self.Pf = []
 
-    def report(self, reportFileName=None) -> dict:
+    def report(self) -> dict:
         report = {}
 
         report['id'] = self.ID
@@ -134,15 +134,8 @@ class Transition:
 
         report['completed'] = bool(self.Tf >= 0.0)
         report['error'] = self.analysis.error
-
-        # If we are updating the report file and reused its action data (i.e. if actionCurveFile == reportFileName),
-        # make sure to keep that data in the report rather than create a circular reference.
-        if self.analysis.actionCurveFile == '' or self.analysis.actionCurveFile == reportFileName:
-            report['T'] = self.analysis.T
-            report['SonT'] = self.analysis.SonT
-        else:
-            report['actionCurveFile'] = self.analysis.actionCurveFile
-
+        report['T'] = self.analysis.T
+        report['SonT'] = self.analysis.SonT
         report['vw'] = self.vw
         report['N'] = self.totalNumBubbles
         report['Nbar'] = self.totalNumBubblesCorrected

@@ -26,7 +26,6 @@ class CubedNestedIntegrationHelper:
 
         dxn2 = tr(x[0]) - tr(x[1])
         dxn3 = tr(x[1]) - tr(x[2])
-        #dxn3 = tr(x[2]) - tr(x[3])
 
         fn1 = f(x[0])
         fn2 = f(x[1])
@@ -34,15 +33,8 @@ class CubedNestedIntegrationHelper:
         gsn3 = g(x[2]) + g(x[1])
         gsn2 = g(x[1]) + g(x[0])
 
-        #self.data.append(f(x[0]) * gsn2**3 * dx1**4 / (16.0 * x[1]**3))
-        #self.data.append((x[1]/x[2])**3 * self.data[1] + gsn3*dx2*(f1*gsn3**2*dx2**2*(dx1 + dx2)
-        #    + 3*f0*gsn2*dx1**2*(gsn3*dx2 + gsn2*dx1)) / (16.0 * x[2]**3))
         self.data.append(f(x[0]) * gsn2**3 * dxn2**4 / (16.0)) # * xn2**3))
-        # This is using the final form of Delta I_i
-        #otherMethod = (xn2/xn3)**3 * self.data[1] + gsn3*dxn3*(fn2*gsn3**2*dxn3**2*(dxn2 + dxn3)
-        #    + 3*fn1*gsn2*dxn2**2*(gsn3*dxn3 + gsn2*dxn2)) / (16.0 * xn3**3)
         self.data.append((fn2*gsn3**3*dxn3**3*(dxn3 + dxn2) + fn1*(gsn3*dxn3 + gsn2*dxn2)**3*dxn2) / (16.0)) # * xn3**3))
-        #print(abs((otherMethod - self.data[-1]) / self.data[-1]))
 
         self.S1 = (gsn3*dxn3)**3 * fsn2*dxn2
         self.S2 = 0
@@ -97,7 +89,6 @@ class CubedNestedIntegrationHelper:
 
         Ti = fi1*gsi**3*dxi**4
 
-        #self.data.append((xi1/xi)**3 * self.data[-1] + (Si + Ti) / (16.0*xi**3))
         self.data.append(self.data[-1] + (Si + Ti) / 16.0)
 
         self.i += 1

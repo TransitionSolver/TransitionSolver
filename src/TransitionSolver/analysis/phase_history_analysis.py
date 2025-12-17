@@ -12,24 +12,16 @@ from analysis.transition_graph import TransitionEdge, Path, PhaseNode
 
 
 class PhaseHistoryAnalyser:
-    bCheckPossibleCompletion: bool = True
     bAllowErrorsForTn: bool = True
-    bAnalyseTransitionPastCompletion: bool = False
-    bForcePhaseOnAxis: bool = False
-    fileName_precomputedActionCurve: list[str] = []
-    precomputedTransitionIDs: list[int] = []
 
     def analyse(self, potential: AnalysablePotential, phaseStructure: PhaseStructure, vw: float =
             1.) -> list[Path]:
-
 
         # Extract high and low temperature phases.
         phases = phaseStructure.phases
         transitions = phaseStructure.transitions
         transitionPaths = phaseStructure.transitionPaths
 
-        # TODO: added on 23/06/2022 to handle the case where PhaseTracer reports no possible transition paths. Need to
-        #  make sure PhaseTracer would have handled the case where we could stay in the same phase.
         if len(transitionPaths) == 0:
             return []
 
@@ -161,12 +153,6 @@ class PhaseHistoryAnalyser:
                 Tmin = self.getMinTransitionTemperature_indexed(phases, phaseIndexedTransitions, transitionEdge)
 
                 if len(path.transitions) > 0:
-                    # TODO: changed on 16/11/2021. It is not correct to assume that the last transition along this path
-                    #  gets us to the false phase of the current transition. If the path has been extended from the
-                    #  current false vacuum by an alternative transition, then the end of the path does not correspond
-                    #  to the current false vacuum.
-                    #Tmax = min(transition.Tc, path.transitions[-1].Tn)
-
                     # Find the most recent transition that has a true phase equal to the current false phase (i.e. which
                     # transition got us to this point).
                     Tmax = transition.Tc
@@ -180,18 +166,11 @@ class PhaseHistoryAnalyser:
                 if Tmin < Tmax:
                     transition.analysis = AnalysedTransition()
                     transition.vw = vw
-
-                    actionFileName = ''
-
-                    for i in range(len(self.precomputedTransitionIDs)):
-                        if self.precomputedTransitionIDs[i] == transition.ID:
-                            actionFileName = self.fileName_precomputedActionCurve[i]
-
                     transitionAnalyser: TransitionAnalyser = TransitionAnalyser(potential, transition,
                         phases[transition.false_phase], phases[transition.true_phase],
                         phaseStructure.ground_state_energy, Tmin=Tmin, Tmax=Tmax)
 
-                    transitionAnalyser.analyseTransition(precomputedActionCurveFileName=actionFileName)
+                    transitionAnalyser.analyseTransition()
 
 
             # If the transition begins.
@@ -227,13 +206,7 @@ class PhaseHistoryAnalyser:
                     path = Path(transitionEdge.falsePhaseNode)
                     paths.append(path)
                     # Add this path to the phase node where this divergence occurs.
-                    # TODO: changed on 15/11/2021 because pipeline/noNucleation_msScan-BP4_1/24 was breaking here.
-                    #prevPath.phases[-2].paths.append(path)
-                    transitionEdge.falsePhaseNode.paths.append(path)  # is it this simple? (added 15/11/2021)
-                    #if bSplit:
-                    #    paths[-2].phases[-1].paths.append(path)
-                    #else:
-                    #    transitionEdge.falsePhaseNode.paths.append(path)???
+                    transitionEdge.falsePhaseNode.paths.append(path)  
 
                     # If we don't split the path, we still need to handle links between the prefixes of the previous
                     # path and the new path. Whatever path is a prefix of the previous path is also a previous of the
@@ -385,8 +358,7 @@ class PhaseHistoryAnalyser:
                         # Add it to the frontier.
                         newFrontier.append(phaseIndexedTransitions[truePhase][i])
                         phaseIndexedTransitions[truePhase][i].path = path
-         
-                #if phaseIndexedTransitions[truePhase][i].transition.Tc <= transitionEdge.transition.Tn:
+
                 # Otherwise, we can add it as a regular transition.
                 else:
                     newFrontier.append(phaseIndexedTransitions[truePhase][i])
