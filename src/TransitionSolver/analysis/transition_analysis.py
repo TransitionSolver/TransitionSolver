@@ -1,12 +1,11 @@
 """
-Transiton analysis
+Transition analysis
 =====================
 """
 
 from __future__ import annotations
 
 import logging
-import time
 import json
 import traceback
 import sys
@@ -77,9 +76,9 @@ class AnalysedTransition:
         self.Hp = -1
         self.He = -1
         self.Hf = -1
-
         self.T = []
         self.SonT = []
+
 class ActionSampler:
     transitionAnalyser: 'TransitionAnalyser'
 
@@ -249,7 +248,7 @@ class ActionSampler:
                 if nearMaxNucleation():
                     stepFactor = nearMaxFactor
                 else:
-                    extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew, Tmin)
+                    extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew)
 
                     if extraBubbles > numBubbles*5:
                         if extraBubbles > numBubbles*25:
@@ -265,7 +264,7 @@ class ActionSampler:
                 if nearMaxNucleation():
                     stepFactor = nearMaxFactor
                 else:
-                    extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew, Tmin)
+                    extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew)
 
                     if extraBubbles > 0.2*numBubbles:
                         if extraBubbles > 0.5*numBubbles:
@@ -289,7 +288,7 @@ class ActionSampler:
                     stepFactor = nearMaxFactor
                 else:
                     if numBubbles < 100:
-                        extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew, Tmin)
+                        extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew)
 
                         if numBubbles < 10:
                             if extraBubbles < numBubbles:
@@ -340,7 +339,7 @@ class ActionSampler:
 
         return True, 'Success'
 
-    def calculateExtraBubbles(self, Tnew: float, SonTnew: float, Tmin: float) -> float:
+    def calculateExtraBubbles(self, Tnew: float, SonTnew: float) -> float:
         extraBubbles = 0
         numPoints = 20
 
@@ -424,7 +423,6 @@ class ActionSampler:
 
         T = data.T
         data.bValid = False
-        startTime = time.perf_counter()
 
         logger.debug('Evaluating action at T = {}', T)
 
@@ -446,12 +444,6 @@ class ActionSampler:
         # zero.
         data.SonT = max(0, action / max(T, 0.001))
         data.bValid = data.SonT > 1e-10
-
-        if data.bValid:
-            logger.debug(f'Successfully evaluated action S = {data.SonT} in {time.perf_counter() - startTime} seconds.')
-        else:
-            logger.debug(f'Obtained nonsensical action S = {data.SonT} in {time.perf_counter() - startTime} seconds.')
-
         return fromFieldConfig, toFieldConfig
 
 
@@ -461,10 +453,6 @@ class ActionCurveShapeAnalysisData:
         self.nextBelowDesiredData = None
         self.storedLowerActionData = []
         self.actionSamples = []
-        # TODO: does the default choice for this ever matter? Are there cases where we don't identify it but still
-        #  continue the transition analysis? Maybe for fine-tuned subcritical transitions that nucleate quickly but
-        #  don't complete quickly?
-        self.bBarrierAtTmin = False
 
     def copyDesiredData(self, sample):
         self.desiredData = ActionSample.copyData(sample)
@@ -492,7 +480,6 @@ class TransitionAnalyser():
     bAnalyseTransitionPastCompletion: bool = False
     bAllowErrorsForTn: bool = True
     bReportAnalysis: bool = False
-    timeout_phaseHistoryAnalysis: float = -1.
     bUseChapmanJouguetVelocity: float = False
 
     potential: AnalysablePotential
@@ -551,7 +538,7 @@ class TransitionAnalyser():
     # TODO: need to handle subcritical transitions better. Shouldn't use integration if the max sampled action is well
     #  below the nucleation threshold. Should treat the action as constant or linearise it and estimate transition
     #  temperatures under that approximation.
-    def analyseTransition(self, startTime: float = -1.0, precomputedActionCurveFileName: str = ''):
+    def analyseTransition(self, precomputedActionCurveFileName: str = ''):
         # TODO: this should depend on the scale of the transition, so make it configurable.
         # Estimate the maximum significant value of S/T by finding where the instantaneous nucleation rate multiplied by
         # the maximum possible duration of the transition is O(1). This is highly conservative, but intentionally so
@@ -576,12 +563,7 @@ class TransitionAnalyser():
 
         if not precomputedT:
             # TODO: we don't use allSamples anymore.
-            sampleData, allSamples = self.primeTransitionAnalysis(startTime)
-
-            if self.timeout_phaseHistoryAnalysis > 0:
-                endTime = time.perf_counter()
-                if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                    return
+            sampleData, _ = self.primeTransitionAnalysis()
 
             if sampleData is None:
                 return
@@ -930,11 +912,6 @@ class TransitionAnalyser():
 
             simIndex += 1
 
-            if self.timeout_phaseHistoryAnalysis > 0:
-                endTime = time.perf_counter()
-                if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                    return
-
             if not success:
                 logger.debug('Terminating transition analysis after failing to get next action sample. Reason:', message)
 
@@ -976,24 +953,18 @@ class TransitionAnalyser():
             self.transition.transitionStrength = transitionStrength
             self.transition.meanBubbleSeparation = meanBubbleSeparation
 
-    def primeTransitionAnalysis(self, startTime: float) -> (Optional[ActionSample], list[ActionSample]):
+    def primeTransitionAnalysis(self) -> (Optional[ActionSample], list[ActionSample]):
         TcData = ActionSample(self.transition.Tc)
 
 
         # Use bisection to find the temperature at which S/T ~ maxSonTThreshold.
-        actionCurveShapeAnalysisData = self.findNucleationTemperatureWindow_refined(startTime=startTime)
-
-        if self.timeout_phaseHistoryAnalysis > 0:
-            endTime = time.perf_counter()
-            if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                return None, []
+        actionCurveShapeAnalysisData = self.findNucleationTemperatureWindow_refined()
 
         # TODO: Maybe use the names from here anyway? The current set of names is a little confusing!
         data = actionCurveShapeAnalysisData.desiredData
         bisectMinData = actionCurveShapeAnalysisData.nextBelowDesiredData
         lowerSonTData = actionCurveShapeAnalysisData.storedLowerActionData
         allSamples = actionCurveShapeAnalysisData.actionSamples
-        bBarrierAtTmin = actionCurveShapeAnalysisData.bBarrierAtTmin
 
         # If we didn't find any action values near the nucleation threshold, we are done.
         if data is None or not data.bValid:
@@ -1048,11 +1019,6 @@ class TransitionAnalyser():
 
             self.actionSampler.evaluateAction(intermediateData)
 
-            if self.timeout_phaseHistoryAnalysis > 0:
-                endTime = time.perf_counter()
-                if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                    return None, []
-
             if not intermediateData.bValid:
                 return None, []
 
@@ -1070,11 +1036,6 @@ class TransitionAnalyser():
                 # Step halfway across the interval and try again.
                 intermediateData.T = 0.5*(intermediateData.T + data.T)
                 self.actionSampler.evaluateAction(intermediateData)
-
-                if self.timeout_phaseHistoryAnalysis > 0:
-                    endTime = time.perf_counter()
-                    if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                        return None, []
 
                 # Store this point so we don't have to resample near it.
                 self.actionSampler.storeLowerSonTData(ActionSample.copyData(intermediateData))
@@ -1106,11 +1067,6 @@ class TransitionAnalyser():
             # sample point.
             intermediateData.T = min(intermediateData.T, 2*data.T - self.Tmax)
             self.actionSampler.evaluateAction(intermediateData)
-
-            if self.timeout_phaseHistoryAnalysis > 0:
-                endTime = time.perf_counter()
-                if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                    return None, []
 
             # Don't accept cases where S/T is negative (translated to 0) for the last two evaluations. This suggests the
             # bounce solver is failing and we cannot proceed reliably.
@@ -1152,22 +1108,12 @@ class TransitionAnalyser():
             else:
                 self.actionSampler.evaluateAction(sampleData)
 
-                if self.timeout_phaseHistoryAnalysis > 0:
-                    endTime = time.perf_counter()
-                    if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                        return None, []
-
             self.actionSampler.lowerSonTData.pop()
         else:
             sampleData.action = -1
             sampleData.SonT = -1
 
             self.actionSampler.evaluateAction(sampleData)
-
-            if self.timeout_phaseHistoryAnalysis > 0:
-                endTime = time.perf_counter()
-                if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                    return None, []
 
             if not sampleData.bValid:
                 print('Failed to evaluate action at trial temperature T=', sampleData.T)
@@ -1202,7 +1148,7 @@ class TransitionAnalyser():
 
         return action
 
-    def findNucleationTemperatureWindow_refined(self, startTime: float = -1.0):
+    def findNucleationTemperatureWindow_refined(self):
         actionCurveShapeAnalysisData = ActionCurveShapeAnalysisData()
         Tstep = 0.01*(self.Tmax - self.Tmin)
         actionSamples = []

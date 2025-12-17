@@ -1,15 +1,3 @@
-class IntegrationHelper:
-    def __init__(self, *args, **kwargs):
-        self.init(*args, **kwargs)
-        self.initialiseIntegration()
-
-    def init(self, *args, **kwargs):
-        return
-
-    def initialiseIntegration(self):
-        return
-
-
 # Designed specifically to aid in evaluating integrals of the form
 #   I(x) = x^-3 * {int_x^a dx' f(x') [int_x^x' dx'' g(x'')]^3} ,
 # where it must be evaluated for several values of x. Naively this would be an O(n^3) algorithm, where n is the number
@@ -17,8 +5,8 @@ class IntegrationHelper:
 # recurrence relation between I(x_i) and I(x_{i+1}).
 # This class assumes a new, smaller* x is passed to the integration for each interval.
 # *smaller after it has been transformed using sampleTransformationFunction.
-class CubedNestedIntegrationHelper(IntegrationHelper):
-    def init(self, initialPoints, outerFunction, innerFunction, sampleTransformationFunction):
+class CubedNestedIntegrationHelper:
+    def __init__(self, initialPoints, outerFunction, innerFunction, sampleTransformationFunction):
         self.x = initialPoints
         self.f = outerFunction
         self.g = innerFunction
@@ -27,7 +15,6 @@ class CubedNestedIntegrationHelper(IntegrationHelper):
 
         self.data = [0.0]
 
-    def initialiseIntegration(self):
         self.L2 = 0
         self.L3 = 0
         self.L6 = 0
@@ -124,8 +111,8 @@ class CubedNestedIntegrationHelper(IntegrationHelper):
 # This class assumes a new, smaller x is passed to the integration for each interval (where x is smaller after it has
 # been transformed using sampleTransformationFunction).
 # This integration scheme requires two initial x points before the main recurrence relations can be used.
-class LinearNestedNormalisedIntegrationHelper(IntegrationHelper):
-    def init(self, initialPoints, outerFunction, innerFunction, normalisationFunction, sampleTransformationFunction):
+class LinearNestedNormalisedIntegrationHelper:
+    def __init__(self, initialPoints, outerFunction, innerFunction, normalisationFunction, sampleTransformationFunction):
         self.x = initialPoints
         self.f = outerFunction
         self.g = innerFunction
@@ -135,7 +122,6 @@ class LinearNestedNormalisedIntegrationHelper(IntegrationHelper):
 
         self.data = [0.0]
 
-    def initialiseIntegration(self):
         self.L = 0
         self.A = 0
         self.B = 0
@@ -147,9 +133,6 @@ class LinearNestedNormalisedIntegrationHelper(IntegrationHelper):
         tr = self.tr
 
         dxn2 = tr(x[0]) - tr(x[1])
-
-        fn1 = f(x[0])
-        fn2 = f(x[1])
         gsn2 = g(x[1]) + g(x[0])
 
         self.A = 0.25/tr(x[1])*f(x[0])*gsn2*dxn2**2

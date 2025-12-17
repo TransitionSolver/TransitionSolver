@@ -16,9 +16,6 @@ class PhaseHistoryAnalyser:
     bAllowErrorsForTn: bool = True
     bAnalyseTransitionPastCompletion: bool = False
     bForcePhaseOnAxis: bool = False
-    timeout_phaseHistoryAnalysis: float = 200.
-    # TODO: implement this timeout for an individual transition. We would need separate start times. One for the entire
-    #  phase history analysis, and one for the current transition analysis.
     fileName_precomputedActionCurve: list[str] = []
     precomputedTransitionIDs: list[int] = []
 

@@ -120,7 +120,7 @@ class Transition:
         self.HArray = []
         self.Pf = []
 
-    def getReport(self, reportFileName) -> dict:
+    def report(self, reportFileName=None) -> dict:
         report = {}
 
         report['id'] = self.ID
@@ -129,84 +129,69 @@ class Transition:
         report['analysed'] = self.analysis is not None
         report['subcritical'] = bool(self.subcritical)
 
-        if self.analysis is not None:
-            report['completed'] = bool(self.Tf >= 0.0)
-            if len(self.analysis.error) > 0: report['error'] = self.analysis.error
-            # If we are updating the report file and reused its action data (i.e. if actionCurveFile == reportFileName),
-            # make sure to keep that data in the report rather than create a circular reference.
-            if self.analysis.actionCurveFile == '' or self.analysis.actionCurveFile == reportFileName:
-                report['T'] = self.analysis.T
-                report['SonT'] = self.analysis.SonT
-            else:
-                report['actionCurveFile'] = self.analysis.actionCurveFile
+        if self.analysis is None:
+            return report
 
-            report['vw'] = self.vw
-            report['N'] = self.totalNumBubbles
-            report['Nbar'] = self.totalNumBubblesCorrected
+        report['completed'] = bool(self.Tf >= 0.0)
+        report['error'] = self.analysis.error
 
+        # If we are updating the report file and reused its action data (i.e. if actionCurveFile == reportFileName),
+        # make sure to keep that data in the report rather than create a circular reference.
+        if self.analysis.actionCurveFile == '' or self.analysis.actionCurveFile == reportFileName:
+            report['T'] = self.analysis.T
+            report['SonT'] = self.analysis.SonT
+        else:
+            report['actionCurveFile'] = self.analysis.actionCurveFile
+
+        report['vw'] = self.vw
+        report['N'] = self.totalNumBubbles
+        report['Nbar'] = self.totalNumBubblesCorrected
         report['Tc'] = self.Tc
-        if self.Tn > 0:
-            report['Tn'] = self.Tn
-            report['SonTn'] = self.analysis.SonTn
-        if self.Tnbar > 0:
-            report['Tnbar'] = self.Tnbar
-            report['SonTnbar'] = self.analysis.SonTnbar
-
-        if self.Tp > 0: report['Tp'] = self.Tp
-        if self.Te > 0: report['Te'] = self.Te
-        if self.Tf > 0: report['Tf'] = self.Tf
-
-        if self.TVphysDecr_high > 0: report['TVphysDecr_high'] = self.TVphysDecr_high
-        if self.TVphysDecr_low > 0: report['TVphysDecr_low'] = self.TVphysDecr_low
-
-        if self.Treh_n > 0: report['Treh_n'] = self.Treh_n
-        if self.Treh_nbar > 0: report['Treh_nbar'] = self.Treh_nbar
-        if self.Treh_p > 0: report['Treh_p'] = self.Treh_p
-        if self.Treh_e > 0: report['Treh_e'] = self.Treh_e
-        if self.Treh_f > 0: report['Treh_f'] = self.Treh_f
-
-        if self.Tn > 0: report['betaTn'] = self.analysis.betaTn
-        if self.Tnbar > 0: report['betaTnbar'] = self.analysis.betaTnbar
-        if self.Tp > 0: report['betaTp'] = self.analysis.betaTp
-        if self.Te > 0: report['betaTe'] = self.analysis.betaTe
-        if self.Tf > 0: report['betaTf'] = self.analysis.betaTf
-        if self.TGammaMax > 0: report['betaV'] = self.analysis.betaV
-
-        if self.Tn > 0: report['Hn'] = self.analysis.Hn
-        if self.Tnbar > 0: report['Hnbar'] = self.analysis.Hnbar
-        if self.Tp > 0: report['Hp'] = self.analysis.Hp
-        if self.Te > 0: report['He'] = self.analysis.He
-        if self.Tf > 0: report['Hf'] = self.analysis.Hf
-
-        if self.Tmin > 0:
-            report['Tmin'] = self.Tmin
-            report['SonTmin'] = self.SonTmin
-        if self.TGammaMax > 0:
-            report['TGammaMax'] = self.TGammaMax
-            report['SonTGammaMax'] = self.SonTGammaMax
-            report['GammaMax'] = self.GammaMax
-        #if self.Teq > 0:
+        report['Tn'] = self.Tn
+        report['SonTn'] = self.analysis.SonTn
+        report['Tnbar'] = self.Tnbar
+        report['SonTnbar'] = self.analysis.SonTnbar
+        report['Tp'] = self.Tp
+        report['Te'] = self.Te
+        report['Tf'] = self.Tf
+        report['TVphysDecr_high'] = self.TVphysDecr_high
+        report['TVphysDecr_low'] = self.TVphysDecr_low
+        report['Treh_n'] = self.Treh_n
+        report['Treh_nbar'] = self.Treh_nbar
+        report['Treh_p'] = self.Treh_p
+        report['Treh_e'] = self.Treh_e
+        report['Treh_f'] = self.Treh_f
+        report['betaTn'] = self.analysis.betaTn
+        report['betaTnbar'] = self.analysis.betaTnbar
+        report['betaTp'] = self.analysis.betaTp
+        report['betaTe'] = self.analysis.betaTe
+        report['betaTf'] = self.analysis.betaTf
+        report['betaV'] = self.analysis.betaV
+        report['Hn'] = self.analysis.Hn
+        report['Hnbar'] = self.analysis.Hnbar
+        report['Hp'] = self.analysis.Hp
+        report['He'] = self.analysis.He
+        report['Hf'] = self.analysis.Hf
+        report['Tmin'] = self.Tmin
+        report['SonTmin'] = self.SonTmin
+        report['TGammaMax'] = self.TGammaMax
+        report['SonTGammaMax'] = self.SonTGammaMax
+        report['GammaMax'] = self.GammaMax
         report['Teq'] = self.Teq
-        #report['SonTeq'] = self.SonTeq
-
-        if self.Tp > 0: report['decreasingVphysAtTp'] = self.decreasingVphysAtTp
-        if self.Tf > 0: report['decreasingVphysAtTf'] = self.decreasingVphysAtTf
-
+        report['decreasingVphysAtTp'] = self.decreasingVphysAtTp
+        report['decreasingVphysAtTf'] = self.decreasingVphysAtTf
         report['foundNucleationWindow'] = self.bFoundNucleationWindow
-
-        if self.Tp > 0:
-            report['meanBubbleSeparation'] = self.meanBubbleSeparation
-            report['meanBubbleRadius'] = self.meanBubbleRadius
-            report['energyWeightedBubbleRadius'] = self.energyWeightedBubbleRadius
-            report['volumeWeightedBubbleRadius'] = self.volumeWeightedBubbleRadius
-            report['transitionStrength'] = self.transitionStrength
-
-        if len(self.TSubampleArray) > 0: report['TSubsample'] = self.TSubampleArray
-        if len(self.betaArray) > 0: report['beta'] = self.betaArray
-        if len(self.HArray) > 0: report['H'] = self.HArray
-        if len(self.meanBubbleSeparationArray) > 0: report['meanBubbleSeparationArray'] = self.meanBubbleSeparationArray
-        if len(self.meanBubbleRadiusArray) > 0: report['meanBubbleRadiusArray'] = self.meanBubbleRadiusArray
-        if len(self.Pf) > 0: report['Pf'] = self.Pf
+        report['meanBubbleSeparation'] = self.meanBubbleSeparation
+        report['meanBubbleRadius'] = self.meanBubbleRadius
+        report['energyWeightedBubbleRadius'] = self.energyWeightedBubbleRadius
+        report['volumeWeightedBubbleRadius'] = self.volumeWeightedBubbleRadius
+        report['transitionStrength'] = self.transitionStrength
+        report['TSubsample'] = self.TSubampleArray
+        report['beta'] = self.betaArray
+        report['H'] = self.HArray
+        report['meanBubbleSeparationArray'] = self.meanBubbleSeparationArray
+        report['meanBubbleRadiusArray'] = self.meanBubbleRadiusArray
+        report['Pf'] = self.Pf
 
         return report
 
