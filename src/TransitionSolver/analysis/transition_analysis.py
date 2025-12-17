@@ -22,7 +22,7 @@ except:
 from cosmoTransitions import pathDeformation
 
 from gws import hydrodynamics
-from gws.hydrodynamics import HydroVars
+from gws.hydrodynamics import HydroVars, GRAV_CONST
 import integration
 from analysis.phase_structure import Phase, Transition
 
@@ -1368,5 +1368,4 @@ def hubble_squared_from_phases(fromPhase: Phase, toPhase: Phase, potential, T: f
 
 
 def hubble_squared(energyDensity: float) -> float:
-    GRAV_CONST = 6.7088e-39
     return 8*np.pi*GRAV_CONST/3*energyDensity

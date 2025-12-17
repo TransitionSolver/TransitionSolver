@@ -36,14 +36,6 @@ class HydroVars:
     T: float
 
     @property
-    def traceAnomalyFalse(self):
-        return (self.energyDensityFalse - 3 * self.pressureFalse) / 4
-
-    @property
-    def traceAnomalyTrue(self):
-        return (self.energyDensityTrue - 3 * self.pressureTrue) / 4
-
-    @property
     def pseudotraceFalse(self):
         return (self.energyDensityFalse -
                 self.pressureFalse / self.soundSpeedSqTrue) / 4
