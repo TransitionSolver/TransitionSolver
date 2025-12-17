@@ -27,12 +27,12 @@ TEMPLATE_CPP = os.path.join(CWD, "interface.cpp")
 LIBS = ["-lboost_log", "-lboost_filesystem", "-lnlopt"]
 
 
-def build_phase_tracer(model, model_header=None, model_lib=None, model_namespace="EffectivePotential"):
+def build_phase_tracer(model, model_header=None, model_lib=None, model_namespace="EffectivePotential", force=False):
 
     exe_name = os.path.join(CWD, model)
 
-    #if os.path.exists(exe_name):
-    #    return exe_name
+    if os.path.exists(exe_name) and not force:
+        return exe_name
 
     cpp_name = os.path.join(CWD, f"{model}.cpp")
 
