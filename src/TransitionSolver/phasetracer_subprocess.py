@@ -127,7 +127,7 @@ def read_phase_tracer(data) -> PhaseStructure:
     return PhaseStructure(phases, transitions, paths)
 
 
-def _make_report(paths, phase_structure, analysis_metrics):
+def _make_report(paths, phase_structure):
     """
     @returns Report phase history from TransitionSolver objects
     """
@@ -136,7 +136,6 @@ def _make_report(paths, phase_structure, analysis_metrics):
                              for t in phase_structure.transitions]
     report['paths'] = [p.report() for p in paths]
     report['valid'] = any([p.bValid for p in paths])
-    report['analysisTime'] = analysis_metrics.analysisElapsedTime
     return report
 
 
@@ -152,7 +151,6 @@ def make_phase_history(potential, phase_structure):
             'No valid transition path to the current phase of the Universe')
 
     analyser = PhaseHistoryAnalyser()
-    paths, _, analysis_metrics = analyser.analysePhaseHistory_supplied(
-        potential, phase_structure)
+    paths = analyser.analyse(potential, phase_structure)
 
-    return _make_report(paths, phase_structure, analysis_metrics)
+    return _make_report(paths, phase_structure)

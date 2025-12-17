@@ -106,7 +106,6 @@ class ActionSampler:
         self.transitionAnalyser = transitionAnalyser
 
         # Copy properties for concision.
-        self.bDebug = transitionAnalyser.bDebug
         self.potential = transitionAnalyser.potential
         self.fromPhase = transitionAnalyser.fromPhase
         self.toPhase = transitionAnalyser.toPhase
@@ -485,8 +484,6 @@ class ActionCurveShapeAnalysisData:
 
 
 class TransitionAnalyser():
-    bDebug: bool = False
-    bPlot: bool = False
     # Optimisation: check whether completion can occur before reaching T=0. If it cannot, stop the transition analysis.
     bCheckPossibleCompletion: bool = True
     # Whether transition analysis should continue after finding the completion temperature, all the way down to the
@@ -982,8 +979,6 @@ class TransitionAnalyser():
     def primeTransitionAnalysis(self, startTime: float) -> (Optional[ActionSample], list[ActionSample]):
         TcData = ActionSample(self.transition.Tc)
 
-        if self.bDebug:
-            print(f'Bisecting to find S/T = {self.actionSampler.maxSonTThreshold} ± {self.actionSampler.toleranceSonT}')
 
         # Use bisection to find the temperature at which S/T ~ maxSonTThreshold.
         actionCurveShapeAnalysisData = self.findNucleationTemperatureWindow_refined(startTime=startTime)
@@ -1009,7 +1004,6 @@ class TransitionAnalyser():
                 return None, []
 
             allSamples = np.array(allSamples)
-            # if bDebug or bPlot:
             # This is a little confusing at first, but what this does is:
             # - allSamples.argsort(axis=0): sort the indices of both columns (T and S/T) based on the values stored in
             #   the corresponding positions.
@@ -1030,8 +1024,6 @@ class TransitionAnalyser():
         self.actionSampler.lowerSonTData = lowerSonTData
         if data.SonT > self.actionSampler.minSonTThreshold + 0.8 * (
                 self.actionSampler.maxSonTThreshold - self.actionSampler.minSonTThreshold):
-            if self.bDebug:
-                print('Presumably not a subcritical transition curve, with current S/T near maxSonTThreshold.')
             subcritical = False
             # targetSonT is the first S/T value we would like to sample. Skipping this might lead to numerical errors in the
             # integration, and sampling at higher S/T values is numerically insignificant.
@@ -1074,10 +1066,6 @@ class TransitionAnalyser():
             # While our sample's S/T is too far from the target value, step closer to 'data' and try again.
             while correctionSamplesTaken < maxCorrectionSamples \
                     and abs(1 - abs(intermediateData.SonT - data.SonT) / data.SonT) < self.actionSampler.stepSizeMax:
-                if self.bDebug:
-                    print('Sample too far from target S/T value at T =', intermediateData.T, 'with S/T =',
-                          intermediateData.SonT)
-                    print('Trying again at T =', 0.5*(intermediateData.T + data.T))
                 correctionSamplesTaken += 1
                 # Step halfway across the interval and try again.
                 intermediateData.T = 0.5*(intermediateData.T + data.T)
@@ -1103,16 +1091,11 @@ class TransitionAnalyser():
             # is insufficient time for nucleation to occur. It is improbable that S/T would drop to a small enough value
             # within this temperature range to yield nucleation.
             if intermediateData.SonT >= data.SonT:
-                if self.bDebug:
-                    print('S/T increases before nucleation can occur.')
                 return None, self.actionSampler.lowerSonTData
 
             self.actionSampler.T.extend([data.T, intermediateData.T])
             self.actionSampler.SonT.extend([data.SonT, intermediateData.SonT])
         else:
-            if self.bDebug:
-                print(
-                    'Presumably a subcritical transition curve, with current S/T significantly below maxSonTThreshold.')
             subcritical = True
 
             # Take a very small step, with the size decreasing as S/T decreases.
@@ -1154,9 +1137,6 @@ class TransitionAnalyser():
             else:
                 self.actionSampler.T.extend([data.T, intermediateData.T])
                 self.actionSampler.SonT.extend([data.SonT, intermediateData.SonT])
-
-        if self.bDebug:
-            print('Found next sample: T =', intermediateData.T, 'and S/T =', intermediateData.SonT)
 
         # Now take the same step in temperature and evaluate the action again.
         sampleData = ActionSample.copyData(intermediateData)
@@ -1383,9 +1363,6 @@ class TransitionAnalyser():
                     saveCurveShapeAnalysisData(False)
                     return actionCurveShapeAnalysisData
 
-                # TODO: cleanup if this still works [2023]
-                #calculateActionSimple(potential, data, fromPhase, toPhase, Tstep=-Tstep, bDebug=settings.bDebug)
-                #actionSamples.append((data.T, data.SonT, data.bValid))
                 labelLow = 'below'
                 labelHigh = getSignLabel()
 
@@ -1458,10 +1435,6 @@ class TransitionAnalyser():
             # If the temperature window is becoming too small, claim that the target value cannot be found. The below
             # extrapolation step should make this unnecessary. TODO: [2023] why are we still doing it then?
             if (THigh - TLow) / (self.Tmax - self.Tmin) < 0.01:
-                if self.bDebug:
-                    print('Unable to find action below desired value before temperature window reduced to', THigh - TLow,
-                        'GeV.')
-
                 saveCurveShapeAnalysisData()
                 return actionCurveShapeAnalysisData
 
@@ -1479,9 +1452,6 @@ class TransitionAnalyser():
                 extrapolationFailed = TPredicted > THigh
 
             if extrapolationFailed:
-                if self.bDebug:
-                    print('S/T will not go below', self.actionSampler.maxSonTThreshold, 'based on linear extrapolation.')
-
                 saveCurveShapeAnalysisData()
                 return actionCurveShapeAnalysisData
 
