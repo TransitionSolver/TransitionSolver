@@ -1,7 +1,7 @@
 from __future__ import annotations
 from analysis.transition_analysis import TransitionAnalyser
 from models.toy_model import ToyModel
-from models.real_scalar_singlet_model import RealScalarSingletModel
+from models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz
 from analysis.phase_structure import PhaseStructure
 from analysis.phase_history_analysis import PhaseHistoryAnalyser, AnalysisMetrics
 from analysis.transition_graph import Path
@@ -81,9 +81,9 @@ def main():
     # stdout is routed to DEVNULL to suppress any print statements from PhaseTracer. stderr is routed to STDOUT so that
     # errors in PhaseTracer are printed here.
     command = (['wsl'] if windows else []) + [PhaseTracer_directory + 'bin/run_RSS', outputFolder +
-        '/parameter_point.txt', outputFolder]
+        '/parameter_point.txt', outputFolder] + ['-boltz']
     subprocess.call(command, timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-
+    print("after calling command = ", command)
     # Load the phase structure saved by PhaseTracer.
     bFileExists, phaseStructure = phase_structure.load_data(outputFolder + '/phase_structure.dat')
 
@@ -104,8 +104,7 @@ def main():
     analyser.timeout_phaseHistoryAnalysis = 100
 
     # Create the potential using the parameter point.
-    potential = RealScalarSingletModel(*parameterPoint)
-
+    potential = RealScalarSingletModel_Boltz(*parameterPoint)
     def notify_TransitionAnalyser_on_create(transitionAnalyser: TransitionAnalyser):
         transitionAnalyser.bComputeSubsampledThermalParams = True
 
