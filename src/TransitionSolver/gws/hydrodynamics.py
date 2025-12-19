@@ -9,7 +9,7 @@ from dataclasses import dataclass, fields
 
 from numpy import pi
 
-from analysis.phase_structure import Phase
+from ..analysis.phase_structure import Phase
 from .numdiff import derivatives
 
 

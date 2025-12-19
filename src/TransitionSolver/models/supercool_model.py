@@ -1,5 +1,5 @@
 import numpy as np
-from models.analysable_potential import AnalysablePotential
+from .analysable_potential import AnalysablePotential
 
 
 # The maximum value for the ratio (mass / temperature)^2 that appears in the Boltzmann suppression exponent. Above this,

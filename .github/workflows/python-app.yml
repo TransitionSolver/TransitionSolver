@@ -38,7 +38,6 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        echo "PYTHONPATH=.:src/TransitionSolver" >> "$GITHUB_ENV"  # fix for flat directory structure
         pytest
     - name: Try CLI
       run: |
@@ -47,7 +46,7 @@ jobs:
       run: |
         mkdir -p script_output
         mkdir -p config
-        echo "{ PhaseTracer_directory: .PhaseTracer }" > config/config_user.json
+        echo '{ "PhaseTracer_directory": ".PhaseTracer" }' > config/config_user.json
         python3 -m examples.command_line_interface rss 1 script_output input/RSS/RSS_BP3.txt
         sudo apt install numdiff
         numdiff tests/RSS_BP35ab2907aa2a62d9b479c42c639658bf8ef5b197f/phase_history.json script_output/phase_history.json
