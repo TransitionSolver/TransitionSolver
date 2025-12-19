@@ -4,8 +4,9 @@ import traceback
 from cosmoTransitions.generic_potential import generic_potential
 import numpy as np
 from typing import List, Union, Callable
-from analysis.phase_structure import Phase
-from models.util import geff_handler
+
+from ..analysis.phase_structure import Phase
+from .util import geff_handler
 
 
 class AnalysablePotential(generic_potential):

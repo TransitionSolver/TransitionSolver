@@ -8,12 +8,12 @@ from __future__ import annotations
 import time
 from typing import Optional
 
-from util.events import notifyHandler
-from models.analysable_potential import AnalysablePotential
-from analysis.phase_structure import PhaseStructure, Phase, Transition
-from analysis.transition_analysis import TransitionAnalyser, AnalysedTransition
-from analysis.transition_graph import TransitionEdge, Path, PhaseNode
-from analysis import phase_structure
+from ..util.events import notifyHandler
+from ..models.analysable_potential import AnalysablePotential
+from .phase_structure import PhaseStructure, Phase, Transition
+from .transition_analysis import TransitionAnalyser, AnalysedTransition
+from .transition_graph import TransitionEdge, Path, PhaseNode
+from . import phase_structure
 
 
 # TODO: use this class.

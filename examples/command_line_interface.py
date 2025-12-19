@@ -1,17 +1,17 @@
 from __future__ import annotations
 import traceback
 
-from analysis.transition_analysis import TransitionAnalyser
-from models.supercool_model import SMplusCubic
-from models.analysable_potential import AnalysablePotential
-from models.toy_model import ToyModel
-from models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz
-from models.real_scalar_singlet_model_ht import RealScalarSingletModel_HT
-from analysis.phase_structure import PhaseStructure
-from analysis.phase_history_analysis import AnalysisMetrics, PhaseHistoryAnalyser
-from analysis.transition_graph import Path
-from analysis import phase_structure
-from gws import GWAnalyser, lisa
+from TransitionSolver.analysis.transition_analysis import TransitionAnalyser
+from TransitionSolver.models.supercool_model import SMplusCubic
+from TransitionSolver.models.analysable_potential import AnalysablePotential
+from TransitionSolver.models.toy_model import ToyModel
+from TransitionSolver.models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz
+from TransitionSolver.models.real_scalar_singlet_model_ht import RealScalarSingletModel_HT
+from TransitionSolver.analysis.phase_structure import PhaseStructure
+from TransitionSolver.analysis.phase_history_analysis import AnalysisMetrics, PhaseHistoryAnalyser
+from TransitionSolver.analysis.transition_graph import Path
+from TransitionSolver.analysis import phase_structure
+from TransitionSolver.gws import GWAnalyser, lisa
 from typing import Type
 import numpy as np
 import subprocess
@@ -19,7 +19,7 @@ import json
 import pathlib
 import sys
 
-from util.events import notifyHandler
+from TransitionSolver.util.events import notifyHandler
 
 
 def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: PhaseStructure, analysisMetrics:

@@ -26,12 +26,12 @@ except:
 
 from cosmoTransitions import pathDeformation
 
-from gws import hydrodynamics
-from gws.hydrodynamics import HydroVars
-from util import integration
-from util.events import notifyHandler
-from models.analysable_potential import AnalysablePotential
-from analysis.phase_structure import Phase, Transition
+from ..gws import hydrodynamics
+from ..gws.hydrodynamics import HydroVars
+from ..util import integration
+from ..util.events import notifyHandler
+from ..models.analysable_potential import AnalysablePotential
+from .phase_structure import Phase, Transition
 from . import geff
 
 logger = logging.getLogger(__name__)
