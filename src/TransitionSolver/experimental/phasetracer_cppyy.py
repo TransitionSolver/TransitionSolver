@@ -10,8 +10,6 @@ from pathlib import Path
 import cppyy
 from rich.status import Status
 
-from .analysis.phase_structure import PhaseStructure, PTTransition, PTPhase
-
 
 PT_HOME = Path(os.getenv("PHASETRACER", Path.home() / ".PhaseTracer"))
 PT_LIB = PT_HOME / "lib" / "libphasetracer.so"
@@ -38,15 +36,3 @@ def run_phase_tracer(potential):
         tf = PhaseTracer.TransitionFinder(pf)
         transitions = tf.find_transitions()
         paths = tf.find_transition_paths(potential)  # TODO why take potential again?!
-        
-    with Status("Building Python objects"):
-        pobs = [[t.transitionIndex for t in p.transitions] for p in paths]
-        tobjs = [PTTransition(t) for t in transitions]
-        phobjs = [PTPhase(p) for p in phases]
-
-    return PhaseStructure(phobjs, tobjs, phobjs)
-
-
-if __name__ == "__main__":
-    from .benchmarks import RSS_BP1
-    run_phase_tracer(RSS_BP1)

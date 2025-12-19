@@ -10,7 +10,7 @@ from pathlib import Path
 
 import numpy as np
 
-from TransitionSolver import phasetracer
+from TransitionSolver import phasetracer, run_phase_tracer, build_phase_tracer
 
 
 THIS = Path(os.path.dirname(os.path.abspath(__file__)))
@@ -26,9 +26,18 @@ def test_pt_lib():
 
 def test_pt_unit_test():
     subprocess.check_call(phasetracer.PT_UNIT_TEST)
+    
+    
+def test_build_phase_tracer():
+    exe_name = build_phase_tracer("RSS", model_header="RSS.hpp", force=True)
+    assert exe_name == phasetracer.PT_HOME / "RSS"
 
 
-def test_pt_run():
-    point = np.loadtxt(THIS / 'rss_bp1.txt')
-    result = phasetracer.pt_run('run_RSS', point)
-    assert filecmp.cmp(result, THIS / "rss_bp1_phase_structure.dat")
+def test_run_phase_tracer():
+    exe_name = build_phase_tracer("RSS", model_header="RSS.hpp", force=True)
+    phase_structure_file = THIS / "rss_bp1_phase_structure.dat"
+    point_file = THIS / 'rss_bp1.txt'
+    with open(phase_structure_file) as f:
+        phase_structure_raw = f.read()
+    result = run_phase_tracer(exe_name, point_file)
+    assert result == phase_structure_raw

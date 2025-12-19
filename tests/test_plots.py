@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from TransitionSolver.phasetracer import plot_action_curve
+from TransitionSolver.phasehistory import plot_action_curve
 
 THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 
