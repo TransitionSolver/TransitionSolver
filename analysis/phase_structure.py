@@ -17,6 +17,7 @@ class Phase:
         self.T = phase[:, 0].T
         self.V = phase[:, 1].T
         self.phi = phase[:, 2:].T
+        self.raw = phase
 
     # Returns the location of the phase at the given temperature by using interpolation between the stored data points,
     # and local optimisation from that interpolated point.
@@ -67,6 +68,7 @@ class Phase:
 class Transition:
 
     def __init__(self, transition: np.ndarray):
+        self.raw = transition
         self.Tc = transition[2]
         self.key = transition[-3]
         # The ID is used to match up the indices in a transition path (which is a list of transition ids).
@@ -239,18 +241,20 @@ class PhaseStructure:
         self.phases = [] if not phases else phases
         self.transitions = [] if not transitions else transitions
         self.transitionPaths = [] if not paths else paths
-        self.groundStateEnergyDensity = 0.
+        self.transitions.sort(key=lambda x: x.ID)
 
-    def determineGroundStateEnergyDensity(self):
-        self.groundStateEnergyDensity = np.inf
+    @property
+    def groundStateEnergyDensity(self):
+        groundStateEnergyDensity = np.inf
 
         for phase in self.phases:
-            if phase.T[0] == 0 and phase.V[0] < self.groundStateEnergyDensity:
-                self.groundStateEnergyDensity = phase.V[0]
+            if phase.T[0] == 0 and phase.V[0] < groundStateEnergyDensity:
+                groundStateEnergyDensity = phase.V[0]
 
-        if self.groundStateEnergyDensity == np.inf:
-            self.groundStateEnergyDensity = 0.
+        if groundStateEnergyDensity == np.inf:
+            groundStateEnergyDensity = 0.
 
+        return groundStateEnergyDensity
 
 def load_data(dat_name) -> tuple[bool, Optional[PhaseStructure]]:
 
@@ -278,7 +282,7 @@ def load_data(dat_name) -> tuple[bool, Optional[PhaseStructure]]:
 
     phaseStructure.transitions.sort(key=lambda x: x.ID)
 
-    phaseStructure.determineGroundStateEnergyDensity()
+    # phaseStructure.determineGroundStateEnergyDensity()
 
     return True, phaseStructure
 

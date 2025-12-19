@@ -13,7 +13,7 @@ import numpy as np
 
 from TransitionSolver.gws import GWAnalyser, lisa
 from TransitionSolver import gws, RSS_BP1
-from dictcmp import isclose
+from dictcmp import allclose
 
 
 THIS = Path(os.path.dirname(os.path.abspath(__file__)))
@@ -29,7 +29,7 @@ analyser = GWAnalyser(RSS_BP1, phase_structure_file, phase_history)
 
 def test_report():
     report = analyser.report(lisa)
-    assert isclose(report, THIS / "rss_bp1_gw.json")
+    assert allclose(report, THIS / "rss_bp1_gw.json")
 
 
 @pytest.mark.mpl_image_compare

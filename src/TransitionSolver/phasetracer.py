@@ -68,16 +68,17 @@ def make_report(paths, phase_structure, analysis_metrics):
     return report
 
 
-def phase_structure(potential, phase_structure_file, vw=0.9):
+def phase_history(potential, phase_structure=None, vw=0.9, phase_structure_file=None):
     """
     @param potential Effective potential
-    @param phase_structure_file Phase structure results file from PT
+    @param phase_structure Phase structure results file from PT
     @param vw Assumed wall velocity
 
     @returns Report phase history from PhaseTracer output
     """
-    phase_structure = load_data(phase_structure_file)[1]
-
+    if phase_structure_file is not None:
+        phase_structure = load_data(phase_structure_file)[1]
+            
     if not phase_structure.transitionPaths:
         raise RuntimeError(
             'No valid transition path to the current phase of the Universe')

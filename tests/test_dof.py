@@ -13,7 +13,7 @@ import pytest
 
 from TransitionSolver import phasetracer, RSS_BP1
 
-from dictcmp import isclose
+from dictcmp import allclose
 
 THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 
@@ -21,7 +21,7 @@ THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 def test_dof():
     phase_structure_file = THIS / "rss_bp1_phase_structure.dat"
     result = phasetracer.trace_dof(RSS_BP1, phase_structure_file)
-    assert isclose(result, THIS / "rss_bp1_dof.json")
+    assert allclose(result, THIS / "rss_bp1_dof.json")
 
 
 @pytest.mark.mpl_image_compare(tolerance=20)

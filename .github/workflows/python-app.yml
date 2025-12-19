@@ -42,4 +42,4 @@ jobs:
         pytest
     - name: Try CLI
       run: |
-        ts --model RSS --point ./tests/rss_bp1.txt
+        ts --model RSS --point tests/rss_bp1.txt --apply set_daisy_method 2 --force --apply set_bUseBoltzmannSuppression True

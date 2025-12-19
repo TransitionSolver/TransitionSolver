@@ -386,9 +386,14 @@ class GWAnalyser:
             phase_structure_file,
             phase_history,
             force_relevant=False,
+            is_file=True,  # TODO remove this later
             **kwargs):
 
-        _, phase_structure_ = phase_structure.load_data(phase_structure_file)
+        if is_file:
+            _, phase_structure_ = phase_structure.load_data(phase_structure_file)
+        else:
+            phase_structure_ = phase_structure_file
+
         relevant_transitions = phase_history['transitions'] if force_relevant else extract_relevant_transitions(
             phase_history)
 

@@ -37,7 +37,7 @@ def approx_equal(a, b, rtol, atol):
         return a == b
 
 
-def isclose(result, file_name, rtol=1e-3, atol=0., ignore=None, generate_baseline=False):
+def allclose(result, file_name, rtol=1e-3, atol=0., ignore=None, generate_baseline=False):
     """
     @param result Dictionary of results from program
     @param file_name Name of JSON file containing expected results
@@ -53,7 +53,7 @@ def isclose(result, file_name, rtol=1e-3, atol=0., ignore=None, generate_baselin
     if ignore is None:
         ignore = []
 
-    return not assert_isclose(result, expected, rtol, atol, ignore)
+    return not assert_allclose(result, expected, rtol, atol, ignore)
 
 
 def is_list_dict(l):
@@ -63,16 +63,16 @@ def is_list_dict(l):
     return isinstance(l, list) and all([isinstance(e, dict) for e in l])
 
 
-def assert_isclose(result, expected, rtol, atol, ignore):
+def assert_allclose(result, expected, rtol, atol, ignore):
     """
     Walk through data and perform check
     """
     for k in set(expected) - set(ignore):
         if is_list_dict(expected[k]):
             for a, b in zip(result[k], expected[k]):
-                assert_isclose(a, b, rtol, atol, ignore)
+                assert_allclose(a, b, rtol, atol, ignore)
         elif isinstance(expected[k], dict):
-            assert_isclose(result[k], expected[k], rtol, atol, ignore)
+            assert_allclose(result[k], expected[k], rtol, atol, ignore)
         elif not approx_equal(result[k], expected[k], rtol, atol):
             e = np.array(expected[k])
             r = np.array(result[k])
