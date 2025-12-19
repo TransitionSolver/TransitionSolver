@@ -12,7 +12,7 @@ from pathlib import Path
 from scipy.interpolate import CubicSpline
 import numpy as np
 
-from TransitionSolver import eigen  # TODO rel import
+import eigen  # TODO rel import
 
 
 THIS = Path(os.path.dirname(os.path.abspath(__file__)))

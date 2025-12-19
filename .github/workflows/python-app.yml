@@ -38,7 +38,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        echo "PYTHONPATH=." >> "$GITHUB_ENV"  # fix for flat directory structure
+        echo "PYTHONPATH=.:src/TransitionSolver" >> "$GITHUB_ENV"  # fix for flat directory structure
         pytest
     - name: Try CLI
       run: |
