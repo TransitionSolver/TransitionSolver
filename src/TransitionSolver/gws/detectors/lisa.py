@@ -20,12 +20,13 @@ THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 class LISA(Detector):
     """
     Based on data and equations in 10.1088/1475-7516/2019/11/017
-    
+
     Reconstructing the spectral shape of a stochastic gravitational wave background with LISA
     e-Print: 1906.09244 [astro-ph.CO]
     DOI: 10.1088/1475-7516/2019/11/017
     Published in: JCAP 11 (2019), 017
     """
+
     def __call__(self, f):
 
         L = 2.5e9

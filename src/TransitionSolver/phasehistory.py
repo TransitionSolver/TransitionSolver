@@ -4,7 +4,6 @@ Run PhaseTracer
 """
 
 import json
-from pathlib import Path
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -22,7 +21,7 @@ def _make_report(paths, phase_structure, analysis_metrics):
     report['transitions'] = [t.getReport(None)
                              for t in phase_structure.transitions]
     report['paths'] = [p.report() for p in paths]
-    report['valid'] = any([p.bValid for p in paths])
+    report['valid'] = any(p.bValid for p in paths)
     report['analysisTime'] = analysis_metrics.analysisElapsedTime
     return report
 
@@ -36,9 +35,9 @@ def find_phase_history(potential, phase_structure=None, vw=0.9, phase_structure_
     @returns Report phase history from PhaseTracer output
     """
     if phase_structure_file is not None:
-        with open(phase_structure_file) as f:
+        with open(phase_structure_file, encoding="utf8") as f:
             phase_structure = read_phase_tracer(f.read())
-            
+
     if not phase_structure.transitionPaths:
         raise RuntimeError(
             'No valid transition path to the current phase of the Universe')
@@ -58,7 +57,7 @@ def trace_dof(potential, phase_structure=None, phase_structure_file=None):
     @returns DOF as a function of temperature for each phase
     """
     if phase_structure_file is not None:
-        with open(phase_structure_file) as f:
+        with open(phase_structure_file, encoding="utf8") as f:
             phase_structure = read_phase_tracer(f.read())
 
     data = {}
@@ -80,7 +79,7 @@ def load_transition(transition_id, phase_structure_file):
 
     @returns Transition from data on disk
     """
-    with open(phase_structure_file) as f:
+    with open(phase_structure_file, encoding="utf8") as f:
         phase_structure = json.load(f)
 
     for tr in phase_structure['transitions']:

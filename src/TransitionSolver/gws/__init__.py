@@ -1,4 +1,6 @@
 """
+Gravitational wave calculations
+===============================
 """
 
 from .giese_kappa import kappa_nu_model
@@ -8,6 +10,3 @@ from .detectors.detector import Detector
 from .analyser import GWAnalyser
 from .hydrodynamics import HydroVars
 from . import hydrodynamics
-
-
-

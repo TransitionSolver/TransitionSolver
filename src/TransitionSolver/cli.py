@@ -23,6 +23,7 @@ DETECTORS = {"LISA": gws.lisa, "LISA_SNR_10": gws.lisa_thrane_2019_snr_10}
 PTAS = {"NANOGrav": gws.nanograv_15, "PPTA": gws.ppta_dr3, "EPTA": gws.epta_dr2_full}
 LEVELS = {k.lower(): getattr(logging, k) for k in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]}
 
+
 @click.command()
 @click.option('--model', help='Model name', required=True, type=str)
 @click.option('--model-header', help='Model header-file', required=False, default=None, type=click.Path(exists=True))
@@ -46,7 +47,7 @@ def cli(model, model_header, model_lib, model_namespace, point_file_name, vw, de
     """
 
     logging.getLogger().setLevel(LEVELS[level])
-    
+
     if model_header is None:
         model_header = f"{model}.hpp"
 

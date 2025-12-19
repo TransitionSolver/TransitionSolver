@@ -66,6 +66,7 @@ class PTAFromDisk:
 
 # NANOGrav 15yr
 
+
 f = np.arange(1, 9) / (16.03 * SECONDS_PER_YEAR)
 nanograv_15 = PTAFromDisk(
     f, THIS / "logOmegah2_NANO15_0708.csv", label="NANOGrav 15 yr")

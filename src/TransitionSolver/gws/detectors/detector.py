@@ -26,7 +26,7 @@ class Detector(ABC):
         :param f: Frequencies in Hz
         :return: Sensitivity at those frequencies ($\Omega h^2$)
         """
-        
+
     def SNR(self, signal, a=1e-11, b=1e3):
         """
         @returns Signal to noise ratio for detector and given signal

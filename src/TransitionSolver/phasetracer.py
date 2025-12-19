@@ -28,12 +28,19 @@ PT_UNIT_TEST = PT_HOME / "bin" / "unit_tests"
 
 
 def rpath(name):
+    """
+    @returns Compiler arugment to add an rpath
+    """
     return f"-Wl,-rpath={name}"
 
 
 def build_phase_tracer(model, model_header=None, model_lib=None, model_namespace="EffectivePotential", force=False):
-
-    exe_name =PT_HOME / model
+    """
+    Build PhaseTracer model for use in TransitionSolver.
+    
+    @returns Path to built executable
+    """
+    exe_name = PT_HOME / model
 
     if os.path.exists(exe_name) and not force:
         return exe_name
@@ -61,7 +68,7 @@ def build_phase_tracer(model, model_header=None, model_lib=None, model_namespace
 
     cmd.append(f"-DMODEL_NAME_WITH_NAMEPSPACE={model}")
 
-    compile_ = subprocess.run(cmd, capture_output=True, text=True)
+    compile_ = subprocess.run(cmd, capture_output=True, text=True, check=False)
 
     if compile_.returncode != 0:
         raise RuntimeError(compile_.stderr)
@@ -72,18 +79,26 @@ def build_phase_tracer(model, model_header=None, model_lib=None, model_namespace
 def run_phase_tracer(exe_name, point_file_name) -> PhaseStructure:
     """
     Run PhaseTracer and read serialzied data
+    
+    @returns PhaseTracer serialied output as string
     """
-    run = subprocess.run([exe_name, point_file_name], capture_output=True, text=True)
+    run = subprocess.run([exe_name, point_file_name], capture_output=True, text=True, check=False)
     if run.returncode != 0:
         raise RuntimeError(run.stderr)
     return run.stdout
 
 
 def read_path(data):
+    """  
+    @returns Transition path from lines of data
+    """
     return [int(el[1:]) - 1 if el.startswith('-') else int(el) for el in data[0].split()]
 
 
 def read_arr(data):
+    """  
+    @returns Array from lines of data
+    """
     return np.squeeze(np.array([np.fromstring(d, sep=' ') for d in data]))
 
 
@@ -110,7 +125,7 @@ def read_phase_tracer(data) -> PhaseStructure:
 
         try:
             label, key = metadata.split()
-        except:
+        except ValueError:
             label = metadata
 
         if label == "phase":
