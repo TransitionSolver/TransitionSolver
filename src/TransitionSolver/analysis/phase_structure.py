@@ -213,27 +213,6 @@ class Transition:
 
         return report
 
-class PTTransition(Transition):
-    def __init__(self, transition):
-        super().__init__(np.zeros(100))
-        self.Tc = transition.TC
-        self.key = transition.key
-        self.ID = transition.id
-        self.subcritical = transition.subcritical
-        self.false_phase = transition.false_phase.key
-        self.true_phase = transition.true_phase.key
-
-
-class PTPhase:
-    def __init__(self, phase):
-        self.phase = phase
-        self.key = phase.key
-        self.T = phase.T
-        self.V = phase.V
-        self.phi = phase.X
-
-    def findPhaseAtT(self, T: float, potential) -> np.ndarray:
-        return self.phase.FindPhaseAtT(T)
 
 class PhaseStructure:
 
