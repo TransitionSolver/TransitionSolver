@@ -52,3 +52,15 @@ jobs:
         sed -i '/^\s*"analysisTime"/d' tests/RSS_BP35ab2907aa2a62d9b479c42c639658bf8ef5b197f/phase_history.json script_output/phase_history.json
         numdiff tests/RSS_BP35ab2907aa2a62d9b479c42c639658bf8ef5b197f/phase_history.json script_output/phase_history.json
         numdiff tests/RSS_BP35ab2907aa2a62d9b479c42c639658bf8ef5b197f/phase_structure.dat script_output/phase_structure.dat
+    - name: Test more complicated phase history script output
+      run: |
+        mkdir -p RSS_new_BP4_output
+        mkdir -p config
+        echo '{ "PhaseTracer_directory": "/home/runner/.PhaseTracer/" }' > config/config_user.json
+        python3 -m examples.command_line_interface rss 1 RSS_new_BP4_output input/RSS/RSS_new_BP4.txt
+        sudo apt install numdiff
+        sed -i '/^\s*"analysisTime"/d' tests/RSS_BP4_23_12_2025/phase_history.json RSS_new_BP4_output/phase_history.json
+        numdiff tests/RSS_BP4_23_12_2025/phase_history.json RSS_new_BP4_output/phase_history.json
+        numdiff tests/RSS_BP4_23_12_2025/phase_structure.dat RSS_new_BP4_output/phase_structure.dat
+	
+	
