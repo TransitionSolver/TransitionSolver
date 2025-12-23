@@ -59,6 +59,6 @@ jobs:
         echo '{ "PhaseTracer_directory": "/home/runner/.PhaseTracer/" }' > config/config_user.json
         python3 -m examples.command_line_interface rss 1 RSS_new_BP4_output input/RSS/RSS_new_BP4.txt
         sudo apt install numdiff
-        sed -i '/^\s*"analysisTime"/d' tests/RSS_BP4_23_12_2025/phase_history.json RSS_new_BP4_output/phase_history.json
-        numdiff tests/RSS_BP4_23_12_2025/phase_history.json RSS_new_BP4_output/phase_history.json
-        numdiff tests/RSS_BP4_23_12_2025/phase_structure.dat RSS_new_BP4_output/phase_structure.dat
+        sed -i '/^\s*"analysisTime"/d' tests/RSS_new_BP4_23_12_2025/phase_history.json RSS_new_BP4_output/phase_history.json
+        numdiff tests/RSS_new_BP4_23_12_2025/phase_history.json RSS_new_BP4_output/phase_history.json
+        numdiff tests/RSS_new_BP4_23_12_2025/phase_structure.dat RSS_new_BP4_output/phase_structure.dat
