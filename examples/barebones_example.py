@@ -1,18 +1,18 @@
 from __future__ import annotations
-from analysis.transition_analysis import TransitionAnalyser
-from models.toy_model import ToyModel
-from models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz
-from analysis.phase_structure import PhaseStructure
-from analysis.phase_history_analysis import PhaseHistoryAnalyser, AnalysisMetrics
-from analysis.transition_graph import Path
-from analysis import phase_structure
+from src.TransitionSolver.analysis.transition_analysis import TransitionAnalyser
+from src.TransitionSolver.models.toy_model import ToyModel
+from src.TransitionSolver.models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz
+from src.TransitionSolver.analysis.phase_structure import PhaseStructure
+from src.TransitionSolver.analysis.phase_history_analysis import PhaseHistoryAnalyser, AnalysisMetrics
+from src.TransitionSolver.analysis.transition_graph import Path
+from src.TransitionSolver.analysis import phase_structure
 import numpy as np
 import subprocess
 import json
 import pathlib
 import traceback
 import sys
-from util.events import notifyHandler
+from src.TransitionSolver.util.events import notifyHandler
 
 
 def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: PhaseStructure, analysisMetrics:

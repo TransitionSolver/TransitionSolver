@@ -24,14 +24,14 @@ import inspect
 # For exiting the program early if necessary.
 import sys
 
-from models.toy_model import ToyModel
-from analysis.phase_structure import PhaseStructure
-from analysis.phase_history_analysis import PhaseHistoryAnalyser, AnalysisMetrics
-from analysis.transition_graph import Path
-from analysis.transition_analysis import TransitionAnalyser, ActionSampler
-from analysis import phase_structure
-from models.analysable_potential import AnalysablePotential
-from util.events import notifyHandler
+from src.TransitionSolver.models.toy_model import ToyModel
+from src.TransitionSolver.analysis.phase_structure import PhaseStructure
+from src.TransitionSolver.analysis.phase_history_analysis import PhaseHistoryAnalyser, AnalysisMetrics
+from src.TransitionSolver.analysis.transition_graph import Path
+from src.TransitionSolver.analysis.transition_analysis import TransitionAnalyser, ActionSampler
+from src.TransitionSolver.analysis import phase_structure
+from src.TransitionSolver.models.analysable_potential import AnalysablePotential
+from src.TransitionSolver.util.events import notifyHandler
 
 
 class PipelineSettings:
