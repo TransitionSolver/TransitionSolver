@@ -10,6 +10,7 @@ import time
 import json
 import traceback
 import sys
+import warnings
 from typing import Optional, Union
 from contextlib import redirect_stdout
 
@@ -857,7 +858,7 @@ class TransitionAnalyser:
                     self.properties.Hn = Hn
                     self.properties.betaTn = Hn*Tn*(SonTprev - SonTnew)/dT
                     # Store the reheating temperature from this point, using conservation of energy.
-                    Tn_reh = self.calculateReheatTemperature(Tn)
+                    Tn_reh = self.reheat_temperature(Tn)
                     self.properties.Treh_n = Tn_reh
 
                 # Unit nucleation (excluding phantom bubbles).
@@ -873,7 +874,7 @@ class TransitionAnalyser:
                     self.properties.Hnbar = Hnbar
                     self.properties.betaTnbar = Hnbar*Tnbar*(SonTprev - SonTnew)/dT
                     # Store the reheating temperature from this point, using conservation of energy.
-                    Tnbar_reh = self.calculateReheatTemperature(Tnbar)
+                    Tnbar_reh = self.reheat_temperature(Tnbar)
                     self.properties.Treh_nbar = Tnbar_reh
 
                 # Percolation.
@@ -893,7 +894,7 @@ class TransitionAnalyser:
                     self.properties.decreasingVphysAtTp = bool(physicalVolume[-1] < 0)
 
                     # Store the reheating temperature from this point, using conservation of energy.
-                    Tp_reh = self.calculateReheatTemperature(Tp)
+                    Tp_reh = self.reheat_temperature(Tp)
                     self.properties.Treh_p = Tp_reh
 
                 # Pf = 1/e.
@@ -908,7 +909,7 @@ class TransitionAnalyser:
                     self.properties.betaTe = He*Te*(SonTprev - SonTnew)/dT
 
                     # Store the reheating temperature from this point, using conservation of energy.
-                    Te_reh = self.calculateReheatTemperature(Te)
+                    Te_reh = self.reheat_temperature(Te)
                     self.properties.Treh_e = Te_reh
 
                 # Completion.
@@ -931,7 +932,7 @@ class TransitionAnalyser:
                     self.properties.decreasingVphysAtTf = bool(physicalVolume[-1] < 0)
 
                     # Store the reheating temperature from this point, using conservation of energy.
-                    Tf_reh = self.calculateReheatTemperature(Tf)
+                    Tf_reh = self.reheat_temperature(Tf)
                     self.properties.Treh_f = Tf_reh
 
                     if not self.bAnalyseTransitionPastCompletion:
@@ -1960,52 +1961,28 @@ class TransitionAnalyser:
         return hydrodynamics.make_hydro_vars(self.fromPhase, self.toPhase, self.potential, T,
             self.groud_state_energy_density)
 
-    def calculateReheatTemperature(self, T: float) -> float:
+    def reheat_temperature(self, T: float) -> float:
         Tsep = min(0.001*(self.properties.Tc - self.Tmin), 0.5*(T - self.Tmin))
-        # TODO: [2023] surely this should be handled earlier.
-        #if self.Tmin == 0:
-        #    self.Tmin = self.potential.minimum_temperature #0.001 #2*Tsep
-        # Can't use supplied version of energy density calculation because T is changing. Default is from phase.
         rhof = hydrodynamics.energy_density_from_phase(self.fromPhase, self.toPhase, self.potential, T)
         def objective(t):
             rhot = hydrodynamics.energy_density_to_phase(self.fromPhase, self.toPhase, self.potential, t)
             # Conservation of energy => rhof = rhof*Pf + rhot*Pt which is equivalent to rhof = rhot (evaluated at
             # different temperatures, T and Tt (Treh), respectively).
             return rhot - rhof
-
-        # If the energy density of the true vacuum is never larger than the current energy density of the false vacuum even
-        # at Tc, then reheating goes beyond Tc.
-        if objective(self.properties.Tc) < 0:
+              
+        if objective(self.properties.Tc) >= 0:
+            max_t = self.properties.Tc
+        else:
+            # If the energy density of the true vacuum is never larger than the current energy density of the false vacuum even
+            # at Tc, then reheating goes beyond Tc
+            max_t = self.toPhase.T[-1] - 2. * Tsep
             # Also, check the energy density of the true vacuum when it first appears. If a solution still doesn't exist
-            # here, then just report -1.
-            if self.toPhase.T[-1]-2*Tsep > self.properties.Tc and objective(self.toPhase.T[-1]-2*Tsep) < 0:
-                return -1
-            else:
-                #return scipy.optimize.toms748(objective, T, self.toPhase.T[-1]-2*Tsep)
-                # TODO: something broke when introducing Boltzmann suppression, can no longer use toms748 due to:
-                #  zeros.py, line 959, in _compute_divided_differences
-                #    row = np.diff(row)[:] / denom
-                #  ValueError: operands could not be broadcast together with shapes (3,0) (2,)
-                #  So, bisect instead...
-                # We know that objective is negative at T and positive at sufficiently high temperature.
-                # Pick the midpoint.
-                low = T
-                high = self.toPhase.T[-1]-2*Tsep
-                mid = 0.5*(low + high)
-                while (high - low) > 0.0001*self.potential.get_temperature_scale():
-       
-                    result = objective(mid)
-    
-                    if result > 0:
-                        high = mid
-                    elif result < 0:
-                        low = mid
-                    else:
-                        break
-                    mid = 0.5*(low + high)
-                return mid
+            # here, return None
+            if max_t > self.properties.Tc and objective(max_t) < 0:
+                warnings.warn("Cannot find reheat temperature")
+                return None
 
-        return scipy.optimize.toms748(objective, T, self.properties.Tc)
+        return scipy.optimize.toms748(objective, T, max_t)
 
     def transitionCouldComplete(self, maxAction: float, Pf: list[float]) -> bool:
         if self.actionSampler.T[-1] <= self.potential.minimum_temperature:
