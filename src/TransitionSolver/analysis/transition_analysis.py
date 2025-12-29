@@ -965,60 +965,7 @@ class TransitionAnalyser:
         meanBubbleSeparation = (bubbleNumberDensity[indexTp])**(-1/3)
 
         if self.bReportAnalysis:
-            Tn = self.properties.Tn
-            Tp = self.properties.Tp
-            Te = self.properties.Te
-            Tf = self.properties.Tf
-            Ts1 = self.properties.TVphysDecr_high
-            Ts2 = self.properties.TVphysDecr_low
-            Tp_reh = self.properties.Treh_p
-            Te_reh = self.properties.Treh_e
-            Tf_reh = self.properties.Treh_f
-
-            print('-------------------------------------------------------------------------------------------')
-
-            print('N(T_0): ', numBubblesIntegral[-1])
-            print('T_0: ', self.actionSampler.subT[-1])
-            print('Tc: ', self.properties.Tc)
-            if Tn > 0:
-                print(f'Unit nucleation at T = {Tn}, where S = {self.properties.SonTn}')
-            else:
-                print('No unit nucleation.')
-            if Tp > 0:
-                print(f'Percolation at T = {Tp}, where S = {self.properties.SonTp}')
-            else:
-                print('No percolation. Terminated analysis at T =', self.actionSampler.subT[-1], 'where Pf =', Pf[-1])
-            if Te > 0:
-                print(f'Vext = 1 at T = {Te}, where S = {self.properties.SonTe}')
-            if Tf > 0:
-                print(f'Completion at T = {Tf}, where S = {self.properties.SonTf}')
-            else:
-                if Tp > 0:
-                    print('No completion. Terminated analysis at T =', self.actionSampler.subT[-1], 'where Pf =',
-                        Pf[-1])
-                else:
-                    print('No completion.')
-            if Ts1 > 0:
-                if Ts2 > 0:
-                    print('Physical volume of the false vacuum decreases between', Ts2, 'and', Ts1)
-                else:
-                    print('Physical volume of the false vacuum decreases below', Ts1)
-            if Tn > 0:
-                print(f'Reheating from unit nucleation: Treh(Tn): {Tn} -> {Tn_reh}')
-            if Tp > 0:
-                print(f'Reheating from percolation: Treh(Tp): {Tp} -> {Tp_reh}')
-            if Te > 0:
-                print(f'Reheating from Vext=1: Treh(Te): {Te} -> {Te_reh}')
-            if Tf > 0:
-                print(f'Reheating from completion: Treh(Tf): {Tf} -> {Tf_reh}')
-            if TAtSonTmin > 0:
-                print('Action minimised at T =', TAtSonTmin)
-            if self.properties.TGammaMax > 0:
-                print('Nucleation rate maximised at T =', self.properties.TGammaMax)
-
-            print('Mean bubble separation:', meanBubbleSeparation)
-
-            print('-------------------------------------------------------------------------------------------')
+            print(self.properties)
 
         if self.bDebug:
             print('Total action evaluations:', totalActionEvaluations)
