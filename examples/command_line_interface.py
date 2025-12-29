@@ -8,7 +8,7 @@ from TransitionSolver.models.toy_model import ToyModel
 from TransitionSolver.models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz
 from TransitionSolver.models.real_scalar_singlet_model_ht import RealScalarSingletModel_HT
 from TransitionSolver.analysis.phase_structure import PhaseStructure
-from TransitionSolver.analysis.phase_history_analysis import AnalysisMetrics, PhaseHistoryAnalyser
+from TransitionSolver.analysis.phase_history_analysis import PhaseHistoryAnalyser
 from TransitionSolver.analysis.transition_graph import Path
 from TransitionSolver.analysis import phase_structure
 from TransitionSolver.gws import GWAnalyser, lisa
@@ -23,8 +23,7 @@ import sys
 from TransitionSolver.util.events import notifyHandler
 
 
-def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: PhaseStructure, analysisMetrics:
-        AnalysisMetrics) -> None:
+def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: PhaseStructure) -> None:
     report = {}
 
     if len(phaseStructure.transitions) > 0:
@@ -32,7 +31,7 @@ def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: Ph
     if len(paths) > 0:
         report['paths'] = [p.report() for p in paths]
     report['valid'] = any([p.is_valid for p in paths])
-    report['analysisTime'] = analysisMetrics.analysisElapsedTime
+    #report['analysisTime'] = analysisMetrics.analysisElapsedTime
 
     print('Writing report...')
 
@@ -128,11 +127,11 @@ def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str,
     origin = np.array([0, 0])
     vev = potential.approxZeroTMin()[0]
     # Analyse the phase history.
-    paths, _, analysisMetrics = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=0.96)
+    paths, _, _ = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=0.96)
 
     # Write the phase history report. Again, this will be handled within PhaseHistoryAnalysis in a future version of the
     # code.
-    report = writePhaseHistoryReport(outputFolder + '/phase_history.json', paths, phaseStructure, analysisMetrics)
+    report = writePhaseHistoryReport(outputFolder + '/phase_history.json', paths, phaseStructure)
     
     if GWs == 0:
         return
