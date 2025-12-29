@@ -3,8 +3,7 @@ Analyse phase structure
 =======================
 """
 
-import traceback
-from typing import Optional, Union, List
+from typing import Optional, Union
 
 import numpy as np
 from scipy import optimize
