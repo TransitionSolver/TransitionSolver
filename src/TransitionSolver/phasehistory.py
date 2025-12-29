@@ -18,8 +18,7 @@ def _make_report(paths, phase_structure, analysis_metrics):
     @returns Report phase history from TransitionSolver objects
     """
     report = {}
-    report['transitions'] = [t.report(None)
-                             for t in phase_structure.transitions]
+    report['transitions'] = [t.report() for t in phase_structure.transitions]
     report['paths'] = [p.report() for p in paths]
     report['valid'] = any(p.is_valid for p in paths)
     report['analysisTime'] = analysis_metrics.analysisElapsedTime

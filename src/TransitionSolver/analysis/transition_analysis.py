@@ -70,36 +70,6 @@ class ActionSample:
         return str(self)
 
 
-
-
-# TODO: either move this all to Transition, or move all analysis quantities from Transition to here.
-class AnalysedTransition:
-    def __init__(self):
-        self.SonTn = -1
-        self.SonTnbar = -1
-        self.SonTp = -1
-        self.SonTe = -1
-        self.SonTf = -1
-
-        self.betaTn = -1
-        self.betaTnbar = -1
-        self.betaTp = -1
-        self.betaTe = -1
-        self.betaTf = -1
-        self.betaV = -1
-
-        self.Hn = -1
-        self.Hnbar = -1
-        self.Hp = -1
-        self.He = -1
-        self.Hf = -1
-
-        self.T = []
-        self.SonT = []
-        self.error = ''
-        self.actionCurveFile = ''
-
-
 class ActionSampler:
     transitionAnalyser: 'TransitionAnalyser'
 
@@ -510,7 +480,7 @@ class ActionCurveShapeAnalysisData:
                 self.actionSamples.append(sample)
 
 
-class TransitionAnalyser():
+class TransitionAnalyser:
     bDebug: bool = False
     bPlot: bool = False
     # Optimisation: check whether completion can occur before reaching T=0. If it cannot, stop the transition analysis.
@@ -541,10 +511,10 @@ class TransitionAnalyser():
     bComputeSubsampledThermalParams: bool
 
     # TODO: make vw a function of this class that can be overriden. Currently it is obtained from the transition.
-    def __init__(self, potential: AnalysablePotential, transition: Transition, fromPhase: Phase, toPhase: Phase,
+    def __init__(self, potential: AnalysablePotential, properties, fromPhase: Phase, toPhase: Phase,
             groud_state_energy_density: float, Tmin: float = 0., Tmax: float = 0.):
         self.potential = potential
-        self.transition = transition
+        self.properties = properties
         self.fromPhase = fromPhase
         self.toPhase = toPhase
         self.groud_state_energy_density = groud_state_energy_density
@@ -559,7 +529,7 @@ class TransitionAnalyser():
 
         if self.Tmax == 0:
             # The transition is not evaluated subcritically.
-            self.Tmax = self.transition.Tc
+            self.Tmax = self.properties.Tc
 
         self.Tstep = max(0.0005*min(self.fromPhase.T[-1], self.toPhase.T[-1]), 0.0001*self.potential.get_temperature_scale())
 
@@ -578,7 +548,7 @@ class TransitionAnalyser():
 
             return vw
 
-        return self.transition.vw
+        return self.properties.vw
 
     # TODO: need to handle subcritical transitions better. Shouldn't use integration if the max sampled action is well
     #  below the nucleation threshold. Should treat the action as constant or linearise it and estimate transition
@@ -593,7 +563,7 @@ class TransitionAnalyser():
         toleranceSonT = 3.0
 
         precomputedT, precomputedSonT, bFinishedAnalysis = loadPrecomputedActionData(precomputedActionCurveFileName,
-            self.transition, maxSonTThreshold)
+            self.properties, maxSonTThreshold)
 
         if bFinishedAnalysis:
             return
@@ -603,8 +573,8 @@ class TransitionAnalyser():
 
         logging.debug(f'{self.Tmin=}')
         logging.debug(f'{self.Tmax=}')
-        logging.debug(f'{self.transition.Tc=}')
-        logging.debug(f'{self.transition.vw=}')
+        logging.debug(f'{self.properties.Tc=}')
+        logging.debug(f'{self.properties.vw=}')
 
         if not precomputedT:
             # TODO: we don't use allSamples anymore.
@@ -616,10 +586,10 @@ class TransitionAnalyser():
                     return
 
             if sampleData is None:
-                self.transition.bFoundNucleationWindow = False
+                self.properties.bFoundNucleationWindow = False
                 return
 
-            self.transition.bFoundNucleationWindow = True
+            self.properties.bFoundNucleationWindow = True
 
             # Remove any lowerSonTData points that are very close together. We don't need to sample the S/T curve extremely
             # densely (a spacing of 1 is more than reasonable), and doing so causes problems with the subsequent steps along
@@ -640,7 +610,7 @@ class TransitionAnalyser():
 
                 self.actionSampler.lowerSonTData = [self.actionSampler.lowerSonTData[i] for i in keepIndices]
         else:
-            self.transition.bFoundNucleationWindow = True
+            self.properties.bFoundNucleationWindow = True
 
             sampleData = ActionSample(-1, -1)
             self.actionSampler.getNextSample(sampleData, [], 0., self.Tmin)
@@ -760,8 +730,8 @@ class TransitionAnalyser():
                 # TODO: do some form of interpolation.
                 TAtSonTmin = self.actionSampler.T[simIndex]
                 SonTmin = self.actionSampler.SonT[simIndex]
-                self.transition.Tmin = TAtSonTmin
-                self.transition.SonTmin = SonTmin
+                self.properties.Tmin = TAtSonTmin
+                self.properties.SonTmin = SonTmin
 
             numSamples = self.actionSampler.getNumSubsamples(minSonTThreshold, maxSonTThreshold)
             T = np.linspace(self.actionSampler.T[simIndex], self.actionSampler.T[simIndex+1], numSamples)
@@ -881,14 +851,14 @@ class TransitionAnalyser():
                     interpFactor = (numBubblesIntegral[-1] - 1) / (numBubblesIntegral[-1] - numBubblesIntegral[-2])
                     Tn = Tprev + interpFactor*(Tnew - Tprev)
                     Hn = H[-2] + interpFactor*(H[-1] - H[-2])
-                    self.transition.analysis.SonTn = SonTprev + (SonTnew - SonTprev) * (numBubblesIntegral[-1] - 1)\
+                    self.properties.SonTn = SonTprev + (SonTnew - SonTprev) * (numBubblesIntegral[-1] - 1)\
                         / (numBubblesIntegral[-1] - numBubblesIntegral[-2])
-                    self.transition.Tn = Tn
-                    self.transition.analysis.Hn = Hn
-                    self.transition.analysis.betaTn = Hn*Tn*(SonTprev - SonTnew)/dT
+                    self.properties.Tn = Tn
+                    self.properties.Hn = Hn
+                    self.properties.betaTn = Hn*Tn*(SonTprev - SonTnew)/dT
                     # Store the reheating temperature from this point, using conservation of energy.
                     Tn_reh = self.calculateReheatTemperature(Tn)
-                    self.transition.Treh_n = Tn_reh
+                    self.properties.Treh_n = Tn_reh
 
                 # Unit nucleation (excluding phantom bubbles).
                 if Tnbar < 0 and numBubblesCorrectedIntegral[-1] >= 1:
@@ -896,15 +866,15 @@ class TransitionAnalyser():
                         numBubblesCorrectedIntegral[-2])
                     Tnbar = Tprev + interpFactor*(Tnew - Tprev)
                     Hnbar = H[-2] + interpFactor*(H[-1] - H[-2])
-                    self.transition.analysis.SonTnbar = SonTprev + (SonTnew - SonTprev)\
+                    self.properties.SonTnbar = SonTprev + (SonTnew - SonTprev)\
                         * (numBubblesCorrectedIntegral[-1] - 1) / (numBubblesCorrectedIntegral[-1]
                         - numBubblesCorrectedIntegral[-2])
-                    self.transition.Tnbar = Tnbar
-                    self.transition.analysis.Hnbar = Hnbar
-                    self.transition.analysis.betaTnbar = Hnbar*Tnbar*(SonTprev - SonTnew)/dT
+                    self.properties.Tnbar = Tnbar
+                    self.properties.Hnbar = Hnbar
+                    self.properties.betaTnbar = Hnbar*Tnbar*(SonTprev - SonTnew)/dT
                     # Store the reheating temperature from this point, using conservation of energy.
                     Tnbar_reh = self.calculateReheatTemperature(Tnbar)
-                    self.transition.Treh_nbar = Tnbar_reh
+                    self.properties.Treh_nbar = Tnbar_reh
 
                 # Percolation.
                 if Tp < 0 and Vext[-1] >= percolationThreshold_Vext:
@@ -913,18 +883,18 @@ class TransitionAnalyser():
                     interpFactor = max(0, (percolationThreshold_Vext - Vext[-2]) / (Vext[-1] - Vext[-2]))
                     Tp = Tprev + interpFactor*(Tnew - Tprev)
                     Hp = H[-2] + interpFactor*(H[-1] - H[-2])
-                    self.transition.analysis.SonTp = SonTprev + interpFactor*(SonTnew - SonTprev)
-                    self.transition.Tp = Tp
-                    self.transition.analysis.Hp = Hp
-                    self.transition.analysis.betaTp = Hp*Tp*(SonTprev - SonTnew)/dT
+                    self.properties.SonTp = SonTprev + interpFactor*(SonTnew - SonTprev)
+                    self.properties.Tp = Tp
+                    self.properties.Hp = Hp
+                    self.properties.betaTp = Hp*Tp*(SonTprev - SonTnew)/dT
 
                     # Also store whether the physical volume of the false vacuum was decreasing at Tp.
                     # Make sure to cast to a bool, because JSON doesn't like encoding the numpy.bool type.
-                    self.transition.decreasingVphysAtTp = bool(physicalVolume[-1] < 0)
+                    self.properties.decreasingVphysAtTp = bool(physicalVolume[-1] < 0)
 
                     # Store the reheating temperature from this point, using conservation of energy.
                     Tp_reh = self.calculateReheatTemperature(Tp)
-                    self.transition.Treh_p = Tp_reh
+                    self.properties.Treh_p = Tp_reh
 
                 # Pf = 1/e.
                 if Te < 0 and Vext[-1] >= 1:
@@ -932,14 +902,14 @@ class TransitionAnalyser():
                     interpFactor = max(0, (1 - Vext[-2]) / (Vext[-1] - Vext[-2]))
                     Te = Tprev + interpFactor*(Tnew - Tprev)
                     He = H[-2] + interpFactor*(H[-1] - H[-2])
-                    self.transition.analysis.SonTe = SonTprev + interpFactor*(SonTnew - SonTprev)
-                    self.transition.Te = Te
-                    self.transition.analysis.He = He
-                    self.transition.analysis.betaTe = He*Te*(SonTprev - SonTnew)/dT
+                    self.properties.SonTe = SonTprev + interpFactor*(SonTnew - SonTprev)
+                    self.properties.Te = Te
+                    self.properties.He = He
+                    self.properties.betaTe = He*Te*(SonTprev - SonTnew)/dT
 
                     # Store the reheating temperature from this point, using conservation of energy.
                     Te_reh = self.calculateReheatTemperature(Te)
-                    self.transition.Treh_e = Te_reh
+                    self.properties.Treh_e = Te_reh
 
                 # Completion.
                 if Tf < 0 and Pf[-1] <= completionThreshold:
@@ -951,18 +921,18 @@ class TransitionAnalyser():
                             / (Pf[-1] - Pf[-2])
                     Tf = Tprev + interpFactor*(Tnew - Tprev)
                     Hf = H[-2] + interpFactor*(H[-1] - H[-2])
-                    self.transition.analysis.SonTf = SonTprev + interpFactor*(SonTnew - SonTprev)
-                    self.transition.Tf = Tf
-                    self.transition.analysis.Hf = Hf
-                    self.transition.analysis.betaTf = Hf*Tf*(SonTprev - SonTnew)/dT
+                    self.properties.SonTf = SonTprev + interpFactor*(SonTnew - SonTprev)
+                    self.properties.Tf = Tf
+                    self.properties.Hf = Hf
+                    self.properties.betaTf = Hf*Tf*(SonTprev - SonTnew)/dT
 
                     # Also store whether the physical volume of the false vacuum was decreasing at Tf.
                     # Make sure to cast to a bool, because JSON doesn't like encoding the numpy.bool type.
-                    self.transition.decreasingVphysAtTf = bool(physicalVolume[-1] < 0)
+                    self.properties.decreasingVphysAtTf = bool(physicalVolume[-1] < 0)
 
                     # Store the reheating temperature from this point, using conservation of energy.
                     Tf_reh = self.calculateReheatTemperature(Tf)
-                    self.transition.Treh_f = Tf_reh
+                    self.properties.Treh_f = Tf_reh
 
                     if not self.bAnalyseTransitionPastCompletion:
                         break
@@ -974,7 +944,7 @@ class TransitionAnalyser():
                     else:
                         interpFactor = 1 - physicalVolume[-1] / (physicalVolume[-1] - physicalVolume[-2])
                     Ts1 = Tprev + interpFactor*(Tnew - Tprev)
-                    self.transition.TVphysDecr_high = Ts1
+                    self.properties.TVphysDecr_high = Ts1
 
                 # Physical volume of the false vacuum is increasing *again*.
                 if Ts1 > 0 and Ts2 < 0 and physicalVolume[-1] > 0:
@@ -983,7 +953,7 @@ class TransitionAnalyser():
                     else:
                         interpFactor = 1 - physicalVolume[-1] / (physicalVolume[-1] - physicalVolume[-2])
                     Ts2 = Tprev + interpFactor*(Tnew - Tprev)
-                    self.transition.TVphysDecr_low = Ts2
+                    self.properties.TVphysDecr_low = Ts2
 
             # ==========================================================================================================
             # End subsampling.
@@ -1014,10 +984,10 @@ class TransitionAnalyser():
                     break
 
                 if precomputedT:
-                    self.transition.analysis.actionCurveFile = precomputedActionCurveFileName
-                self.transition.analysis.T = self.actionSampler.T
-                self.transition.analysis.SonT = self.actionSampler.SonT
-                self.transition.analysis.error = f'Failed to get next sample at T={sampleData.T}'
+                    self.properties.actionCurveFile = precomputedActionCurveFileName
+                self.properties.T = self.actionSampler.T
+                self.properties.SonT = self.actionSampler.SonT
+                self.properties.error = f'Failed to get next sample at T={sampleData.T}'
                 return
 
         # ==============================================================================================================
@@ -1029,9 +999,9 @@ class TransitionAnalyser():
         # Find the maximum nucleation rate to find TGammaMax. Only do so if there is a minimum in the action.
         if TAtSonTmin > 0:
             gammaMaxIndex = np.argmax(Gamma)
-            self.transition.TGammaMax = self.actionSampler.subT[gammaMaxIndex]
-            self.transition.SonTGammaMax = self.actionSampler.subSonT[gammaMaxIndex]
-            self.transition.GammaMax = Gamma[gammaMaxIndex]
+            self.properties.TGammaMax = self.actionSampler.subT[gammaMaxIndex]
+            self.properties.SonTGammaMax = self.actionSampler.subSonT[gammaMaxIndex]
+            self.properties.GammaMax = Gamma[gammaMaxIndex]
             Tlow = self.actionSampler.subT[gammaMaxIndex+1]
             #Tmid = self.actionSampler.subT[gammaMaxIndex]
             Thigh = self.actionSampler.subT[gammaMaxIndex-1]
@@ -1042,38 +1012,38 @@ class TransitionAnalyser():
             d2SdT2 = (Shigh - 2*Smid + Slow) / (0.5*(Thigh - Tlow))**2
             logger.debug('Calculating betaV, d2SdT2 = {}', d2SdT2)
             if d2SdT2 > 0:
-                self.transition.analysis.betaV = H[gammaMaxIndex]*self.actionSampler.subT[gammaMaxIndex]*np.sqrt(d2SdT2)
+                self.properties.betaV = H[gammaMaxIndex]*self.actionSampler.subT[gammaMaxIndex]*np.sqrt(d2SdT2)
 
         meanBubbleSeparation = (bubbleNumberDensity[indexTp])**(-1/3)
 
         if self.bReportAnalysis:
-            Tn = self.transition.Tn
-            Tp = self.transition.Tp
-            Te = self.transition.Te
-            Tf = self.transition.Tf
-            Ts1 = self.transition.TVphysDecr_high
-            Ts2 = self.transition.TVphysDecr_low
-            Tp_reh = self.transition.Treh_p
-            Te_reh = self.transition.Treh_e
-            Tf_reh = self.transition.Treh_f
+            Tn = self.properties.Tn
+            Tp = self.properties.Tp
+            Te = self.properties.Te
+            Tf = self.properties.Tf
+            Ts1 = self.properties.TVphysDecr_high
+            Ts2 = self.properties.TVphysDecr_low
+            Tp_reh = self.properties.Treh_p
+            Te_reh = self.properties.Treh_e
+            Tf_reh = self.properties.Treh_f
 
             print('-------------------------------------------------------------------------------------------')
 
             print('N(T_0): ', numBubblesIntegral[-1])
             print('T_0: ', self.actionSampler.subT[-1])
-            print('Tc: ', self.transition.Tc)
+            print('Tc: ', self.properties.Tc)
             if Tn > 0:
-                print(f'Unit nucleation at T = {Tn}, where S = {self.transition.analysis.SonTn}')
+                print(f'Unit nucleation at T = {Tn}, where S = {self.properties.SonTn}')
             else:
                 print('No unit nucleation.')
             if Tp > 0:
-                print(f'Percolation at T = {Tp}, where S = {self.transition.analysis.SonTp}')
+                print(f'Percolation at T = {Tp}, where S = {self.properties.SonTp}')
             else:
                 print('No percolation. Terminated analysis at T =', self.actionSampler.subT[-1], 'where Pf =', Pf[-1])
             if Te > 0:
-                print(f'Vext = 1 at T = {Te}, where S = {self.transition.analysis.SonTe}')
+                print(f'Vext = 1 at T = {Te}, where S = {self.properties.SonTe}')
             if Tf > 0:
-                print(f'Completion at T = {Tf}, where S = {self.transition.analysis.SonTf}')
+                print(f'Completion at T = {Tf}, where S = {self.properties.SonTf}')
             else:
                 if Tp > 0:
                     print('No completion. Terminated analysis at T =', self.actionSampler.subT[-1], 'where Pf =',
@@ -1095,8 +1065,8 @@ class TransitionAnalyser():
                 print(f'Reheating from completion: Treh(Tf): {Tf} -> {Tf_reh}')
             if TAtSonTmin > 0:
                 print('Action minimised at T =', TAtSonTmin)
-            if self.transition.TGammaMax > 0:
-                print('Nucleation rate maximised at T =', self.transition.TGammaMax)
+            if self.properties.TGammaMax > 0:
+                print('Nucleation rate maximised at T =', self.properties.TGammaMax)
 
             print('Mean bubble separation:', meanBubbleSeparation)
 
@@ -1187,9 +1157,9 @@ class TransitionAnalyser():
             #saveFolder = 'C:/Work/Monash/PhD/Documents/Subtleties of supercooled cosmological first-order phase transitions/images/'
             #plt.savefig(saveFolder + 'Decreasing physical volume.png', bbox_inches='tight', pad_inches=0.1)
 
-        if self.transition.Tp > 0:
+        if self.properties.Tp > 0:
             #transitionStrength, _, _ = calculateTransitionStrength(self.potential, self.fromPhase, self.toPhase,
-            #    self.transition.Tp)
+            #    self.properties.Tp)
             # TODO: do this elsewhere, maybe a thermal params file.
             hydroVars = hydrodynamics.make_hydro_vars(self.fromPhase, self.toPhase, self.potential, Tp)  # TODO why not pass vacuum energy
             thetaf = (hydroVars.energyDensityFalse - hydroVars.pressureFalse/hydroVars.soundSpeedSqTrue) / 4
@@ -1200,9 +1170,9 @@ class TransitionAnalyser():
             #    indexTn, transition.Tc, meanBubbleSeparation, vw, H, actionSampler.subRhoV, GammaEff, actionSampler.subT,
             #    bPlot=bPlot, bDebug=bDebug)
 
-            self.transition.transitionStrength = transitionStrength
-            self.transition.meanBubbleRadius = meanBubbleRadiusArray[indexTp]
-            self.transition.meanBubbleSeparation = meanBubbleSeparation
+            self.properties.transitionStrength = transitionStrength
+            self.properties.meanBubbleRadius = meanBubbleRadiusArray[indexTp]
+            self.properties.meanBubbleSeparation = meanBubbleSeparation
             #transition.energyWeightedBubbleRadius = energyWeightedBubbleRadius
             #transition.volumeWeightedBubbleRadius = volumeWeightedBubbleRadius
 
@@ -1213,7 +1183,7 @@ class TransitionAnalyser():
         # TODO: don't worry about Teq at the moment (29/08/2023).
         """if Teq == 0 and len(self.actionSampler.T) > 2:
             Teq = self.predictTeq()
-            self.transition.Teq = Teq
+            self.properties.Teq = Teq
             # Don't worry about SonTeq."""
 
         if self.bReportAnalysis:
@@ -1225,14 +1195,14 @@ class TransitionAnalyser():
             print('Hubble radius (Tf):         ', 1/H[indexTf])
 
         if self.bPlot:
-            Tn = self.transition.Tn
-            Tp = self.transition.Tp
-            Te = self.transition.Te
-            Tf = self.transition.Tf
-            SonTn = self.transition.analysis.SonTn
-            SonTp = self.transition.analysis.SonTp
-            SonTe = self.transition.analysis.SonTe
-            SonTf = self.transition.analysis.SonTf
+            Tn = self.properties.Tn
+            Tp = self.properties.Tp
+            Te = self.properties.Te
+            Tf = self.properties.Tf
+            SonTn = self.properties.SonTn
+            SonTp = self.properties.SonTp
+            SonTe = self.properties.SonTe
+            SonTf = self.properties.SonTf
             #plt.rcParams.update({"text.usetex": True})
             #plt.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}']  # for \text command
 
@@ -1243,8 +1213,8 @@ class TransitionAnalyser():
             #plt.plot(actionSampler.subT, taylorExpGamma)
             plt.xlabel('$T$', fontsize=24)
             plt.ylabel('$\\Gamma(T)$', fontsize=24)
-            if self.transition.TGammaMax > 0: plt.axvline(self.transition.TGammaMax, c='g', ls=':')
-            if self.transition.Tmin > 0: plt.axvline(self.transition.Tmin, c='r', ls=':')
+            if self.properties.TGammaMax > 0: plt.axvline(self.properties.TGammaMax, c='g', ls=':')
+            if self.properties.Tmin > 0: plt.axvline(self.properties.Tmin, c='r', ls=':')
             if Tp > 0: plt.axvline(Tp, c='g', ls=':')
             if Te > 0: plt.axvline(Te, c='b', ls=':')
             if Tf > 0: plt.axvline(Tf, c='k', ls=':')
@@ -1383,22 +1353,22 @@ class TransitionAnalyser():
             #    pad_inches=0.05)
 
         if len(precomputedT) > 0:
-            self.transition.analysis.actionCurveFile = precomputedActionCurveFileName
-        self.transition.analysis.T = self.actionSampler.T
-        self.transition.analysis.SonT = self.actionSampler.SonT
-        self.transition.totalNumBubbles = numBubblesIntegral[-1]
-        self.transition.totalNumBubblesCorrected = numBubblesCorrectedIntegral[-1]
+            self.properties.actionCurveFile = precomputedActionCurveFileName
+        self.properties.T = self.actionSampler.T
+        self.properties.SonT = self.actionSampler.SonT
+        self.properties.totalNumBubbles = numBubblesIntegral[-1]
+        self.properties.totalNumBubblesCorrected = numBubblesCorrectedIntegral[-1]
 
         if self.bComputeSubsampledThermalParams:
-            self.transition.TSubampleArray = self.actionSampler.subT
-            self.transition.HArray = H
-            self.transition.betaArray = betaArray
-            self.transition.meanBubbleSeparationArray = meanBubbleSeparationArray
-            self.transition.meanBubbleRadiusArray = meanBubbleRadiusArray
-            self.transition.Pf = Pf
+            self.properties.TSubampleArray = self.actionSampler.subT
+            self.properties.HArray = H
+            self.properties.betaArray = betaArray
+            self.properties.meanBubbleSeparationArray = meanBubbleSeparationArray
+            self.properties.meanBubbleRadiusArray = meanBubbleRadiusArray
+            self.properties.Pf = Pf
 
     def primeTransitionAnalysis(self, startTime: float) -> (Optional[ActionSample], list[ActionSample]):
-        TcData = ActionSample(self.transition.Tc)
+        TcData = ActionSample(self.properties.Tc)
 
         if self.bDebug:
             print(f'Bisecting to find S/T = {self.actionSampler.maxSonTThreshold} ± {self.actionSampler.toleranceSonT}')
@@ -1459,8 +1429,8 @@ class TransitionAnalyser():
                 # plt.ylim(bottom=2)
                 plt.show()
 
-            self.transition.analysis.T = T
-            self.transition.analysis.SonT = SonT
+            self.properties.T = T
+            self.properties.SonT = SonT
             return None, []
         else:
             if self.bPlot:
@@ -1508,7 +1478,7 @@ class TransitionAnalyser():
                     return None, []
 
             if not intermediateData.is_valid:
-                self.transition.analysis.error = f'Failed to evaluate action at trial temperature T={intermediateData.T}'
+                self.properties.error = f'Failed to evaluate action at trial temperature T={intermediateData.T}'
                 return None, []
 
             # If we happen to sample too far away from 'data' (which can happen if S/T is very steep near maxSonTThreshold),
@@ -1579,7 +1549,7 @@ class TransitionAnalyser():
             # Don't accept cases where S/T is negative (translated to 0) for the last two evaluations. This suggests the
             # bounce solver is failing and we cannot proceed reliably.
             if not intermediateData.is_valid or intermediateData.SonT == 0 and TcData.SonT == 0:
-                self.transition.analysis.error = f'Failed to evaluate action at trial temperature T={intermediateData.T}'
+                self.properties.error = f'Failed to evaluate action at trial temperature T={intermediateData.T}'
                 # print('This was for a subcritical transition with initial S/T:', data.SonT, 'at T:', data.T)
                 return None, []
 
@@ -1681,15 +1651,9 @@ class TransitionAnalyser():
 
         # TODO: come up with a new name for this now that evaluateAction has replaced calculateActionSimple.
         def evaluateAction_internal():
-            try:
-                self.actionSampler.evaluateAction(data)
-            except ThinWallError:
-                if not self.bAllowErrorsForTn:
-                    return False
-            except Exception as e:
-                import traceback
-                traceback.print_exc()
-                return False
+  
+            self.actionSampler.evaluateAction(data)
+      
 
             actionSamples.append((data.T, data.SonT, data.is_valid))
 
@@ -1804,8 +1768,8 @@ class TransitionAnalyser():
 
         # Evaluate the action at Tmax if this transition is not evaluated at the critical temperature. Otherwise we already
         # know the action is divergent at the critical temperature.
-        if self.Tmax < self.transition.Tc or self.transition.subcritical:
-            if self.Tmax < self.transition.Tc:
+        if self.properties.Tc and (self.Tmax < self.properties.Tc or self.properties.subcritical):
+            if self.Tmax < self.properties.Tc:
                 data.T = self.Tmax
             else:
                 data.T = self.Tmin + 0.98*(self.Tmax - self.Tmin)
@@ -1997,7 +1961,7 @@ class TransitionAnalyser():
             self.groud_state_energy_density)
 
     def calculateReheatTemperature(self, T: float) -> float:
-        Tsep = min(0.001*(self.transition.Tc - self.Tmin), 0.5*(T - self.Tmin))
+        Tsep = min(0.001*(self.properties.Tc - self.Tmin), 0.5*(T - self.Tmin))
         # TODO: [2023] surely this should be handled earlier.
         #if self.Tmin == 0:
         #    self.Tmin = self.potential.minimum_temperature #0.001 #2*Tsep
@@ -2011,10 +1975,10 @@ class TransitionAnalyser():
 
         # If the energy density of the true vacuum is never larger than the current energy density of the false vacuum even
         # at Tc, then reheating goes beyond Tc.
-        if objective(self.transition.Tc) < 0:
+        if objective(self.properties.Tc) < 0:
             # Also, check the energy density of the true vacuum when it first appears. If a solution still doesn't exist
             # here, then just report -1.
-            if self.toPhase.T[-1]-2*Tsep > self.transition.Tc and objective(self.toPhase.T[-1]-2*Tsep) < 0:
+            if self.toPhase.T[-1]-2*Tsep > self.properties.Tc and objective(self.toPhase.T[-1]-2*Tsep) < 0:
                 return -1
             else:
                 #return scipy.optimize.toms748(objective, T, self.toPhase.T[-1]-2*Tsep)
@@ -2029,11 +1993,9 @@ class TransitionAnalyser():
                 high = self.toPhase.T[-1]-2*Tsep
                 mid = 0.5*(low + high)
                 while (high - low) > 0.0001*self.potential.get_temperature_scale():
-                    try:
-                        result = objective(mid)
-                    except:
-                        traceback.print_exc()
-                        print('Oops')
+       
+                    result = objective(mid)
+    
                     if result > 0:
                         high = mid
                     elif result < 0:
@@ -2043,7 +2005,7 @@ class TransitionAnalyser():
                     mid = 0.5*(low + high)
                 return mid
 
-        return scipy.optimize.toms748(objective, T, self.transition.Tc)
+        return scipy.optimize.toms748(objective, T, self.properties.Tc)
 
     def transitionCouldComplete(self, maxAction: float, Pf: list[float]) -> bool:
         if self.actionSampler.T[-1] <= self.potential.minimum_temperature:
