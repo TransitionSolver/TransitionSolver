@@ -35,12 +35,27 @@ from ..models.analysable_potential import AnalysablePotential
 from .phase_structure import Phase, Transition
 from .. import geff
 
+
 logger = logging.getLogger(__name__)
 
 totalActionEvaluations = 0
 
 # TODO: should move to a constants file.
 GRAV_CONST = 6.7088e-39
+
+
+class Timer:
+
+    def __init__(self, limit, start_time=None):
+        self.start_time = start_time if start_time else time.perf_counter()
+        self.limit = limit
+        
+    def timeout(self):
+        self.save()
+        return self.limit > 0 and self.analysisElapsedTime > self.limit
+
+    def save(self):
+        self.analysisElapsedTime = time.perf_counter() - self.start_time
 
 
 class ActionSample:
@@ -79,13 +94,12 @@ class ActionSampler:
     # zero after optimisation, in preparation for action evaluation. This may reduce the effect of numerical errors
     # during optimisation. E.g. the field configuration for a phase might have phi1 = 1e-5, whereas it should be
     # identically zero. The phase is then shifted to phi1 = 0 before the action is evaluated. See
-    # PhaseHistoryAnalysis.evaluateAction for details.
+    # PhaseHistoryAnalysis.evaluate_action for details.
     bForcePhaseOnAxis: bool = False
     maxIter: int = 20
     numSplineSamples: int = 100
     # Make these smaller to increase the precision of CosmoTransitions' bounce action calculation.
-    phitol: float = 1e-8
-    xtol: float = 1e-8
+    tunneling_findProfile_params = {'phitol': 1e-8, 'xtol': 1e-8}
 
     # precomputedT and precomputedSonT are lists of values for the S/T curve. These can be used to avoid sampling the
     # action curve explicitly, until the samples run out.
@@ -210,97 +224,94 @@ class ActionSampler:
             derivTest = dSdTnew/dSdT < 0.8 if dSdT > 0 else dSdTnew/dSdT > 1.25
             return GammaNew > 0 and (GammaNew/GammaCur < 0.8*GammaCur/GammaPrev or derivTest)
 
-        stepFactor = 1.
-        nearMaxFactor = 0.7
+        def step_factor():
+        
+            nearMaxFactor = 0.7
+        
+            if numBubbles < 1e-4:
+                if GammaNew < GammaCur:
+                    return 2.
 
-        if numBubbles < 1e-4:
-            if GammaNew < GammaCur:
-                stepFactor = 2.
-            else:
                 if nearMaxNucleation():
-                    stepFactor = nearMaxFactor
-                else:
-                    extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew, Tmin)
+                    return nearMaxFactor
+        
+                extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew, Tmin)
 
-                    if extraBubbles + numBubbles > 1e-4:
-                        if extraBubbles > numBubbles*10:
-                            if extraBubbles > numBubbles*100:
-                                stepFactor = 0.5
-                            else:
-                                stepFactor = 0.75
-                        elif extraBubbles < numBubbles:
-                            stepFactor = 2.
-                    elif extraBubbles + numBubbles < 1e-5:
-                        stepFactor = 2.
-                    else:
-                        stepFactor = 1.5
-        elif numBubbles < 0.1:
-            if GammaNew < GammaCur:
-                stepFactor = 1.4
-            else:
+                if extraBubbles + numBubbles > 1e-4:
+                    if extraBubbles > numBubbles*10:
+                        if extraBubbles > numBubbles*100:
+                            return 0.5
+                        return 0.75
+                    if extraBubbles < numBubbles:
+                        return 2.
+                if extraBubbles + numBubbles < 1e-5:
+                    return 2.
+                return 1.5
+                    
+            if numBubbles < 0.1:
+                if GammaNew < GammaCur:
+                    return 1.4
+  
                 if nearMaxNucleation():
-                    stepFactor = nearMaxFactor
-                else:
-                    extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew, Tmin)
+                    return nearMaxFactor
+     
+                extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew, Tmin)
 
-                    if extraBubbles > numBubbles*5:
-                        if extraBubbles > numBubbles*25:
-                            stepFactor = 0.5
-                        else:
-                            stepFactor = 0.75
-                    elif extraBubbles < numBubbles:
-                        stepFactor = 1.4
-        elif numBubbles < 1:
-            if GammaNew < GammaCur:
-                stepFactor = 1.1
-            else:
+                if extraBubbles > numBubbles*5:
+                    if extraBubbles > numBubbles*25:
+                        return 0.5
+                    return 0.75
+                    
+                if extraBubbles < numBubbles:
+                    return 1.4
+                        
+            if numBubbles < 1:
+                if GammaNew < GammaCur:
+                    return 1.1
+       
                 if nearMaxNucleation():
-                    stepFactor = nearMaxFactor
-                else:
-                    extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew, Tmin)
+                    return nearMaxFactor
+   
+                extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew, Tmin)
 
-                    if extraBubbles > 0.2*numBubbles:
-                        if extraBubbles > 0.5*numBubbles:
-                            stepFactor = 0.5
-                        else:
-                            stepFactor = 0.75
-                    elif extraBubbles < 0.1*numBubbles:
-                        stepFactor = 1.2
-        else:  # numBubbles > 1
+                if extraBubbles > 0.2*numBubbles:
+                    if extraBubbles > 0.5*numBubbles:
+                        return 0.5
+                    return 0.75
+                    
+                if extraBubbles < 0.1*numBubbles:
+                    return 1.2
+
             if GammaNew < GammaCur:
                 if GammaCur < GammaPrev:
                     if GammaNew < 1e-3*max(Gamma):
-                        stepFactor = 1.5
-                    else:
-                        stepFactor = 1.2
+                        return 1.5
+                    return 1.2
                 # Found minimum of Gamma, sample more densely.
-                else:
-                    stepFactor = 0.6
-            else:
+                return 0.6
+ 
+            if numBubbles < 100:
+            
                 if nearMaxNucleation():
-                    stepFactor = nearMaxFactor
-                else:
-                    if numBubbles < 100:
-                        extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew, Tmin)
+                    return nearMaxFactor
+            
+                extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew, Tmin)
 
-                        if numBubbles < 10:
-                            if extraBubbles < numBubbles:
-                                if extraBubbles < 0.5*numBubbles:
-                                    stepFactor = 3.
-                                else:
-                                    stepFactor = 2.
-                            elif extraBubbles < 2*numBubbles:
-                                stepFactor = 2.
-                        else:
-                            stepFactor = 1.5
-
-        #if numBubbles < 1:
-        #    Tnew = max(0.001, self.T[-1] - 0.2)
-        #else:
-        # TODO: added for dense sampling for noNucleation-c4Scan-new.
+                if numBubbles < 10:
+                    if extraBubbles < numBubbles:
+                        if extraBubbles < 0.5*numBubbles:
+                            return 3.
+                        return 2.
+                    if extraBubbles < 2*numBubbles:
+                        return 2.
+                return 1.5
+            return 1
+            
+        stepFactor = step_factor()
+            
         if numBubbles < 1 and SonTnew < 160:
             if stepFactor > 1:
-                stepFactor = 1 + 0.85*(stepFactor - 1)
+                stepFactor = 1 + 0.85 * (stepFactor - 1)
             else:
                 stepFactor *= 0.85
 
@@ -321,7 +332,7 @@ class ActionSampler:
 
         sampleData.T = Tnew
 
-        self.evaluateAction(sampleData)
+        sampleData.S3 = self.evaluate_action(sampleData.T)
 
         if not sampleData.is_valid:
             logger.info('Failed to evaluate action at trial temperature T = {}', sampleData.T)
@@ -384,9 +395,8 @@ class ActionSampler:
     # Throws ThinWallError from CosmoTransitions.
     # Throws unhandled exceptions from CosmoTransitions.
     # Throws unhandled InvalidTemperatureException from find_phase_at_t.
-    def evaluateAction(self, data: ActionSample) -> tuple[np.ndarray, np.ndarray]:
+    def evaluate_action(self, T) -> tuple[np.ndarray, np.ndarray]:
         # Do optimisation.
-        T = data.T
         fromFieldConfig = self.fromPhase.find_phase_at_t(T, self.potential)
         toFieldConfig = self.toPhase.find_phase_at_t(T, self.potential)
 
@@ -405,41 +415,25 @@ class ActionSampler:
                 if abs(toFieldConfig[i]) < fieldSeparationScale:
                     toFieldConfig[i] = 0.0
 
-        return self.evaluateAction_supplied(data, fromFieldConfig, toFieldConfig)
+        return self.evaluate_action_supplied(T, fromFieldConfig, toFieldConfig)
 
     # Throws ThinWallError from CosmoTransitions.
     # Throws unhandled exceptions from CosmoTransitions.
-    def evaluateAction_supplied(self, data: ActionSample, fromFieldConfig: np.ndarray, toFieldConfig: np.ndarray)\
+    def evaluate_action_supplied(self, T, fromFieldConfig: np.ndarray, toFieldConfig: np.ndarray)\
             -> tuple[np.ndarray, np.ndarray]:
-        tunneling_findProfile_params = {'phitol': self.phitol, 'xtol': self.xtol}
-
-        T = data.T
-        startTime = time.perf_counter()
 
         logger.debug('Evaluating action at T = {}', T)
-
-        def V(X): return self.potential(X, T)
-        def gradV(X): return self.potential.grad(X, T)
         
         global totalActionEvaluations
         totalActionEvaluations += 1
 
         with redirect_stdout(sys.stdout if self.bVerbose else None):
-            action = pathDeformation.fullTunneling([toFieldConfig, fromFieldConfig], V, gradV,
+            action = pathDeformation.fullTunneling([toFieldConfig, fromFieldConfig], lambda X: self.potential(X, T), lambda X: self.potential.grad(X, T),
                 V_spline_samples=self.numSplineSamples, maxiter=self.maxIter,
-                verbose=self.bVerbose, tunneling_findProfile_params=tunneling_findProfile_params).action
-
-
-        # Update the data, including changes to the phases and temperature if the calculation previously failed.
-        data.T = T
-        data.S3 = action
-
-        if data.is_valid:
-            logger.debug(f'Successfully evaluated action S = {data.SonT} in {time.perf_counter() - startTime} seconds.')
-        else:
-            logger.debug(f'Obtained nonsensical action S = {data.SonT} in {time.perf_counter() - startTime} seconds.')
-
-        return fromFieldConfig, toFieldConfig
+                verbose=self.bVerbose, tunneling_findProfile_params=self.tunneling_findProfile_params).action
+                
+        logger.debug(f'Obtained action S = {action}')
+        return action
 
 
 class ActionCurveShapeAnalysisData:
@@ -482,7 +476,7 @@ class TransitionAnalyser:
     bAnalyseTransitionPastCompletion: bool = False
     bAllowErrorsForTn: bool = True
     bReportAnalysis: bool = False
-    timeout_phaseHistoryAnalysis: float = -1.
+    timeout: float = -1.
     bUseChapmanJouguetVelocity: float = False
 
     potential: AnalysablePotential
@@ -552,6 +546,8 @@ class TransitionAnalyser:
         maxSonTThreshold = self.estimateMaximumSignificantSonT() + 80
         minSonTThreshold = 80.0
         toleranceSonT = 3.0
+        
+        timer = Timer(self.timeout, startTime)
 
         precomputedT, precomputedSonT, bFinishedAnalysis = loadPrecomputedActionData(precomputedActionCurveFileName,
             self.properties, maxSonTThreshold)
@@ -571,10 +567,8 @@ class TransitionAnalyser:
             # TODO: we don't use allSamples anymore.
             sampleData, allSamples = self.primeTransitionAnalysis(startTime)
 
-            if self.timeout_phaseHistoryAnalysis > 0:
-                endTime = time.perf_counter()
-                if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                    return
+            if timer.timeout():
+                return None
 
             if sampleData is None:
                 self.properties.bFoundNucleationWindow = False
@@ -963,10 +957,8 @@ class TransitionAnalyser:
 
             simIndex += 1
 
-            if self.timeout_phaseHistoryAnalysis > 0:
-                endTime = time.perf_counter()
-                if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                    return
+            if timer.timeout():
+                return
 
             if not success:
                 logger.debug('Terminating transition analysis after failing to get next action sample. Reason:', message)
@@ -1359,6 +1351,7 @@ class TransitionAnalyser:
             self.properties.Pf = Pf
 
     def primeTransitionAnalysis(self, startTime: float) -> (Optional[ActionSample], list[ActionSample]):
+        timer = Timer(self.timeout, startTime)
         TcData = ActionSample(self.properties.Tc)
 
         if self.bDebug:
@@ -1367,10 +1360,8 @@ class TransitionAnalyser:
         # Use bisection to find the temperature at which S/T ~ maxSonTThreshold.
         actionCurveShapeAnalysisData = self.findNucleationTemperatureWindow_refined(startTime=startTime)
 
-        if self.timeout_phaseHistoryAnalysis > 0:
-            endTime = time.perf_counter()
-            if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                return None, []
+        if timer.timeout():
+            return None, []
 
         # TODO: Maybe use the names from here anyway? The current set of names is a little confusing!
         data = actionCurveShapeAnalysisData.desiredData
@@ -1461,12 +1452,10 @@ class TransitionAnalyser:
                 # next based on the result.
                 intermediateData.T = self.Tmin + 0.99*(data.T - self.Tmin)
 
-            self.actionSampler.evaluateAction(intermediateData)
+            intermediateData.S3 = self.actionSampler.evaluate_action(intermediateData.T)
 
-            if self.timeout_phaseHistoryAnalysis > 0:
-                endTime = time.perf_counter()
-                if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                    return None, []
+            if timer.timeout():
+                return None, []
 
             if not intermediateData.is_valid:
                 self.properties.error = f'Failed to evaluate action at trial temperature T={intermediateData.T}'
@@ -1489,12 +1478,10 @@ class TransitionAnalyser:
                 correctionSamplesTaken += 1
                 # Step halfway across the interval and try again.
                 intermediateData.T = 0.5*(intermediateData.T + data.T)
-                self.actionSampler.evaluateAction(intermediateData)
+                intermediateData.S3 = self.actionSampler.evaluate_action(intermediateData.T)
 
-                if self.timeout_phaseHistoryAnalysis > 0:
-                    endTime = time.perf_counter()
-                    if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                        return None, []
+                if timer.timeout():
+                    return None, []
 
                 # Store this point so we don't have to resample near it.
                 self.actionSampler.storeLowerSonTData(intermediateData.copy())
@@ -1530,12 +1517,10 @@ class TransitionAnalyser:
             # There's no point taking a tiny temperature step if we already took a larger step away from Tmax as our highest
             # sample point.
             intermediateData.T = min(intermediateData.T, 2*data.T - self.Tmax)
-            self.actionSampler.evaluateAction(intermediateData)
+            intermediateData.S3 = self.actionSampler.evaluate_action(intermediateData.T)
 
-            if self.timeout_phaseHistoryAnalysis > 0:
-                endTime = time.perf_counter()
-                if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                    return None, []
+            if timer.timeout():
+                return None, []
 
             # Don't accept cases where S/T is negative (translated to 0) for the last two evaluations. This suggests the
             # bounce solver is failing and we cannot proceed reliably.
@@ -1579,24 +1564,20 @@ class TransitionAnalyser:
                 # sampleData.SonT = actionSampler.lowerSonTData[-1].SonT
                 sampleData = self.actionSampler.lowerSonTData[-1].copy()
             else:
-                self.actionSampler.evaluateAction(sampleData)
+                sampleData.S3 = self.actionSampler.evaluate_action(sampleData.T)
 
-                if self.timeout_phaseHistoryAnalysis > 0:
-                    endTime = time.perf_counter()
-                    if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                        return None, []
+                if timer.timeout():
+                    return None, []
 
             self.actionSampler.lowerSonTData.pop()
         else:
             sampleData.action = -1
             sampleData.SonT = -1
 
-            self.actionSampler.evaluateAction(sampleData)
+            sampleData.S3 = self.actionSampler.evaluate_action(sampleData.T)
 
-            if self.timeout_phaseHistoryAnalysis > 0:
-                endTime = time.perf_counter()
-                if endTime - startTime > self.timeout_phaseHistoryAnalysis:
-                    return None, []
+            if timer.timeout():
+                return None, []
 
             if not sampleData.is_valid:
                 print('Failed to evaluate action at trial temperature T=', sampleData.T)
@@ -1631,6 +1612,18 @@ class TransitionAnalyser:
 
         return action
 
+    def sign_label(self, data):
+        if not data.is_valid:
+            return 'unknown'
+        
+        if abs(data.SonT - self.actionSampler.maxSonTThreshold) <= self.actionSampler.toleranceSonT:
+            return 'equal'
+        
+        if data.SonT > self.actionSampler.maxSonTThreshold:
+            return 'above'
+
+        return 'below'
+
     def findNucleationTemperatureWindow_refined(self, startTime: float = -1.0):
         actionCurveShapeAnalysisData = ActionCurveShapeAnalysisData()
         Tstep = 0.01*(self.Tmax - self.Tmin)
@@ -1640,28 +1633,11 @@ class TransitionAnalyser:
         TLow = self.Tmin
         THigh = self.Tmax
 
-        # TODO: come up with a new name for this now that evaluateAction has replaced calculateActionSimple.
-        def evaluateAction_internal():
-  
-            self.actionSampler.evaluateAction(data)
-      
-
+        def record_action(data):
+            data.S3 = self.actionSampler.evaluate_action(data.T)
             actionSamples.append((data.T, data.SonT, data.is_valid))
-
             if data.is_valid and self.actionSampler.minSonTThreshold < data.SonT < self.actionSampler.maxSonTThreshold:
                 lowerActionData.append(data.copy())
-
-            return True
-
-        def getSignLabel():
-            if not data.is_valid:
-                return 'unknown'
-            elif abs(data.SonT - self.actionSampler.maxSonTThreshold) <= self.actionSampler.toleranceSonT:
-                return 'equal'
-            elif data.SonT > self.actionSampler.maxSonTThreshold:
-                return 'above'
-            else:
-                return 'below'
 
         def saveCurveShapeAnalysisData(success=False):
             dataToUse = data
@@ -1707,14 +1683,8 @@ class TransitionAnalyser:
 
         # Evaluate the action at Tmin. (Actually just above so we avoid issues where the phase might disappear.)
         data = ActionSample(self.Tmin+Tstep)
-        lowerTSample = ActionSample(self.Tmin+Tstep)
-        bSuccess = evaluateAction_internal()
-
-        if not bSuccess:
-            saveCurveShapeAnalysisData(False)
-            return actionCurveShapeAnalysisData
-
-        labelLow = getSignLabel()
+        record_action(data)
+        labelLow = self.sign_label(data)
 
         # TODO: the assumption is that if the action calculation fails, it's probably because the barrier becomes too small,
         #  hence the action would be very low.
@@ -1734,14 +1704,10 @@ class TransitionAnalyser:
 
             lowerTSample = data.copy()
             data.T += Tstep
-            bSuccess = evaluateAction_internal()
-
-            if not bSuccess:
-                saveCurveShapeAnalysisData(False)
-                return actionCurveShapeAnalysisData
+            record_action(data)
 
             if data.is_valid:
-                labelLow = getSignLabel()
+                labelLow = self.sign_label(data)
                 TLow = data.T
 
                 # If the action is increasing (going from Tmin to Tmin+deltaT), then we will not find a lower action.
@@ -1765,13 +1731,9 @@ class TransitionAnalyser:
             else:
                 data.T = self.Tmin + 0.98*(self.Tmax - self.Tmin)
 
-            bSuccess = evaluateAction_internal()
+            record_action(data)
 
-            if not bSuccess:
-                saveCurveShapeAnalysisData(False)
-                return actionCurveShapeAnalysisData
-
-            labelHigh = getSignLabel()
+            labelHigh = self.sign_label(data)
 
             seenBelowAtTHigh = labelHigh == 'below'
 
@@ -1780,17 +1742,14 @@ class TransitionAnalyser:
                 lowerTSample = data.copy()
                 data.T = 0.5*(data.T + self.Tmax)
                 Tstep = 0.1*(self.Tmax - data.T)
-                bSuccess = evaluateAction_internal()
+                record_action(data)
 
-                if not bSuccess:
-                    saveCurveShapeAnalysisData(False)
-                    return actionCurveShapeAnalysisData
 
                 # TODO: cleanup if this still works [2023]
                 #calculateActionSimple(potential, data, fromPhase, toPhase, Tstep=-Tstep, bDebug=settings.bDebug)
                 #actionSamples.append((data.T, data.SonT, data.is_valid))
                 labelLow = 'below'
-                labelHigh = getSignLabel()
+                labelHigh = self.sign_label(data)
 
             if labelHigh == 'unknown':
                 if self.bAllowErrorsForTn:
@@ -1814,14 +1773,10 @@ class TransitionAnalyser:
         while labelLow == 'above' and labelHigh == 'above':
             lowerTSample = data.copy()
             data.T = TMid
-            bSuccess = evaluateAction_internal()
-
-            if not bSuccess:
-                saveCurveShapeAnalysisData(False)
-                return actionCurveShapeAnalysisData
-
+            record_action(data)
+            
             Tstep *= 0.5
-            labelMid = getSignLabel()
+            labelMid = self.sign_label(data)
 
             if labelMid == 'unknown':
                 if self.bAllowErrorsForTn:
@@ -1843,11 +1798,7 @@ class TransitionAnalyser:
             midSonT = data.SonT
             lowerTSample = data.copy()
             data.T += Tstep
-            bSuccess = evaluateAction_internal()
-
-            if not bSuccess:
-                saveCurveShapeAnalysisData(False)
-                return actionCurveShapeAnalysisData
+            record_action(data)
 
             if not data.is_valid:
                 if self.bAllowErrorsForTn:
@@ -1898,14 +1849,10 @@ class TransitionAnalyser:
             data.T = TMid
             # Negative because thin-walled errors for T ~ Tc are more likely.
             Tstep = -0.05*(THigh - TLow)
-            bSuccess = evaluateAction_internal()
-
-            if not bSuccess:
-                saveCurveShapeAnalysisData(False)
-                return actionCurveShapeAnalysisData
+            record_action(data)
 
             prevLabelMid = labelMid
-            labelMid = getSignLabel()
+            labelMid = self.sign_label(data)
 
             if labelMid == 'unknown':
                 if self.bAllowErrorsForTn:
@@ -1933,10 +1880,8 @@ class TransitionAnalyser:
     #def calculateInstantaneousNucleationRate(T: Union[float, Iterable[float]], SonT: Union[float, Iterable[float]], potential: AnalysablePotential):
     def calculateInstantaneousNucleationRate(self, T: float, action: float) -> float:
         HSq = self.hubble_squared(T)
-
         Gamma = self.calculateGamma(T, action)
-
-        return Gamma / (T*HSq**2)
+        return Gamma / (T * HSq**2)
 
     # TODO: We can optimise this for a list of input temperatures by reusing potential samples in adjacent derivatives.
     def hubble_squared(self, T: float) -> float:

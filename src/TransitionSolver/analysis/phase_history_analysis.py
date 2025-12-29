@@ -5,27 +5,12 @@ Analyse phase history
 
 from __future__ import annotations
 
-import time
 from typing import Optional
 
 from ..models.analysable_potential import AnalysablePotential
 from .phase_structure import PhaseStructure, Phase
-from .transition_analysis import TransitionAnalyser
+from .transition_analysis import TransitionAnalyser, Timer
 from .transition_graph import TransitionEdge, Path, PhaseNode
-
-
-class Timer:
-
-    def __init__(self, limit):
-        self.start_time = time.perf_counter()
-        self.limit = limit
-        
-    def timeout(self):
-        self.save()
-        return self.limit > 0 and self.analysisElapsedTime > self.limit
-
-    def save(self):
-        self.analysisElapsedTime = time.perf_counter() - self.start_time
 
 
 class PhaseHistoryAnalyser:
