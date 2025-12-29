@@ -8,7 +8,7 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .analysis import geff
+from . import geff
 from .analysis.phase_history_analysis import PhaseHistoryAnalyser
 from . import read_phase_tracer
 

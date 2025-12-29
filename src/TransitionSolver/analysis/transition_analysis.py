@@ -32,7 +32,7 @@ from ..util import integration
 from ..util.events import notifyHandler
 from ..models.analysable_potential import AnalysablePotential
 from .phase_structure import Phase, Transition
-from . import geff
+from .. import geff
 
 logger = logging.getLogger(__name__)
 

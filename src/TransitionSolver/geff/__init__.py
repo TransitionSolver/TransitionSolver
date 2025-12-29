@@ -43,8 +43,8 @@ def geff_from_disk(file_name):
     return clamped
 
 
-boson_geff = geff_from_disk(THIS / ".." / 'data' / 'boson_geff.csv')
-fermion_geff = geff_from_disk(THIS / ".." / 'data' / 'fermion_geff.csv')
+boson_geff = geff_from_disk(THIS / 'boson_geff.csv')
+fermion_geff = geff_from_disk(THIS / 'fermion_geff.csv')
 
 
 def field_dependent_dof(potential, phi, T):
