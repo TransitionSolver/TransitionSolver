@@ -9,8 +9,12 @@ class PhaseNode:
         self.phase = phase_id
         self.temperature = temperature
         self.paths = []
+    def __str__(self) -> str:
+        return f"{self.phase}({self.temperature})"
 
-
+    def __repr__(self) -> str:
+        return str(self)
+ 
 class Path:
 
     def __init__(self, *phases, transitions=None, suffix_links=None, prefix_links=None):
@@ -51,6 +55,56 @@ class Path:
         report['phases'] = [p.phase for p in self.phases]
         report['transitions'] = [t.ID for t in self.transitions]
         return report
+
+    def customPrint(self, bPrintPrefix: bool = True, bPrintSuffix: bool = True) -> str:
+        transitionIndex = 0
+        outputString = ""
+
+        if len(self.prefix_links) > 0:
+            if bPrintPrefix:
+                outputString += str([prefix.customPrint(bPrintPrefix=True, bPrintSuffix=False) for prefix in
+                    self.prefix_links])
+
+            # Might not have a transition yet if the path has just been created.
+            if len(self.transitions) > 0:
+                outputString += f" --({self.transitions[0]})--> "
+
+            transitionIndex += 1
+
+        for i in range(len(self.phases) - 1):
+            outputString += f"{self.phases[i]} --({self.transitions[transitionIndex]})--> "
+            transitionIndex += 1
+
+        if len(self.phases) > 0:
+            outputString += f"{self.phases[-1]}"
+
+        if len(self.suffix_links) > 0:
+            outputString += f" --({self.transitions[-1]})--> "
+
+            if bPrintSuffix:
+                outputString += str([suffix.customPrint(bPrintPrefix=False, bPrintSuffix=True) for suffix in
+                    self.suffix_links])
+
+        return outputString
+
+    def __str__(self) -> str:
+        """if len(self.transitions) == 0 and self.pathLink is not None:
+            return str(self.pathLink)
+
+        outputString = str(self.phases[0])
+
+        maxIndex = len(self.transitions) - (0 if self.pathLink is None else 1)
+
+        for i in range(maxIndex):
+            outputString += " --(" + str(self.transitions[i]) + ")--> " + str(self.phases[i+1])
+
+        if self.pathLink is not None:
+            outputString += str(self.pathLink)"""
+
+        return self.customPrint(bPrintPrefix=True, bPrintSuffix=True)
+
+    def __repr__(self) -> str:
+        return str(self)
 
 
 class TransitionEdge:

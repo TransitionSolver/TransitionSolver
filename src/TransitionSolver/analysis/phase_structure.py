@@ -94,6 +94,11 @@ class Transition:
         report['completed'] = self.properties.completed
         return report
 
+    def __str__(self) -> str:
+        return str(self.ID)
+
+    def __repr__(self) -> str:
+        return str(self)
 
 class PhaseStructure:
 
