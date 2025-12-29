@@ -32,7 +32,7 @@ from src.TransitionSolver.analysis.transition_analysis import TransitionAnalyser
 from src.TransitionSolver.analysis import phase_structure
 from src.TransitionSolver.models.analysable_potential import AnalysablePotential
 from src.TransitionSolver.util.events import notifyHandler
-
+from TransitionSolver import read_phase_tracer
 
 class PipelineSettings:
     bDebug: bool = False
@@ -243,10 +243,10 @@ def pipeline_getPhaseStructure(settings: PipelineSettings):
                 stderr=subprocess.STDOUT)
 
         # Check if the output file exists.
-        bFileExists, phaseStructure = phase_structure.load_data(settings.fileName_phaseStructure)
+        phaseStructure = read_phase_tracer(phase_tracer_file=settings.fileName_phaseStructure)   
 
-        if not bFileExists:
-            return 'Invalid phase structure', None
+    #     if not bFileExists:
+    #         return 'Invalid phase structure', None
 
         return 'Success', phaseStructure
     except subprocess.TimeoutExpired:
@@ -448,7 +448,7 @@ def example_parameterPointFile():
         potential.E > 0
     # Whether the phase structure is relevant for the current study. E.g. we require at least one transition path from
     # the high-temperature phase to the current phase of the Universe.
-    function_isPhaseStructureRelevant = lambda phaseStructure: len(phaseStructure.transitionPaths) > 0
+    function_isPhaseStructureRelevant = lambda phaseStructure: len(phaseStructure.paths) > 0
     # Currently, TransitionSolver only handles a constant wall velocity. We may want the wall velocity to depend on some
     # scan variable (or be the scan variable itself), hence we set it through a function which could take arguments.
     function_getWallVelocity = lambda: 1.

@@ -180,19 +180,21 @@ class PhaseHistoryAnalyser:
                 print('Paths:')
                 for i in range(len(paths)):
                     print(f'{i}: {paths[i]}')
-
+            print("In analysePhaseHistory_supplied after broken debug print statement")
             transitionEdge = frontier.pop(0)
             transition = transitionEdge.transition
             path = transitionEdge.path
-
+            print("In analysePhaseHistory_supplied after broken debug print statement")
             if not transition.properties.analysed:
-            
+                print("In analysePhaseHistory_supplied in clause for transition not properly analysed")
                 transition.properties.analysed = True
-            
+                print("In analysePhaseHistory_supplied in clause for transition not properly analysed before if self.bReportAnalysis:")
+                print("self.bReportAnalysis= ", self.bReportAnalysis)
                 if self.bReportAnalysis:
-                    print(f'Analysing transition {transition.ID} ({transition.false_phase} --(T={transition.Tc})-->'
+                    print(f'Analysing transition {transition.ID} ({transition.false_phase} --(T={transition.properties.Tc})-->'
                           f' {transition.true_phase})')
 
+                print("In analysePhaseHistory_supplied in clause for transition not properly analysed before setting Tmin:")
                 Tmin = self.getMinTransitionTemperature_indexed(phases, phaseIndexedTransitions, transitionEdge)
 
                 if path.transitions:
