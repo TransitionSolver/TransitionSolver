@@ -28,7 +28,7 @@ except:
 from cosmoTransitions import pathDeformation
 
 from ..gws import hydrodynamics
-from ..gws.hydrodynamics import HydroVars
+from ..gws.hydrodynamics import HydroVars, hubble_squared_from_energy_density
 from ..util import integration
 from ..util.events import notifyHandler
 from ..models.analysable_potential import AnalysablePotential
@@ -39,9 +39,6 @@ from .. import geff
 logger = logging.getLogger(__name__)
 
 totalActionEvaluations = 0
-
-# TODO: should move to a constants file.
-GRAV_CONST = 6.7088e-39
 
 
 class Timer:
@@ -1945,11 +1942,6 @@ def hubble_squared(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotent
                                groud_state_energy_density: float) -> float:
     rhof = hydrodynamics.energy_density_from_phase(fromPhase, toPhase, potential, T)
     return hubble_squared_from_energy_density(rhof - groud_state_energy_density)
-
-
-def hubble_squared_from_energy_density(energy_density):
-    return 8 * np.pi * GRAV_CONST / 3 * energy_density
-
 
 # Returns T, SonT, bFinishedAnalysis.
 def loadPrecomputedActionData(fileName: str, transition: Transition, maxSonTThreshold: float) -> tuple[list[float],
