@@ -26,7 +26,7 @@ import sys
 
 from src.TransitionSolver.models.toy_model import ToyModel
 from src.TransitionSolver.analysis.phase_structure import PhaseStructure
-from src.TransitionSolver.analysis.phase_history_analysis import PhaseHistoryAnalyser, AnalysisMetrics
+from src.TransitionSolver.analysis.phase_history_analysis import PhaseHistoryAnalyser
 from src.TransitionSolver.analysis.transition_graph import Path
 from src.TransitionSolver.analysis.transition_analysis import TransitionAnalyser, ActionSampler
 from src.TransitionSolver.analysis import phase_structure
@@ -260,13 +260,13 @@ def pipeline_analysePhaseHistory(potential, phaseStructure, settings: PipelineSe
     try:
         vw = settings.function_getWallVelocity()
         print("In pipeline_analysePhaseHistory about to call analyser.analysePhaseHistory_supplied")
-        paths, timedOut, analysisMetrics = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=vw)
+        paths, timedOut = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=vw)
         print("In pipeline_analysePhaseHistory immediately after calllling analyser.analysePhaseHistory_supplied")
         if timedOut:
             return 'Phase history analysis timed out'
 
         print("In pipeline_analysePhaseHistory about to call writePhaseHistoryReport")
-        writePhaseHistoryReport(paths, phaseStructure, settings, analysisMetrics)
+        writePhaseHistoryReport(paths, phaseStructure, settings)
 
         return 'Success'
     # catch errors like this to preserve scans, just get rid of try and catch if debugging to get the stack traces. 
@@ -275,8 +275,7 @@ def pipeline_analysePhaseHistory(potential, phaseStructure, settings: PipelineSe
     
 
 
-def writePhaseHistoryReport(paths: list[Path], phaseStructure: PhaseStructure, settings: PipelineSettings,
-        analysisMetrics: AnalysisMetrics):
+def writePhaseHistoryReport(paths: list[Path], phaseStructure: PhaseStructure, settings: PipelineSettings):
     report = {}
     fileName = settings.fileName_phaseHistoryReport
     print("In writePhaseHistoryReport")
@@ -290,7 +289,7 @@ def writePhaseHistoryReport(paths: list[Path], phaseStructure: PhaseStructure, s
         report['paths'] = [p.report() for p in paths]
     print("In writePhaseHistoryReport after checking len(paths)")    
     report['valid'] = any([p.is_valid for p in paths])
-    report['analysisTime'] = analysisMetrics.analysisElapsedTime
+    #report['analysisTime'] = analysisMetrics.analysisElapsedTime
 
     if settings.bDebug:
         print('Writing report...')
