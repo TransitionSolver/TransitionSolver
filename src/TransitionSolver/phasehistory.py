@@ -21,7 +21,7 @@ def _make_report(paths, phase_structure, analysis_metrics):
     report['transitions'] = [t.getReport(None)
                              for t in phase_structure.transitions]
     report['paths'] = [p.report() for p in paths]
-    report['valid'] = any(p.bValid for p in paths)
+    report['valid'] = any(p.is_valid for p in paths)
     report['analysisTime'] = analysis_metrics.analysisElapsedTime
     return report
 

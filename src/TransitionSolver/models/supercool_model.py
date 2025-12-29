@@ -54,7 +54,7 @@ class SMplusCubic(AnalysablePotential):
 
         # Everything below here in this function is not necessary for the model in PhaseTracer.
 
-        self.bValid = True
+        self.is_valid = True
 
         if muSq != 0:
             self.muSq = muSq
@@ -203,7 +203,7 @@ class SMplusCubic(AnalysablePotential):
                 if bDebugIteration:
                     print("Failed to converge after", iterMax, "iterations.")
 
-                self.bValid = False
+                self.is_valid = False
                 return
 
             if bDebugIteration:
@@ -213,13 +213,13 @@ class SMplusCubic(AnalysablePotential):
 
             self.constrainParametersAtOneLoop()
 
-            if not self.bValid:
+            if not self.is_valid:
                 if bDebugIteration:
                     print("Invalid at one-loop after iteration:", i)
                 return
 
             if not self.checkParameterMagnitudes():
-                self.bValid = False
+                self.is_valid = False
 
                 if bDebugIteration:
                     print("Invalid at one-loop after iteration:", i)

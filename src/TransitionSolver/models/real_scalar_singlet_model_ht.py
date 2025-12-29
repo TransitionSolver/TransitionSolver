@@ -38,7 +38,7 @@ class RealScalarSingletModel_HT(AnalysablePotential):
         self.fieldScale = self.vh
         self.temperatureScale = 300
 
-        self.bValid = True
+        self.is_valid = True
 
         if muh == 0:
             self.constrainParameters()
@@ -137,7 +137,7 @@ class RealScalarSingletModel_HT(AnalysablePotential):
         self.mus = -1/(2*self.vs) * (4*self.ls*self.vs**3 + self.c1*self.vh**2 + 2*self.c2*self.vh**2*self.vs
             + 3*self.b3*self.vs**2)
 
-        self.bValid = self.calculateMixingAngle_tan(np.array([self.vh, self.vs]), 0) is not None
+        self.is_valid = self.calculateMixingAngle_tan(np.array([self.vh, self.vs]), 0) is not None
 
     def d2Vdh2(self, X):
         h = X[..., 0]

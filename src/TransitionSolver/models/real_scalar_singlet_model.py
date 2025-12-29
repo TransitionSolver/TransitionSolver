@@ -65,7 +65,7 @@ class RealScalarSingletModel(AnalysablePotential):
 
         self.bUseGoldstoneResummation = True
 
-        self.bValid = True
+        self.is_valid = True
 
         self.parameterEvolution = []
 
@@ -1039,7 +1039,7 @@ class RealScalarSingletModel(AnalysablePotential):
         if self.thetaPrev is None:
             if bDebugIteration:
                 print('Tree-level mixing angle is invalid at tree-level.')
-            self.bValid = False
+            self.is_valid = False
             return
 
         hasConverged = False
@@ -1053,7 +1053,7 @@ class RealScalarSingletModel(AnalysablePotential):
                 if bDebugIteration:
                     print("Failed to converge after", iterMax, "iterations.")
 
-                self.bValid = False
+                self.is_valid = False
                 return
 
             if bDebugIteration:
@@ -1065,13 +1065,13 @@ class RealScalarSingletModel(AnalysablePotential):
 
             self.constrainParametersAtOneLoop()
 
-            if not self.bValid:
+            if not self.is_valid:
                 if bDebugIteration:
                     print("Invalid at one-loop after iteration:", i)
                 return
 
             if not self.checkParameterMagnitudes():
-                self.bValid = False
+                self.is_valid = False
 
                 if bDebugIteration:
                     print("Invalid at one-loop after iteration:", i)
@@ -1093,7 +1093,7 @@ class RealScalarSingletModel(AnalysablePotential):
             if self.thetaPrev is None:
                 if bDebugIteration:
                     print('Tree-level mixing angle is invalid at one-loop after iteration:', i)
-                self.bValid = False
+                self.is_valid = False
                 return
 
             if bStoreParameterEvolution:

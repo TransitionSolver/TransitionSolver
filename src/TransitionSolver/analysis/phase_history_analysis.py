@@ -392,7 +392,7 @@ class PhaseHistoryAnalyser:
 
         for p in paths:
             if len(p.suffix_links) == 0 and bLowTemperaturePhase[p.phases[-1].phase]:
-                p.bValid = True
+                p.is_valid = True
                 validPaths.append(p)
 
         if self.bReportPaths:

@@ -72,7 +72,7 @@ class RealScalarSingletModel_Boltz(AnalysablePotential):
         self.bUseGoldstoneResummation = True
         self.bUseBoltzmannSuppression = bUseBoltzmannSuppression
 
-        self.bValid = True
+        self.is_valid = True
 
         self.parameterEvolution = []
 
@@ -1173,7 +1173,7 @@ class RealScalarSingletModel_Boltz(AnalysablePotential):
         if self.thetaPrev is None:
             if bDebugIteration:
                 print('Tree-level mixing angle is invalid at tree-level.')
-            self.bValid = False
+            self.is_valid = False
             return
 
         hasConverged = False
@@ -1187,7 +1187,7 @@ class RealScalarSingletModel_Boltz(AnalysablePotential):
                 if bDebugIteration:
                     print("Failed to converge after", iterMax, "iterations.")
 
-                self.bValid = False
+                self.is_valid = False
                 return
 
             if bDebugIteration:
@@ -1199,13 +1199,13 @@ class RealScalarSingletModel_Boltz(AnalysablePotential):
 
             self.constrainParametersAtOneLoop()
 
-            if not self.bValid:
+            if not self.is_valid:
                 if bDebugIteration:
                     print("Invalid at one-loop after iteration:", i)
                 return
 
             if not self.checkParameterMagnitudes():
-                self.bValid = False
+                self.is_valid = False
 
                 if bDebugIteration:
                     print("Invalid at one-loop after iteration:", i)
@@ -1227,7 +1227,7 @@ class RealScalarSingletModel_Boltz(AnalysablePotential):
             if self.thetaPrev is None:
                 if bDebugIteration:
                     print('Tree-level mixing angle is invalid at one-loop after iteration:', i)
-                self.bValid = False
+                self.is_valid = False
                 return
 
             if bStoreParameterEvolution:

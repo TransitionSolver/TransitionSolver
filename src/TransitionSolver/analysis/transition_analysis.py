@@ -47,7 +47,7 @@ class ActionSample:
         self.T = T
         self.S3 = S3
         self.SonT = -1 if S3 < 0. else S3 / max(0.001, T)
-        self.bValid = self.S3 > 0.
+        self.is_valid = self.S3 > 0.
 
     # Emulates a constructor that takes as input another TemperatureData object.
     # See https://stackoverflow.com/questions/141545/how-to-overload-init-method-based-on-argument-type.
@@ -61,7 +61,7 @@ class ActionSample:
         data.T = self.T
         data.S3 = self.S3
         data.SonT = self.SonT
-        data.bValid = self.bValid
+        data.is_valid = self.is_valid
 
     def __str__(self):
         return f'(T: {self.T}, S/T: {self.SonT})'
@@ -354,7 +354,7 @@ class ActionSampler:
 
         self.evaluateAction(sampleData)
 
-        if not sampleData.bValid:
+        if not sampleData.is_valid:
             logger.info('Failed to evaluate action at trial temperature T = {}', sampleData.T)
             return False, 'Action failed'
 
@@ -446,7 +446,7 @@ class ActionSampler:
         tunneling_findProfile_params = {'phitol': self.phitol, 'xtol': self.xtol}
 
         T = data.T
-        data.bValid = False
+        data.is_valid = False
         startTime = time.perf_counter()
 
         logger.debug('Evaluating action at T = {}', T)
@@ -471,9 +471,9 @@ class ActionSampler:
         # calculation returns a negative result (probably due to a failure of the algorithm), assume the action is actually
         # zero.
         data.SonT = max(0, action / max(T, 0.001))
-        data.bValid = data.SonT > 1e-10
+        data.is_valid = data.SonT > 1e-10
 
-        if data.bValid:
+        if data.is_valid:
             logger.debug(f'Successfully evaluated action S = {data.SonT} in {time.perf_counter() - startTime} seconds.')
         else:
             logger.debug(f'Obtained nonsensical action S = {data.SonT} in {time.perf_counter() - startTime} seconds.')
@@ -506,7 +506,7 @@ class ActionCurveShapeAnalysisData:
     def copyActionSamples(self, samples):
         for sample in samples:
             # samples is a list of tuples of primitive types, so no need for a manual deep copy.
-            if sample[2]:  # bValid
+            if sample[2]:  # is_valid
                 self.actionSamples.append(sample)
 
 
@@ -1419,7 +1419,7 @@ class TransitionAnalyser():
         bBarrierAtTmin = actionCurveShapeAnalysisData.bBarrierAtTmin
 
         # If we didn't find any action values near the nucleation threshold, we are done.
-        if data is None or not data.bValid:
+        if data is None or not data.is_valid:
             if len(allSamples) == 0:
                 if self.bReportAnalysis:
                     print('No transition')
@@ -1507,7 +1507,7 @@ class TransitionAnalyser():
                 if endTime - startTime > self.timeout_phaseHistoryAnalysis:
                     return None, []
 
-            if not intermediateData.bValid:
+            if not intermediateData.is_valid:
                 self.transition.analysis.error = f'Failed to evaluate action at trial temperature T={intermediateData.T}'
                 return None, []
 
@@ -1578,7 +1578,7 @@ class TransitionAnalyser():
 
             # Don't accept cases where S/T is negative (translated to 0) for the last two evaluations. This suggests the
             # bounce solver is failing and we cannot proceed reliably.
-            if not intermediateData.bValid or intermediateData.SonT == 0 and TcData.SonT == 0:
+            if not intermediateData.is_valid or intermediateData.SonT == 0 and TcData.SonT == 0:
                 self.transition.analysis.error = f'Failed to evaluate action at trial temperature T={intermediateData.T}'
                 # print('This was for a subcritical transition with initial S/T:', data.SonT, 'at T:', data.T)
                 return None, []
@@ -1637,7 +1637,7 @@ class TransitionAnalyser():
                 if endTime - startTime > self.timeout_phaseHistoryAnalysis:
                     return None, []
 
-            if not sampleData.bValid:
+            if not sampleData.is_valid:
                 print('Failed to evaluate action at trial temperature T=', sampleData.T)
 
         self.actionSampler.calculateStepSize(low=sampleData, mid=intermediateData, high=data)
@@ -1691,15 +1691,15 @@ class TransitionAnalyser():
                 traceback.print_exc()
                 return False
 
-            actionSamples.append((data.T, data.SonT, data.bValid))
+            actionSamples.append((data.T, data.SonT, data.is_valid))
 
-            if data.bValid and self.actionSampler.minSonTThreshold < data.SonT < self.actionSampler.maxSonTThreshold:
+            if data.is_valid and self.actionSampler.minSonTThreshold < data.SonT < self.actionSampler.maxSonTThreshold:
                 lowerActionData.append(ActionSample.copyData(data))
 
             return True
 
         def getSignLabel():
-            if not data.bValid:
+            if not data.is_valid:
                 return 'unknown'
             elif abs(data.SonT - self.actionSampler.maxSonTThreshold) <= self.actionSampler.toleranceSonT:
                 return 'equal'
@@ -1730,14 +1730,14 @@ class TransitionAnalyser():
                     temp = actionSamples[maxTempBelowIndex][0]
                     action = actionSamples[maxTempBelowIndex][1]
                     dataToUse = ActionSample(temp, action*temp)
-                    dataToUse.bValid = True
+                    dataToUse.is_valid = True
 
                     # Attempt to also store the sample point directly before this in temperature.
                     if prevMaxTempBelowIndex > -1:
                         temp = actionSamples[prevMaxTempBelowIndex][0]
                         action = actionSamples[prevMaxTempBelowIndex][1]
                         lowerTSampleToUse = ActionSample(temp, action*temp)
-                        lowerTSampleToUse.bValid = True
+                        lowerTSampleToUse.is_valid = True
                     else:
                         lowerTSampleToUse = None
 
@@ -1785,7 +1785,7 @@ class TransitionAnalyser():
                 saveCurveShapeAnalysisData(False)
                 return actionCurveShapeAnalysisData
 
-            if data.bValid:
+            if data.is_valid:
                 labelLow = getSignLabel()
                 TLow = data.T
 
@@ -1833,7 +1833,7 @@ class TransitionAnalyser():
 
                 # TODO: cleanup if this still works [2023]
                 #calculateActionSimple(potential, data, fromPhase, toPhase, Tstep=-Tstep, bDebug=settings.bDebug)
-                #actionSamples.append((data.T, data.SonT, data.bValid))
+                #actionSamples.append((data.T, data.SonT, data.is_valid))
                 labelLow = 'below'
                 labelHigh = getSignLabel()
 
@@ -1894,7 +1894,7 @@ class TransitionAnalyser():
                 saveCurveShapeAnalysisData(False)
                 return actionCurveShapeAnalysisData
 
-            if not data.bValid:
+            if not data.is_valid:
                 if self.bAllowErrorsForTn:
                     TLow = TMid
                 # else we would have returned already.
