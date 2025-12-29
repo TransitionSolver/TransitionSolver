@@ -259,11 +259,13 @@ def pipeline_analysePhaseHistory(potential, phaseStructure, settings: PipelineSe
 
     try:
         vw = settings.function_getWallVelocity()
+        print("In pipeline_analysePhaseHistory about to call analyser.analysePhaseHistory_supplied")
         paths, timedOut, analysisMetrics = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=vw)
-
+        print("In pipeline_analysePhaseHistory immediately after calllling analyser.analysePhaseHistory_supplied")
         if timedOut:
             return 'Phase history analysis timed out'
 
+        print("In pipeline_analysePhaseHistory about to call writePhaseHistoryReport")
         writePhaseHistoryReport(paths, phaseStructure, settings, analysisMetrics)
 
         return 'Success'
@@ -277,11 +279,16 @@ def writePhaseHistoryReport(paths: list[Path], phaseStructure: PhaseStructure, s
         analysisMetrics: AnalysisMetrics):
     report = {}
     fileName = settings.fileName_phaseHistoryReport
-
+    print("In writePhaseHistoryReport")
     if len(phaseStructure.transitions) > 0:
         report['transitions'] = [t.report(fileName) for t in phaseStructure.transitions]
+    print("In writePhaseHistoryReport after checking len(phaseStructure.transitions)")    
     if len(paths) > 0:
+        print("In writePhaseHistoryReport checking len(paths)...")
+        print(" len(paths) = ", len(paths))
+        print(" paths = ", paths)
         report['paths'] = [p.report() for p in paths]
+    print("In writePhaseHistoryReport after checking len(paths)")    
     report['valid'] = any([p.is_valid for p in paths])
     report['analysisTime'] = analysisMetrics.analysisElapsedTime
 
@@ -421,7 +428,7 @@ def example_parameterPointFile():
     # name will be searched for in <path_to_PhaseTracer>/PhaseTracer/bin/.
     phaseStructureProgramName = 'run_ToyModel'
     # Where all output files will be saved, relative to the TransitionSolver directory.
-    outputFolder = 'output/example2'
+    outputFolder = 'output/pipeline_example_output'
     # Write PhaseTracer's output to the output folder.
     phaseHistoryOutputFolder = outputFolder
 
@@ -456,7 +463,7 @@ def example_parameterPointFile():
         function_getWallVelocity)
     settings.setPhaseStructureCall(phaseStructureProgramName, phaseStructureProgramCommands)
     settings.bDebug = True
-    settings.bPlot = True
+    settings.bPlot = False
     settings.bReportAnalysis = True
     settings.bReportPaths = True
     settings.bCheckPossibleCompletion = False

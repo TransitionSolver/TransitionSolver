@@ -46,7 +46,6 @@ class PhaseHistoryAnalyser:
             1.) -> tuple[list[Path], bool, Optional[Timer]]:
 
         timer = Timer(self.time_limit)
-
         if self.bDebug:
             print('Parameter point:', potential.getParameterPoint())
 
@@ -54,6 +53,7 @@ class PhaseHistoryAnalyser:
         phases = phaseStructure.phases
         transitions = phaseStructure.transitions
         paths = phaseStructure.paths
+        print("In analysePhaseHistory_supplied after setting transitionPaths from phaseStructure")
 
         # TODO: added on 23/06/2022 to handle the case where PhaseTracer reports no possible transition paths. Need to
         #  make sure PhaseTracer would have handled the case where we could stay in the same phase.
