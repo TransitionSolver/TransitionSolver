@@ -346,8 +346,7 @@ class ActionSampler:
             TList[-1]) - self.transitionAnalyser.groud_state_energy_density
         # TODO: replace with quadratic interpolation.
         energyDensityList = np.linspace(energyStart, energyEnd, numPoints)
-        #HList = self.transitionAnalyser.calculateHubbleParameterSq_supplied(energyDensityList)
-        HList = [calculateHubbleParameterSq_supplied(e) for e in energyDensityList]
+        HList = hubble_squared_from_energy_density(energyDensityList)
         integrandList = [GammaList[i]/(TList[i]*HList[i]**2) for i in range(numPoints)]
 
         for i in range(1, numPoints):
@@ -633,7 +632,7 @@ class TransitionAnalyser:
         # TODO: need an initial value...
         betaArray = [0.]
         hydroVars = [self.getHydroVars(self.actionSampler.T[0])]
-        H = [np.sqrt(self.calculateHubbleParameterSq_fromHydro(hydroVars[0]))]
+        H = [hydroVars[0].hubble_constant]
         logger.debug("calling getBubbleWallVelocity in analyseTransition...")
         vw = [self.getBubbleWallVelocity(hydroVars[0])]
 
@@ -801,9 +800,9 @@ class TransitionAnalyser:
                         meanBubbleRadiusArray.append(integrationHelper_avgBubRad.data[j])
                         meanBubbleSeparationArray.append((bubbleNumberDensity[j])**(-1/3))
 
-                #H.append(np.sqrt(self.calculateHubbleParameterSq(T[i])))
-                #H.append(np.sqrt(calculateHubbleParameterSq_supplied(rhof[i] - self.groud_state_energy_density)))
-                H.append(np.sqrt(self.calculateHubbleParameterSq_fromHydro(hydroVarsInterp[i])))
+                #H.append(np.sqrt(self.hubble_squared(T[i])))
+                #H.append(np.sqrt(hubble_squared_from_energy_density(rhof[i] - self.groud_state_energy_density)))
+                H.append(hydroVarsInterp[i].hubble_constant)
                 vw.append(self.getBubbleWallVelocity(hydroVarsInterp[i]))
 
                 Gamma.append(self.calculateGamma(T[i], SonT[i]))
@@ -1933,20 +1932,16 @@ class TransitionAnalyser:
     # TODO: [2023] need to allow this to be used for list inputs again.
     #def calculateInstantaneousNucleationRate(T: Union[float, Iterable[float]], SonT: Union[float, Iterable[float]], potential: AnalysablePotential):
     def calculateInstantaneousNucleationRate(self, T: float, action: float) -> float:
-        HSq = self.calculateHubbleParameterSq(T)
+        HSq = self.hubble_squared(T)
 
         Gamma = self.calculateGamma(T, action)
 
         return Gamma / (T*HSq**2)
 
     # TODO: We can optimise this for a list of input temperatures by reusing potential samples in adjacent derivatives.
-    def calculateHubbleParameterSq(self, T: float) -> float:
-        # Default is energy density for from phase.
+    def hubble_squared(self, T: float) -> float:
         rhof = hydrodynamics.energy_density_from_phase(self.fromPhase, self.toPhase, self.potential, T)
-        return 8*np.pi*GRAV_CONST/3*(rhof - self.groud_state_energy_density)
-
-    def calculateHubbleParameterSq_fromHydro(self, hydroVars: HydroVars) -> float:
-        return 8*np.pi*GRAV_CONST/3*hydroVars.energyDensityFalse
+        return hubble_squared_from_energy_density(rhof - self.groud_state_energy_density)
 
     def getHydroVars(self, T: float) -> HydroVars:
         return hydrodynamics.make_hydro_vars(self.fromPhase, self.toPhase, self.potential, T,
@@ -2001,17 +1996,14 @@ class TransitionAnalyser:
         return T0 >= self.Tmin
 
 
-def calculateHubbleParameterSq(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float,
+def hubble_squared(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float,
                                groud_state_energy_density: float) -> float:
     rhof = hydrodynamics.energy_density_from_phase(fromPhase, toPhase, potential, T)
-    return calculateHubbleParameterSq_supplied(rhof - groud_state_energy_density)
+    return hubble_squared_from_energy_density(rhof - groud_state_energy_density)
 
 
-# TODO: We can optimise this for a list of input temperatures by reusing potential samples in adjacent derivatives.
-#def calculateHubbleParameterSq_supplied(energyDensity: Union[list[float], np.ndarray])\
-#        -> Union[list[float], np.ndarray]:
-def calculateHubbleParameterSq_supplied(energyDensity: float) -> float:
-    return 8*np.pi*GRAV_CONST/3*energyDensity
+def hubble_squared_from_energy_density(energy_density):
+    return 8 * np.pi * GRAV_CONST / 3 * energy_density
 
 
 # Returns T, SonT, bFinishedAnalysis.
