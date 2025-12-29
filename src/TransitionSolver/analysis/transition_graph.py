@@ -54,9 +54,9 @@ class Path:
 
 
 class TransitionEdge:
-    def __init__(self, falsePhaseNode: PhaseNode, truePhaseNode: PhaseNode, transition, index: int):
-        self.falsePhaseNode = falsePhaseNode
-        self.truePhaseNode = truePhaseNode
+    def __init__(self, false_phase_node: PhaseNode, true_phase_node: PhaseNode, transition, index: int):
+        self.false_phase_node = false_phase_node
+        self.true_phase_node = true_phase_node
         self.transition = transition
         self.index = index
         self.path = None

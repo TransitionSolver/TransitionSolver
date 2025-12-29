@@ -268,7 +268,7 @@ class PhaseHistoryAnalyser:
                     frontierNodesToRemove = []
 
                     for frontierNode in frontier:
-                        if frontierNode.falsePhaseNode.phase == transitionEdge.falsePhaseNode.phase and\
+                        if frontierNode.false_phase_node.phase == transitionEdge.false_phase_node.phase and\
                                 frontierNode.transition.Tc < transition.Tf:
                             frontierNodesToRemove.append(frontierNode)
 
@@ -281,7 +281,7 @@ class PhaseHistoryAnalyser:
                 # in another direction due to a previous element in the frontier. One or two new paths need to be added
                 # to account for this divergence, depending on whether the divergence occurs at the start of the path or
                 # midway through, respectively.
-                if transitionEdge.falsePhaseNode.phase != path.phases[-1].phase:
+                if transitionEdge.false_phase_node.phase != path.phases[-1].phase:
                     # Don't split the path at the first phase along the path.
                     bSplit = len(path.phases) > 2
                     if bSplit:
@@ -292,16 +292,16 @@ class PhaseHistoryAnalyser:
 
                     # Create a new path for this recently handled transition.
                     prevPath = path
-                    path = Path(transitionEdge.falsePhaseNode)
+                    path = Path(transitionEdge.false_phase_node)
                     paths.append(path)
                     # Add this path to the phase node where this divergence occurs.
                     # TODO: changed on 15/11/2021 because pipeline/noNucleation_msScan-BP4_1/24 was breaking here.
                     #prevPath.phases[-2].paths.append(path)
-                    transitionEdge.falsePhaseNode.paths.append(path)  # is it this simple? (added 15/11/2021)
+                    transitionEdge.false_phase_node.paths.append(path)  # is it this simple? (added 15/11/2021)
                     #if bSplit:
                     #    paths[-2].phases[-1].paths.append(path)
                     #else:
-                    #    transitionEdge.falsePhaseNode.paths.append(path)???
+                    #    transitionEdge.false_phase_node.paths.append(path)???
 
                     # If we don't split the path, we still need to handle links between the prefixes of the previous
                     # path and the new path. Whatever path is a prefix of the previous path is also a previous of the
@@ -324,14 +324,14 @@ class PhaseHistoryAnalyser:
                 # the other path as a suffix, implicitly adding the true phase to this path.
                 path.transitions.append(transition)
 
-                truePhase = transitionEdge.truePhaseNode
+                truePhase = transitionEdge.true_phase_node
 
                 # If the true phase has no paths through it currently, extend the path as usual and mark that this path
                 # goes through the true phase. This is the only case where we check for new transitions to add to the
                 # frontier. In all other cases, a suffix will handle that instead, and this path can be ignored.
                 if len(truePhase.paths) == 0:
                     # Extend the path.
-                    path.phases.append(transitionEdge.truePhaseNode)
+                    path.phases.append(transitionEdge.true_phase_node)
                     # Mark that this path goes through the true phase node.
                     truePhase.paths.append(path)
                     # Find transitions from this point to add to the frontier.
@@ -415,8 +415,8 @@ class PhaseHistoryAnalyser:
             list[list[TransitionEdge]], path: Path, bTransitionStarts: bool, phases: list[Phase])\
             -> list[TransitionEdge]:
         newFrontier: list[TransitionEdge] = []
-        falsePhase: int = transitionEdge.falsePhaseNode.phase
-        truePhase: int = transitionEdge.truePhaseNode.phase
+        falsePhase: int = transitionEdge.false_phase_node.phase
+        truePhase: int = transitionEdge.true_phase_node.phase
 
         # Find if there is a transition further down the false phase, and add it to the frontier if it could start
         # before the path transitions to a new phase either through the current transition or another transition along
