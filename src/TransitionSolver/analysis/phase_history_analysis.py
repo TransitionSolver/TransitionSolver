@@ -8,19 +8,24 @@ from __future__ import annotations
 import time
 from typing import Optional
 
-from ..util.events import notifyHandler
 from ..models.analysable_potential import AnalysablePotential
-from .phase_structure import PhaseStructure, Phase, Transition
+from .phase_structure import PhaseStructure, Phase
 from .transition_analysis import TransitionAnalyser
 from .transition_graph import TransitionEdge, Path, PhaseNode
-from . import phase_structure
 
 
-# TODO: use this class.
-class AnalysisMetrics:
-    totalActionEvaluations: int = 0
-    analysisStartTime: float = 0
-    analysisElapsedTime: float = 0
+class Timer:
+
+    def __init__(self, limit):
+        self.start_time = time.perf_counter()
+        self.limit = limit
+        
+    def timeout(self):
+        self.save()
+        return self.limit > 0 and self.analysisElapsedTime > self.limit
+
+    def save(self):
+        self.analysisElapsedTime = time.perf_counter() - self.start_time
 
 
 class PhaseHistoryAnalyser:
@@ -32,22 +37,15 @@ class PhaseHistoryAnalyser:
     bAllowErrorsForTn: bool = True
     bAnalyseTransitionPastCompletion: bool = False
     bForcePhaseOnAxis: bool = False
-    timeout_phaseHistoryAnalysis: float = 200.
-    # TODO: implement this timeout for an individual transition. We would need separate start times. One for the entire
-    #  phase history analysis, and one for the current transition analysis.
+    time_limit: float = 200.
     fileName_precomputedActionCurve: list[str] = []
     precomputedTransitionIDs: list[int] = []
-    analysisMetrics: AnalysisMetrics
-
-    def __init__(self):
-        self.analysisMetrics = AnalysisMetrics()
-        notifyHandler.handleEvent(self, 'on_create')
 
     # Second return value is whether we timed out.
     def analysePhaseHistory_supplied(self, potential: AnalysablePotential, phaseStructure: PhaseStructure, vw: float =
-            1.) -> tuple[list[Path], bool, Optional[AnalysisMetrics]]:
-        # Time how long the analysis takes.
-        self.analysisMetrics.analysisStartTime = time.perf_counter()
+            1.) -> tuple[list[Path], bool, Optional[Timer]]:
+
+        timer = Timer(self.time_limit)
 
         if self.bDebug:
             print('Parameter point:', potential.getParameterPoint())
@@ -59,26 +57,18 @@ class PhaseHistoryAnalyser:
 
         # TODO: added on 23/06/2022 to handle the case where PhaseTracer reports no possible transition paths. Need to
         #  make sure PhaseTracer would have handled the case where we could stay in the same phase.
-        if len(paths) == 0:
+        if not paths:
             return [], False, None
-
-        highTemp = 0
-        bLowTemperaturePhase = [False]*len(phases)
-        bHighTemperaturePhase = [False]*len(phases)
-
-        transitions.sort(key=lambda x: x.ID)
-
+       
         # Find the highest temperature.
-        for phase in phases:
-            highTemp = max(highTemp, phase.T[-1])
-
-        for i in range(len(phases)):
-            if phases[i].T[-1] == highTemp:
-                bHighTemperaturePhase[i] = True
+        high_t = [phase.T[-1] for phase in phases]
+        highTemp = max(high_t)
+        bHighTemperaturePhase = [t == highTemp for t in high_t]
 
         # Find all low temperature phases. These are needed to check if a path is valid, i.e. if it terminates at a low
         # temperature phase.
         # TODO: why was it necessary to do it this way?
+        bLowTemperaturePhase = [False]*len(phases)
         for i in range(len(paths)):
             if paths[i][-1] < 0:
                 phase = -(paths[i][-1]+1)
@@ -91,31 +81,24 @@ class PhaseHistoryAnalyser:
 
         # If there are no transitions, check if any phase is both a high and low temperature phase. This constitutes a
         # valid path, but with no transitions between phases.
-        if len(transitions) == 0:
+        if not transitions:
             validPaths = []
 
-            for i in range(len(phases)):
+            for i, p in enumerate(phases):
                 if bLowTemperaturePhase[i] and bHighTemperaturePhase[i]:
                     # The temperature of this phase might as well be the highest sampled temperature.
-                    validPaths.append(Path(PhaseNode(i, phases[i].T[-1])))
+                    validPaths.append(Path(PhaseNode(i, p.T[-1])))
 
             if self.bReportPaths:
                 print('No transitions.')
                 print('Valid paths:', validPaths)
             return validPaths, False, None
 
-        # TODO: second time sorting transitions, why did we sort it by id to start with???
-        transitions.sort(key=lambda tr: tr.properties.Tc, reverse=True)
+        unique = {t.properties.Tc: i for i, t in enumerate(transitions)}
+        uniqueTransitionTemperatures = list(unique.keys())
+        uniqueTransitionTemperatureIndices = list(unique.values())
 
-        uniqueTransitionTemperatures = [transitions[0].properties.Tc]
-        uniqueTransitionTemperatureIndices = [0]
-
-        for i in range(1, len(transitions)):
-            if transitions[i].Tc != transitions[i-1].Tc:
-                uniqueTransitionTemperatures.append(transitions[i].properties.Tc)
-                uniqueTransitionTemperatureIndices.append(i)
-
-        transitionLists = [[] for _ in range(len(uniqueTransitionTemperatures))]
+        transitionLists = [[]] * len(uniqueTransitionTemperatures)
         # The first dimension is the phase index.
         phaseIndexedTransitions: list[list[TransitionEdge]] = [[] for _ in range(len(phases))]
 
@@ -185,12 +168,9 @@ class PhaseHistoryAnalyser:
 
         frontier.sort(key=lambda tr: tr.transition.properties.Tc, reverse=True)
 
-        while len(frontier) > 0:
-            if self.timeout_phaseHistoryAnalysis > 0:
-                endTime = time.perf_counter()
-                if endTime - self.analysisMetrics.analysisStartTime > self.timeout_phaseHistoryAnalysis:
-                    self.analysisMetrics.analysisElapsedTime = endTime - self.analysisMetrics.analysisStartTime
-                    return [], True, self.analysisMetrics
+        while frontier:
+            if timer.timeout():
+                return [], True, timer
 
             if self.bDebug:
                 print('Frontier:')
@@ -215,7 +195,7 @@ class PhaseHistoryAnalyser:
 
                 Tmin = self.getMinTransitionTemperature_indexed(phases, phaseIndexedTransitions, transitionEdge)
 
-                if len(path.transitions) > 0:
+                if path.transitions:
                     # TODO: changed on 16/11/2021. It is not correct to assume that the last transition along this path
                     #  gets us to the false phase of the current transition. If the path has been extended from the
                     #  current false vacuum by an alternative transition, then the end of the path does not correspond
@@ -227,7 +207,7 @@ class PhaseHistoryAnalyser:
                     Tmax = transition.Tc
                     for tr in path.transitions:
                         if tr.true_phase == transition.false_phase:
-                            Tmax = min(Tmax, tr.Tn)
+                            Tmax = min(Tmax, tr.properties.Tn)
                             break
                 else:
                     Tmax = transition.properties.Tc
@@ -252,29 +232,18 @@ class PhaseHistoryAnalyser:
                     transitionAnalyser.bPlot = self.bPlot
                     transitionAnalyser.bReportAnalysis = self.bReportAnalysis
 
-                    transitionAnalyser.analyseTransition(startTime=self.analysisMetrics.analysisStartTime,
+                    transitionAnalyser.analyseTransition(startTime=timer.start_time,
                         precomputedActionCurveFileName=actionFileName)
 
-                    if self.timeout_phaseHistoryAnalysis > 0:
-                        endTime = time.perf_counter()
-                        if endTime - self.analysisMetrics.analysisStartTime > self.timeout_phaseHistoryAnalysis:
-                            self.analysisMetrics.analysisElapsedTime = endTime - self.analysisMetrics.analysisStartTime
-                            return [], True, self.analysisMetrics
+                    if timer.timeout():
+                        return [], True, timer
             else:
                 if self.bDebug:
                     print(f'Already analysed transition {transition.ID}')
 
             # If the transition begins.
             if transition.properties.Tp and transition.properties.Tf:
-                frontierNodesToRemove = []
-
-                for frontierNode in frontier:
-                    if frontierNode.false_phase_node.phase == transitionEdge.false_phase_node.phase and\
-                            frontierNode.transition.properties.Tc < transition.properties.Tf:
-                        frontierNodesToRemove.append(frontierNode)
-
-                for frontierNode in frontierNodesToRemove:
-                    frontier.remove(frontierNode)
+                frontier = [f for f in frontier if f.false_phase_node.phase != transitionEdge.false_phase_node.phase and f.transition.properties.Tc < transition.properties.Tf]
 
                 # First we handle the false phase side. The fact that the transition happened may cause a path splitting
                 # that couldn't be guaranteed before the transition was analysed.
@@ -409,8 +378,8 @@ class PhaseHistoryAnalyser:
             print('\nAnalysed transitions:', [transitions[i].ID for i in range(len(transitions))
                 if transitions[i].analysis is not None])
 
-        self.analysisMetrics.analysisElapsedTime = time.perf_counter() - self.analysisMetrics.analysisStartTime
-        return paths, False, self.analysisMetrics
+        timer.save()
+        return paths, False, timer
 
     def getNewFrontier(self, transitionEdge: TransitionEdge, phaseIndexedTransitions:
             list[list[TransitionEdge]], path: Path, bTransitionStarts: bool, phases: list[Phase])\
@@ -494,10 +463,10 @@ class PhaseHistoryAnalyser:
 
         # Find if there is a reverse transition. This tells us that the forwards transition cannot occur below the
         # critical temperature of the reverse transition.
-        for i in range(transitionEdge.index+1, len(phaseIndexedTransitions[transition.true_phase])):
-            reverseTransition = phaseIndexedTransitions[transition.true_phase][i].transition
-            if reverseTransition.properties.Tc < transition.properties.Tc and reverseTransition.true_phase == transition.false_phase:
-                Tmin = reverseTransition.properties.Tc
+        for p in phaseIndexedTransitions[transition.true_phase][transitionEdge.index+1:]:
+            reverse_transition = p.transition
+            if reverse_transition.properties.Tc < transition.properties.Tc and reverse_transition.true_phase == transition.false_phase:
+                Tmin = reverse_transition.properties.Tc
                 break
 
         return max(Tmin, phases[transition.false_phase].T.min(), phases[transition.true_phase].T.min())
