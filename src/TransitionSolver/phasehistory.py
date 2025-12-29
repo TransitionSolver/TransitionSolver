@@ -26,17 +26,17 @@ def _make_report(paths, phase_structure, analysis_metrics):
     return report
 
 
-def find_phase_history(potential, phase_structure=None, vw=0.9, phase_structure_file=None):
+def find_phase_history(potential, phase_structure=None, vw=0.9, phase_tracer_file=None):
     """
     @param potential Effective potential
-    @param phase_structure Phase structure results file from PT
+    @param phase_structure Parsed phase structure from PT
     @param vw Assumed wall velocity
+    @param phase_tracer_file Results file from PT
 
     @returns Report phase history from PhaseTracer output
     """
-    if phase_structure_file is not None:
-        with open(phase_structure_file, encoding="utf8") as f:
-            phase_structure = read_phase_tracer(f.read())
+    if phase_tracer_file is not None:
+        phase_structure = read_phase_tracer(phase_tracer_file=phase_tracer_file)
 
     if not phase_structure.transitionPaths:
         raise RuntimeError(
@@ -49,16 +49,16 @@ def find_phase_history(potential, phase_structure=None, vw=0.9, phase_structure_
     return _make_report(paths, phase_structure, analysis_metrics)
 
 
-def trace_dof(potential, phase_structure=None, phase_structure_file=None):
+def trace_dof(potential, phase_structure=None, phase_tracer_file=None):
     """
     @param potential Effective potential
-    @param phase_structure_file Phase structure results file from PT
+    @param phase_structure Parsed phase structure from PT
+    @param phase_tracer_file Results file from PT
 
     @returns DOF as a function of temperature for each phase
     """
-    if phase_structure_file is not None:
-        with open(phase_structure_file, encoding="utf8") as f:
-            phase_structure = read_phase_tracer(f.read())
+    if phase_tracer_file is not None:
+        phase_structure = read_phase_tracer(phase_tracer_file=phase_tracer_file)
 
     data = {}
 
@@ -75,7 +75,7 @@ def trace_dof(potential, phase_structure=None, phase_structure_file=None):
 def load_transition(transition_id, phase_structure_file):
     """
     @param transition_id ID of transition to load from disk
-    @param phase_structure_file Phase structure results file from PT
+    @param phase_structure_file Phase structure in JSON format
 
     @returns Transition from data on disk
     """
@@ -92,7 +92,7 @@ def load_transition(transition_id, phase_structure_file):
 def plot_action_curve(transition_id, phase_structure_file, ax=None):
     """
     @param transition_id ID of transition to load from disk
-    @param phase_structure_file Phase structure results file from PT
+    @param phase_structure_file Phase structure in JSON format
 
     @returns Axes of plot of axis curve
     """

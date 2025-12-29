@@ -19,8 +19,8 @@ THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 
 
 def test_dof():
-    phase_structure_file = THIS / "rss_bp1_phase_structure.dat"
-    result = phasehistory.trace_dof(RSS_BP1, phase_structure_file=phase_structure_file)
+    phase_tracer_file = THIS / "rss_bp1_phase_structure.dat"
+    result = phasehistory.trace_dof(RSS_BP1, phase_tracer_file=phase_tracer_file)
     assert allclose(result, THIS / "rss_bp1_dof.json")
 
 

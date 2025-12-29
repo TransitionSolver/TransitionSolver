@@ -13,10 +13,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize
 
-from ..analysis import phase_structure
 from ..analysis.phase_structure import PhaseStructure
 from ..models.analysable_potential import AnalysablePotential
 from . import kappa_nu_model, hydrodynamics
+from ..phasetracer import read_phase_tracer
 
 
 KELVIN_TO_GEV = 8.617e-14
@@ -383,16 +383,16 @@ class GWAnalyser:
     def __init__(
             self,
             potential,
-            phase_structure_file,
+            phase_tracer_file,
             phase_history,
             force_relevant=False,
             is_file=True,  # TODO remove this later
             **kwargs):
 
         if is_file:
-            _, phase_structure_ = phase_structure.load_data(phase_structure_file)
+            phase_structure = read_phase_tracer(phase_tracer_file=phase_tracer_file)
         else:
-            phase_structure_ = phase_structure_file
+            phase_structure = phase_tracer_file
 
         relevant_transitions = phase_history['transitions'] if force_relevant else extract_relevant_transitions(
             phase_history)
@@ -402,7 +402,7 @@ class GWAnalyser:
                 'No relevant transition detected in the phase history')
 
         self.gws = {t['id']: AnalyseIndividualTransition(
-            phase_structure_, t, potential, **kwargs) for t in relevant_transitions}
+            phase_structure, t, potential, **kwargs) for t in relevant_transitions}
 
     def report(self, *detectors):
         """

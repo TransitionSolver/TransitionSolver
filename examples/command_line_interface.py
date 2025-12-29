@@ -12,6 +12,7 @@ from TransitionSolver.analysis.phase_history_analysis import AnalysisMetrics, Ph
 from TransitionSolver.analysis.transition_graph import Path
 from TransitionSolver.analysis import phase_structure
 from TransitionSolver.gws import GWAnalyser, lisa
+from TransitionSolver import read_phase_tracer
 from typing import Type
 import numpy as np
 import subprocess
@@ -94,12 +95,8 @@ def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str,
     subprocess.call(command, timeout=60)#, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
     # Load the phase structure saved by PhaseTracer.
-    bFileExists, phaseStructure = phase_structure.load_data(outputFolder + '/phase_structure.dat')
+    phaseStructure = read_phase_tracer(phase_tracer_file=outputFolder + '/phase_structure.dat')
 
-    # Validate the phase structure.
-    if not bFileExists:
-        print('Could not find phase structure file.')
-        return
     if len(phaseStructure.transitionPaths) == 0:
         print('No valid transition path to the current phase of the Universe.')
         return

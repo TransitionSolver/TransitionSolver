@@ -102,15 +102,19 @@ def read_arr(data):
     return np.squeeze(np.array([np.fromstring(d, sep=' ') for d in data]))
 
 
-def read_phase_tracer(data) -> PhaseStructure:
+def read_phase_tracer(phase_tracer_data=None, phase_tracer_file=None) -> PhaseStructure:
     """
     Read serialised data from PhaseTracer
     """
+    if phase_tracer_file is not None:
+        with open(phase_tracer_file, encoding="utf8") as f:
+            phase_tracer_data = f.read()
+    
     phases = []
     transitions = []
     paths = []
 
-    parts = [part.split("\n") for part in data.strip().split("\n\n")]
+    parts = [part.split("\n") for part in phase_tracer_data.strip().split("\n\n")]
 
     for part in parts:
 
