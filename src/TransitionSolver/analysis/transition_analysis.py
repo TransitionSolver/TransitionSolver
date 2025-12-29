@@ -44,25 +44,23 @@ GRAV_CONST = 6.7088e-39
 
 
 class ActionSample:
-    def __init__(self, T: float, S3: float = -1.):
+    """
+    Container for action sample data
+    """
+    def __init__(self, T=None, S3=None):
         self.T = T
         self.S3 = S3
-        self.SonT = -1 if S3 < 0. else S3 / max(0.001, T)
-        self.is_valid = self.S3 > 0.
+        
+    @property
+    def SonT(self):
+        return None if not self.is_valid else self.S3 / self.T
+    
+    @property
+    def is_valid(self):
+        return self.S3 is not None and self.T is not None and self.S3 > 0. and self.T > 0.
 
-    # Emulates a constructor that takes as input another TemperatureData object.
-    # See https://stackoverflow.com/questions/141545/how-to-overload-init-method-based-on-argument-type.
-    @classmethod
-    def copyData(cls, data: 'ActionSample') -> 'ActionSample':
-        return cls(data.T, data.S3)
-
-    # Need to use quotes around type annotation since it's within the same class.
-    # See https://stackoverflow.com/a/49392996.
-    def transferData(self, data: 'ActionSample'):
-        data.T = self.T
-        data.S3 = self.S3
-        data.SonT = self.SonT
-        data.is_valid = self.is_valid
+    def copy(self):
+        return ActionSample(self.T, self.S3)
 
     def __str__(self):
         return f'(T: {self.T}, S/T: {self.SonT})'
@@ -417,7 +415,6 @@ class ActionSampler:
         tunneling_findProfile_params = {'phitol': self.phitol, 'xtol': self.xtol}
 
         T = data.T
-        data.is_valid = False
         startTime = time.perf_counter()
 
         logger.debug('Evaluating action at T = {}', T)
@@ -437,12 +434,6 @@ class ActionSampler:
         # Update the data, including changes to the phases and temperature if the calculation previously failed.
         data.T = T
         data.S3 = action
-        # TODO: we should probably handle this better.
-        # At T=0, emulate the freezing suppression by dividing by a small but non-vanishing number. In case the action
-        # calculation returns a negative result (probably due to a failure of the algorithm), assume the action is actually
-        # zero.
-        data.SonT = max(0, action / max(T, 0.001))
-        data.is_valid = data.SonT > 1e-10
 
         if data.is_valid:
             logger.debug(f'Successfully evaluated action S = {data.SonT} in {time.perf_counter() - startTime} seconds.')
@@ -465,14 +456,14 @@ class ActionCurveShapeAnalysisData:
         self.error = False
 
     def copyDesiredData(self, sample):
-        self.desiredData = ActionSample.copyData(sample)
+        self.desiredData = sample.copy()
 
     def copyNextBelowDesiredData(self, sample):
-        self.nextBelowDesiredData = ActionSample.copyData(sample)
+        self.nextBelowDesiredData = sample.copy()
 
     def copyStoredLowerActionData(self, samples):
         for sample in samples:
-            self.storedLowerActionData.append(ActionSample.copyData(sample))
+            self.storedLowerActionData.append(sample.copy())
 
     def copyActionSamples(self, samples):
         for sample in samples:
@@ -613,7 +604,7 @@ class TransitionAnalyser:
         else:
             self.properties.bFoundNucleationWindow = True
 
-            sampleData = ActionSample(-1, -1)
+            sampleData = ActionSample()
             self.actionSampler.getNextSample(sampleData, [], 0., self.Tmin)
             self.actionSampler.getNextSample(sampleData, [], 0., self.Tmin)
 
@@ -1438,7 +1429,7 @@ class TransitionAnalyser:
                 print(f'Data: (T: {data.T}, S/T: {data.SonT})')
                 print('len(lowerSonTData):', len(lowerSonTData))
 
-        intermediateData = ActionSample.copyData(data)
+        intermediateData = data.copy()
 
         self.actionSampler.lowerSonTData = lowerSonTData
 
@@ -1487,7 +1478,7 @@ class TransitionAnalyser:
             # to limit the number of samples and simply choose the result with the closest S/T to maxSonTThreshold.
             maxCorrectionSamples = 5
             correctionSamplesTaken = 0
-            closestPoint = ActionSample.copyData(intermediateData)
+            closestPoint = intermediateData.copy()
 
             # While our sample's S/T is too far from the target value, step closer to 'data' and try again.
             while correctionSamplesTaken < maxCorrectionSamples \
@@ -1507,15 +1498,15 @@ class TransitionAnalyser:
                         return None, []
 
                 # Store this point so we don't have to resample near it.
-                self.actionSampler.storeLowerSonTData(ActionSample.copyData(intermediateData))
+                self.actionSampler.storeLowerSonTData(intermediateData.copy())
 
                 # If this is the closest point, store this in case the next sample is worse (for a noisy action).
                 if abs(intermediateData.SonT - data.SonT) < abs(closestPoint.SonT - data.SonT):
-                    intermediateData.transferData(closestPoint)
+                    closestPoint = intermediateData.copy()
 
             # If we corrected intermediate data, make sure to update it to the closest point (to maxSonTThreshold) sampled.
             if correctionSamplesTaken > 0:
-                closestPoint.transferData(intermediateData)
+                closestPoint = intermediateData.copy()
 
             # Given that we took a small step in temperature and have a relatively large S/T, an increase in S/T means there
             # is insufficient time for nucleation to occur. It is improbable that S/T would drop to a small enough value
@@ -1578,7 +1569,7 @@ class TransitionAnalyser:
             print('Found next sample: T =', intermediateData.T, 'and S/T =', intermediateData.SonT)
 
         # Now take the same step in temperature and evaluate the action again.
-        sampleData = ActionSample.copyData(intermediateData)
+        sampleData = intermediateData.copy()
         sampleData.T = 2 * intermediateData.T - data.T
 
         if not subcritical and len(self.actionSampler.lowerSonTData) > 0 and self.actionSampler.lowerSonTData[
@@ -1587,7 +1578,7 @@ class TransitionAnalyser:
                 # sampleData.T = actionSampler.lowerSonTData[-1].T
                 # sampleData.action = actionSampler.lowerSonTData[-1].action
                 # sampleData.SonT = actionSampler.lowerSonTData[-1].SonT
-                self.actionSampler.lowerSonTData[-1].transferData(sampleData)
+                sampleData = self.actionSampler.lowerSonTData[-1].copy()
             else:
                 self.actionSampler.evaluateAction(sampleData)
 
@@ -1617,7 +1608,7 @@ class TransitionAnalyser:
         # lowerSonTData automatically results in this desired behaviour. For a near-instantaneous subcritical transition,
         # this will actually be the *second* next point in the integration, as the handling of intermediateData is also
         # postponed, and should be done before sampleData.
-        self.actionSampler.storeLowerSonTData(ActionSample.copyData(sampleData))
+        self.actionSampler.storeLowerSonTData(sampleData.copy())
 
         return sampleData, allSamples
 
@@ -1659,7 +1650,7 @@ class TransitionAnalyser:
             actionSamples.append((data.T, data.SonT, data.is_valid))
 
             if data.is_valid and self.actionSampler.minSonTThreshold < data.SonT < self.actionSampler.maxSonTThreshold:
-                lowerActionData.append(ActionSample.copyData(data))
+                lowerActionData.append(data.copy())
 
             return True
 
@@ -1742,7 +1733,7 @@ class TransitionAnalyser:
             minAction = data.SonT
             minLabel = labelLow
 
-            data.transferData(lowerTSample)
+            lowerTSample = data.copy()
             data.T += Tstep
             bSuccess = evaluateAction_internal()
 
@@ -1787,7 +1778,7 @@ class TransitionAnalyser:
 
             # If the action at the high temperature is too low, sample closer to Tmax.
             while labelHigh == 'below' and abs(self.Tmax - data.T)/self.Tmax > 1e-4:
-                data.transferData(lowerTSample)
+                lowerTSample = data.copy()
                 data.T = 0.5*(data.T + self.Tmax)
                 Tstep = 0.1*(self.Tmax - data.T)
                 bSuccess = evaluateAction_internal()
@@ -1822,7 +1813,7 @@ class TransitionAnalyser:
         # If both endpoints of the sample region are above the target value, bisect until we have one endpoint below the
         # target value.
         while labelLow == 'above' and labelHigh == 'above':
-            data.transferData(lowerTSample)
+            lowerTSample = data.copy()
             data.T = TMid
             bSuccess = evaluateAction_internal()
 
@@ -1851,7 +1842,7 @@ class TransitionAnalyser:
             # and a later attempt was successful.
             midT = data.T
             midSonT = data.SonT
-            data.transferData(lowerTSample)
+            lowerTSample = data.copy()
             data.T += Tstep
             bSuccess = evaluateAction_internal()
 
@@ -1903,7 +1894,7 @@ class TransitionAnalyser:
         # Now we should have labelLow='below' and labelHigh='above'. That is, we bracket the desired solution. We can simply
         # bisect from here.
         while THigh - TLow > (self.Tmax - self.Tmin)*1e-5:
-            data.transferData(lowerTSample)
+            lowerTSample = data.copy()
             TMid = 0.5*(TLow + THigh)
             data.T = TMid
             # Negative because thin-walled errors for T ~ Tc are more likely.
