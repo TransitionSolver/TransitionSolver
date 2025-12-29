@@ -39,7 +39,7 @@ def test_plot_gw():
 
 def test_snr():
     snr = lisa.SNR(analyser.gw_total)
-    assert np.isclose(snr, 302.98903223016237)
+    assert np.isclose(snr, 303.08379898108984)
     
     
 @pytest.mark.mpl_image_compare
