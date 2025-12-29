@@ -38,7 +38,7 @@ def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: Ph
 
     try:
         with open(fileName, 'w', encoding='utf-8') as f:
-            json.dump(report, f, ensure_ascii=False, indent=4)
+            json.dump(report, f, ensure_ascii=False, indent=4, default=str)
     except (json.decoder.JSONDecodeError, TypeError):
         print('We have a JSON serialisation error. The report is:')
         print(report)
@@ -97,7 +97,7 @@ def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str,
     # Load the phase structure saved by PhaseTracer.
     phaseStructure = read_phase_tracer(phase_tracer_file=outputFolder + '/phase_structure.dat')
 
-    if len(phaseStructure.transitionPaths) == 0:
+    if not phaseStructure.paths:
         print('No valid transition path to the current phase of the Universe.')
         return
 
