@@ -372,9 +372,9 @@ class ActionSampler:
         SonTList = np.linspace(self.SonT[-1], SonTnew, numPoints)
         GammaList = self.transitionAnalyser.calculateGamma(TList, SonTList)
         energyStart = hydrodynamics.energy_density_from_phase(self.fromPhase, self.toPhase, self.potential,
-            TList[0]) - self.transitionAnalyser.groundStateEnergyDensity
+            TList[0]) - self.transitionAnalyser.groud_state_energy_density
         energyEnd = hydrodynamics.energy_density_from_phase(self.fromPhase, self.toPhase, self.potential,
-            TList[-1]) - self.transitionAnalyser.groundStateEnergyDensity
+            TList[-1]) - self.transitionAnalyser.groud_state_energy_density
         # TODO: replace with quadratic interpolation.
         energyDensityList = np.linspace(energyStart, energyEnd, numPoints)
         #HList = self.transitionAnalyser.calculateHubbleParameterSq_supplied(energyDensityList)
@@ -415,12 +415,12 @@ class ActionSampler:
 
     # Throws ThinWallError from CosmoTransitions.
     # Throws unhandled exceptions from CosmoTransitions.
-    # Throws unhandled InvalidTemperatureException from findPhaseAtT.
+    # Throws unhandled InvalidTemperatureException from find_phase_at_t.
     def evaluateAction(self, data: ActionSample) -> tuple[np.ndarray, np.ndarray]:
         # Do optimisation.
         T = data.T
-        fromFieldConfig = self.fromPhase.findPhaseAtT(T, self.potential)
-        toFieldConfig = self.toPhase.findPhaseAtT(T, self.potential)
+        fromFieldConfig = self.fromPhase.find_phase_at_t(T, self.potential)
+        toFieldConfig = self.toPhase.find_phase_at_t(T, self.potential)
 
         fieldSeparationScale = 0.001*self.potential.get_field_scale()
 
@@ -528,7 +528,7 @@ class TransitionAnalyser():
     transition: Transition
     fromPhase: Phase
     toPhase: Phase
-    groundStateEnergyDensity: float
+    groud_state_energy_density: float
 
     # The lowest temperature for which the transition is still possible. We don't want to check below this, as one
     # of the phases may have disappeared, their stability may reverse, or T=0 may have been reached.
@@ -542,12 +542,12 @@ class TransitionAnalyser():
 
     # TODO: make vw a function of this class that can be overriden. Currently it is obtained from the transition.
     def __init__(self, potential: AnalysablePotential, transition: Transition, fromPhase: Phase, toPhase: Phase,
-            groundStateEnergyDensity: float, Tmin: float = 0., Tmax: float = 0.):
+            groud_state_energy_density: float, Tmin: float = 0., Tmax: float = 0.):
         self.potential = potential
         self.transition = transition
         self.fromPhase = fromPhase
         self.toPhase = toPhase
-        self.groundStateEnergyDensity = groundStateEnergyDensity
+        self.groud_state_energy_density = groud_state_energy_density
         self.Tmin = Tmin
         self.Tmax = Tmax
 
@@ -731,10 +731,10 @@ class TransitionAnalyser():
         #    calculateEnergyDensityAtT(Tmax)[0] <= radDensity*Tmax**4
 
         #rho0 = hydrodynamics.energy_density_from_phase(self.fromPhase, self.toPhase, self.potential,
-        #    self.actionSampler.T[0], forFromPhase=True) - self.groundStateEnergyDensity
+        #    self.actionSampler.T[0], forFromPhase=True) - self.groud_state_energy_density
         rho0 = hydroVars[0].energyDensityFalse
         Temp = self.actionSampler.T[0]
-        phi = self.fromPhase.findPhaseAtT(Temp, self.potential)
+        phi = self.fromPhase.find_phase_at_t(Temp, self.potential)
         rhoR = radDensityPrefactor * geff.field_dependent_dof(self.potential, phi, Temp) * Temp**4
 
         bCheckForTeq = rho0 - 2*rhoR < 0
@@ -840,7 +840,7 @@ class TransitionAnalyser():
                         meanBubbleSeparationArray.append((bubbleNumberDensity[j])**(-1/3))
 
                 #H.append(np.sqrt(self.calculateHubbleParameterSq(T[i])))
-                #H.append(np.sqrt(calculateHubbleParameterSq_supplied(rhof[i] - self.groundStateEnergyDensity)))
+                #H.append(np.sqrt(calculateHubbleParameterSq_supplied(rhof[i] - self.groud_state_energy_density)))
                 H.append(np.sqrt(self.calculateHubbleParameterSq_fromHydro(hydroVarsInterp[i])))
                 vw.append(self.getBubbleWallVelocity(hydroVarsInterp[i]))
 
@@ -1987,14 +1987,14 @@ class TransitionAnalyser():
     def calculateHubbleParameterSq(self, T: float) -> float:
         # Default is energy density for from phase.
         rhof = hydrodynamics.energy_density_from_phase(self.fromPhase, self.toPhase, self.potential, T)
-        return 8*np.pi*GRAV_CONST/3*(rhof - self.groundStateEnergyDensity)
+        return 8*np.pi*GRAV_CONST/3*(rhof - self.groud_state_energy_density)
 
     def calculateHubbleParameterSq_fromHydro(self, hydroVars: HydroVars) -> float:
         return 8*np.pi*GRAV_CONST/3*hydroVars.energyDensityFalse
 
     def getHydroVars(self, T: float) -> HydroVars:
         return hydrodynamics.make_hydro_vars(self.fromPhase, self.toPhase, self.potential, T,
-            self.groundStateEnergyDensity)
+            self.groud_state_energy_density)
 
     def calculateReheatTemperature(self, T: float) -> float:
         Tsep = min(0.001*(self.transition.Tc - self.Tmin), 0.5*(T - self.Tmin))
@@ -2072,9 +2072,9 @@ class TransitionAnalyser():
 
 
 def calculateHubbleParameterSq(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float,
-                               groundStateEnergyDensity: float) -> float:
+                               groud_state_energy_density: float) -> float:
     rhof = hydrodynamics.energy_density_from_phase(fromPhase, toPhase, potential, T)
-    return calculateHubbleParameterSq_supplied(rhof - groundStateEnergyDensity)
+    return calculateHubbleParameterSq_supplied(rhof - groud_state_energy_density)
 
 
 # TODO: We can optimise this for a list of input temperatures by reusing potential samples in adjacent derivatives.

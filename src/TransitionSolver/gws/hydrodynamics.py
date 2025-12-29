@@ -137,7 +137,7 @@ def guess_delta_t(from_phase: Phase, to_phase: Phase, potential, T: float) -> fl
 def _make_hydro_vars(phase, potential, T, delta_t, ground_state_energy=0.):
 
     def free_energy(x: float) -> float:
-        phi = phase.findPhaseAtT(x, potential)
+        phi = phase.find_phase_at_t(x, potential)
         return potential.free_energy_density(phi, x) - ground_state_energy
 
     f, df, d2f = derivatives(free_energy, T, delta_t)

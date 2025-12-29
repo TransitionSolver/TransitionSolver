@@ -274,8 +274,8 @@ def plotPotentialBetweenPhases(potentialClass, folderName, transitionID, deltaT,
     # For each of the temperature ranges around Tn, Tpw, Tps and Tf.
     for i in range(len(temperatureRanges)):
         tempRange = temperatureRanges[i]
-        fromLoc = [fromPhase.findPhaseAtT(T, potential) for T in tempRange]
-        toLoc = [toPhase.findPhaseAtT(T, potential) for T in tempRange]
+        fromLoc = [fromPhase.find_phase_at_t(T, potential) for T in tempRange]
+        toLoc = [toPhase.find_phase_at_t(T, potential) for T in tempRange]
         samplePoints = [np.array([fromLoc[T] + interp*(toLoc[T] - fromLoc[T]) for interp in interpolation])
             for T in range(len(tempRange))]
         V = [np.array([potential.Vtot(point, tempRange[j]) for point in samplePoints[j]]) for j in range(len(tempRange))]
@@ -307,8 +307,8 @@ def plotPotentialBetweenPhases(potentialClass, folderName, transitionID, deltaT,
     tunneling_findProfile_params = {'phitol': 1e-6, 'xtol': 1e-6}
 
     for T in actionTemps:
-        fromLoc = fromPhase.findPhaseAtT(T, potential)
-        toLoc = toPhase.findPhaseAtT(T, potential)
+        fromLoc = fromPhase.find_phase_at_t(T, potential)
+        toLoc = toPhase.find_phase_at_t(T, potential)
         tunnelingSolutions.append(pathDeformation.fullTunneling([toLoc, fromLoc], V, gradV,
             tunneling_findProfile_params=tunneling_findProfile_params))
 

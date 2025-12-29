@@ -18,7 +18,7 @@ def _make_report(paths, phase_structure, analysis_metrics):
     @returns Report phase history from TransitionSolver objects
     """
     report = {}
-    report['transitions'] = [t.getReport(None)
+    report['transitions'] = [t.report(None)
                              for t in phase_structure.transitions]
     report['paths'] = [p.report() for p in paths]
     report['valid'] = any(p.is_valid for p in paths)
@@ -38,7 +38,7 @@ def find_phase_history(potential, phase_structure=None, vw=0.9, phase_tracer_fil
     if phase_tracer_file is not None:
         phase_structure = read_phase_tracer(phase_tracer_file=phase_tracer_file)
 
-    if not phase_structure.transitionPaths:
+    if not phase_structure.paths:
         raise RuntimeError(
             'No valid transition path to the current phase of the Universe')
 
@@ -65,7 +65,7 @@ def trace_dof(potential, phase_structure=None, phase_tracer_file=None):
     for phase in phase_structure.phases:
         t1 = phase.T[0] if phase.T[0] != 0 else phase.T[1]
         T = np.geomspace(t1, phase.T[-1], 1000)
-        phi = [phase.findPhaseAtT(t, potential) for t in T]
+        phi = [phase.find_phase_at_t(t, potential) for t in T]
         dof = [geff.field_dependent_dof(potential, p, t) for p, t in zip(phi, T)]
         data[phase.key] = {"T": T, "dof": dof}
 

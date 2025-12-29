@@ -28,7 +28,7 @@ def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: Ph
     report = {}
 
     if len(phaseStructure.transitions) > 0:
-        report['transitions'] = [t.getReport(fileName) for t in phaseStructure.transitions]
+        report['transitions'] = [t.report(fileName) for t in phaseStructure.transitions]
     if len(paths) > 0:
         report['paths'] = [p.report() for p in paths]
     report['valid'] = any([p.is_valid for p in paths])

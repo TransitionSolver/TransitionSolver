@@ -211,7 +211,7 @@ class AnalysablePotential(generic_potential):
         if self.bUseSimpleDOF:
             return self.ndof
         else:
-            return self.getDegreesOfFreedom(phase.findPhaseAtT(T, self), T)
+            return self.getDegreesOfFreedom(phase.find_phase_at_t(T, self), T)
             
     def dof_in_phase(self, *args, **kwargs):
         return self.getDegreesOfFreedomInPhase(*args, **kwargs)

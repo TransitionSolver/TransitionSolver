@@ -1,16 +1,18 @@
 """
-Analyse phase structure
-=======================
+Represent phase structure
+=========================
 """
 
-from typing import Optional, Union
+import warnings
 
 import numpy as np
-from scipy import optimize
+from scipy.optimize import fmin_powell
 
 
 class Phase:
-
+    """
+    Represent a phase from PT data
+    """
     def __init__(self, key: float, phase: np.ndarray):
         self.key = int(key)
         self.T = phase[:, 0].T
@@ -18,54 +20,40 @@ class Phase:
         self.phi = phase[:, 2:].T
         self.raw = phase
 
-    # Returns the location of the phase at the given temperature by using interpolation between the stored data points,
-    # and local optimisation from that interpolated point.
-    def findPhaseAtT(self, T: float, potential) -> np.ndarray:
+    def find_phase_at_t(self, T: float, potential, rel_tol=10) -> np.ndarray:
+        """
+        @returns Location of the phase at the given temperature by using interpolation between the stored data points,
+        and local optimisation from that interpolated point
+        """
         if T < self.T[0] or T > self.T[-1]:
             raise ValueError(f'Attempted to find phase {self.key} at T={T}, while defined only for'
                 f'[{self.T[0]}, {self.T[-1]}]')
 
-        minIndex = 0
-        maxIndex = len(self.T)
+        idx = np.absolute(self.T - T).argmin()
+        
+        if self.T[idx] == T:
+            return self.phi[..., idx]
 
-        # Binary search to find the boundary temperature data (specifically, the indices in the T array).
-        while maxIndex - minIndex > 1:
-            midpoint = (minIndex + maxIndex) // 2
+        nxt_idx = idx - 1 if self.T[idx] > T else idx + 1
+        dphi = self.phi[..., idx] - self.phi[..., nxt_idx]
+        dt = self.T[idx] - self.T[nxt_idx]
+        linear_interp = self.phi[..., idx] + (T - self.T[idx]) * dphi / dt
+        direc = 0.5 * np.diag(dphi)
+        
+        optimised_point = fmin_powell(lambda X: potential(X, T), linear_interp, disp=False, direc=direc)
 
-            if self.T[midpoint] == T:
-                return self.phi[..., midpoint]
-            elif self.T[midpoint] < T:
-                minIndex = midpoint
-            else:
-                maxIndex = midpoint
+        if np.linalg.norm(optimised_point - linear_interp) > rel_tol * np.linalg.norm(dphi):
+            warnings.warn("Using linear interpolation as the optimiser probably found a different phase")
+            return linear_interp
 
-        def V(X) -> Union[float, np.ndarray]: return potential(X, T)
-        offset = 0.001*potential.get_field_scale()
-
-        # Interpolate between the most relevant data points.
-        if minIndex == maxIndex:
-            interpPoint = self.phi[..., minIndex]
-        else:
-            interpFactor = (T - self.T[minIndex]) / (self.T[maxIndex] - self.T[minIndex])
-            interpPoint = self.phi[..., minIndex] + interpFactor*(self.phi[..., maxIndex] - self.phi[..., minIndex])
-
-        direction = np.diag(np.ones(potential.get_n_scalars())*offset)
-        optimisedPoint = optimize.fmin_powell(V, interpPoint, disp=False, direc=direction)
-
-        if len(optimisedPoint.shape) == 0:
-            optimisedPoint = optimisedPoint.ravel()
-
-        if abs(T - self.T[minIndex]) < 0.2*potential.get_temperature_scale() and \
-                np.linalg.norm(optimisedPoint - interpPoint) > 0.2*potential.get_field_scale():
-            # The minimum shifted too far, so the optimiser probably found a different phase.
-            # Return the previous point.
-            return interpPoint
-
-        return optimisedPoint
+        return np.atleast_1d(optimised_point)
 
 
 class Transition:
-
+    """
+    Represent a transition from PT data and store data about that
+    transition
+    """
     def __init__(self, transition: np.ndarray):
         self.raw = transition
         self.Tc = transition[2]
@@ -122,17 +110,24 @@ class Transition:
         self.HArray = []
         self.Pf = []
 
-    def getReport(self, reportFileName) -> dict:
+    @property
+    def completed(self):
+        return self.Tf >= 0.
+
+    def report(self, reportFileName) -> dict:
+        """
+        @returns Data about transition collated into a dictionary
+        """
         report = {}
 
         report['id'] = self.ID
         report['falsePhase'] = self.false_phase
         report['truePhase'] = self.true_phase
         report['analysed'] = self.analysis is not None
-        report['subcritical'] = bool(self.subcritical)
+        report['subcritical'] = self.subcritical
 
         if self.analysis is not None:
-            report['completed'] = bool(self.Tf >= 0.0)
+            report['completed'] = self.completed
             if len(self.analysis.error) > 0: report['error'] = self.analysis.error
             # If we are updating the report file and reused its action data (i.e. if actionCurveFile == reportFileName),
             # make sure to keep that data in the report rather than create a circular reference.
@@ -154,6 +149,7 @@ class Transition:
             report['Tnbar'] = self.Tnbar
             report['SonTnbar'] = self.analysis.SonTnbar
 
+        
         if self.Tp > 0: report['Tp'] = self.Tp
         if self.Te > 0: report['Te'] = self.Te
         if self.Tf > 0: report['Tf'] = self.Tf
@@ -218,18 +214,22 @@ class PhaseStructure:
     def __init__(self, phases=None, transitions=None, paths=None):
         self.phases = [] if not phases else phases
         self.transitions = [] if not transitions else transitions
-        self.transitionPaths = [] if not paths else paths
+        self.paths = [] if not paths else paths
         self.transitions.sort(key=lambda x: x.ID)
 
     @property
-    def groundStateEnergyDensity(self):
-        groundStateEnergyDensity = np.inf
+    def groud_state_energy_density(self):
+        """        
+        @returns The lowest energy of any phase at T = 0
+        """
+        groud_state_energy_density = np.inf
 
         for phase in self.phases:
-            if phase.T[0] == 0 and phase.V[0] < groundStateEnergyDensity:
-                groundStateEnergyDensity = phase.V[0]
+            if phase.T[0] == 0 and phase.V[0] < groud_state_energy_density:
+                groud_state_energy_density = phase.V[0]
 
-        if groundStateEnergyDensity == np.inf:
-            groundStateEnergyDensity = 0.
+        if np.isinf(groud_state_energy_density):
+            warnings.warn("Could not determine ground state energy density; assuming 0")
+            groud_state_energy_density = 0.
 
-        return groundStateEnergyDensity
+        return groud_state_energy_density

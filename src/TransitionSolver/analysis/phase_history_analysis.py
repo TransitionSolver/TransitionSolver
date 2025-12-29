@@ -55,11 +55,11 @@ class PhaseHistoryAnalyser:
         # Extract high and low temperature phases.
         phases = phaseStructure.phases
         transitions = phaseStructure.transitions
-        transitionPaths = phaseStructure.transitionPaths
+        paths = phaseStructure.paths
 
         # TODO: added on 23/06/2022 to handle the case where PhaseTracer reports no possible transition paths. Need to
         #  make sure PhaseTracer would have handled the case where we could stay in the same phase.
-        if len(transitionPaths) == 0:
+        if len(paths) == 0:
             return [], False, None
 
         highTemp = 0
@@ -79,11 +79,11 @@ class PhaseHistoryAnalyser:
         # Find all low temperature phases. These are needed to check if a path is valid, i.e. if it terminates at a low
         # temperature phase.
         # TODO: why was it necessary to do it this way?
-        for i in range(len(transitionPaths)):
-            if transitionPaths[i][-1] < 0:
-                phase = -(transitionPaths[i][-1]+1)
+        for i in range(len(paths)):
+            if paths[i][-1] < 0:
+                phase = -(paths[i][-1]+1)
             else:
-                phase = transitions[transitionPaths[i][-1]].true_phase
+                phase = transitions[paths[i][-1]].true_phase
             bLowTemperaturePhase[phase] = True
 
         if self.bDebug:
@@ -244,7 +244,7 @@ class PhaseHistoryAnalyser:
 
                     transitionAnalyser: TransitionAnalyser = TransitionAnalyser(potential, transition,
                         phases[transition.false_phase], phases[transition.true_phase],
-                        phaseStructure.groundStateEnergyDensity, Tmin=Tmin, Tmax=Tmax)
+                        phaseStructure.groud_state_energy_density, Tmin=Tmin, Tmax=Tmax)
 
                     transitionAnalyser.bDebug = self.bDebug
                     transitionAnalyser.bPlot = self.bPlot
