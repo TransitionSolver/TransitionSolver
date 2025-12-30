@@ -257,21 +257,32 @@ def pipeline_analysePhaseHistory(potential, phaseStructure, settings: PipelineSe
     analyser = PhaseHistoryAnalyser()
     settings.fillPhaseHistoryAnalyserSettings(analyser)
 
-    try:
-        vw = settings.function_getWallVelocity()
-        print("In pipeline_analysePhaseHistory about to call analyser.analysePhaseHistory_supplied")
-        paths, timedOut = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=vw)
-        print("In pipeline_analysePhaseHistory immediately after calllling analyser.analysePhaseHistory_supplied")
-        if timedOut:
-            return 'Phase history analysis timed out'
+    
+    vw = settings.function_getWallVelocity()
+    paths, timedOut, _ = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=vw)
+    if timedOut:
+        return 'Phase history analysis timed out'
 
-        print("In pipeline_analysePhaseHistory about to call writePhaseHistoryReport")
-        writePhaseHistoryReport(paths, phaseStructure, settings)
+    writePhaseHistoryReport(paths, phaseStructure, settings)
 
-        return 'Success'
+    return 'Success'
     # catch errors like this to preserve scans, just get rid of try and catch if debugging to get the stack traces. 
-    except Exception as e:
-        return f'Phase history analysis failed: {e}'
+    
+    # try:
+    #     vw = settings.function_getWallVelocity()
+    #     print("In pipeline_analysePhaseHistory about to call analyser.analysePhaseHistory_supplied")
+    #     paths, timedOut = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=vw)
+    #     print("In pipeline_analysePhaseHistory immediately after calllling analyser.analysePhaseHistory_supplied")
+    #     if timedOut:
+    #         return 'Phse history analysis timed out'
+
+    #     print("In pipeline_analysePhaseHistory about to call writePhaseHistoryReport")
+    #     writePhaseHistoryReport(paths, phaseStructure, settings)
+
+    #     return 'Success'
+    # # catch errors like this to preserve scans, just get rid of try and catch if debugging to get the stack traces. 
+    # except Exception as e:
+    #     return f'Phase history analysis failed: {e}'
     
 
 
@@ -280,7 +291,7 @@ def writePhaseHistoryReport(paths: list[Path], phaseStructure: PhaseStructure, s
     fileName = settings.fileName_phaseHistoryReport
     print("In writePhaseHistoryReport")
     if len(phaseStructure.transitions) > 0:
-        report['transitions'] = [t.report(fileName) for t in phaseStructure.transitions]
+        report['transitions'] = [t.report() for t in phaseStructure.transitions]
     print("In writePhaseHistoryReport after checking len(phaseStructure.transitions)")    
     if len(paths) > 0:
         print("In writePhaseHistoryReport checking len(paths)...")
