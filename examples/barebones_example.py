@@ -19,7 +19,7 @@ def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: Ph
     report = {}
 
     if len(phaseStructure.transitions) > 0:
-        report['transitions'] = [t.report(fileName) for t in phaseStructure.transitions]
+        report['transitions'] = [t.report() for t in phaseStructure.transitions]
     if len(paths) > 0:
         report['paths'] = [p.report() for p in paths]
     report['valid'] = any([p.is_valid for p in paths])
@@ -29,7 +29,7 @@ def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: Ph
 
     try:
         with open(fileName, 'w', encoding='utf-8') as f:
-            json.dump(report, f, ensure_ascii=False, indent=4)
+            json.dump(report, f, ensure_ascii=False, indent=4, default=str)
     except (json.decoder.JSONDecodeError, TypeError):
         print('We have a JSON serialisation error. The report is:')
         print(report)
@@ -81,16 +81,19 @@ def main():
     # errors in PhaseTracer are printed here.
     command = (['wsl'] if windows else []) + [PhaseTracer_directory + 'bin/run_RSS', outputFolder +
         '/parameter_point.txt', outputFolder] + ['-boltz']
+    print("Calling PhaseTracer with command = ", command)
     subprocess.call(command, timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     print("after calling command = ", command)
     # Load the phase structure saved by PhaseTracer.
-    phaseStructure = read_phase_tracer(outputFolder + '/phase_structure.dat')   
+    fileName_phaseStructure: str = ''
+    fileName_phaseStructure = outputFolder + '/phase_structure.dat'
+    phaseStructure = read_phase_tracer(phase_tracer_file=outputFolder + '/phase_structure.dat')   
 
     # # Validate the phase structure.
     # if not bFileExists:
     #     print('Could not find phase structure file.')
     #     return
-    if len(phaseStructure.transitionPaths) == 0:
+    if len(phaseStructure.paths) == 0:
         print('No valid transition path to the current phase of the Universe.')
         return
 
