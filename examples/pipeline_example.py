@@ -270,13 +270,10 @@ def pipeline_analysePhaseHistory(potential, phaseStructure, settings: PipelineSe
     
     # try:
     #     vw = settings.function_getWallVelocity()
-    #     print("In pipeline_analysePhaseHistory about to call analyser.analysePhaseHistory_supplied")
     #     paths, timedOut = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=vw)
-    #     print("In pipeline_analysePhaseHistory immediately after calllling analyser.analysePhaseHistory_supplied")
     #     if timedOut:
     #         return 'Phse history analysis timed out'
-
-    #     print("In pipeline_analysePhaseHistory about to call writePhaseHistoryReport")
+    
     #     writePhaseHistoryReport(paths, phaseStructure, settings)
 
     #     return 'Success'
@@ -289,16 +286,11 @@ def pipeline_analysePhaseHistory(potential, phaseStructure, settings: PipelineSe
 def writePhaseHistoryReport(paths: list[Path], phaseStructure: PhaseStructure, settings: PipelineSettings):
     report = {}
     fileName = settings.fileName_phaseHistoryReport
-    print("In writePhaseHistoryReport")
     if len(phaseStructure.transitions) > 0:
         report['transitions'] = [t.report() for t in phaseStructure.transitions]
-    print("In writePhaseHistoryReport after checking len(phaseStructure.transitions)")    
+    
     if len(paths) > 0:
-        print("In writePhaseHistoryReport checking len(paths)...")
-        print(" len(paths) = ", len(paths))
-        print(" paths = ", paths)
         report['paths'] = [p.report() for p in paths]
-    print("In writePhaseHistoryReport after checking len(paths)")    
     report['valid'] = any([p.is_valid for p in paths])
     #report['analysisTime'] = analysisMetrics.analysisElapsedTime
 

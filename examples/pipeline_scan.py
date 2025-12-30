@@ -11,31 +11,35 @@ import matplotlib.pyplot as plt
 
 from pathos.multiprocessing import ProcessingPool as Pool
 
-from analysis import phase_structure
-from analysis.phase_history_analysis import PhaseHistoryAnalyser, AnalysisMetrics
-from analysis.phase_structure import PhaseStructure
-from analysis.transition_analysis import TransitionAnalyser
-from analysis.transition_graph import Path
-from models.supercool_model import SMplusCubic
-from util.events import notifyHandler
 
 
-def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: PhaseStructure, analysisMetrics:
-        AnalysisMetrics) -> None:
+
+from src.TransitionSolver.models.supercool_model import SMplusCubic
+from src.TransitionSolver.analysis.phase_structure import PhaseStructure
+from src.TransitionSolver.analysis.phase_history_analysis import PhaseHistoryAnalyser
+from src.TransitionSolver.analysis.transition_graph import Path
+from src.TransitionSolver.analysis.transition_analysis import TransitionAnalyser, ActionSampler
+from src.TransitionSolver.analysis import phase_structure
+from src.TransitionSolver.models.analysable_potential import AnalysablePotential
+from src.TransitionSolver.util.events import notifyHandler
+from TransitionSolver import read_phase_tracer
+
+
+def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: PhaseStructure) -> None:
     report = {}
 
     if len(phaseStructure.transitions) > 0:
-        report['transitions'] = [t.report(fileName) for t in phaseStructure.transitions]
+        report['transitions'] = [t.report() for t in phaseStructure.transitions]
     if len(paths) > 0:
         report['paths'] = [p.report() for p in paths]
     report['valid'] = any([p.is_valid for p in paths])
-    report['analysisTime'] = analysisMetrics.analysisElapsedTime
+    # report['analysisTime'] = analysisMetrics.analysisElapsedTime
 
     print('Writing report...')
 
     try:
         with open(fileName, 'w', encoding='utf-8') as f:
-            json.dump(report, f, ensure_ascii=False, indent=4)
+            json.dump(report, f, ensure_ascii=False, indent=4, default=str)
     except (json.decoder.JSONDecodeError, TypeError):
         print('We have a JSON serialisation error. The report is:')
         print(report)
@@ -113,13 +117,9 @@ def pipeline_workerProcess(pointIndex: int, numSamples: int, scanIndex: int, out
     subprocess.call(command, timeout=60)#, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
     # Load the phase structure saved by PhaseTracer.
-    bFileExists, phaseStructure = phase_structure.load_data(outputFolderName + '/phase_structure.dat')
+    phaseStructure = phase_structure.read_phase_tracer(phase_tracer_file=outputFolderName + '/phase_structure.dat')
 
-    # Validate the phase structure.
-    if not bFileExists:
-        print('Could not find phase structure file.')
-        return
-    if len(phaseStructure.transitionPaths) == 0:
+    if len(phaseStructure.paths) == 0:
         print('No valid transition path to the current phase of the Universe.')
         return
 
@@ -137,11 +137,11 @@ def pipeline_workerProcess(pointIndex: int, numSamples: int, scanIndex: int, out
     notifyHandler.addEvent('TransitionAnalyser-on_create', notify_TransitionAnalyser_on_create)
 
     # Analyse the phase history.
-    paths, _, analysisMetrics = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=1.)
+    paths, _, _ = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=1.)
 
     # Write the phase history report. Again, this will be handled within PhaseHistoryAnalysis in a future version of the
     # code.
-    writePhaseHistoryReport(outputFolderName + '/phase_history.json', paths, phaseStructure, analysisMetrics)
+    writePhaseHistoryReport(outputFolderName + '/phase_history.json', paths, phaseStructure)
 
 
 def scanWithPipeline(outputFolderName: str, scanIndex: int):
