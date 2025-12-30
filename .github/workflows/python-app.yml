@@ -62,3 +62,13 @@ jobs:
         sed -i '/^\s*"analysisTime"/d' tests/RSS_new_BP4_23_12_2025/phase_history.json RSS_new_BP4_output/phase_history.json
         numdiff tests/RSS_new_BP4_23_12_2025/phase_history.json RSS_new_BP4_output/phase_history.json
         numdiff tests/RSS_new_BP4_23_12_2025/phase_structure.dat RSS_new_BP4_output/phase_structure.dat
+   - name: Test pipeline example output
+      run: |
+        mkdir -p output/pipeline_example_output
+        mkdir -p config
+        echo '{ "PhaseTracer_directory": "/home/runner/.PhaseTracer/" }' > config/config_user.json
+        python3 -m examples.pipeline_example
+        sudo apt install numdiff
+        sed -i '/^\s*"analysisTime"/d' tests/pipeline_example30_12_2025/phase_history.json output/pipeline_example_output/phase_history.json
+        numdiff tests/pipeline_example30_12_2025/phase_history.json output/pipeline_example_output/phase_history.json
+        numdiff tests/pipeline_example30_12_2025/phase_structure.dat output/pipeline_example_output/phase_structure.dat
