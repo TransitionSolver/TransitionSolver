@@ -997,15 +997,42 @@ class TransitionAnalyser:
         meanBubbleSeparation = (bubbleNumberDensity[indexTp])**(-1/3)
 
         if self.bReportAnalysis:
-            Tn = self.properties.Tn
-            Tp = self.properties.Tp
-            Te = self.properties.Te
-            Tf = self.properties.Tf
-            Ts1 = self.properties.TVphysDecr_high
-            Ts2 = self.properties.TVphysDecr_low
-            Tp_reh = self.properties.Treh_p
-            Te_reh = self.properties.Treh_e
-            Tf_reh = self.properties.Treh_f
+            if self.properties.Tn is not None:
+                Tn = self.properties.Tn
+            else:
+                Tn = -1
+            if self.properties.Tp is not None:
+                Tp = self.properties.Tp
+            else:
+                Tp = -1
+            if self.properties.Te is not None:
+                Te = self.properties.Te
+            else:
+                Te = -1
+            if self.properties.Tf is not None:
+                Tf = self.properties.Tf
+            else:
+                Tf = -1
+            if self.properties.Ts1 is not None:
+                Ts1 = self.properties.TVphysDecr_high
+            else:
+                Ts1 = -1
+            if self.properties.Ts2 is not None:
+                Ts2 = self.properties.TVphysDecr_low
+            else:
+                Ts2 = -1
+            if self.properties.Treh_p is not None:
+                Tp_reh = self.properties.Treh_p
+            else:
+                Tp_reh = -1
+            if self.properties.Treh_e is not None:
+                Te_reh = self.properties.Treh_e
+            else:
+                 Te_reh = -1
+            if self.properties.Treh_e is not None:
+                Tf_reh = self.properties.Treh_f
+            else:
+                Tf_reh = -1
 
             print('-------------------------------------------------------------------------------------------')
 

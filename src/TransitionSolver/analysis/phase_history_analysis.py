@@ -363,7 +363,7 @@ class PhaseHistoryAnalyser:
 
         if self.bReportAnalysis:
             print('\nAnalysed transitions:', [transitions[i].ID for i in range(len(transitions))
-                if transitions[i].analysis is not None])
+                                              if transitions[i].properties.analysed is True])
 
         timer.save()
         return paths, False, timer
