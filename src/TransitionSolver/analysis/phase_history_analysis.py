@@ -169,7 +169,6 @@ class PhaseHistoryAnalyser:
             path = transitionEdge.path
             if not transition.properties.analysed:
                 transition.properties.analysed = True
-                print("self.bReportAnalysis= ", self.bReportAnalysis)
                 if self.bReportAnalysis:
                     print(f'Analysing transition {transition.ID} ({transition.false_phase} --(T={transition.properties.Tc})-->'
                           f' {transition.true_phase})')
