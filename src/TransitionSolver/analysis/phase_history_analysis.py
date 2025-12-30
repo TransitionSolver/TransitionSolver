@@ -38,7 +38,6 @@ class PhaseHistoryAnalyser:
         phases = phaseStructure.phases
         transitions = phaseStructure.transitions
         paths = phaseStructure.paths
-        print("In analysePhaseHistory_supplied after setting transitionPaths from phaseStructure")
 
         # TODO: added on 23/06/2022 to handle the case where PhaseTracer reports no possible transition paths. Need to
         #  make sure PhaseTracer would have handled the case where we could stay in the same phase.
@@ -165,21 +164,16 @@ class PhaseHistoryAnalyser:
                 print('Paths:')
                 for i in range(len(paths)):
                     print(f'{i}: {paths[i]}')
-            print("In analysePhaseHistory_supplied after broken debug print statement")
             transitionEdge = frontier.pop(0)
             transition = transitionEdge.transition
             path = transitionEdge.path
-            print("In analysePhaseHistory_supplied after broken debug print statement")
             if not transition.properties.analysed:
-                print("In analysePhaseHistory_supplied in clause for transition not properly analysed")
                 transition.properties.analysed = True
-                print("In analysePhaseHistory_supplied in clause for transition not properly analysed before if self.bReportAnalysis:")
                 print("self.bReportAnalysis= ", self.bReportAnalysis)
                 if self.bReportAnalysis:
                     print(f'Analysing transition {transition.ID} ({transition.false_phase} --(T={transition.properties.Tc})-->'
                           f' {transition.true_phase})')
 
-                print("In analysePhaseHistory_supplied in clause for transition not properly analysed before setting Tmin:")
                 Tmin = self.getMinTransitionTemperature_indexed(phases, phaseIndexedTransitions, transitionEdge)
 
                 if path.transitions:
