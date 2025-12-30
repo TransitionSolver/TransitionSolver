@@ -307,7 +307,7 @@ def writePhaseHistoryReport(paths: list[Path], phaseStructure: PhaseStructure, s
 
     try:
         with open(fileName, 'w', encoding='utf-8') as f:
-            json.dump(report, f, ensure_ascii=False, indent=4)
+            json.dump(report, f, ensure_ascii=False, indent=4, default=str)
     except (json.decoder.JSONDecodeError, TypeError):
         print('We have a JSON serialisation error. The report is:')
         print(report)
