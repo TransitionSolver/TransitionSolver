@@ -9,6 +9,7 @@ from pathlib import Path
 import cppyy
 import numpy as np
 from numpy import pi
+from cosmoTransitions.generic_potential import generic_potential
 
 from . import eigen
 
@@ -57,8 +58,34 @@ class MixinPotential:
         return 0.1  # TODO what is this
 
 
-class MixinCosmoTransitions:
-    pass  # TODO see https://clwainwright.net/CosmoTransitions/generic_potential.html
+class MixinCosmoTransitions(generic_potential):
+    """
+    Implement minimum functionality to work
+    with CosmoTransitions
+    
+    See https://clwainwright.net/CosmoTransitions/generic_potential.html
+    """
+    x_eps = .001
+    T_eps = .001
+    deriv_order = 4
+    renormScaleSq = 1000.**2
+    Tmax = 1e3
+    num_boson_dof = num_fermion_dof = None
+    phases = transitions = None 
+    TcTrans = None  
+    TnTrans = None 
+    
+    def Vtot(self, phi, T, *args, **kwargs):
+        return self(phi, T)
+        
+    def V1T_from_X(self, phi, T, *args, **kwargs):
+        if phi.ndim > 1:
+            return np.array([self.V1T_from_X(p, T) for p in phi])
+        return self.V1T(eigen.vector(phi), T)
+
+    @property
+    def Ndim(self):
+        return self.get_n_scalars()
 
 
 def load_potential(params, header_file, class_name=None, lib_name=None):
@@ -91,7 +118,7 @@ def load_potential(params, header_file, class_name=None, lib_name=None):
 
     Potential = getattr(cppyy.gbl.EffectivePotential, class_name)
 
-    class ExtendedPotential(MixinPotential, Potential):
+    class ExtendedPotential(MixinPotential, Potential, MixinCosmoTransitions):
         pass
 
     return ExtendedPotential(params)
