@@ -142,7 +142,7 @@ class PhaseHistoryAnalyser:
                     phaseIndexedTransitions[i][0].path = paths[-1]
 
                     j = 1
-                    while j < len(phaseIndexedTransitions[i]) and phaseIndexedTransitions[i][j].transition.Tc ==\
+                    while j < len(phaseIndexedTransitions[i]) and phaseIndexedTransitions[i][j].transition.properties.Tc ==\
                             highTemp:
                         paths.append(Path(phaseNodes[i][0]))
                         phaseNodes[i][0].paths.append(paths[-1])
@@ -191,7 +191,7 @@ class PhaseHistoryAnalyser:
 
                     # Find the most recent transition that has a true phase equal to the current false phase (i.e. which
                     # transition got us to this point).
-                    Tmax = transition.Tc
+                    Tmax = transition.properties.Tc
                     for tr in path.transitions:
                         if tr.true_phase == transition.false_phase:
                             Tmax = min(Tmax, tr.properties.Tn)
@@ -384,12 +384,12 @@ class PhaseHistoryAnalyser:
             # Check the transitions already in this path, which may include a recent transition from the current false
             # phase with a pending split based on the current transition.
             for transition in path.transitions:
-                if transition.properties.Tc > transitionEdge.transition.properties.Tc and transition.Tf > Tc:
+                if transition.properties.Tc > transitionEdge.transition.properties.Tc and transition.properties.Tf > Tc:
                     bAlreadyTransitioned = True
                     break
 
             # Check the current transition.
-            bAlreadyTransitioned = bAlreadyTransitioned or transitionEdge.transition.Tf > Tc
+            bAlreadyTransitioned = bAlreadyTransitioned or transitionEdge.transition.properties.Tf > Tc
 
             if not bAlreadyTransitioned:
                 newFrontier.append(phaseIndexedTransitions[falsePhase][transitionEdge.index+1])
@@ -404,7 +404,7 @@ class PhaseHistoryAnalyser:
                 newTransition = phaseIndexedTransitions[truePhase][i].transition
 
                 # If the transition is no longer possible by the time we get to its false phase, don't consider it.
-                if phases[newTransition.true_phase].T[0] > transitionEdge.transition.Tn:
+                if phases[newTransition.true_phase].T[0] > transitionEdge.transition.properties.Tn:
                     continue
 
                 # If the new transition could have started above the temperature we get to the true phase, then we may
