@@ -318,7 +318,7 @@ class ActionSampler:
 
         if not sampleData.is_valid:
             logger.info('Failed to evaluate action at trial temperature T = {}', sampleData.T)
-            return False, 'Action failed'
+            return False, f'Action failed: T = {sampleData.T}. S3 = {sampleData.S3}'
 
         self.T.append(sampleData.T)
         self.SonT.append(sampleData.SonT)
@@ -907,7 +907,7 @@ class TransitionAnalyser:
                     self.properties.actionCurveFile = precomputedActionCurveFileName
                 self.properties.T = self.actionSampler.T
                 self.properties.SonT = self.actionSampler.SonT
-                self.properties.error = f'Failed to get next sample at T={sampleData.T}'
+                self.properties.error = f'Failed to get next sample at T = {sampleData.T} because {message}'
                 return
 
         # ==============================================================================================================
