@@ -9,6 +9,7 @@ from pathlib import Path
 import cppyy
 import numpy as np
 from numpy import pi
+from cosmoTransitions.generic_potential import generic_potential
 
 from . import eigen
 
@@ -57,8 +58,17 @@ class MixinPotential:
         return 0.1  # TODO what is this
 
 
-class MixinCosmoTransitions:
-    pass  # TODO see https://clwainwright.net/CosmoTransitions/generic_potential.html
+class MixinCosmoTransitions(generic_potential):
+    # TODO see https://clwainwright.net/CosmoTransitions/generic_potential.html
+    def V0(self):
+        pass
+    def Vtot(self):
+        pass
+    def V1T_from_X(self):
+        pass
+    @property
+    def Ndim(self):
+        pass
 
 
 def load_potential(params, header_file, class_name=None, lib_name=None):
