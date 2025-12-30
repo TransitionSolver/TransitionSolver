@@ -1134,7 +1134,7 @@ class TransitionAnalyser:
             #saveFolder = 'C:/Work/Monash/PhD/Documents/Subtleties of supercooled cosmological first-order phase transitions/images/'
             #plt.savefig(saveFolder + 'Decreasing physical volume.png', bbox_inches='tight', pad_inches=0.1)
 
-        if self.properties.Tp > 0:
+        if self.properties.Tp is not None:
             #transitionStrength, _, _ = calculateTransitionStrength(self.potential, self.fromPhase, self.toPhase,
             #    self.properties.Tp)
             # TODO: do this elsewhere, maybe a thermal params file.
