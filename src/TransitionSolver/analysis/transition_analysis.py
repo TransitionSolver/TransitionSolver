@@ -8,24 +8,13 @@ from __future__ import annotations
 import logging
 import time
 import json
-import traceback
-import sys
 import warnings
 from typing import Optional, Union
-from contextlib import redirect_stdout
 
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize
 from scipy.interpolate import lagrange
-
-try:
-    from cosmoTransitions.tunneling1D import ThinWallError
-except:
-    class ThinWallError(Exception):
-        pass
-
-from cosmoTransitions import pathDeformation
 
 from ..gws import hydrodynamics
 from ..gws.hydrodynamics import HydroVars, hubble_squared_from_energy_density
@@ -34,11 +23,10 @@ from ..util.events import notifyHandler
 from ..models.analysable_potential import AnalysablePotential
 from .phase_structure import Phase, Transition
 from .. import geff
+from .. import action
 
 
 logger = logging.getLogger(__name__)
-
-totalActionEvaluations = 0
 
 
 class Timer:
@@ -84,19 +72,16 @@ class ActionSample:
 class ActionSampler:
     transitionAnalyser: 'TransitionAnalyser'
 
-    # If this is true, CosmoTransitions will output details of the bounce action calculation, such as how many
-    # iterations we used in the path deformation.
-    bVerbose: bool = False
     # Whether a phase with a field value very close to zero compared to its characteristic value should be forced to
     # zero after optimisation, in preparation for action evaluation. This may reduce the effect of numerical errors
     # during optimisation. E.g. the field configuration for a phase might have phi1 = 1e-5, whereas it should be
     # identically zero. The phase is then shifted to phi1 = 0 before the action is evaluated. See
     # PhaseHistoryAnalysis.evaluate_action for details.
     bForcePhaseOnAxis: bool = False
-    maxIter: int = 20
-    numSplineSamples: int = 100
-    # Make these smaller to increase the precision of CosmoTransitions' bounce action calculation.
-    tunneling_findProfile_params = {'phitol': 1e-8, 'xtol': 1e-8}
+    
+    use_phase_tracer_action = False
+    action_ct_kwargs = {'verbose': False, 'maxiter': 20, 'tunneling_findProfile_params': {'phitol': 1e-8, 'xtol': 1e-8}, 'V_spline_samples': 100}
+    action_pt_kwargs = {}
 
     # precomputedT and precomputedSonT are lists of values for the S/T curve. These can be used to avoid sampling the
     # action curve explicitly, until the samples run out.
@@ -409,23 +394,10 @@ class ActionSampler:
 
         return self.evaluate_action_supplied(T, from_field_config, to_field_config)
 
-    # Throws ThinWallError from CosmoTransitions.
-    # Throws unhandled exceptions from CosmoTransitions.
-    def evaluate_action_supplied(self, T, from_field_config: np.ndarray, to_field_config: np.ndarray)\
-            -> tuple[np.ndarray, np.ndarray]:
-
-        logger.debug('Evaluating action at T = {}', T)
-        
-        global totalActionEvaluations
-        totalActionEvaluations += 1
-
-        with redirect_stdout(sys.stdout if self.bVerbose else None):
-            action = pathDeformation.fullTunneling([to_field_config, from_field_config], lambda X: self.potential(X, T), lambda X: self.potential.grad(X, T),
-                V_spline_samples=self.numSplineSamples, maxiter=self.maxIter,
-                verbose=self.bVerbose, tunneling_findProfile_params=self.tunneling_findProfile_params).action
-                
-        logger.debug(f'Obtained action S = {action}')
-        return action
+    def evaluate_action_supplied(self, T, false_vacuum, true_vacuum):
+        if self.use_phase_tracer_action:
+            return action.action_pt(self.potential, T, false_vacuum, true_vacuum, **self.action_pt_kwargs)
+        return action.action_ct(self.potential, T, false_vacuum, true_vacuum, **self.action_ct_kwargs)
 
 
 class ActionCurveShapeAnalysisData:
@@ -966,9 +938,6 @@ class TransitionAnalyser:
 
         if self.bReportAnalysis:
             print(self.properties)
-
-        if self.bDebug:
-            print('Total action evaluations:', totalActionEvaluations)
 
         if self.bPlot:
             plt.rcParams.update({"text.usetex": True})
