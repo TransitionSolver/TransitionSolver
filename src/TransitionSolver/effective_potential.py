@@ -57,6 +57,10 @@ class MixinPotential:
         return 0.1  # TODO what is this
 
 
+class MixinCosmoTransitions:
+    pass  # TODO see https://clwainwright.net/CosmoTransitions/generic_potential.html
+
+
 def load_potential(params, header_file, class_name=None, lib_name=None):
     """
     @param params Parameters for constructor e.g., Lagrangian parameters
