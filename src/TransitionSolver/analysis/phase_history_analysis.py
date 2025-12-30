@@ -389,7 +389,7 @@ class PhaseHistoryAnalyser:
                     break
 
             # Check the current transition.
-            bAlreadyTransitioned = bAlreadyTransitioned or transitionEdge.transition.properties.Tf > Tc
+            bAlreadyTransitioned = bAlreadyTransitioned or transitionEdge.transition.properties.Tf is not None
 
             if not bAlreadyTransitioned:
                 newFrontier.append(phaseIndexedTransitions[falsePhase][transitionEdge.index+1])
