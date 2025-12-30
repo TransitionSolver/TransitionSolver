@@ -62,7 +62,7 @@ class TransitionProperties(dict):
 
     @property
     def completed(self):
-        return self.Tf >= 0.
+        return self.Tf is not None and self.Tf >= 0.
 
 
 class Transition:
