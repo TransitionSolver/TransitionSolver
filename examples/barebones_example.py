@@ -3,7 +3,7 @@ from src.TransitionSolver.analysis.transition_analysis import TransitionAnalyser
 from src.TransitionSolver.models.toy_model import ToyModel
 from src.TransitionSolver.models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz
 from src.TransitionSolver.analysis.phase_structure import PhaseStructure
-from src.TransitionSolver.analysis.phase_history_analysis import PhaseHistoryAnalyser, AnalysisMetrics
+from src.TransitionSolver.analysis.phase_history_analysis import PhaseHistoryAnalyser
 from src.TransitionSolver.analysis.transition_graph import Path
 from src.TransitionSolver.analysis import phase_structure
 import numpy as np
@@ -13,10 +13,9 @@ import pathlib
 import traceback
 import sys
 from src.TransitionSolver.util.events import notifyHandler
+from TransitionSolver import read_phase_tracer
 
-
-def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: PhaseStructure, analysisMetrics:
-        AnalysisMetrics) -> None:
+def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: PhaseStructure) -> None:
     report = {}
 
     if len(phaseStructure.transitions) > 0:
@@ -24,7 +23,7 @@ def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: Ph
     if len(paths) > 0:
         report['paths'] = [p.report() for p in paths]
     report['valid'] = any([p.is_valid for p in paths])
-    report['analysisTime'] = analysisMetrics.analysisElapsedTime
+    #report['analysisTime'] = analysisMetrics.analysisElapsedTime
 
     print('Writing report...')
 
@@ -85,12 +84,12 @@ def main():
     subprocess.call(command, timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     print("after calling command = ", command)
     # Load the phase structure saved by PhaseTracer.
-    bFileExists, phaseStructure = phase_structure.load_data(outputFolder + '/phase_structure.dat')
+    phaseStructure = read_phase_tracer(outputFolder + '/phase_structure.dat')   
 
-    # Validate the phase structure.
-    if not bFileExists:
-        print('Could not find phase structure file.')
-        return
+    # # Validate the phase structure.
+    # if not bFileExists:
+    #     print('Could not find phase structure file.')
+    #     return
     if len(phaseStructure.transitionPaths) == 0:
         print('No valid transition path to the current phase of the Universe.')
         return
@@ -111,11 +110,11 @@ def main():
     notifyHandler.addEvent('TransitionAnalyser-on_create', notify_TransitionAnalyser_on_create)
 
     # Analyse the phase history.
-    paths, _, analysisMetrics = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=0.9)
+    paths, _, _ = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=0.9)
 
     # Write the phase history report. Again, this will be handled within PhaseHistoryAnalysis in a future version of the
     # code.
-    writePhaseHistoryReport(outputFolder + '/phase_history.json', paths, phaseStructure, analysisMetrics)
+    writePhaseHistoryReport(outputFolder + '/phase_history.json', paths, phaseStructure)
 
 
 if __name__ == "__main__":
