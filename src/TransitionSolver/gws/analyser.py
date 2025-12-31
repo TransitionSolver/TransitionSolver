@@ -6,12 +6,10 @@ Analyse gravitational wave signals
 from __future__ import annotations
 
 import logging
-from typing import Callable, Optional
 from functools import cached_property
 
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.optimize
 
 from ..analysis.phase_structure import PhaseStructure
 from ..models.analysable_potential import AnalysablePotential
@@ -45,7 +43,6 @@ class AnalyseIndividualTransition:
             potential: AnalysablePotential,
             use_bubble_sep=True,
             vw=None,
-            sample_index=None,
             rho_t=None,
             kappa_coll=None,
             kappa_turb=0.05,
@@ -55,7 +52,6 @@ class AnalyseIndividualTransition:
         self.kappa_turb = kappa_turb
         self.kappa_coll = kappa_coll
         self.rho_t = rho_t
-        self.sample_index = sample_index
         self._vw = vw
         self.use_bubble_sep = use_bubble_sep
 
@@ -71,11 +67,11 @@ class AnalyseIndividualTransition:
             self.transition_temp,
             phase_structure.groud_state_energy_density)
 
-        self.hydro_reheat_temp = hydrodynamics.make_hydro_vars(
+        self.hydro_redshift_temp = hydrodynamics.make_hydro_vars(
             self.from_phase,
             self.to_phase,
             self.potential,
-            self.reheating_temp,
+            self.redshift_temp,
             phase_structure.groud_state_energy_density)
 
     @property
@@ -83,19 +79,18 @@ class AnalyseIndividualTransition:
         """
         a1/a0 = (s0/s1)^(1/3) and convert from GeV to Hz
         """
-        return (S0 / self.hydro_reheat_temp.entropyDensityTrue)**(1 / 3) * GEV_TO_HZ
+        return (S0 / self.hydro_redshift_temp.entropyDensityTrue)**(1 / 3) * GEV_TO_HZ
 
     @property
     def redshift_amp(self):
         """
         (a1/a0)^4 (H0/H1)^2 = (s0/s1)^(4/3) * (H0/H1)^2, and absorb h^2 factor
         """
-        return (S0 / self.hydro_reheat_temp.entropyDensityTrue)**(4 / 3) * self.hydro_transition_temp.hubble_constant**2 * H_OVER_H0**2
+        return (S0 / self.hydro_redshift_temp.entropyDensityTrue)**(4 / 3) * self.hydro_transition_temp.hubble_constant**2 * H_OVER_H0**2
 
     @property
     def Pf(self):
-        return 0.71 if self.sample_index is None else self.transition_report[
-            'Pf'][self.sample_index]
+        return 0.71
 
     @property
     def upsilon(self):
@@ -107,16 +102,11 @@ class AnalyseIndividualTransition:
 
     @property
     def transition_temp(self) -> float:
-        if self.sample_index is None:
-            return self.transition_report['Tp']
-        return self.transition_report['TSubsample'][self.sample_index]
+        return self.transition_report['Tp']
 
     @cached_property
-    def reheating_temp(self) -> float:
-        if self.sample_index is None:
-            return self.transition_report['Treh_p']
-        return self.calculate_reheating_temp(
-            self.transition_report['TSubsample'][self.sample_index], self.rho_t)
+    def redshift_temp(self) -> float:
+        return self.transition_report['Treh_p']
 
     @property
     def peak_frequency_coll(self):
@@ -231,38 +221,6 @@ class AnalyseIndividualTransition:
     def gw_coll(self, f):
         return self.peak_amplitude_coll * self.spectral_shape_coll(f)
 
-    # Copied from
-    # transition_analysis.TransitionAnalyer.calculateReheatTemperature.
-    def calculate_reheating_temp(
-            self, T: float, suppliedRho_t: Optional[Callable[[float], float]]) -> float:
-        Tmin = self.transition_report['T'][-1]
-        Tc = self.transition_report['Tc']
-        Tsep = min(0.001 * (Tc - Tmin), 0.5 * (T - Tmin))
-        rhof = hydrodynamics.calculateEnergyDensityAtT_singlePhase(
-            self.from_phase, self.to_phase, self.potential, T)
-
-        def objective(t):
-            if suppliedRho_t is not None:
-                rhot = suppliedRho_t(t)
-            else:
-                rhot = hydrodynamics.calculateEnergyDensityAtT_singlePhase(
-                    self.from_phase, self.to_phase, self.potential, t, forFromPhase=False)
-            # Conservation of energy => rhof = rhof*Pf + rhot*Pt which is equivalent to rhof = rhot (evaluated at
-            # different temperatures, T and Tt (Treh), respectively).
-            return rhot - rhof
-
-        # If the energy density of the true vacuum is never larger than the current energy density of the false vacuum
-        # even at Tc, then reheating goes beyond Tc.
-        if objective(Tc) < 0:
-            # Also, check the energy density of the true vacuum when it first appears. If a solution still doesn't exist
-            # here, then just report -1.
-            if self.to_phase.T[-1] - 2 * \
-                    Tsep > Tc and objective(self.to_phase.T[-1] - 2 * Tsep) < 0:
-                return -1
-
-            return scipy.optimize.toms748(objective, T, self.to_phase.T[-1] - 2 * Tsep)
-        return scipy.optimize.toms748(objective, T, Tc)
-
     @property
     def vw(self) -> float:
         """
@@ -326,10 +284,7 @@ class AnalyseIndividualTransition:
         @returns Characteristic bubble length scale
         """
         key = 'meanBubbleSeparation' if self.use_bubble_sep else 'meanBubbleRadius'
-        scale = self.transition_report[key]
-        if self.sample_index is None:
-            return scale
-        return scale[self.sample_index]
+        return self.transition_report[key]
 
     def report(self, *detectors):
         report = {}
@@ -366,12 +321,7 @@ def extract_relevant_transitions(report: dict) -> list[dict]:
     """
     @returns All transitions that are part of valid transition paths
     """
-    relevant = []
-
-    for path in report['paths']:
-        if path['valid']:
-            relevant += path['transitions']
-
+    relevant = [path['transitions'] for path in report['paths'] if path['valid']]
     return [t for t in report['transitions'] if t['id'] in relevant]
 
 
