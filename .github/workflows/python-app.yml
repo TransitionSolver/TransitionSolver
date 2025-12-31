@@ -62,7 +62,7 @@ jobs:
         sed -i '/^\s*"analysisTime"/d' tests/RSS_new_BP4_23_12_2025/phase_history.json RSS_new_BP4_output/phase_history.json
         numdiff tests/RSS_new_BP4_23_12_2025/phase_history.json RSS_new_BP4_output/phase_history.json
         numdiff tests/RSS_new_BP4_23_12_2025/phase_structure.dat RSS_new_BP4_output/phase_structure.dat
-   - name: Test pipeline example output
+    - name: Test pipeline example output
       run: |
         mkdir -p output/pipeline_example_output
         mkdir -p config
