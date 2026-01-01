@@ -352,7 +352,6 @@ class GWAnalyser:
 
         relevant_transitions = phase_history['transitions'] if force_relevant else extract_relevant_transitions(
             phase_history)
-        print("relevant_transitions = ", relevant_transitions)
         if not relevant_transitions:
             raise RuntimeError(
                 'No relevant transition detected in the phase history')
