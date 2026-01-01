@@ -321,15 +321,13 @@ def extract_relevant_transitions(report: dict) -> list[dict]:
     """
     @returns All transitions that are part of valid transition paths
     """
-    relevant = [
-        transition
-        for path in report['paths']
-        if path['valid']
-        for transition in path['transitions']
-    ]
+    relevant = []
+
+    for path in report['paths']:
+        if path['valid']:
+            relevant += path['transitions']
 
     return [t for t in report['transitions'] if t['id'] in relevant]
-
 
 class GWAnalyser:
     """
