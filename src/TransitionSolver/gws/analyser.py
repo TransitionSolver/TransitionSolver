@@ -321,7 +321,13 @@ def extract_relevant_transitions(report: dict) -> list[dict]:
     """
     @returns All transitions that are part of valid transition paths
     """
-    relevant = [path['transitions'] for path in report['paths'] if path['valid']]
+    relevant = [
+        transition
+        for path in report['paths']
+        if path['valid']
+        for transition in path['transitions']
+    ]
+
     return [t for t in report['transitions'] if t['id'] in relevant]
 
 
@@ -346,7 +352,7 @@ class GWAnalyser:
 
         relevant_transitions = phase_history['transitions'] if force_relevant else extract_relevant_transitions(
             phase_history)
-
+        print("relevant_transitions = ", relevant_transitions)
         if not relevant_transitions:
             raise RuntimeError(
                 'No relevant transition detected in the phase history')
