@@ -24,6 +24,8 @@ class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
+        if isinstance(obj, np.bool):
+            return bool(obj)
         return super().default(obj)
 
 
@@ -74,7 +76,4 @@ def assert_allclose(result, expected, rtol, atol, ignore):
         elif isinstance(expected[k], dict):
             assert_allclose(result[k], expected[k], rtol, atol, ignore)
         elif not approx_equal(result[k], expected[k], rtol, atol):
-            e = np.array(expected[k])
-            r = np.array(result[k])
-            rdiff = (r - e) / (r + e)
-            raise AssertionError(f"Disagreement for {k}\nExpected: {e}\nFound: {r}\nRelative difference: {rdiff}")
+            raise AssertionError(f"Disagreement for {k}\nExpected: {expected[k], type(expected[k])}\nFound: {result[k], type(result[k])}")

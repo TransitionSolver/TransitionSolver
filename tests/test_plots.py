@@ -23,3 +23,8 @@ def test_action_curve():
 def test_vw():
     ax = plot_vw(transition_id, phase_structure_file)
     return ax.get_figure()
+    
+@pytest.mark.mpl_image_compare
+def test_action_curve():
+    ax = plot_action_curve(transition_id, phase_structure_file)
+    return ax.get_figure()

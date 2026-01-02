@@ -52,7 +52,7 @@ def plot_volume(transition_id, phase_structure_file, ax=None):
     if transition['Tf'] is not None:
         maxIndex = len(transition['TSubsampleArray'])
         maxIndex = min(len(transition['TSubsampleArray'])-1, maxIndex - (maxIndex - idx_tf)//2)
-        physicalVolumeRelative = [100 * (Tf/transition['TSubsampleArray'][i])**3 * transition.Pf[i]
+        physicalVolumeRelative = [100 * (Tf/transition['TSubsampleArray'][i])**3 * transition['Pf'][i]
             for i in range(maxIndex+1)]
 
         ylim = np.array(physicalVolumeRelative[:min(idx_tf+1, maxIndex)]).max(initial=1.)*1.2
@@ -62,8 +62,8 @@ def plot_volume(transition_id, phase_structure_file, ax=None):
 
         ax.plot(transition['TSubsampleArray'][:maxIndex+1], physicalVolumeRelative, zorder=3, lw=3.5)
 
-        if transition.TVphysDecr_high is not None and transition.TVphysDecr_low is not None:
-            plt.axvspan(transition.TVphysDecr_low, transition.TVphysDecr_high, alpha=0.3, color='r', zorder=-1)
+        if transition['TVphysDecr_high'] is not None and transition['TVphysDecr_low'] is not None:
+            plt.axvspan(transition['TVphysDecr_low'], transition['TVphysDecr_high'], alpha=0.3, color='r', zorder=-1)
         if transition['Tp'] is not None:
             plt.axvline(transition['Tp'], c='g', ls='--', lw=2)
             plt.text(Tp + textXOffset, textY, '$T_p$', fontsize=44, horizontalalignment='left')
@@ -97,10 +97,10 @@ def plot_dvolume(transition_id, phase_structure_file, ax=None):
     textXOffset = 0.01*(transition['TSubsampleArray'][0] - 0)
     textY = ylim + 0.07*(3.5 - ylim)
 
-    ax.plot(transition['TSubsampleArray'], transition.physical_volume, zorder=3, lw=3.5)
+    ax.plot(transition['TSubsampleArray'], transition['physical_volume'], zorder=3, lw=3.5)
 
-    if transition.TVphysDecr_high is not None and transition.TVphysDecr_low is not None:
-        plt.axvspan(transition.TVphysDecr_low, transition.TVphysDecr_high, alpha=0.3, color='r', zorder=-1)
+    if transition['TVphysDecr_high'] is not None and transition['TVphysDecr_low'] is not None:
+        plt.axvspan(transition['TVphysDecr_low'], transition['TVphysDecr_high'], alpha=0.3, color='r', zorder=-1)
     if transition['Tp'] is not None:
         plt.axvline(transition['Tp'], c='g', ls='--', lw=2)
         plt.text(transition['Tp'] + textXOffset, textY, '$T_p$', fontsize=44, horizontalalignment='left')
@@ -141,13 +141,13 @@ def plot_gamma(transition_id, phase_structure_file, ax=None):
         
     transition = load_transition(transition_id, phase_structure_file)
 
-    ax.plot(transition['TSubsampleArray'], transition.gamma)
-    ax.plot(transition['TSubsampleArray'], transition.gamma_eff)
+    ax.plot(transition['TSubsampleArray'], transition['gamma'])
+    ax.plot(transition['TSubsampleArray'], transition['gamma_eff'])
 
     plt.xlabel('$T$', fontsize=24)
     plt.ylabel('$\\Gamma(T)$', fontsize=24)
-    if transition.TGammaMax is not None: plt.axvline(transition.TGammaMax, c='g', ls=':')
-    if transition.Tmin is not None: plt.axvline(transition.Tmin, c='r', ls=':')
+    if transition['TGammaMax'] is not None: plt.axvline(transition['TGammaMax'], c='g', ls=':')
+    if transition['Tmin'] is not None: plt.axvline(transition['Tmin'], c='r', ls=':')
     if transition['Tp'] is not None: plt.axvline(transition['Tp'], c='g', ls=':')
     if transition['Te'] is not None: plt.axvline(transition['Te'], c='b', ls=':')
     if transition['Tf'] is not None: plt.axvline(transition['Tf'], c='k', ls=':')
@@ -183,7 +183,7 @@ def plot_bubble_radius(transition_id, phase_structure_file, ax=None):
     # Search for the highest temperature for which the mean bubble separation is not larger than it is at the
     # lowest sampled temperature.
     for i in range(1, len(transition['TSubsampleArray'])):
-        if transition.meanBubbleSeparationArray[i] <= transition.meanBubbleSeparationArray[-1]:
+        if transition['meanBubbleSeparationArray'][i] <= transition['meanBubbleSeparationArray'][-1]:
             highTempIndex = i
             break
 
@@ -192,8 +192,8 @@ def plot_bubble_radius(transition_id, phase_structure_file, ax=None):
     if highTempIndex == len(transition['TSubsampleArray'])-1:
         highTempIndex = 0
 
-    ax.plot(transition['TSubsampleArray'], transition.meanBubbleRadiusArray, linewidth=2.5)
-    ax.plot(transition['TSubsampleArray'], transitionmeanBubbleSeparationArray, linewidth=2.5)
+    ax.plot(transition['TSubsampleArray'], transition['meanBubbleRadiusArray'], linewidth=2.5)
+    ax.plot(transition['TSubsampleArray'], transition['meanBubbleSeparationArray'], linewidth=2.5)
     plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
 
     plt.legend(['$\\overline{R}_B(T)$', '$R_*(T)$'], fontsize=24)
@@ -202,7 +202,7 @@ def plot_bubble_radius(transition_id, phase_structure_file, ax=None):
     if Te > 0: plt.axvline(Te, c='b', ls=':')
     if Tf > 0: plt.axvline(Tf, c='k', ls=':')
     plt.xlim(transition['TSubsampleArray'][-1], transition['TSubsampleArray'][highTempIndex])
-    plt.ylim(0, 1.2*max(transitionmeanBubbleSeparationArray[-1], transitionmeanBubbleRadiusArray[-1]))
+    plt.ylim(0, 1.2*max(transition['meanBubbleSeparationArray'][-1], transition['meanBubbleSRadiusArray'][-1]))
 
     return ax
 
@@ -213,50 +213,23 @@ def plot_action_curve(transition_id, phase_structure_file, ax=None):
 
     transition = load_transition(transition_id, phase_structure_file)
 
-    highTempIndex = 0
-    lowTempIndex = len(transition.SonT)
-
-    minAction = min(transition.SonT)
-    maxAction = actionSampler.maxSonTThreshold
-
-    # Search for the lowest temperature for which the action is not significantly larger than the maximum
-    # significant action.
-    for i in range(len(transition.SonT)):
-        if transition.SonT[i] <= maxAction:
-            highTempIndex = i
-            break
-
-    # Search for the lowest temperature for which the action is not significantly larger than the maximum
-    # significant action.
-    for i in range(len(transition.SonT)-1, -1, -1):
-        if transition.SonT[i] <= maxAction:
-            lowTempIndex = i
-            break
-
-    plt.figure(figsize=(12,8))
-    ax.plot(transition['TSubsampleArray'], actionSampler.subSonT, linewidth=2.5)
-
-    plt.scatter(actionSampler.T, transition.SonT)
-    if Tn > -1:
+    plt.plot(transition['T'], transition['SonT'])
+    
+    if 'Tn' in transition:
         plt.axvline(transition['Tn'], c='r', ls=':')
-        plt.axhline(transition.SonTn, c='r', ls=':')
-    if Tp > -1:
+        plt.axhline(transition['SonTn'], c='r', ls=':')
+    if 'Tp' in transition:
         plt.axvline(transition['Tp'], c='g', ls=':')
-        plt.axhline(transition.SonTp, c='g', ls=':')
-    if Te > -1:
+        plt.axhline(transition['SonTp'], c='g', ls=':')
+    if 'Te' in transition:
         plt.axvline(transition['Te'], c='b', ls=':')
-        plt.axhline(transition.SonTe, c='b', ls=':')
-    if Tf > -1:
+        plt.axhline(transition['SonTe'], c='b', ls=':')
+    if 'Tf' in transition:
         plt.axvline(transition['Tf'], c='k', ls=':')
-        plt.axhline(transition.SonTf, c='k', ls=':')
-    plt.minorticks_on()
-    plt.grid(visible=True, which='major', color='k', linestyle='--')
-    plt.grid(visible=True, which='minor', color='gray', linestyle=':')
+        plt.axhline(transition['SonTf'], c='k', ls=':')
+
     plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
     plt.ylabel('$S(T)$', fontsize=24)
-
-    plt.xlim(transition.T[lowTempIndex], transition.T[highTempIndex])
-    plt.ylim(minAction - 0.05*(maxAction - minAction), maxAction)
 
     return ax
 
@@ -269,8 +242,8 @@ def plot_bubble_number(transition_id, phase_structure_file, ax=None):
 
     # Number of bubbles plotted over entire sampled temperature range, using log scale for number of bubbles.
 
-    ax.plot(transition['TSubsampleArray'], transition.totalNumBubblesCorrected, linewidth=2.5)
-    ax.plot(transition['TSubsampleArray'], transition.totalNumBubbles, linewidth=2.5)
+    ax.plot(transition['TSubsampleArray'], transition['totalNumBubblesCorrected'], linewidth=2.5)
+    ax.plot(transition['TSubsampleArray'], transition['totalNumBubbles'], linewidth=2.5)
 
     if transition['Tn']: plt.axvline(transition['Tn'], c='r', ls=':')
     if transition['Tp']: plt.axvline(transition['Tp'], c='g', ls=':')
@@ -288,7 +261,7 @@ def plot_p_f(transition_id, phase_structure_file, ax=None):
     if ax is None:
         ax = plt.gca()
 
-    ax.plot(transition['TSubsampleArray'], transition.Pf, linewidth=2.5)
+    ax.plot(transition['TSubsampleArray'], transition['Pf'], linewidth=2.5)
     if transition['Tn']: plt.axvline(transition['Tn'], c='r', ls=':')
     if transition['Tp']: plt.axvline(transition['Tp'], c='g', ls=':')
     if transition['Te']: plt.axvline(transition['Te'], c='b', ls=':')

@@ -531,7 +531,7 @@ class TransitionAnalyser:
         hydroVars = [self.getHydroVars(self.actionSampler.T[0])]
         H = [hydroVars[0].hubble_constant]
         logger.debug("calling vw in analyseTransition...")
-        self.vw_samples = [self.vw(hydroVars[0])]
+        vw_samples = [self.vw(hydroVars[0])]
 
         radDensityPrefactor = np.pi**2/30
         fourPiOnThree = 4/3*np.pi
@@ -560,13 +560,13 @@ class TransitionAnalyser:
             return Gamma[x] / (self.actionSampler.subT[x]**4 * H[x])
 
         def innerFunction_trueVacVol(x):
-            return self.vw_samples[x] / H[x]
+            return vw_samples[x] / H[x]
 
         def outerFunction_avgBubRad(x):
             return Gamma[x]*Pf[x] / (self.actionSampler.subT[x]**4 * H[x])
 
         def innerFunction_avgBubRad(x):
-            return self.vw_samples[x] / H[x]
+            return vw_samples[x] / H[x]
 
         def sampleTransformationFunction(x):
             return self.actionSampler.subT[x]
@@ -694,7 +694,7 @@ class TransitionAnalyser:
                 #H.append(np.sqrt(self.hubble_squared(T[i])))
                 #H.append(np.sqrt(hubble_squared_from_energy_density(rhof[i] - self.groud_state_energy_density)))
                 H.append(hydroVarsInterp[i].hubble_constant)
-                self.vw_samples.append(self.vw(hydroVarsInterp[i]))
+                vw_samples.append(self.vw(hydroVarsInterp[i]))
 
                 Gamma.append(self.calculateGamma(T[i], SonT[i]))
 
@@ -876,6 +876,7 @@ class TransitionAnalyser:
         self.properties.physical_volume = physicalVolume
         self.properties.gamma_eff = np.array([Pf[i] * Gamma[i] for i in range(len(Gamma))])
         self.properties.gamma = Gamma
+        self.properties.vw_samples = vw_samples
 
         if self.properties.Tp is not None:
   
