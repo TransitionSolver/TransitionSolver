@@ -426,7 +426,6 @@ class TransitionAnalyser:
 
     actionSampler: ActionSampler
 
-    bComputeSubsampledThermalParams: bool
 
     def __init__(self, potential: AnalysablePotential, properties, fromPhase: Phase, toPhase: Phase,
             groud_state_energy_density: float, Tmin: float = 0., Tmax: float = 0., vw=None, action_ct=True):  # TODO make false
@@ -453,8 +452,6 @@ class TransitionAnalyser:
             self.Tmax = self.properties.Tc
 
         self.Tstep = max(0.0005*min(self.fromPhase.T[-1], self.toPhase.T[-1]), 0.0001*self.potential.get_temperature_scale())
-
-        self.bComputeSubsampledThermalParams = False
 
         notifyHandler.handleEvent(self, 'on_create')
 
@@ -1166,14 +1163,12 @@ class TransitionAnalyser:
         self.properties.SonT = self.actionSampler.SonT
         self.properties.totalNumBubbles = numBubblesIntegral[-1]
         self.properties.totalNumBubblesCorrected = numBubblesCorrectedIntegral[-1]
-
-        if self.bComputeSubsampledThermalParams:
-            self.properties.TSubampleArray = self.actionSampler.subT
-            self.properties.HArray = H
-            self.properties.betaArray = betaArray
-            self.properties.meanBubbleSeparationArray = meanBubbleSeparationArray
-            self.properties.meanBubbleRadiusArray = meanBubbleRadiusArray
-            self.properties.Pf = Pf
+        self.properties.TSubampleArray = self.actionSampler.subT
+        self.properties.HArray = H
+        self.properties.betaArray = betaArray
+        self.properties.meanBubbleSeparationArray = meanBubbleSeparationArray
+        self.properties.meanBubbleRadiusArray = meanBubbleRadiusArray
+        self.properties.Pf = Pf
 
     def primeTransitionAnalysis(self, startTime: float) -> (Optional[ActionSample], list[ActionSample]):
         timer = Timer(self.timeout, startTime)
