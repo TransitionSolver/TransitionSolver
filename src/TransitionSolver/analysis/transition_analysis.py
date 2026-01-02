@@ -82,11 +82,8 @@ class ActionSampler:
     action_ct_kwargs = {'verbose': False, 'maxiter': 20, 'tunneling_findProfile_params': {'phitol': 1e-8, 'xtol': 1e-8}, 'V_spline_samples': 100}
     action_pt_kwargs = {}
 
-    # precomputedT and precomputedSonT are lists of values for the S/T curve. These can be used to avoid sampling the
-    # action curve explicitly, until the samples run out.
     def __init__(self, transitionAnalyser: 'TransitionAnalyser', minSonTThreshold: float, maxSonTThreshold: float,
-            toleranceSonT: float, stepSizeMax=0.95, precomputedT: Optional[list[float]] = None, precomputedSonT:
-            Optional[list[float]] = None, action_ct=True): # TODO make false
+            toleranceSonT: float, stepSizeMax=0.95, action_ct=True): # TODO make false
         self.transitionAnalyser = transitionAnalyser
 
         # Copy properties for concision.
@@ -97,16 +94,6 @@ class ActionSampler:
         self.Tmin = transitionAnalyser.Tmin
         self.Tmax = transitionAnalyser.Tmax
         self.action_ct = action_ct
-
-        self.precomputedT = precomputedT if precomputedT is not None else []
-        self.precomputedSonT = precomputedSonT if precomputedSonT is not None else []
-
-        if len(self.precomputedT) != len(self.precomputedSonT):
-            self.precomputedT = []
-            self.precomputedSonT = []
-            self.bUsePrecomputedSamples = False
-        else:
-            self.bUsePrecomputedSamples = len(self.precomputedT) > 0
 
         self.T = []
         self.SonT = []
@@ -166,17 +153,6 @@ class ActionSampler:
         # Remove all stored data points whose temperature is larger than the last sampled temperature.
         while len(self.lower_s_on_t_data) > 0 and self.lower_s_on_t_data[-1].T >= self.T[-1]:
             self.lower_s_on_t_data.pop()
-
-        if self.bUsePrecomputedSamples:
-            if len(self.T) < len(self.precomputedT):
-                self.T.append(self.precomputedT[len(self.T)])
-                self.SonT.append(self.precomputedSonT[len(self.SonT)])
-                sampleData.T = self.T[-1]
-                sampleData.SonT = self.SonT[-1]
-                return True, 'Precomputed'
-            elif len(self.T) == len(self.precomputedT):
-                # TODO: not exactly sure if this is necessary, but probably is.
-                self.calculateStepSize()
 
         # Construct a quadratic Lagrange interpolant from the three most recent action samples.
         quadInterp = lagrange(self.T[-3:], self.SonT[-3:])
@@ -498,7 +474,7 @@ class TransitionAnalyser:
     # TODO: need to handle subcritical transitions better. Shouldn't use integration if the max sampled action is well
     #  below the nucleation threshold. Should treat the action as constant or linearise it and estimate transition
     #  temperatures under that approximation.
-    def analyseTransition(self, startTime: float = -1.0, precomputedActionCurveFileName: str = ''):
+    def analyseTransition(self, startTime: float = -1.0):
         # TODO: this should depend on the scale of the transition, so make it configurable.
         # Estimate the maximum significant value of S/T by finding where the instantaneous nucleation rate multiplied by
         # the maximum possible duration of the transition is O(1). This is highly conservative, but intentionally so
@@ -509,56 +485,42 @@ class TransitionAnalyser:
         
         timer = Timer(self.timeout, startTime)
 
-        precomputedT, precomputedSonT, bFinishedAnalysis = loadPrecomputedActionData(precomputedActionCurveFileName,
-            self.properties, maxSonTThreshold)
 
-        if bFinishedAnalysis:
-            return
-
-        self.actionSampler = ActionSampler(self, minSonTThreshold, maxSonTThreshold, toleranceSonT,
-            precomputedT=precomputedT, precomputedSonT=precomputedSonT, action_ct=self.action_ct)
+        self.actionSampler = ActionSampler(self, minSonTThreshold, maxSonTThreshold, toleranceSonT, action_ct=self.action_ct)
 
         logging.debug(f'{self.Tmin=}')
         logging.debug(f'{self.Tmax=}')
         logging.debug(f'{self.properties.Tc=}')
 
-        if not precomputedT:
-            # TODO: we don't use allSamples anymore.
-            sampleData, _ = self.primeTransitionAnalysis(startTime)
+        sampleData, _ = self.primeTransitionAnalysis(startTime)
 
-            if timer.timeout():
-                return None
+        if timer.timeout():
+            return None
 
-            if sampleData is None:
-                self.properties.bFoundNucleationWindow = False
-                return
+        if sampleData is None:
+            self.properties.bFoundNucleationWindow = False
+            return
 
-            self.properties.bFoundNucleationWindow = True
+        self.properties.bFoundNucleationWindow = True
 
-            # Remove any lower_s_on_t_data points that are very close together. We don't need to sample the S/T curve extremely
-            # densely (a spacing of 1 is more than reasonable), and doing so causes problems with the subsequent steps along
-            # the curve TODO: to be fixed anyway!
-            if self.actionSampler.lower_s_on_t_data:
-                keepIndices = [len(self.actionSampler.lower_s_on_t_data)-1]
-                for i in range(len(self.actionSampler.lower_s_on_t_data)-2, -1, -1):
-                    # Don't discard the point if it is separated in temperature from the almost degenerate S/T value already
-                    # stored.
-                    if abs(self.actionSampler.lower_s_on_t_data[i].SonT -
-                            self.actionSampler.lower_s_on_t_data[keepIndices[-1]].SonT) > 1 or\
-                            abs(self.actionSampler.lower_s_on_t_data[i].T -
-                            self.actionSampler.lower_s_on_t_data[keepIndices[-1]].T) >\
-                            self.potential.get_temperature_scale()*0.001:
-                        keepIndices.append(i)
-                    else:
-                        logger.debug('Removing stored lower S/T data {} because it is too close to {}', self.actionSampler.lower_s_on_t_data[i], self.actionSampler.lower_s_on_t_data[keepIndices[-1]])
+        # Remove any lower_s_on_t_data points that are very close together. We don't need to sample the S/T curve extremely
+        # densely (a spacing of 1 is more than reasonable), and doing so causes problems with the subsequent steps along
+        # the curve TODO: to be fixed anyway!
+        if self.actionSampler.lower_s_on_t_data:
+            keepIndices = [len(self.actionSampler.lower_s_on_t_data)-1]
+            for i in range(len(self.actionSampler.lower_s_on_t_data)-2, -1, -1):
+                # Don't discard the point if it is separated in temperature from the almost degenerate S/T value already
+                # stored.
+                if abs(self.actionSampler.lower_s_on_t_data[i].SonT -
+                        self.actionSampler.lower_s_on_t_data[keepIndices[-1]].SonT) > 1 or\
+                        abs(self.actionSampler.lower_s_on_t_data[i].T -
+                        self.actionSampler.lower_s_on_t_data[keepIndices[-1]].T) >\
+                        self.potential.get_temperature_scale()*0.001:
+                    keepIndices.append(i)
+                else:
+                    logger.debug('Removing stored lower S/T data {} because it is too close to {}', self.actionSampler.lower_s_on_t_data[i], self.actionSampler.lower_s_on_t_data[keepIndices[-1]])
 
-                self.actionSampler.lower_s_on_t_data = [self.actionSampler.lower_s_on_t_data[i] for i in keepIndices]
-        else:
-            self.properties.bFoundNucleationWindow = True
-
-            sampleData = ActionSample()
-            self.actionSampler.getNextSample(sampleData, [], 0.)
-            self.actionSampler.getNextSample(sampleData, [], 0.)
+            self.actionSampler.lower_s_on_t_data = [self.actionSampler.lower_s_on_t_data[i] for i in keepIndices]
 
         # We finally have a temperature where S/T is not much smaller than the value we started with (which was close to
         # maxSonTThreshold). From here we can use the separation in these temperatures and S/T values to predict reasonable
@@ -892,8 +854,6 @@ class TransitionAnalyser:
                 if message in ('Freeze out', 'Reached Tmin'):
                     break
 
-                if precomputedT:
-                    self.properties.actionCurveFile = precomputedActionCurveFileName
                 self.properties.T = self.actionSampler.T
                 self.properties.SonT = self.actionSampler.SonT
                 self.properties.error = f'Failed to get next sample at T = {sampleData.T} because {message}'
@@ -1202,8 +1162,6 @@ class TransitionAnalyser:
             #plt.savefig('E:/Monash/PhD/Milestones/Confirmation Review/images/xSM P(T) vs T.png', bbox_inches='tight',
             #    pad_inches=0.05)
 
-        if len(precomputedT) > 0:
-            self.properties.actionCurveFile = precomputedActionCurveFileName
         self.properties.T = self.actionSampler.T
         self.properties.SonT = self.actionSampler.SonT
         self.properties.totalNumBubbles = numBubblesIntegral[-1]
@@ -1812,54 +1770,3 @@ def hubble_squared(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotent
                                groud_state_energy_density: float) -> float:
     rhof = hydrodynamics.energy_density_from_phase(fromPhase, toPhase, potential, T)
     return hubble_squared_from_energy_density(rhof - groud_state_energy_density)
-
-# Returns T, SonT, bFinishedAnalysis.
-def loadPrecomputedActionData(fileName: str, transition: Transition, maxSonTThreshold: float) -> tuple[list[float],
-        list[float], bool]:
-    if fileName == '':
-        return [], [], False
-
-    precomputedT = []
-    precomputedSonT = []
-
-    if fileName[-5:] == '.json':
-        with open(fileName) as f:
-            data = json.load(f)
-
-            transDict = None
-            for tr in data['transitions']:
-                if tr['id'] == transition.ID:
-                    transDict = tr
-                    break
-
-        if transDict is not None:
-            precomputedT = transDict['T']
-            precomputedSonT = transDict['SonT']
-
-            # If the nucleation window wasn't found, we do not have precomputed data.
-            if not transDict['foundNucleationWindow']:
-                transition.analysis.T = precomputedT
-                transition.analysis.SonT = precomputedSonT
-                return [], [], True
-        else:
-            print('Unable to find transition with id =', transition.ID, 'in the JSON file.')
-    elif fileName[-4:] == '.txt':
-        data = np.loadtxt(fileName)
-
-        if data is not None:
-            precomputedT = data[..., 0][::-1]
-            precomputedSonT = data[..., 1][::-1]
-    else:
-        print('Unsupported file extension', fileName.split('.')[-1], 'for precomputed action curve file.')
-
-    if len(precomputedT) == 0:
-        return [], [], False
-
-    if len(precomputedSonT) > 0:
-        if min(precomputedSonT) > maxSonTThreshold:
-            transition.analysis.T = precomputedT
-            transition.analysis.SonT = precomputedSonT
-            transition.analysis.actionCurveFile = fileName
-            return [], [], True
-
-    return precomputedT, precomputedSonT, False

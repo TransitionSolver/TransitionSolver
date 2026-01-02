@@ -23,8 +23,6 @@ class PhaseHistoryAnalyser:
     bAnalyseTransitionPastCompletion: bool = False
     bForcePhaseOnAxis: bool = False
     time_limit: float = 200.
-    fileName_precomputedActionCurve: list[str] = []
-    precomputedTransitionIDs: list[int] = []
 
     # Second return value is whether we timed out.
     def analysePhaseHistory_supplied(self, potential: AnalysablePotential, phaseStructure: PhaseStructure, vw=None, action_ct=True) -> tuple[list[Path], bool, Optional[Timer]]:  # TODO make false
@@ -197,10 +195,6 @@ class PhaseHistoryAnalyser:
                 else:
                     actionFileName = ''
 
-                    for i in range(len(self.precomputedTransitionIDs)):
-                        if self.precomputedTransitionIDs[i] == transition.ID:
-                            actionFileName = self.fileName_precomputedActionCurve[i]
-
                     transitionAnalyser: TransitionAnalyser = TransitionAnalyser(potential, transition.properties,
                         phases[transition.false_phase], phases[transition.true_phase],
                         phaseStructure.groud_state_energy_density, Tmin=Tmin, Tmax=Tmax, vw=vw, action_ct=action_ct)
@@ -209,8 +203,7 @@ class PhaseHistoryAnalyser:
                     transitionAnalyser.bPlot = self.bPlot
                     transitionAnalyser.bReportAnalysis = self.bReportAnalysis
 
-                    transitionAnalyser.analyseTransition(startTime=timer.start_time,
-                        precomputedActionCurveFileName=actionFileName)
+                    transitionAnalyser.analyseTransition(startTime=timer.start_time)
 
                     if timer.timeout():
                         return [], True, timer
