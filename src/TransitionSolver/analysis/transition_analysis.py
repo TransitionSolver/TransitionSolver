@@ -458,9 +458,8 @@ class TransitionAnalyser:
 
     bComputeSubsampledThermalParams: bool
 
-    # TODO: make vw a function of this class that can be overriden. Currently it is obtained from the transition.
     def __init__(self, potential: AnalysablePotential, properties, fromPhase: Phase, toPhase: Phase,
-            groud_state_energy_density: float, Tmin: float = 0., Tmax: float = 0.):
+            groud_state_energy_density: float, Tmin: float = 0., Tmax: float = 0., vw=None):
         self.potential = potential
         self.properties = properties
         self.fromPhase = fromPhase
@@ -468,6 +467,9 @@ class TransitionAnalyser:
         self.groud_state_energy_density = groud_state_energy_density
         self.Tmin = Tmin
         self.Tmax = Tmax
+        self.properties.use_cj_velocity = vw is None
+        self.properties.vw = vw
+        
 
         if self.Tmin == 0:
             # The minimum temperature for which both phases exist, and prevent analysis below the effective potential's
@@ -485,15 +487,15 @@ class TransitionAnalyser:
 
         notifyHandler.handleEvent(self, 'on_create')
 
-    def getBubbleWallVelocity(self, hydrovars: HydroVars) -> float:
-        if self.bUseChapmanJouguetVelocity:
-            logging.debug(f'{hydrovars=}')
+    def vw(self, hydrovars: HydroVars) -> float:
+        """
+        @returns Bubble wall velocity
+        """
+        if self.properties.use_cj_velocity:
             vw = hydrovars.cj_velocity
-            
             if np.isnan(vw) or vw > 1.:
                 logger.warning("vw = {}. Adjusting to 1", vw)
                 return 1.
-
             return vw
 
         return self.properties.vw
@@ -524,7 +526,6 @@ class TransitionAnalyser:
         logging.debug(f'{self.Tmin=}')
         logging.debug(f'{self.Tmax=}')
         logging.debug(f'{self.properties.Tc=}')
-        logging.debug(f'{self.properties.vw=}')
 
         if not precomputedT:
             # TODO: we don't use allSamples anymore.
@@ -590,8 +591,8 @@ class TransitionAnalyser:
         betaArray = [0.]
         hydroVars = [self.getHydroVars(self.actionSampler.T[0])]
         H = [hydroVars[0].hubble_constant]
-        logger.debug("calling getBubbleWallVelocity in analyseTransition...")
-        vw = [self.getBubbleWallVelocity(hydroVars[0])]
+        logger.debug("calling vw in analyseTransition...")
+        vw = [self.vw(hydroVars[0])]
 
         radDensityPrefactor = np.pi**2/30
         fourPiOnThree = 4/3*np.pi
@@ -759,7 +760,7 @@ class TransitionAnalyser:
                 #H.append(np.sqrt(self.hubble_squared(T[i])))
                 #H.append(np.sqrt(hubble_squared_from_energy_density(rhof[i] - self.groud_state_energy_density)))
                 H.append(hydroVarsInterp[i].hubble_constant)
-                vw.append(self.getBubbleWallVelocity(hydroVarsInterp[i]))
+                vw.append(self.vw(hydroVarsInterp[i]))
 
                 Gamma.append(self.calculateGamma(T[i], SonT[i]))
 

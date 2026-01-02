@@ -42,7 +42,6 @@ class AnalyseIndividualTransition:
             transition_report: dict,
             potential: AnalysablePotential,
             use_bubble_sep=True,
-            vw=None,
             rho_t=None,
             kappa_coll=None,
             kappa_turb=0.05,
@@ -52,7 +51,6 @@ class AnalyseIndividualTransition:
         self.kappa_turb = kappa_turb
         self.kappa_coll = kappa_coll
         self.rho_t = rho_t
-        self._vw = vw
         self.use_bubble_sep = use_bubble_sep
 
         self.transition_report = transition_report
@@ -107,6 +105,15 @@ class AnalyseIndividualTransition:
     @cached_property
     def redshift_temp(self) -> float:
         return self.transition_report['Treh_p']
+
+    @property
+    def vw(self) -> float:
+        """
+        @returns Either Chapman-Jouguet hydrodynamical estimate or value from transition report if present
+        """
+        if self.transition_report['use_cj_velocity']:
+            return self.hydro_transition_temp.cj_velocity
+        return self.transition_report['vw']
 
     @property
     def peak_frequency_coll(self):
@@ -221,15 +228,6 @@ class AnalyseIndividualTransition:
     def gw_coll(self, f):
         return self.peak_amplitude_coll * self.spectral_shape_coll(f)
 
-    @property
-    def vw(self) -> float:
-        """
-        Using either Chapman-Jouguet hydrodynamical estimate or value from transition report
-        """
-        if self._vw is not None:
-            return self._vw
-        return self.hydro_transition_temp.cj_velocity
-
     @cached_property
     def kappa_sw(self) -> float:
         """
@@ -249,7 +247,7 @@ class AnalyseIndividualTransition:
             self.hydro_transition_temp.soundSpeedSqTrue,
             self.hydro_transition_temp.alpha,
             vw,
-            self._vw is None)
+            self.transition_report['use_cj_velocity'])
 
         if kappa_sw > 1:
             raise RuntimeError(f"kappa_sw > 1: {kappa_sw}")
@@ -295,7 +293,10 @@ class AnalyseIndividualTransition:
         report['Peak frequency (turb)'] = self.peak_frequency_turb
         report['Peak amplitude (coll)'] = self.peak_amplitude_coll
         report['Peak frequency (coll)'] = self.peak_frequency_coll
-        report["SNR"] = {d.label: d.SNR(self.gw_total) for d in detectors}
+        report['SNR'] = {d.label: d.SNR(self.gw_total) for d in detectors}
+        report['vw'] = self.vw
+        report['transition temp'] = self.transition_temp
+        report['redshift temp'] = self.redshift_temp
         return report
 
     def plot(self, frequencies, detectors=None, ptas=None, ax=None):

@@ -18,7 +18,7 @@ THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 def test_phase_structure_by_file():
     phase_tracer_file = THIS / "rss_bp1_phase_structure.dat"
     result = phasehistory.find_phase_history(
-        RSS_BP1, phase_tracer_file=phase_tracer_file, vw=0.9)
+        RSS_BP1, phase_tracer_file=phase_tracer_file)
     # TODO ignoring T and SonT as the size of them changes between local & github
     # but good to reinclude them later
     assert allclose(result, THIS / "rss_bp1_phase_structure.json", ignore=['analysisTime', 'T', 'SonT'], rtol=5e-2, atol=1e-9)
@@ -30,7 +30,7 @@ def test_phase_structure_by_object():
         phase_tracer_data = f.read()
     phase_structure = read_phase_tracer(phase_tracer_data)
     result = phasehistory.find_phase_history(
-        RSS_BP1, phase_structure, vw=0.9)
+        RSS_BP1, phase_structure)
     # TODO ignoring T and SonT as the size of them changes between local & github
     # but good to reinclude them later
     assert allclose(result, THIS / "rss_bp1_phase_structure.json", ignore=['analysisTime', 'T', 'SonT'], rtol=5e-2, atol=1e-9)

@@ -27,8 +27,7 @@ class PhaseHistoryAnalyser:
     precomputedTransitionIDs: list[int] = []
 
     # Second return value is whether we timed out.
-    def analysePhaseHistory_supplied(self, potential: AnalysablePotential, phaseStructure: PhaseStructure, vw: float =
-            1.) -> tuple[list[Path], bool, Optional[Timer]]:
+    def analysePhaseHistory_supplied(self, potential: AnalysablePotential, phaseStructure: PhaseStructure, vw=None) -> tuple[list[Path], bool, Optional[Timer]]:
 
         timer = Timer(self.time_limit)
         if self.bDebug:
@@ -196,8 +195,6 @@ class PhaseHistoryAnalyser:
                     if self.bDebug:
                         print(f'Transition not possible since Tmin > Tmax ({Tmin} > {Tmax}).')
                 else:
-                    transition.vw = vw
-
                     actionFileName = ''
 
                     for i in range(len(self.precomputedTransitionIDs)):
@@ -206,7 +203,7 @@ class PhaseHistoryAnalyser:
 
                     transitionAnalyser: TransitionAnalyser = TransitionAnalyser(potential, transition.properties,
                         phases[transition.false_phase], phases[transition.true_phase],
-                        phaseStructure.groud_state_energy_density, Tmin=Tmin, Tmax=Tmax)
+                        phaseStructure.groud_state_energy_density, Tmin=Tmin, Tmax=Tmax, vw=vw)
 
                     transitionAnalyser.bDebug = self.bDebug
                     transitionAnalyser.bPlot = self.bPlot

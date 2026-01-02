@@ -25,12 +25,12 @@ def _make_report(paths, phase_structure, analysis_metrics):
     return report
 
 
-def find_phase_history(potential, phase_structure=None, vw=0.9, phase_tracer_file=None):
+def find_phase_history(potential, phase_structure=None, phase_tracer_file=None, vw=None):
     """
     @param potential Effective potential
     @param phase_structure Parsed phase structure from PT
-    @param vw Assumed wall velocity
     @param phase_tracer_file Results file from PT
+    @param vw Bubble wall velocity
 
     @returns Report phase history from PhaseTracer output
     """
@@ -43,7 +43,7 @@ def find_phase_history(potential, phase_structure=None, vw=0.9, phase_tracer_fil
 
     analyser = PhaseHistoryAnalyser()
     paths, _, analysis_metrics = analyser.analysePhaseHistory_supplied(
-        potential, phase_structure)
+        potential, phase_structure, vw=vw)
 
     return _make_report(paths, phase_structure, analysis_metrics)
 

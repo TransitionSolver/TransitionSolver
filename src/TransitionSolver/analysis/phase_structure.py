@@ -81,7 +81,6 @@ class Transition:
         self.properties.subcritical = transition[-1] > 0
         self.properties.Tc = transition[2]
         self.properties.analysed = False
-        self.properties.vw = 1.  # TODO this should be set consistently everywhere
 
     def report(self) -> dict:
         """
