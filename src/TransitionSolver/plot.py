@@ -49,36 +49,36 @@ def plot_volume(transition_id, phase_structure_file, ax=None):
 
     transition = load_transition(transition_id, phase_structure_file)
 
+    if 'Tf' not in transition['Tf']:
+        return ax
+        
+    maxIndex = len(transition['TSubsampleArray'])
+    maxIndex = min(len(transition['TSubsampleArray'])-1, maxIndex - (maxIndex - idx_tf)//2)
+    physicalVolumeRelative = [100 * (Tf/transition['TSubsampleArray'][i])**3 * transition['Pf'][i]
+        for i in range(maxIndex+1)]
+
+
+    textXOffset = 0.01*(transition['TSubsampleArray'][0] - transition['TSubsampleArray'][maxIndex])
+    textY = 0.1
+
+    ax.plot(transition['TSubsampleArray'][:maxIndex+1], physicalVolumeRelative, zorder=3, lw=3.5)
+
+    if transition['TVphysDecr_high'] is not None and transition['TVphysDecr_low'] is not None:
+        plt.axvspan(transition['TVphysDecr_low'], transition['TVphysDecr_high'], alpha=0.3, color='r', zorder=-1)
+    if transition['Tp'] is not None:
+        plt.axvline(transition['Tp'], c='g', ls='--', lw=2)
+        plt.text(Tp + textXOffset, textY, '$T_p$', fontsize=44, horizontalalignment='left')
+    if transition['Te'] is not None:
+        plt.axvline(transition['Te'], c='b', ls='--', lw=2)
+        plt.text(transition['Te'] + textXOffset, textY, '$T_e$', fontsize=44, horizontalalignment='left')
     if transition['Tf'] is not None:
-        maxIndex = len(transition['TSubsampleArray'])
-        maxIndex = min(len(transition['TSubsampleArray'])-1, maxIndex - (maxIndex - idx_tf)//2)
-        physicalVolumeRelative = [100 * (Tf/transition['TSubsampleArray'][i])**3 * transition['Pf'][i]
-            for i in range(maxIndex+1)]
+        plt.axvline(transition['Tf'], c='k', ls='--', lw=2)
+        plt.text(transition['Tf'] - textXOffset, textY, '$T_f$', fontsize=44, horizontalalignment='right')
+    plt.axhline(1., c='gray', ls=':', lw=2, zorder=-1)
+    plt.xlabel('$T \,\, \\mathrm{[GeV]}$', fontsize=52)
+    plt.ylabel('$\\mathcal{V}_{\\mathrm{phys}}(T)/\\mathcal{V}_{\\mathrm{phys}}(T_f)$', fontsize=52,
+        labelpad=20)
 
-        ylim = np.array(physicalVolumeRelative[:min(idx_tf+1, maxIndex)]).max(initial=1.)*1.2
-
-        textXOffset = 0.01*(transition['TSubsampleArray'][0] - transition['TSubsampleArray'][maxIndex])
-        textY = 0.1
-
-        ax.plot(transition['TSubsampleArray'][:maxIndex+1], physicalVolumeRelative, zorder=3, lw=3.5)
-
-        if transition['TVphysDecr_high'] is not None and transition['TVphysDecr_low'] is not None:
-            plt.axvspan(transition['TVphysDecr_low'], transition['TVphysDecr_high'], alpha=0.3, color='r', zorder=-1)
-        if transition['Tp'] is not None:
-            plt.axvline(transition['Tp'], c='g', ls='--', lw=2)
-            plt.text(Tp + textXOffset, textY, '$T_p$', fontsize=44, horizontalalignment='left')
-        if transition['Te'] is not None:
-            plt.axvline(transition['Te'], c='b', ls='--', lw=2)
-            plt.text(transition['Te'] + textXOffset, textY, '$T_e$', fontsize=44, horizontalalignment='left')
-        if transition['Tf'] is not None:
-            plt.axvline(transition['Tf'], c='k', ls='--', lw=2)
-            plt.text(transition['Tf'] - textXOffset, textY, '$T_f$', fontsize=44, horizontalalignment='right')
-        plt.axhline(1., c='gray', ls=':', lw=2, zorder=-1)
-        plt.xlabel('$T \,\, \\mathrm{[GeV]}$', fontsize=52)
-        plt.ylabel('$\\mathcal{V}_{\\mathrm{phys}}(T)/\\mathcal{V}_{\\mathrm{phys}}(T_f)$', fontsize=52,
-            labelpad=20)
-        plt.xlim(0, transition['TSubsampleArray'][0])
-        plt.ylim(0, ylim)
 
     return ax
 
@@ -89,34 +89,24 @@ def plot_dvolume(transition_id, phase_structure_file, ax=None):
         
     transition = load_transition(transition_id, phase_structure_file)
 
-    ylim = np.array(physicalVolume).min(initial=0.)
-    ylim *= 1.2 if ylim < 0 else 0.8
-    if -0.5 < ylim < 0:
-        ylim = -0.5
+    ax.plot(transition['TSubsampleArray'], transition['physical_volume'], zorder=3)
 
-    textXOffset = 0.01*(transition['TSubsampleArray'][0] - 0)
-    textY = ylim + 0.07*(3.5 - ylim)
-
-    ax.plot(transition['TSubsampleArray'], transition['physical_volume'], zorder=3, lw=3.5)
-
-    if transition['TVphysDecr_high'] is not None and transition['TVphysDecr_low'] is not None:
+    if 'TVphysDecr_high' in transition and 'TVphysDecr_low' in transition:
         plt.axvspan(transition['TVphysDecr_low'], transition['TVphysDecr_high'], alpha=0.3, color='r', zorder=-1)
-    if transition['Tp'] is not None:
-        plt.axvline(transition['Tp'], c='g', ls='--', lw=2)
-        plt.text(transition['Tp'] + textXOffset, textY, '$T_p$', fontsize=44, horizontalalignment='left')
-    if transition['Te'] is not None:
-        plt.axvline(transition['Te'], c='b', ls='--', lw=2)
-        plt.text(transition['Te'] + textXOffset, textY, '$T_e$', fontsize=44, horizontalalignment='left')
-    if transition['Tf'] is not None:
-        plt.axvline(transition['Tf'], c='k', ls='--', lw=2)
-        plt.text(transition['Tf'] - textXOffset, textY, '$T_f$', fontsize=44, horizontalalignment='right')
-    plt.axhline(3., c='gray', ls=':', lw=2, zorder=-1)
-    plt.axhline(0., c='gray', ls=':', lw=2, zorder=-1)
-    plt.xlabel('$T \,\, \\mathrm{[GeV]}$', fontsize=50)
-    plt.ylabel('$\\frac{\\displaystyle d}{\\displaystyle dt} \\mathcal{V}_{\\mathrm{phys}} \,\, \\mathrm{[GeV]}$',
-        fontsize=50, labelpad=20)
-    plt.xlim(0, transition['TSubsampleArray'][0])
-    plt.ylim(ylim, 3.5)
+    if 'Tn' in transition:
+        plt.axvline(transition['Tn'], c='r', ls=':')
+    if 'Tp' in transition:
+        plt.axvline(transition['Tp'], c='g', ls=':')
+    if 'Te' in transition:
+        plt.axvline(transition['Te'], c='b', ls=':')
+    if 'Tf' in transition:
+        plt.axvline(transition['Tf'], c='k', ls=':')
+
+    plt.axhline(3., c='gray', ls=':', zorder=-1)
+    plt.axhline(0., c='gray', ls=':', zorder=-1)
+    
+    plt.xlabel('$T \,\, \\mathrm{[GeV]}$')
+    plt.ylabel('$\\frac{\\displaystyle d}{\\displaystyle dt} \\mathcal{V}_{\\mathrm{phys}} \,\, \\mathrm{[GeV]}$')
 
     return ax
 
@@ -140,17 +130,26 @@ def plot_gamma(transition_id, phase_structure_file, ax=None):
         
     transition = load_transition(transition_id, phase_structure_file)
 
-    ax.plot(transition['TSubsampleArray'], transition['gamma'])
-    ax.plot(transition['TSubsampleArray'], transition['gamma_eff'])
+    ax.plot(transition['TSubsampleArray'], transition['gamma'], label="Standard")
+    ax.plot(transition['TSubsampleArray'], transition['gamma_eff'], label="Effective")
 
     plt.xlabel('$T$')
     plt.ylabel('$\\Gamma(T)$')
-    if transition['TGammaMax'] is not None: plt.axvline(transition['TGammaMax'], c='g', ls=':')
-    if transition['Tmin'] is not None: plt.axvline(transition['Tmin'], c='r', ls=':')
-    if transition['Tp'] is not None: plt.axvline(transition['Tp'], c='g', ls=':')
-    if transition['Te'] is not None: plt.axvline(transition['Te'], c='b', ls=':')
-    if transition['Tf'] is not None: plt.axvline(transition['Tf'], c='k', ls=':')
-    plt.legend(['$\\mathrm{standard}$', '$\\mathrm{effective}$'])
+
+    if 'Tn' in transition:
+        plt.axvline(transition['TGammaMax'], c='r', ls=':') 
+    if 'Tn' in transition:
+        plt.axvline(transition['Tmin'], c='r', ls=':')
+    if 'Tn' in transition:
+        plt.axvline(transition['Tn'], c='r', ls=':')
+    if 'Tp' in transition:
+        plt.axvline(transition['Tp'], c='g', ls=':')
+    if 'Te' in transition:
+        plt.axvline(transition['Te'], c='b', ls=':')
+    if 'Tf' in transition:
+        plt.axvline(transition['Tf'], c='k', ls=':')
+
+    ax.legend()
 
     return ax
 
@@ -161,13 +160,20 @@ def plot_bubble_number(transition_id, phase_structure_file, ax=None):
 
     transition = load_transition(transition_id, phase_structure_file)
 
-    ax.plot(transition['TSubsampleArray'], bubbleNumberDensity, linewidth=2.5)
+    ax.plot(transition['TSubsampleArray'], bubbleNumberDensity)
+
     plt.xlabel('$T \, \\mathrm{[GeV]}$')
     plt.ylabel('$n_B(T)$')
-    if transition['Tn'] is not None: plt.axvline(transition['Tn'], c='r', ls=':')
-    if transition['Tp'] is not None: plt.axvline(transition['Tp'], c='g', ls=':')
-    if transition['Te'] is not None: plt.axvline(transition['Te'], c='b', ls=':')
-    if transition['Tf'] is not None: plt.axvline(transition['Tf'], c='k', ls=':')
+    
+    if 'Tn' in transition:
+        plt.axvline(transition['Tn'], c='r', ls=':')
+    if 'Tp' in transition:
+        plt.axvline(transition['Tp'], c='g', ls=':')
+    if 'Te' in transition:
+        plt.axvline(transition['Te'], c='b', ls=':')
+    if 'Tf' in transition:
+        plt.axvline(transition['Tf'], c='k', ls=':')
+        
     return ax
     
 def plot_bubble_radius(transition_id, phase_structure_file, ax=None):
@@ -191,17 +197,21 @@ def plot_bubble_radius(transition_id, phase_structure_file, ax=None):
     if highTempIndex == len(transition['TSubsampleArray'])-1:
         highTempIndex = 0
 
-    ax.plot(transition['TSubsampleArray'], transition['meanBubbleRadiusArray'], linewidth=2.5)
-    ax.plot(transition['TSubsampleArray'], transition['meanBubbleSeparationArray'], linewidth=2.5)
+    ax.plot(transition['TSubsampleArray'], transition['meanBubbleRadiusArray'])
+    ax.plot(transition['TSubsampleArray'], transition['meanBubbleSeparationArray'])
     plt.xlabel('$T \, \\mathrm{[GeV]}$')
 
     plt.legend(['$\\overline{R}_B(T)$', '$R_*(T)$'])
-    if Tn > 0: plt.axvline(Tn, c='r', ls=':')
-    if Tp > 0: plt.axvline(Tp, c='g', ls=':')
-    if Te > 0: plt.axvline(Te, c='b', ls=':')
-    if Tf > 0: plt.axvline(Tf, c='k', ls=':')
-    plt.xlim(transition['TSubsampleArray'][-1], transition['TSubsampleArray'][highTempIndex])
-    plt.ylim(0, 1.2*max(transition['meanBubbleSeparationArray'][-1], transition['meanBubbleSRadiusArray'][-1]))
+
+    if 'Tn' in transition:
+        plt.axvline(transition['Tn'], c='r', ls=':')
+    if 'Tp' in transition:
+        plt.axvline(transition['Tp'], c='g', ls=':')
+    if 'Te' in transition:
+        plt.axvline(transition['Te'], c='b', ls=':')
+    if 'Tf' in transition:
+        plt.axvline(transition['Tf'], c='k', ls=':')
+
 
     return ax
 
@@ -241,16 +251,20 @@ def plot_bubble_number(transition_id, phase_structure_file, ax=None):
 
     # Number of bubbles plotted over entire sampled temperature range, using log scale for number of bubbles.
 
-    ax.plot(transition['TSubsampleArray'], transition['totalNumBubblesCorrected'], linewidth=2.5)
-    ax.plot(transition['TSubsampleArray'], transition['totalNumBubbles'], linewidth=2.5)
+    ax.plot(transition['TSubsampleArray'], transition['totalNumBubblesCorrected'], label='$N(T)$')
+    ax.plot(transition['TSubsampleArray'], transition['totalNumBubbles'], label='$N^{\\mathrm{ext}}(T)$')
 
-    if transition['Tn']: plt.axvline(transition['Tn'], c='r', ls=':')
-    if transition['Tp']: plt.axvline(transition['Tp'], c='g', ls=':')
-    if transition['Te']: plt.axvline(transition['Te'], c='b', ls=':')
-    if transition['Tf']: plt.axvline(transition['Tf'], c='k', ls=':')
+    if 'Tn' in transition:
+        plt.axvline(transition['Tn'], c='r', ls=':')
+    if 'Tp' in transition:
+        plt.axvline(transition['Tp'], c='g', ls=':')
+    if 'Te' in transition:
+        plt.axvline(transition['Te'], c='b', ls=':')
+    if 'Tf' in transition:
+        plt.axvline(transition['Tf'], c='k', ls=':')
 
     plt.yscale('log')
-    plt.legend(['$N(T)$', '$N^{\\mathrm{ext}}(T)$'])
+    ax.legend()
     plt.xlabel('$T \, \\mathrm{[GeV]}$')
 
     return ax
@@ -260,11 +274,17 @@ def plot_p_f(transition_id, phase_structure_file, ax=None):
     if ax is None:
         ax = plt.gca()
 
-    ax.plot(transition['TSubsampleArray'], transition['Pf'], linewidth=2.5)
-    if transition['Tn']: plt.axvline(transition['Tn'], c='r', ls=':')
-    if transition['Tp']: plt.axvline(transition['Tp'], c='g', ls=':')
-    if transition['Te']: plt.axvline(transition['Te'], c='b', ls=':')
-    if transition['Tf']: plt.axvline(transition['Tf'], c='k', ls=':')
+    ax.plot(transition['TSubsampleArray'], transition['Pf']5)
+    
+    if 'Tn' in transition:
+        plt.axvline(transition['Tn'], c='r', ls=':')
+    if 'Tp' in transition:
+        plt.axvline(transition['Tp'], c='g', ls=':')
+    if 'Te' in transition:
+        plt.axvline(transition['Te'], c='b', ls=':')
+    if 'Tf' in transition:
+        plt.axvline(transition['Tf'], c='k', ls=':')
+        
     plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=40)
     plt.ylabel('$P_f(T)$', fontsize=40)
 
