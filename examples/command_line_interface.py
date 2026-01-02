@@ -127,7 +127,7 @@ def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str,
     origin = np.array([0, 0])
     vev = potential.approxZeroTMin()[0]
     # Analyse the phase history.
-    paths, _, _ = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=0.96)
+    paths, _, _ = analyser.analysePhaseHistory_supplied(potential, phaseStructure)
 
     # Write the phase history report. Again, this will be handled within PhaseHistoryAnalysis in a future version of the
     # code.
