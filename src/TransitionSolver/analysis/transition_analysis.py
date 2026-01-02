@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import logging
 import time
-import json
 import warnings
 from typing import Optional, Union
 
@@ -19,7 +18,6 @@ from scipy.interpolate import lagrange
 from ..gws import hydrodynamics
 from ..gws.hydrodynamics import HydroVars, hubble_squared_from_energy_density
 from ..util import integration
-from ..util.events import notifyHandler
 from ..models.analysable_potential import AnalysablePotential
 from .phase_structure import Phase, Transition
 from .. import geff
@@ -111,8 +109,6 @@ class ActionSampler:
         self.minSonTThreshold = minSonTThreshold
         self.maxSonTThreshold = maxSonTThreshold
         self.toleranceSonT = toleranceSonT
-
-        notifyHandler.handleEvent(self, 'on_create')
 
     def calculateStepSize(self, low=None, mid=None, high=None):
         lowT = self.T[-1] if low is None else low.T
@@ -418,17 +414,11 @@ class TransitionAnalyser:
     toPhase: Phase
     groud_state_energy_density: float
 
-    # The lowest temperature for which the transition is still possible. We don't want to check below this, as one
-    # of the phases may have disappeared, their stability may reverse, or T=0 may have been reached.
-    Tmin: float = 0.
-    Tmax: float = 0.
-    Tstep: float = 0.
-
     actionSampler: ActionSampler
 
 
     def __init__(self, potential: AnalysablePotential, properties, fromPhase: Phase, toPhase: Phase,
-            groud_state_energy_density: float, Tmin: float = 0., Tmax: float = 0., vw=None, action_ct=True):  # TODO make false
+            groud_state_energy_density: float, Tmin=None, Tmax=None, vw=None, action_ct=True):  # TODO make false
         self.potential = potential
         self.properties = properties
         self.fromPhase = fromPhase
@@ -440,20 +430,17 @@ class TransitionAnalyser:
         self.properties.vw = vw
         self.action_ct = action_ct
         
-
-        if self.Tmin == 0:
+        if self.Tmin is None:
             # The minimum temperature for which both phases exist, and prevent analysis below the effective potential's
             # cutoff temperature. Below this cutoff temperature, external effects may dramatically affect the phase
             # transition and cannot be captured here in a generic way.
             self.Tmin = max(self.fromPhase.T[0], self.toPhase.T[0], self.potential.minimum_temperature)
 
-        if self.Tmax == 0:
+        if self.Tmax is None:
             # The transition is not evaluated subcritically.
             self.Tmax = self.properties.Tc
 
         self.Tstep = max(0.0005*min(self.fromPhase.T[-1], self.toPhase.T[-1]), 0.0001*self.potential.get_temperature_scale())
-
-        notifyHandler.handleEvent(self, 'on_create')
 
     def vw(self, hydrovars: HydroVars) -> float:
         """
@@ -546,7 +533,7 @@ class TransitionAnalyser:
         hydroVars = [self.getHydroVars(self.actionSampler.T[0])]
         H = [hydroVars[0].hubble_constant]
         logger.debug("calling vw in analyseTransition...")
-        vw = [self.vw(hydroVars[0])]
+        self.vw_samples = [self.vw(hydroVars[0])]
 
         radDensityPrefactor = np.pi**2/30
         fourPiOnThree = 4/3*np.pi
@@ -575,13 +562,13 @@ class TransitionAnalyser:
             return Gamma[x] / (self.actionSampler.subT[x]**4 * H[x])
 
         def innerFunction_trueVacVol(x):
-            return vw[x] / H[x]
+            return self.vw_samples[x] / H[x]
 
         def outerFunction_avgBubRad(x):
             return Gamma[x]*Pf[x] / (self.actionSampler.subT[x]**4 * H[x])
 
         def innerFunction_avgBubRad(x):
-            return vw[x] / H[x]
+            return self.vw_samples[x] / H[x]
 
         def sampleTransformationFunction(x):
             return self.actionSampler.subT[x]
@@ -591,8 +578,6 @@ class TransitionAnalyser:
         # same time.
         integrationHelper_trueVacVol = None
         integrationHelper_avgBubRad = None
-
-        indexTp = indexTf = -1
 
         # Don't check for Teq if the transition is subcritical (or evaluated subcritically) and the vacuum energy density
         # already exceeds the radiation energy density at the maximum temperature.
@@ -711,7 +696,7 @@ class TransitionAnalyser:
                 #H.append(np.sqrt(self.hubble_squared(T[i])))
                 #H.append(np.sqrt(hubble_squared_from_energy_density(rhof[i] - self.groud_state_energy_density)))
                 H.append(hydroVarsInterp[i].hubble_constant)
-                vw.append(self.vw(hydroVarsInterp[i]))
+                self.vw_samples.append(self.vw(hydroVarsInterp[i]))
 
                 Gamma.append(self.calculateGamma(T[i], SonT[i]))
 
@@ -788,7 +773,7 @@ class TransitionAnalyser:
 
                 # Completion.
                 if self.properties.Pf is None and Pf[-1] <= completionThreshold:
-                    indexTf = len(H)-1
+                    self.idx_tf = len(H)-1
                     if Pf[-1] == Pf[-2]:
                         interpFactor = 0
                     else:
@@ -860,7 +845,7 @@ class TransitionAnalyser:
         # End transition analysis.
         # ==============================================================================================================
 
-        GammaEff = np.array([Pf[i] * Gamma[i] for i in range(len(Gamma))])
+
 
         # Find the maximum nucleation rate to find TGammaMax. Only do so if there is a minimum in the action.
         if TAtSonTmin > 0:
@@ -880,285 +865,6 @@ class TransitionAnalyser:
             if d2SdT2 > 0:
                 self.properties.betaV = H[gammaMaxIndex]*self.actionSampler.subT[gammaMaxIndex]*np.sqrt(d2SdT2)
 
-        meanBubbleSeparation = (bubbleNumberDensity[indexTp])**(-1/3)
-
-        if self.bReportAnalysis:
-            print(self.properties)
-
-        if self.bPlot:
-            plt.rcParams.update({"text.usetex": True})
-
-            plt.plot(self.actionSampler.subT, vw)
-            plt.xlabel('T')
-            plt.ylabel('$v_w$')
-            plt.ylim(0, 1)
-            plt.show()
-
-            if self.properties.Tf is not None:
-                maxIndex = len(self.actionSampler.subT)
-                maxIndex = min(len(self.actionSampler.subT)-1, maxIndex - (maxIndex - indexTf)//2)
-                physicalVolumeRelative = [100 * (Tf/self.actionSampler.subT[i])**3 * Pf[i]
-                    for i in range(maxIndex+1)]
-
-                ylim = np.array(physicalVolumeRelative[:min(indexTf+1, maxIndex)]).max(initial=1.)*1.2
-
-                textXOffset = 0.01*(self.actionSampler.subT[0] - self.actionSampler.subT[maxIndex])
-                textY = 0.1
-
-                plt.figure(figsize=(14, 11))
-                plt.plot(self.actionSampler.subT[:maxIndex+1], physicalVolumeRelative, zorder=3, lw=3.5)
-
-                if self.properties.TVphysDecr_high is not None and self.properties.TVphysDecr_low is not None:
-                    plt.axvspan(self.properties.TVphysDecr_low, self.properties.TVphysDecr_high, alpha=0.3, color='r', zorder=-1)
-                if self.properties.Tp is not None:
-                    plt.axvline(self.properties.Tp, c='g', ls='--', lw=2)
-                    plt.text(Tp + textXOffset, textY, '$T_p$', fontsize=44, horizontalalignment='left')
-                if self.properties.Te is not None:
-                    plt.axvline(self.properties.Te, c='b', ls='--', lw=2)
-                    plt.text(self.properties.Te + textXOffset, textY, '$T_e$', fontsize=44, horizontalalignment='left')
-                if self.properties.Tf is not None:
-                    plt.axvline(self.properties.Tf, c='k', ls='--', lw=2)
-                    plt.text(self.properties.Tf - textXOffset, textY, '$T_f$', fontsize=44, horizontalalignment='right')
-                plt.axhline(1., c='gray', ls=':', lw=2, zorder=-1)
-                plt.xlabel('$T \,\, \\mathrm{[GeV]}$', fontsize=52)
-                plt.ylabel('$\\mathcal{V}_{\\mathrm{phys}}(T)/\\mathcal{V}_{\\mathrm{phys}}(T_f)$', fontsize=52,
-                    labelpad=20)
-                plt.xlim(0, self.actionSampler.subT[0])
-                plt.ylim(0, ylim)
-                plt.tick_params(size=10, labelsize=40)
-                plt.margins(0, 0)
-                plt.tight_layout()
-                plt.show()
-
-            ylim = np.array(physicalVolume).min(initial=0.)
-            ylim *= 1.2 if ylim < 0 else 0.8
-            if -0.5 < ylim < 0:
-                ylim = -0.5
-
-            textXOffset = 0.01*(self.actionSampler.subT[0] - 0)
-            textY = ylim + 0.07*(3.5 - ylim)
-
-            plt.figure(figsize=(14, 11))
-            plt.plot(self.actionSampler.subT, physicalVolume, zorder=3, lw=3.5)
-            #if TVphysDecr_high > 0: plt.axvline(TVphysDecr_high, c='r', ls='--', lw=2)
-            #if TVphysDecr_low > 0: plt.axvline(TVphysDecr_low, c='r', ls='--', lw=2)
-            if self.properties.TVphysDecr_high > 0 and self.properties.TVphysDecr_low > 0: plt.axvspan(self.properties.TVphysDecr_low, self.properties.TVphysDecr_high, alpha=0.3, color='r', zorder=-1)
-            if self.properties.Tp is not None:
-                plt.axvline(self.properties.Tp, c='g', ls='--', lw=2)
-                plt.text(self.properties.Tp + textXOffset, textY, '$T_p$', fontsize=44, horizontalalignment='left')
-            if self.properties.Te is not None:
-                plt.axvline(self.properties.Te, c='b', ls='--', lw=2)
-                plt.text(self.properties.Te + textXOffset, textY, '$T_e$', fontsize=44, horizontalalignment='left')
-            if self.properties.Tf is not None:
-                plt.axvline(self.properties.Tf, c='k', ls='--', lw=2)
-                plt.text(Tf - textXOffset, textY, '$T_f$', fontsize=44, horizontalalignment='right')
-            plt.axhline(3., c='gray', ls=':', lw=2, zorder=-1)
-            plt.axhline(0., c='gray', ls=':', lw=2, zorder=-1)
-            plt.xlabel('$T \,\, \\mathrm{[GeV]}$', fontsize=50)
-            plt.ylabel('$\\frac{\\displaystyle d}{\\displaystyle dt} \\mathcal{V}_{\\mathrm{phys}} \,\, \\mathrm{[GeV]}$',
-                fontsize=50, labelpad=20)
-            plt.xlim(0, self.actionSampler.subT[0])
-            plt.ylim(ylim, 3.5)
-            plt.tick_params(size=10, labelsize=40)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()
-
-        if self.properties.Tp is not None:
-            #transitionStrength, _, _ = calculateTransitionStrength(self.potential, self.fromPhase, self.toPhase,
-            #    self.properties.Tp)
-            # TODO: do this elsewhere, maybe a thermal params file.
-            hydroVars = hydrodynamics.make_hydro_vars(self.fromPhase, self.toPhase, self.potential, Tp)  # TODO why not pass vacuum energy
-            thetaf = (hydroVars.energyDensityFalse - hydroVars.pressureFalse/hydroVars.soundSpeedSqTrue) / 4
-            thetat = (hydroVars.energyDensityTrue - hydroVars.pressureTrue/hydroVars.soundSpeedSqTrue) / 4
-            transitionStrength = 4*(thetaf - thetat) / (3*hydroVars.enthalpyDensityFalse)
-
-            #energyWeightedBubbleRadius, volumeWeightedBubbleRadius = calculateTypicalLengthScale(transition.Tp, indexTp,
-            #    indexTn, transition.Tc, meanBubbleSeparation, vw, H, actionSampler.subRhoV, GammaEff, actionSampler.subT,
-            #    bPlot=bPlot, bDebug=bDebug)
-
-            self.properties.transitionStrength = transitionStrength
-            self.properties.meanBubbleRadius = meanBubbleRadiusArray[indexTp]
-            self.properties.meanBubbleSeparation = meanBubbleSeparation
-            #transition.energyWeightedBubbleRadius = energyWeightedBubbleRadius
-            #transition.volumeWeightedBubbleRadius = volumeWeightedBubbleRadius
-
-            if self.bDebug:
-                print('Transition strength:', transitionStrength)
-
-        # If the transition has completed before Teq was identified, predict the value of Teq through extrapolation.
-        # TODO: don't worry about Teq at the moment (29/08/2023).
-        """if Teq == 0 and len(self.actionSampler.T) > 2:
-            Teq = self.predictTeq()
-            self.properties.Teq = Teq
-            # Don't worry about SonTeq."""
-
-        if self.bReportAnalysis:
-            print('Mean bubble separation (Tp):', meanBubbleSeparationArray[indexTp])
-            print('Average bubble radius (Tp): ', meanBubbleRadiusArray[indexTp])
-            print('Hubble radius (Tp):         ', 1/H[indexTp])
-            print('Mean bubble separation (Tf):', meanBubbleSeparationArray[indexTf])
-            print('Average bubble radius (Tf): ', meanBubbleRadiusArray[indexTf])
-            print('Hubble radius (Tf):         ', 1/H[indexTf])
-
-        if self.bPlot:
-            Tn = self.properties.Tn
-            Tp = self.properties.Tp
-            Te = self.properties.Te
-            Tf = self.properties.Tf
-            SonTn = self.properties.SonTn
-            SonTp = self.properties.SonTp
-            SonTe = self.properties.SonTe
-            SonTf = self.properties.SonTf
-            #plt.rcParams.update({"text.usetex": True})
-            #plt.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}']  # for \text command
-
-            plt.figure(figsize=(12, 8))
-            plt.plot(self.actionSampler.subT, Gamma)
-            plt.plot(self.actionSampler.subT, GammaEff)
-            #plt.plot(actionSampler.subT, approxGamma)
-            #plt.plot(actionSampler.subT, taylorExpGamma)
-            plt.xlabel('$T$', fontsize=24)
-            plt.ylabel('$\\Gamma(T)$', fontsize=24)
-            if self.properties.TGammaMax is not None: plt.axvline(self.properties.TGammaMax, c='g', ls=':')
-            if self.properties.Tmin is not None: plt.axvline(self.properties.Tmin, c='r', ls=':')
-            if Tp is not None: plt.axvline(Tp, c='g', ls=':')
-            if Te is not None: plt.axvline(Te, c='b', ls=':')
-            if Tf is not None: plt.axvline(Tf, c='k', ls=':')
-            plt.legend(['$\\mathrm{standard}$', '$\\mathrm{effective}$'], fontsize=24)
-            plt.tick_params(size=5, labelsize=16)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()
-
-            plt.figure(figsize=(12, 8))
-            plt.plot(self.actionSampler.subT, bubbleNumberDensity, linewidth=2.5)
-            plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
-            plt.ylabel('$n_B(T)$', fontsize=24)
-            if Tn > 0: plt.axvline(Tn, c='r', ls=':')
-            if Tp > 0: plt.axvline(Tp, c='g', ls=':')
-            if Te > 0: plt.axvline(Te, c='b', ls=':')
-            if Tf > 0: plt.axvline(Tf, c='k', ls=':')
-            plt.tick_params(size=5, labelsize=16)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()
-
-            highTempIndex = 1
-
-            # Search for the highest temperature for which the mean bubble separation is not larger than it is at the
-            # lowest sampled temperature.
-            for i in range(1, len(self.actionSampler.subT)):
-                if meanBubbleSeparationArray[i] <= meanBubbleSeparationArray[-1]:
-                    highTempIndex = i
-                    break
-
-            # If the mean bubble separation is always larger than it is at the lowest sampled temperature, plot the
-            # entire range of sampled temperatures.
-            if highTempIndex == len(self.actionSampler.subT)-1:
-                highTempIndex = 0
-
-            plt.figure(figsize=(12, 8))
-            plt.plot(self.actionSampler.subT, meanBubbleRadiusArray, linewidth=2.5)
-            plt.plot(self.actionSampler.subT, meanBubbleSeparationArray, linewidth=2.5)
-            plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
-            #plt.ylabel('$\\overline{R}_B(T)$', fontsize=24)
-            plt.legend(['$\\overline{R}_B(T)$', '$R_*(T)$'], fontsize=24)
-            if Tn > 0: plt.axvline(Tn, c='r', ls=':')
-            if Tp > 0: plt.axvline(Tp, c='g', ls=':')
-            if Te > 0: plt.axvline(Te, c='b', ls=':')
-            if Tf > 0: plt.axvline(Tf, c='k', ls=':')
-            plt.xlim(self.actionSampler.subT[-1], self.actionSampler.subT[highTempIndex])
-            plt.ylim(0, 1.2*max(meanBubbleSeparationArray[-1], meanBubbleRadiusArray[-1]))
-            plt.tick_params(size=5, labelsize=16)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()
-
-            highTempIndex = 0
-            lowTempIndex = len(self.actionSampler.SonT)
-
-            minAction = min(self.actionSampler.SonT)
-            maxAction = self.actionSampler.maxSonTThreshold
-
-            # Search for the lowest temperature for which the action is not significantly larger than the maximum
-            # significant action.
-            for i in range(len(self.actionSampler.SonT)):
-                if self.actionSampler.SonT[i] <= maxAction:
-                    highTempIndex = i
-                    break
-
-            # Search for the lowest temperature for which the action is not significantly larger than the maximum
-            # significant action.
-            for i in range(len(self.actionSampler.SonT)-1, -1, -1):
-                if self.actionSampler.SonT[i] <= maxAction:
-                    lowTempIndex = i
-                    break
-
-            plt.figure(figsize=(12,8))
-            plt.plot(self.actionSampler.subT, self.actionSampler.subSonT, linewidth=2.5)
-            #plt.plot(actionSampler.subT, approxSonT, linewidth=2.5)
-            plt.scatter(self.actionSampler.T, self.actionSampler.SonT)
-            if Tn > -1:
-                plt.axvline(Tn, c='r', ls=':')
-                plt.axhline(SonTn, c='r', ls=':')
-            if Tp > -1:
-                plt.axvline(Tp, c='g', ls=':')
-                plt.axhline(SonTp, c='g', ls=':')
-            if Te > -1:
-                plt.axvline(Te, c='b', ls=':')
-                plt.axhline(SonTe, c='b', ls=':')
-            if Tf > -1:
-                plt.axvline(Tf, c='k', ls=':')
-                plt.axhline(SonTf, c='k', ls=':')
-            plt.minorticks_on()
-            plt.grid(visible=True, which='major', color='k', linestyle='--')
-            plt.grid(visible=True, which='minor', color='gray', linestyle=':')
-            plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
-            plt.ylabel('$S(T)$', fontsize=24)
-            #plt.legend(['precise', 'approx'])
-            plt.xlim(self.actionSampler.T[lowTempIndex], self.actionSampler.T[highTempIndex])
-            plt.ylim(minAction - 0.05*(maxAction - minAction), maxAction)
-            plt.tick_params(size=5, labelsize=16)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()
-
-            # Number of bubbles plotted over entire sampled temperature range, using log scale for number of bubbles.
-            plt.figure(figsize=(12, 8))
-            plt.plot(self.actionSampler.subT, numBubblesCorrectedIntegral, linewidth=2.5)
-            plt.plot(self.actionSampler.subT, numBubblesIntegral, linewidth=2.5)
-            #plt.plot(actionSampler.subT, numBubblesApprox, linewidth=2.5)
-            if Tn > 0: plt.axvline(Tn, c='r', ls=':')
-            if Tp > 0: plt.axvline(Tp, c='g', ls=':')
-            if Te > 0: plt.axvline(Te, c='b', ls=':')
-            if Tf > 0: plt.axvline(Tf, c='k', ls=':')
-            plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
-            #plt.ylabel('$N(T)$', fontsize=24)
-            plt.yscale('log')
-            #plt.legend(['precise', 'approx'])
-            plt.legend(['$N(T)$', '$N^{\\mathrm{ext}}(T)$'], fontsize=24)
-            plt.tick_params(size=5, labelsize=16)
-            plt.margins(0, 0)
-            plt.tight_layout()
-            plt.show()
-
-            plt.figure(figsize=(12, 8))
-            plt.plot(self.actionSampler.subT, Pf, linewidth=2.5)
-            if Tn > 0: plt.axvline(Tn, c='r', ls=':')
-            if Tp > 0: plt.axvline(Tp, c='g', ls=':')
-            if Te > 0: plt.axvline(Te, c='b', ls=':')
-            if Tf > 0: plt.axvline(Tf, c='k', ls=':')
-            plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=40)
-            plt.ylabel('$P_f(T)$', fontsize=40)
-            plt.tick_params(size=8, labelsize=28)
-            plt.margins(0,0)
-            plt.tight_layout()
-            plt.show()
-            #plt.savefig("output/plots/Pf_vs_T_BP2.pdf")
-            #plt.savefig('E:/Monash/PhD/Milestones/Confirmation Review/images/xSM P(T) vs T.png', bbox_inches='tight',
-            #    pad_inches=0.05)
-
         self.properties.T = self.actionSampler.T
         self.properties.SonT = self.actionSampler.SonT
         self.properties.totalNumBubbles = numBubblesIntegral[-1]
@@ -1169,6 +875,19 @@ class TransitionAnalyser:
         self.properties.meanBubbleSeparationArray = meanBubbleSeparationArray
         self.properties.meanBubbleRadiusArray = meanBubbleRadiusArray
         self.properties.Pf = Pf
+        self.properties.physical_volume = physicalVolume
+        self.properties.gamma_eff = np.array([Pf[i] * Gamma[i] for i in range(len(Gamma))])
+        self.properties.gamma = Gamma
+
+        if self.properties.Tp is not None:
+  
+            hydroVars = hydrodynamics.make_hydro_vars(self.fromPhase, self.toPhase, self.potential, Tp)  # TODO why not pass vacuum energy
+            self.properties.transitionStrength = hydroVars.alpha
+            self.properties.meanBubbleRadius = meanBubbleRadiusArray[indexTp]
+            self.properties.meanBubbleSeparation = (bubbleNumberDensity[indexTp])**(-1/3)
+
+        if self.bReportAnalysis:
+            print(self.properties)
 
     def primeTransitionAnalysis(self, startTime: float) -> (Optional[ActionSample], list[ActionSample]):
         timer = Timer(self.timeout, startTime)

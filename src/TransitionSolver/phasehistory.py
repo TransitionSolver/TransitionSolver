@@ -3,10 +3,7 @@ Run PhaseTracer
 ===============
 """
 
-import json
-
 import numpy as np
-import matplotlib.pyplot as plt
 
 from . import geff
 from .analysis.phase_history_analysis import PhaseHistoryAnalyser
@@ -69,38 +66,3 @@ def trace_dof(potential, phase_structure=None, phase_tracer_file=None):
         data[phase.key] = {"T": T, "dof": dof}
 
     return data
-
-
-def load_transition(transition_id, phase_structure_file):
-    """
-    @param transition_id ID of transition to load from disk
-    @param phase_structure_file Phase structure in JSON format
-
-    @returns Transition from data on disk
-    """
-    with open(phase_structure_file, encoding="utf8") as f:
-        phase_structure = json.load(f)
-
-    for tr in phase_structure['transitions']:
-        if tr['id'] == transition_id:
-            return tr
-
-    raise RuntimeError(f"Could not find {transition_id} transition")
-
-
-def plot_action_curve(transition_id, phase_structure_file, ax=None):
-    """
-    @param transition_id ID of transition to load from disk
-    @param phase_structure_file Phase structure in JSON format
-
-    @returns Axes of plot of axis curve
-    """
-    if ax is None:
-        ax = plt.gca()
-
-    transition = load_transition(transition_id, phase_structure_file)
-
-    ax.plot(transition['T'], transition['SonT'], marker='.')
-    ax.set_xlabel('$T$')
-    ax.set_ylabel('$S(T) / T$')
-    return ax
