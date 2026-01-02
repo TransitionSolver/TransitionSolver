@@ -27,7 +27,7 @@ class PhaseHistoryAnalyser:
     precomputedTransitionIDs: list[int] = []
 
     # Second return value is whether we timed out.
-    def analysePhaseHistory_supplied(self, potential: AnalysablePotential, phaseStructure: PhaseStructure, vw=None) -> tuple[list[Path], bool, Optional[Timer]]:
+    def analysePhaseHistory_supplied(self, potential: AnalysablePotential, phaseStructure: PhaseStructure, vw=None, action_ct=True) -> tuple[list[Path], bool, Optional[Timer]]:  # TODO make false
 
         timer = Timer(self.time_limit)
         if self.bDebug:
@@ -203,7 +203,7 @@ class PhaseHistoryAnalyser:
 
                     transitionAnalyser: TransitionAnalyser = TransitionAnalyser(potential, transition.properties,
                         phases[transition.false_phase], phases[transition.true_phase],
-                        phaseStructure.groud_state_energy_density, Tmin=Tmin, Tmax=Tmax, vw=vw)
+                        phaseStructure.groud_state_energy_density, Tmin=Tmin, Tmax=Tmax, vw=vw, action_ct=action_ct)
 
                     transitionAnalyser.bDebug = self.bDebug
                     transitionAnalyser.bPlot = self.bPlot

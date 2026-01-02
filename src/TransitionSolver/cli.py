@@ -37,7 +37,8 @@ LEVELS = {k.lower(): getattr(logging, k) for k in ["DEBUG", "INFO", "WARNING", "
 @click.option('--level', default="critical", help='Logging level', type=click.Choice(LEVELS.keys()))
 @click.option("--apply", required=False, help="Apply settings to a potential", type=(str, ast.literal_eval), multiple=True)
 @click.option('--force', help='Force recompilation', required=False, default=False, is_flag=True, type=bool)
-def cli(model, model_header, model_lib, model_namespace, point_file_name, vw, detector, pta, show, level, apply, force):
+@click.option('--action-ct', help='Use CosmoTransitions for action', required=False, default=False, is_flag=True, type=bool)
+def cli(model, model_header, model_lib, model_namespace, point_file_name, vw, detector, pta, show, level, apply, force, action_ct):
     """
     Run TransitionSolver on a particular model and point
 
@@ -65,7 +66,7 @@ def cli(model, model_header, model_lib, model_namespace, point_file_name, vw, de
         phase_structure = read_phase_tracer(phase_structure_raw)
 
     with Status("Analyzing phase history"):
-        phase_history = find_phase_history(potential, phase_structure)
+        phase_history = find_phase_history(potential, phase_structure, vw=vw, action_ct=action_ct)
 
     rich.print(phase_history)
 
@@ -73,7 +74,7 @@ def cli(model, model_header, model_lib, model_namespace, point_file_name, vw, de
     ptas = [PTAS[p] for p in pta]
 
     with Status("Analyzing gravitational wave signal"):
-        analyser = gws.GWAnalyser(potential, phase_structure, phase_history, vw=vw, is_file=False)  # TODO remove is_file
+        analyser = gws.GWAnalyser(potential, phase_structure, phase_history, is_file=False)  # TODO remove is_file
         report = analyser.report(*detectors)
 
     rich.print(report)

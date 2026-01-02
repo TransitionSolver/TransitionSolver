@@ -25,7 +25,7 @@ def _make_report(paths, phase_structure, analysis_metrics):
     return report
 
 
-def find_phase_history(potential, phase_structure=None, phase_tracer_file=None, vw=None):
+def find_phase_history(potential, phase_structure=None, phase_tracer_file=None, vw=None, action_ct=True):  # TODO make false
     """
     @param potential Effective potential
     @param phase_structure Parsed phase structure from PT
@@ -43,7 +43,7 @@ def find_phase_history(potential, phase_structure=None, phase_tracer_file=None, 
 
     analyser = PhaseHistoryAnalyser()
     paths, _, analysis_metrics = analyser.analysePhaseHistory_supplied(
-        potential, phase_structure, vw=vw)
+        potential, phase_structure, vw=vw, action_ct=action_ct)
 
     return _make_report(paths, phase_structure, analysis_metrics)
 

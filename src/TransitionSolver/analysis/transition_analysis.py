@@ -79,7 +79,6 @@ class ActionSampler:
     # PhaseHistoryAnalysis.evaluate_action for details.
     bForcePhaseOnAxis: bool = False
     
-    use_phase_tracer_action = False
     action_ct_kwargs = {'verbose': False, 'maxiter': 20, 'tunneling_findProfile_params': {'phitol': 1e-8, 'xtol': 1e-8}, 'V_spline_samples': 100}
     action_pt_kwargs = {}
 
@@ -87,7 +86,7 @@ class ActionSampler:
     # action curve explicitly, until the samples run out.
     def __init__(self, transitionAnalyser: 'TransitionAnalyser', minSonTThreshold: float, maxSonTThreshold: float,
             toleranceSonT: float, stepSizeMax=0.95, precomputedT: Optional[list[float]] = None, precomputedSonT:
-            Optional[list[float]] = None):
+            Optional[list[float]] = None, action_ct=True): # TODO make false
         self.transitionAnalyser = transitionAnalyser
 
         # Copy properties for concision.
@@ -97,6 +96,7 @@ class ActionSampler:
         self.toPhase = transitionAnalyser.toPhase
         self.Tmin = transitionAnalyser.Tmin
         self.Tmax = transitionAnalyser.Tmax
+        self.action_ct = action_ct
 
         self.precomputedT = precomputedT if precomputedT is not None else []
         self.precomputedSonT = precomputedSonT if precomputedSonT is not None else []
@@ -394,9 +394,10 @@ class ActionSampler:
         """
         @returns Action at specific temperature and between field configurations
         """
-        if self.use_phase_tracer_action:
-            return action.action_pt(self.potential, T, false_vacuum, true_vacuum, **self.action_pt_kwargs)
-        return action.action_ct(self.potential, T, false_vacuum, true_vacuum, **self.action_ct_kwargs)
+        if self.action_ct:
+            return action.action_ct(self.potential, T, false_vacuum, true_vacuum, **self.action_ct_kwargs)
+        assert False
+        return action.action_pt(self.potential, T, false_vacuum, true_vacuum, **self.action_pt_kwargs)
 
 
 class ActionCurveShapeAnalysisData:
@@ -459,7 +460,7 @@ class TransitionAnalyser:
     bComputeSubsampledThermalParams: bool
 
     def __init__(self, potential: AnalysablePotential, properties, fromPhase: Phase, toPhase: Phase,
-            groud_state_energy_density: float, Tmin: float = 0., Tmax: float = 0., vw=None):
+            groud_state_energy_density: float, Tmin: float = 0., Tmax: float = 0., vw=None, action_ct=True):  # TODO make false
         self.potential = potential
         self.properties = properties
         self.fromPhase = fromPhase
@@ -469,6 +470,7 @@ class TransitionAnalyser:
         self.Tmax = Tmax
         self.properties.use_cj_velocity = vw is None
         self.properties.vw = vw
+        self.action_ct = action_ct
         
 
         if self.Tmin == 0:
@@ -521,7 +523,7 @@ class TransitionAnalyser:
             return
 
         self.actionSampler = ActionSampler(self, minSonTThreshold, maxSonTThreshold, toleranceSonT,
-            precomputedT=precomputedT, precomputedSonT=precomputedSonT)
+            precomputedT=precomputedT, precomputedSonT=precomputedSonT, action_ct=self.action_ct)
 
         logging.debug(f'{self.Tmin=}')
         logging.debug(f'{self.Tmax=}')
