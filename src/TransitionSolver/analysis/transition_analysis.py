@@ -947,7 +947,7 @@ class TransitionAnalyser:
             plt.ylim(0, 1)
             plt.show()
 
-            if Tf > 0:
+            if self.properties.Tf is not None:
                 maxIndex = len(self.actionSampler.subT)
                 maxIndex = min(len(self.actionSampler.subT)-1, maxIndex - (maxIndex - indexTf)//2)
                 physicalVolumeRelative = [100 * (Tf/self.actionSampler.subT[i])**3 * Pf[i]
@@ -961,16 +961,17 @@ class TransitionAnalyser:
                 plt.figure(figsize=(14, 11))
                 plt.plot(self.actionSampler.subT[:maxIndex+1], physicalVolumeRelative, zorder=3, lw=3.5)
 
-                if Ts1 > 0 and Ts2 > 0: plt.axvspan(Ts2, Ts1, alpha=0.3, color='r', zorder=-1)
-                if Tp > 0:
-                    plt.axvline(Tp, c='g', ls='--', lw=2)
+                if self.properties.TVphysDecr_high is not None and self.properties.TVphysDecr_low is not None:
+                    plt.axvspan(self.properties.TVphysDecr_low, self.properties.TVphysDecr_high, alpha=0.3, color='r', zorder=-1)
+                if self.properties.Tp is not None:
+                    plt.axvline(self.properties.Tp, c='g', ls='--', lw=2)
                     plt.text(Tp + textXOffset, textY, '$T_p$', fontsize=44, horizontalalignment='left')
-                if Te > 0:
-                    plt.axvline(Te, c='b', ls='--', lw=2)
-                    plt.text(Te + textXOffset, textY, '$T_e$', fontsize=44, horizontalalignment='left')
-                if Tf > 0:
-                    plt.axvline(Tf, c='k', ls='--', lw=2)
-                    plt.text(Tf - textXOffset, textY, '$T_f$', fontsize=44, horizontalalignment='right')
+                if self.properties.Te is not None:
+                    plt.axvline(self.properties.Te, c='b', ls='--', lw=2)
+                    plt.text(self.properties.Te + textXOffset, textY, '$T_e$', fontsize=44, horizontalalignment='left')
+                if self.properties.Tf is not None:
+                    plt.axvline(self.properties.Tf, c='k', ls='--', lw=2)
+                    plt.text(self.properties.Tf - textXOffset, textY, '$T_f$', fontsize=44, horizontalalignment='right')
                 plt.axhline(1., c='gray', ls=':', lw=2, zorder=-1)
                 plt.xlabel('$T \,\, \\mathrm{[GeV]}$', fontsize=52)
                 plt.ylabel('$\\mathcal{V}_{\\mathrm{phys}}(T)/\\mathcal{V}_{\\mathrm{phys}}(T_f)$', fontsize=52,
@@ -981,8 +982,6 @@ class TransitionAnalyser:
                 plt.margins(0, 0)
                 plt.tight_layout()
                 plt.show()
-                #saveFolder = 'C:/Work/Monash/PhD/Documents/Subtleties of supercooled cosmological first-order phase transitions/images/'
-                #plt.savefig(saveFolder + 'Relative physical volume.png', bbox_inches='tight', pad_inches=0.1)
 
             ylim = np.array(physicalVolume).min(initial=0.)
             ylim *= 1.2 if ylim < 0 else 0.8
@@ -996,15 +995,15 @@ class TransitionAnalyser:
             plt.plot(self.actionSampler.subT, physicalVolume, zorder=3, lw=3.5)
             #if TVphysDecr_high > 0: plt.axvline(TVphysDecr_high, c='r', ls='--', lw=2)
             #if TVphysDecr_low > 0: plt.axvline(TVphysDecr_low, c='r', ls='--', lw=2)
-            if Ts1 > 0 and Ts2 > 0: plt.axvspan(Ts2, Ts1, alpha=0.3, color='r', zorder=-1)
-            if Tp > 0:
-                plt.axvline(Tp, c='g', ls='--', lw=2)
-                plt.text(Tp + textXOffset, textY, '$T_p$', fontsize=44, horizontalalignment='left')
-            if Te > 0:
-                plt.axvline(Te, c='b', ls='--', lw=2)
-                plt.text(Te + textXOffset, textY, '$T_e$', fontsize=44, horizontalalignment='left')
-            if Tf > 0:
-                plt.axvline(Tf, c='k', ls='--', lw=2)
+            if self.properties.TVphysDecr_high > 0 and self.properties.TVphysDecr_low > 0: plt.axvspan(self.properties.TVphysDecr_low, self.properties.TVphysDecr_high, alpha=0.3, color='r', zorder=-1)
+            if self.properties.Tp is not None:
+                plt.axvline(self.properties.Tp, c='g', ls='--', lw=2)
+                plt.text(self.properties.Tp + textXOffset, textY, '$T_p$', fontsize=44, horizontalalignment='left')
+            if self.properties.Te is not None:
+                plt.axvline(self.properties.Te, c='b', ls='--', lw=2)
+                plt.text(self.properties.Te + textXOffset, textY, '$T_e$', fontsize=44, horizontalalignment='left')
+            if self.properties.Tf is not None:
+                plt.axvline(self.properties.Tf, c='k', ls='--', lw=2)
                 plt.text(Tf - textXOffset, textY, '$T_f$', fontsize=44, horizontalalignment='right')
             plt.axhline(3., c='gray', ls=':', lw=2, zorder=-1)
             plt.axhline(0., c='gray', ls=':', lw=2, zorder=-1)
@@ -1017,8 +1016,6 @@ class TransitionAnalyser:
             plt.margins(0, 0)
             plt.tight_layout()
             plt.show()
-            #saveFolder = 'C:/Work/Monash/PhD/Documents/Subtleties of supercooled cosmological first-order phase transitions/images/'
-            #plt.savefig(saveFolder + 'Decreasing physical volume.png', bbox_inches='tight', pad_inches=0.1)
 
         if self.properties.Tp is not None:
             #transitionStrength, _, _ = calculateTransitionStrength(self.potential, self.fromPhase, self.toPhase,
