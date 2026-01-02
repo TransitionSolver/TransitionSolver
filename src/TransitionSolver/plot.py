@@ -128,9 +128,8 @@ def plot_vw(transition_id, phase_structure_file, ax=None):
     transition = load_transition(transition_id, phase_structure_file)
 
     ax.plot(transition['TSubampleArray'], transition['vw_samples'])
-    plt.xlabel('T')
+    plt.xlabel('$T$')
     plt.ylabel('$v_w$')
-    plt.ylim(0, 1)
     return ax
 
 
@@ -144,14 +143,14 @@ def plot_gamma(transition_id, phase_structure_file, ax=None):
     ax.plot(transition['TSubsampleArray'], transition['gamma'])
     ax.plot(transition['TSubsampleArray'], transition['gamma_eff'])
 
-    plt.xlabel('$T$', fontsize=24)
-    plt.ylabel('$\\Gamma(T)$', fontsize=24)
+    plt.xlabel('$T$')
+    plt.ylabel('$\\Gamma(T)$')
     if transition['TGammaMax'] is not None: plt.axvline(transition['TGammaMax'], c='g', ls=':')
     if transition['Tmin'] is not None: plt.axvline(transition['Tmin'], c='r', ls=':')
     if transition['Tp'] is not None: plt.axvline(transition['Tp'], c='g', ls=':')
     if transition['Te'] is not None: plt.axvline(transition['Te'], c='b', ls=':')
     if transition['Tf'] is not None: plt.axvline(transition['Tf'], c='k', ls=':')
-    plt.legend(['$\\mathrm{standard}$', '$\\mathrm{effective}$'], fontsize=24)
+    plt.legend(['$\\mathrm{standard}$', '$\\mathrm{effective}$'])
 
     return ax
 
@@ -163,8 +162,8 @@ def plot_bubble_number(transition_id, phase_structure_file, ax=None):
     transition = load_transition(transition_id, phase_structure_file)
 
     ax.plot(transition['TSubsampleArray'], bubbleNumberDensity, linewidth=2.5)
-    plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
-    plt.ylabel('$n_B(T)$', fontsize=24)
+    plt.xlabel('$T \, \\mathrm{[GeV]}$')
+    plt.ylabel('$n_B(T)$')
     if transition['Tn'] is not None: plt.axvline(transition['Tn'], c='r', ls=':')
     if transition['Tp'] is not None: plt.axvline(transition['Tp'], c='g', ls=':')
     if transition['Te'] is not None: plt.axvline(transition['Te'], c='b', ls=':')
@@ -194,9 +193,9 @@ def plot_bubble_radius(transition_id, phase_structure_file, ax=None):
 
     ax.plot(transition['TSubsampleArray'], transition['meanBubbleRadiusArray'], linewidth=2.5)
     ax.plot(transition['TSubsampleArray'], transition['meanBubbleSeparationArray'], linewidth=2.5)
-    plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
+    plt.xlabel('$T \, \\mathrm{[GeV]}$')
 
-    plt.legend(['$\\overline{R}_B(T)$', '$R_*(T)$'], fontsize=24)
+    plt.legend(['$\\overline{R}_B(T)$', '$R_*(T)$'])
     if Tn > 0: plt.axvline(Tn, c='r', ls=':')
     if Tp > 0: plt.axvline(Tp, c='g', ls=':')
     if Te > 0: plt.axvline(Te, c='b', ls=':')
@@ -228,8 +227,8 @@ def plot_action_curve(transition_id, phase_structure_file, ax=None):
         plt.axvline(transition['Tf'], c='k', ls=':')
         plt.axhline(transition['SonTf'], c='k', ls=':')
 
-    plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
-    plt.ylabel('$S(T)$', fontsize=24)
+    plt.xlabel('$T \, \\mathrm{[GeV]}$')
+    plt.ylabel('$S(T)$')
 
     return ax
 
@@ -251,8 +250,8 @@ def plot_bubble_number(transition_id, phase_structure_file, ax=None):
     if transition['Tf']: plt.axvline(transition['Tf'], c='k', ls=':')
 
     plt.yscale('log')
-    plt.legend(['$N(T)$', '$N^{\\mathrm{ext}}(T)$'], fontsize=24)
-    plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=24)
+    plt.legend(['$N(T)$', '$N^{\\mathrm{ext}}(T)$'])
+    plt.xlabel('$T \, \\mathrm{[GeV]}$')
 
     return ax
 
