@@ -369,20 +369,16 @@ class ActionSampler:
         idx = np.searchsorted([d.T for d in self.lower_s_on_t_data], data.T)
         self.lower_s_on_t_data.insert(idx, data)
 
-    # Throws ThinWallError from CosmoTransitions.
-    # Throws unhandled exceptions from CosmoTransitions.
-    # Throws unhandled InvalidTemperatureException from find_phase_at_t.
-    def evaluate_action(self, T) -> tuple[np.ndarray, np.ndarray]:
-        # Do optimisation.
+    def evaluate_action(self, T) -> float:
+        """
+        @returns Action at specific temperature
+        """
         from_field_config = self.fromPhase.find_phase_at_t(T, self.potential)
         to_field_config = self.toPhase.find_phase_at_t(T, self.potential)
 
         fieldSeparationScale = 0.001*self.potential.get_field_scale()
 
-        # If the phases merge together, reset them to their previous values. This can happen for subcritical transitions,
-        # where there is virtually no potential barrier when a new phase appears.
         if np.linalg.norm(from_field_config - to_field_config) < fieldSeparationScale:
-            # TODO: find a solution to this problem if it shows up.
             raise Exception("The 'from' and 'to' phases merged after optimisation, in preparation for action evaluation.")
 
         if self.bForcePhaseOnAxis:
@@ -394,7 +390,10 @@ class ActionSampler:
 
         return self.evaluate_action_supplied(T, from_field_config, to_field_config)
 
-    def evaluate_action_supplied(self, T, false_vacuum, true_vacuum):
+    def evaluate_action_supplied(self, T, false_vacuum, true_vacuum) -> float:
+        """
+        @returns Action at specific temperature and between field configurations
+        """
         if self.use_phase_tracer_action:
             return action.action_pt(self.potential, T, false_vacuum, true_vacuum, **self.action_pt_kwargs)
         return action.action_ct(self.potential, T, false_vacuum, true_vacuum, **self.action_ct_kwargs)
@@ -641,7 +640,6 @@ class TransitionAnalyser:
         integrationHelper_trueVacVol = None
         integrationHelper_avgBubRad = None
 
-        Tn = Tnbar = Tp = Te = Tf = Ts1 = Ts2 = -1
         indexTp = indexTf = -1
 
         # Don't check for Teq if the transition is subcritical (or evaluated subcritically) and the vacuum energy density
@@ -796,7 +794,7 @@ class TransitionAnalyser:
                 # Check if we have reached any milestones (e.g. unit nucleation, percolation, etc.).
 
                 # Unit nucleation (including phantom bubbles).
-                if Tn < 0 and numBubblesIntegral[-1] >= 1:
+                if self.properties.Tn is None and numBubblesIntegral[-1] >= 1:
                     interpFactor = (numBubblesIntegral[-1] - 1) / (numBubblesIntegral[-1] - numBubblesIntegral[-2])
                     self.properties.SonTn = SonTprev + interpFactor*(SonTnew - SonTprev)
                     self.properties.Tn = Tn = Tprev + interpFactor*(Tnew - Tprev)
@@ -805,7 +803,7 @@ class TransitionAnalyser:
                     self.properties.Treh_n = self.reheat_temperature(Tn)
 
                 # Unit nucleation (excluding phantom bubbles).
-                if Tnbar < 0 and numBubblesCorrectedIntegral[-1] >= 1:
+                if self.properties.Tnbar is None and numBubblesCorrectedIntegral[-1] >= 1:
                     interpFactor = (numBubblesCorrectedIntegral[-1] - 1) / (numBubblesCorrectedIntegral[-1] -
                         numBubblesCorrectedIntegral[-2])
                     self.properties.SonTnbar = SonTprev + interpFactor * (SonTnew - SonTprev)
@@ -815,7 +813,7 @@ class TransitionAnalyser:
                     self.properties.Treh_nbar = self.reheat_temperature(Tnbar)
 
                 # Percolation.
-                if Tp < 0 and Vext[-1] >= percolationThreshold_Vext:
+                if self.properties.Tp is None and Vext[-1] >= percolationThreshold_Vext:
                     indexTp = len(H)-1
                     # max(0, ...) for subcritical transitions, where it is possible that Vext[-2] > percThresh.
                     interpFactor = max(0, (percolationThreshold_Vext - Vext[-2]) / (Vext[-1] - Vext[-2]))
@@ -827,7 +825,7 @@ class TransitionAnalyser:
                     self.properties.Treh_p = self.reheat_temperature(Tp)
 
                 # Pf = 1/e.
-                if Te < 0 and Vext[-1] >= 1:
+                if self.properties.Te is None and Vext[-1] >= 1:
                     # max(0, ...) for subcritical transitions, where it is possible that Vext[-2] > 1.
                     interpFactor = max(0, (1 - Vext[-2]) / (Vext[-1] - Vext[-2]))
                     self.properties.SonTe = SonTprev + interpFactor*(SonTnew - SonTprev)
@@ -837,7 +835,7 @@ class TransitionAnalyser:
                     self.properties.Treh_e = self.reheat_temperature(Te)
 
                 # Completion.
-                if Tf < 0 and Pf[-1] <= completionThreshold:
+                if self.properties.Pf is None and Pf[-1] <= completionThreshold:
                     indexTf = len(H)-1
                     if Pf[-1] == Pf[-2]:
                         interpFactor = 0
@@ -860,28 +858,26 @@ class TransitionAnalyser:
                         break
 
                 # Physical volume of the false vacuum is decreasing.
-                if Ts1 < 0 and physicalVolume[-1] < 0:
+                if self.properties.TVphysDecr_high is None and physicalVolume[-1] < 0:
                     if physicalVolume[-1] == physicalVolume[-2]:
                         interpFactor = 0
                     else:
                         interpFactor = 1 - physicalVolume[-1] / (physicalVolume[-1] - physicalVolume[-2])
-                    Ts1 = Tprev + interpFactor*(Tnew - Tprev)
-                    self.properties.TVphysDecr_high = Ts1
+                    self.properties.TVphysDecr_high = Tprev + interpFactor*(Tnew - Tprev)
 
                 # Physical volume of the false vacuum is increasing *again*.
-                if Ts1 > 0 and Ts2 < 0 and physicalVolume[-1] > 0:
+                if self.properties.TVphysDecr_high is not None and  self.properties.TVphysDecr_low is None and physicalVolume[-1] > 0:
                     if physicalVolume[-1] == physicalVolume[-2]:
                         interpFactor = 0
                     else:
                         interpFactor = 1 - physicalVolume[-1] / (physicalVolume[-1] - physicalVolume[-2])
-                    Ts2 = Tprev + interpFactor*(Tnew - Tprev)
-                    self.properties.TVphysDecr_low = Ts2
+                    self.properties.TVphysDecr_low = Tprev + interpFactor*(Tnew - Tprev)
 
             # ==========================================================================================================
             # End subsampling.
             # ==========================================================================================================
 
-            if Tf > 0 and not self.bAnalyseTransitionPastCompletion:
+            if self.properties.Tf and not self.bAnalyseTransitionPastCompletion:
                 logger.debug('Found Tf, stopping sampling')
                 break
 
