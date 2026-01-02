@@ -193,7 +193,6 @@ class PhaseHistoryAnalyser:
                     if self.bDebug:
                         print(f'Transition not possible since Tmin > Tmax ({Tmin} > {Tmax}).')
                 else:
-                    actionFileName = ''
 
                     transitionAnalyser: TransitionAnalyser = TransitionAnalyser(potential, transition.properties,
                         phases[transition.false_phase], phases[transition.true_phase],

@@ -15,13 +15,12 @@ import numpy as np
 import scipy.optimize
 from scipy.interpolate import lagrange
 
-from ..gws import hydrodynamics
-from ..gws.hydrodynamics import HydroVars, hubble_squared_from_energy_density
-from ..util import integration
-from ..models.analysable_potential import AnalysablePotential
+from . import integration
 from .phase_structure import Phase, Transition
 from .. import geff
 from .. import action
+from ..gws import hydrodynamics
+from ..gws.hydrodynamics import HydroVars, hubble_squared_from_energy_density
 
 
 logger = logging.getLogger(__name__)
@@ -408,7 +407,6 @@ class TransitionAnalyser:
     bReportAnalysis: bool = False
     timeout: float = -1.
 
-    potential: AnalysablePotential
     transition: Transition
     fromPhase: Phase
     toPhase: Phase
@@ -417,7 +415,7 @@ class TransitionAnalyser:
     actionSampler: ActionSampler
 
 
-    def __init__(self, potential: AnalysablePotential, properties, fromPhase: Phase, toPhase: Phase,
+    def __init__(self, potential, properties, fromPhase: Phase, toPhase: Phase,
             groud_state_energy_density: float, Tmin=None, Tmax=None, vw=None, action_ct=True):  # TODO make false
         self.potential = potential
         self.properties = properties
@@ -1415,8 +1413,6 @@ class TransitionAnalyser:
             -> Union[float, np.ndarray]:
         return T**4 * (action/(2*np.pi))**(3/2) * np.exp(-action)
 
-    # TODO: [2023] need to allow this to be used for list inputs again.
-    #def calculateInstantaneousNucleationRate(T: Union[float, Iterable[float]], SonT: Union[float, Iterable[float]], potential: AnalysablePotential):
     def calculateInstantaneousNucleationRate(self, T: float, action: float) -> float:
         HSq = self.hubble_squared(T)
         Gamma = self.calculateGamma(T, action)
@@ -1480,7 +1476,7 @@ class TransitionAnalyser:
         return T0 >= self.Tmin
 
 
-def hubble_squared(fromPhase: Phase, toPhase: Phase, potential: AnalysablePotential, T: float,
+def hubble_squared(fromPhase: Phase, toPhase: Phase, potential, T: float,
                                groud_state_energy_density: float) -> float:
     rhof = hydrodynamics.energy_density_from_phase(fromPhase, toPhase, potential, T)
     return hubble_squared_from_energy_density(rhof - groud_state_energy_density)
