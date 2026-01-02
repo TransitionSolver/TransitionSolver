@@ -24,7 +24,7 @@ PT_INCLUDE = PT_HOME / "include"
 cppyy.load_library(str(PT_LIB))
 cppyy.add_include_path(str(PT_INCLUDE))
 cppyy.include(str(PT_INCLUDE / 'action_calculator.hpp'))
-cppyy.cppdef(f'LOGGER(error)')
+cppyy.cppdef('LOGGER(error)')
 
 
 from cppyy.gbl import PhaseTracer

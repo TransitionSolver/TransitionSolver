@@ -151,8 +151,7 @@ class ActionSampler:
         logging.debug(f'{stepFactor=}')
         logging.debug(f'{linearity=}')
 
-    def getNextSample(self, sampleData: ActionSample, Gamma: list[float], numBubbles: float, Tmin: float)\
-            -> (bool, str):
+    def getNextSample(self, sampleData: ActionSample, Gamma: list[float], numBubbles: float) -> (bool, str):
         # If we are already near T=0, the transition is assumed to not progress from here. We consider only bubble
         # nucleation via thermal fluctuations.
         #if len(self.T) > 0 and sampleData.T <= 0.001:
@@ -217,7 +216,7 @@ class ActionSampler:
                 if nearMaxNucleation():
                     return nearMaxFactor
         
-                extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew, Tmin)
+                extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew)
 
                 if extraBubbles + numBubbles > 1e-4:
                     if extraBubbles > numBubbles*10:
@@ -237,7 +236,7 @@ class ActionSampler:
                 if nearMaxNucleation():
                     return nearMaxFactor
      
-                extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew, Tmin)
+                extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew)
 
                 if extraBubbles > numBubbles*5:
                     if extraBubbles > numBubbles*25:
@@ -254,7 +253,7 @@ class ActionSampler:
                 if nearMaxNucleation():
                     return nearMaxFactor
    
-                extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew, Tmin)
+                extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew)
 
                 if extraBubbles > 0.2*numBubbles:
                     if extraBubbles > 0.5*numBubbles:
@@ -277,7 +276,7 @@ class ActionSampler:
                 if nearMaxNucleation():
                     return nearMaxFactor
             
-                extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew, Tmin)
+                extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew)
 
                 if numBubbles < 10:
                     if extraBubbles < numBubbles:
@@ -325,7 +324,7 @@ class ActionSampler:
 
         return True, 'Success'
 
-    def calculateExtraBubbles(self, Tnew: float, SonTnew: float, Tmin: float) -> float:
+    def calculateExtraBubbles(self, Tnew: float, SonTnew: float) -> float:
         extraBubbles = 0
         numPoints = 20
 
@@ -406,11 +405,6 @@ class ActionCurveShapeAnalysisData:
         self.nextBelowDesiredData = None
         self.storedLowerActionData = []
         self.actionSamples = []
-        # TODO: does the default choice for this ever matter? Are there cases where we don't identify it but still
-        #  continue the transition analysis? Maybe for fine-tuned subcritical transitions that nucleate quickly but
-        #  don't complete quickly?
-        self.bBarrierAtTmin = False
-        self.error = False
 
     def copyDesiredData(self, sample):
         self.desiredData = sample.copy()
@@ -441,7 +435,6 @@ class TransitionAnalyser:
     bAllowErrorsForTn: bool = True
     bReportAnalysis: bool = False
     timeout: float = -1.
-    bUseChapmanJouguetVelocity: float = False
 
     potential: AnalysablePotential
     transition: Transition
@@ -531,7 +524,7 @@ class TransitionAnalyser:
 
         if not precomputedT:
             # TODO: we don't use allSamples anymore.
-            sampleData, allSamples = self.primeTransitionAnalysis(startTime)
+            sampleData, _ = self.primeTransitionAnalysis(startTime)
 
             if timer.timeout():
                 return None
@@ -564,8 +557,8 @@ class TransitionAnalyser:
             self.properties.bFoundNucleationWindow = True
 
             sampleData = ActionSample()
-            self.actionSampler.getNextSample(sampleData, [], 0., self.Tmin)
-            self.actionSampler.getNextSample(sampleData, [], 0., self.Tmin)
+            self.actionSampler.getNextSample(sampleData, [], 0.)
+            self.actionSampler.getNextSample(sampleData, [], 0.)
 
         # We finally have a temperature where S/T is not much smaller than the value we started with (which was close to
         # maxSonTThreshold). From here we can use the separation in these temperatures and S/T values to predict reasonable
@@ -613,9 +606,6 @@ class TransitionAnalyser:
         # minimum S/T value is encountered after the percolation temperature, then it can be ignored. It is only important
         # if it occurs before percolation.
         TAtSonTmin = 0
-
-        Teq = 0
-
         bFirst = True
 
         # When the fraction of space remaining in the false vacuum falls below this threshold, the transition is considered
@@ -889,7 +879,7 @@ class TransitionAnalyser:
                 break
 
             # Choose the next value of S/T we're aiming to sample.
-            success, message = self.actionSampler.getNextSample(sampleData, Gamma, numBubblesIntegral[-1], self.Tmin)
+            success, message = self.actionSampler.getNextSample(sampleData, Gamma, numBubblesIntegral[-1])
 
             simIndex += 1
 
@@ -1235,7 +1225,7 @@ class TransitionAnalyser:
             print(f'Bisecting to find S/T = {self.actionSampler.maxSonTThreshold} ± {self.actionSampler.toleranceSonT}')
 
         # Use bisection to find the temperature at which S/T ~ maxSonTThreshold.
-        actionCurveShapeAnalysisData = self.findNucleationTemperatureWindow_refined(startTime=startTime)
+        actionCurveShapeAnalysisData = self.findNucleationTemperatureWindow_refined()
 
         if timer.timeout():
             return None, []
@@ -1245,7 +1235,6 @@ class TransitionAnalyser:
         bisectMinData = actionCurveShapeAnalysisData.nextBelowDesiredData
         lower_s_on_t_data = actionCurveShapeAnalysisData.storedLowerActionData
         allSamples = actionCurveShapeAnalysisData.actionSamples
-        bBarrierAtTmin = actionCurveShapeAnalysisData.bBarrierAtTmin
 
         # If we didn't find any action values near the nucleation threshold, we are done.
         if data is None or not data.is_valid:
@@ -1502,7 +1491,7 @@ class TransitionAnalyser:
 
         return 'below'
 
-    def findNucleationTemperatureWindow_refined(self, startTime: float = -1.0):
+    def findNucleationTemperatureWindow_refined(self):
         actionCurveShapeAnalysisData = ActionCurveShapeAnalysisData()
         Tstep = 0.01*(self.Tmax - self.Tmin)
         actionSamples = []
