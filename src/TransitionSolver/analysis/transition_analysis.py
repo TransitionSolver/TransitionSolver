@@ -10,7 +10,6 @@ import time
 import warnings
 from typing import Optional, Union
 
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize
 from scipy.interpolate import lagrange
@@ -395,7 +394,6 @@ class ActionCurveShapeAnalysisData:
 
 class TransitionAnalyser:
     bDebug: bool = False
-    bPlot: bool = False
     # Optimisation: check whether completion can occur before reaching T=0. If it cannot, stop the transition analysis.
     bCheckPossibleCompletion: bool = True
     # Whether transition analysis should continue after finding the completion temperature, all the way down to the
@@ -922,7 +920,6 @@ class TransitionAnalyser:
                 print('No transition')
                 print('Lowest sampled S/T =', allSamples[minSonTIndex, 1], 'at T =', allSamples[minSonTIndex, 0])
 
-            # if bDebug or bPlot:
             # This is a little confusing at first, but what this does is:
             # - allSamples.argsort(axis=0): sort the indices of both columns (T and S/T) based on the values stored in
             #   the corresponding positions.
@@ -939,21 +936,9 @@ class TransitionAnalyser:
                 print('T:', T)
                 print('SonT:', SonT)
 
-            if self.bPlot:
-                plt.plot(T, SonT)
-                plt.xlabel('$T$')
-                plt.ylabel('$S_3/T$')
-                plt.yscale('log')
-                # plt.ylim(bottom=2)
-                plt.show()
-
             self.properties.T = T
             self.properties.SonT = SonT
             return None, []
-        else:
-            if self.bPlot:
-                print(f'Data: (T: {data.T}, S/T: {data.SonT})')
-                print('len(lower_s_on_t_data):', len(lower_s_on_t_data))
 
         intermediateData = data.copy()
 

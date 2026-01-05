@@ -15,7 +15,6 @@ from .transition_graph import TransitionEdge, Path, PhaseNode
 
 class PhaseHistoryAnalyser:
     bDebug: bool = False
-    bPlot: bool = False
     bReportAnalysis: bool = False
     bReportPaths: bool = False
     bCheckPossibleCompletion: bool = True
@@ -199,7 +198,6 @@ class PhaseHistoryAnalyser:
                         phaseStructure.groud_state_energy_density, Tmin=Tmin, Tmax=Tmax, vw=vw, action_ct=action_ct)
 
                     transitionAnalyser.bDebug = self.bDebug
-                    transitionAnalyser.bPlot = self.bPlot
                     transitionAnalyser.bReportAnalysis = self.bReportAnalysis
 
                     transitionAnalyser.analyseTransition(startTime=timer.start_time)
