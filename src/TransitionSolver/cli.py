@@ -14,6 +14,7 @@ from rich.status import Status
 from . import gws
 from . import load_potential
 from . import build_phase_tracer, read_phase_tracer, run_phase_tracer, find_phase_history
+from . import plot_summary
 
 
 np.set_printoptions(legacy='1.25')
@@ -69,6 +70,9 @@ def cli(model, model_header, model_lib, model_namespace, point_file_name, vw, de
         phase_history = find_phase_history(potential, phase_structure, vw=vw, action_ct=action_ct)
 
     rich.print(phase_history)
+    
+    if show:
+        plot_summary(0, phase_history, show=True)
 
     detectors = [DETECTORS[d] for d in detector]
     ptas = [PTAS[p] for p in pta]
@@ -76,6 +80,8 @@ def cli(model, model_header, model_lib, model_namespace, point_file_name, vw, de
     with Status("Analyzing gravitational wave signal"):
         analyser = gws.GWAnalyser(potential, phase_structure, phase_history, is_file=False)  # TODO remove is_file
         report = analyser.report(*detectors)
+
+
 
     rich.print(report)
     analyser.plot(detectors=detectors, ptas=ptas, show=show)

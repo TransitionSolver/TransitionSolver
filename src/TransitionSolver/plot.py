@@ -3,20 +3,17 @@ Make plots from results on disk
 ===============================
 """
 
-import matplotlib.pyplot as plt
 import json
+import matplotlib.pyplot as plt
 
 
-def load_transition(transition_id, phase_structure_file):
+def load_transition(transition_id, phase_structure):
     """
-    @param transition_id ID of transition to load from disk
-    @param phase_structure_file Phase structure in JSON format
+    @param transition_id ID of transition
+    @param phase_structure Phase structure
 
-    @returns Transition from data on disk
+    @returns Transition data
     """
-    with open(phase_structure_file, encoding="utf8") as f:
-        phase_structure = json.load(f)
-
     for tr in phase_structure['transitions']:
         if tr['id'] == transition_id:
             return tr
@@ -24,268 +21,311 @@ def load_transition(transition_id, phase_structure_file):
     raise RuntimeError(f"Could not find {transition_id} transition")
 
 
-def plot_action_curve(transition_id, phase_structure_file, ax=None):
+def add_temp_vline(ax, x, label, color):
+    transform = ax.get_xaxis_transform()
+    y = 0.8
+    ax.axvline(x, c=color, ls=':')
+    ax.text(x, y, label,  c=color, transform=transform, ha='left')
+
+
+def add_temp_vlines(transition, ax):
+    if 'TGammaMax' in transition:
+        add_temp_vline(ax, transition['TGammaMax'], "$T_\Gamma$", 'k')
+    if 'Tn' in transition:
+        add_temp_vline(ax, transition['Tn'], "$T_n$", 'r')
+    if 'Tp' in transition:
+        add_temp_vline(ax, transition['Tp'], "$T_p$", 'g')
+    if 'Te' in transition:
+        add_temp_vline(ax, transition['Te'], "$T_e$", 'b')
+    if 'Tf' in transition:
+        add_temp_vline(ax, transition['Tf'], "$T_f$", 'gold')
+
+
+def plot_volume(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
     """
-    @param transition_id ID of transition to load from disk
+    @param transition_id ID of transition
+    @param phase_structure Phase structure
     @param phase_structure_file Phase structure in JSON format
 
-    @returns Axes of plot of axis curve
+    @returns Axes of plot of change in volume
     """
-    if ax is None:
-        ax = plt.gca()
-
-    transition = load_transition(transition_id, phase_structure_file)
-
-    ax.plot(transition['T'], transition['SonT'], marker='.')
-    ax.set_xlabel('$T$')
-    ax.set_ylabel('$S(T) / T$')
-    return ax
-
-
-def plot_volume(transition_id, phase_structure_file, ax=None):
+    if phase_structure_file is not None:
+        with open(phase_structure_file, encoding="utf8") as f:
+            phase_structure = json.load(f)
 
     if ax is None:
         ax = plt.gca()
 
-    transition = load_transition(transition_id, phase_structure_file)
+    transition = load_transition(transition_id, phase_structure)
 
-    if 'Tf' not in transition['Tf']:
-        return ax
-        
-    maxIndex = len(transition['TSubsampleArray'])
-    maxIndex = min(len(transition['TSubsampleArray'])-1, maxIndex - (maxIndex - idx_tf)//2)
-    physicalVolumeRelative = [100 * (Tf/transition['TSubsampleArray'][i])**3 * transition['Pf'][i]
-        for i in range(maxIndex+1)]
-
-
-    textXOffset = 0.01*(transition['TSubsampleArray'][0] - transition['TSubsampleArray'][maxIndex])
-    textY = 0.1
-
-    ax.plot(transition['TSubsampleArray'][:maxIndex+1], physicalVolumeRelative, zorder=3, lw=3.5)
-
-    if transition['TVphysDecr_high'] is not None and transition['TVphysDecr_low'] is not None:
-        plt.axvspan(transition['TVphysDecr_low'], transition['TVphysDecr_high'], alpha=0.3, color='r', zorder=-1)
-    if transition['Tp'] is not None:
-        plt.axvline(transition['Tp'], c='g', ls='--', lw=2)
-        plt.text(Tp + textXOffset, textY, '$T_p$', fontsize=44, horizontalalignment='left')
-    if transition['Te'] is not None:
-        plt.axvline(transition['Te'], c='b', ls='--', lw=2)
-        plt.text(transition['Te'] + textXOffset, textY, '$T_e$', fontsize=44, horizontalalignment='left')
-    if transition['Tf'] is not None:
-        plt.axvline(transition['Tf'], c='k', ls='--', lw=2)
-        plt.text(transition['Tf'] - textXOffset, textY, '$T_f$', fontsize=44, horizontalalignment='right')
-    plt.axhline(1., c='gray', ls=':', lw=2, zorder=-1)
-    plt.xlabel('$T \,\, \\mathrm{[GeV]}$', fontsize=52)
-    plt.ylabel('$\\mathcal{V}_{\\mathrm{phys}}(T)/\\mathcal{V}_{\\mathrm{phys}}(T_f)$', fontsize=52,
-        labelpad=20)
-
-
-    return ax
-
-def plot_dvolume(transition_id, phase_structure_file, ax=None):
-
-    if ax is None:
-        ax = plt.gca()
-        
-    transition = load_transition(transition_id, phase_structure_file)
-
-    ax.plot(transition['TSubsampleArray'], transition['physical_volume'], zorder=3)
+    ax.plot(transition['TSubSampleArray'],
+            transition['physical_volume'], zorder=3)
 
     if 'TVphysDecr_high' in transition and 'TVphysDecr_low' in transition:
-        plt.axvspan(transition['TVphysDecr_low'], transition['TVphysDecr_high'], alpha=0.3, color='r', zorder=-1)
-    if 'Tn' in transition:
-        plt.axvline(transition['Tn'], c='r', ls=':')
-    if 'Tp' in transition:
-        plt.axvline(transition['Tp'], c='g', ls=':')
-    if 'Te' in transition:
-        plt.axvline(transition['Te'], c='b', ls=':')
-    if 'Tf' in transition:
-        plt.axvline(transition['Tf'], c='k', ls=':')
+        ax.axvspan(transition['TVphysDecr_low'],
+                   transition['TVphysDecr_high'], alpha=0.3, color='r', zorder=-1)
+                   
+    add_temp_vlines(transition, ax)
 
-    plt.axhline(3., c='gray', ls=':', zorder=-1)
-    plt.axhline(0., c='gray', ls=':', zorder=-1)
-    
-    plt.xlabel('$T \,\, \\mathrm{[GeV]}$')
-    plt.ylabel('$\\frac{\\displaystyle d}{\\displaystyle dt} \\mathcal{V}_{\\mathrm{phys}} \,\, \\mathrm{[GeV]}$')
+    ax.axhline(3., c='gray', ls=':', zorder=-1)
+    ax.axhline(0., c='gray', ls=':', zorder=-1)
+
+    ax.set_xlabel('$T$ (GeV)')
+    ax.set_ylabel(
+        '$\\frac{d}{dt} \\mathcal{V}_{\\mathrm{phys}}$ (GeV)')
+
+    if show:
+        plt.show()
 
     return ax
 
-def plot_vw(transition_id, phase_structure_file, ax=None):
+
+def plot_vw(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
+    """
+    @param transition_id ID of transition
+    @param phase_structure Phase structure
+    @param phase_structure_file Phase structure in JSON format
+
+    @returns Axes of plot of bubble wall velocity
+    """
+    if phase_structure_file is not None:
+        with open(phase_structure_file, encoding="utf8") as f:
+            phase_structure = json.load(f)
 
     if ax is None:
         ax = plt.gca()
 
-    transition = load_transition(transition_id, phase_structure_file)
+    transition = load_transition(transition_id, phase_structure)
 
-    ax.plot(transition['TSubampleArray'], transition['vw_samples'])
-    plt.xlabel('$T$')
-    plt.ylabel('$v_w$')
+    ax.plot(transition['TSubSampleArray'], transition['vw_samples'])
+ 
+    add_temp_vlines(transition, ax)
+ 
+    ax.set_xlabel('$T$ (GeV)')
+    ax.set_ylabel('Bubble wall velocity, $v_w$')
+ 
+    if show:
+        plt.show()
+
     return ax
 
 
-def plot_gamma(transition_id, phase_structure_file, ax=None):
+def plot_gamma(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
+    """
+    @param transition_id ID of transition
+    @param phase_structure Phase structure
+    @param phase_structure_file Phase structure in JSON format
+
+    @returns Axes of plot of transition rate Gamma
+    """
+    if phase_structure_file is not None:
+        with open(phase_structure_file, encoding="utf8") as f:
+            phase_structure = json.load(f)
 
     if ax is None:
         ax = plt.gca()
-        
-    transition = load_transition(transition_id, phase_structure_file)
 
-    ax.plot(transition['TSubsampleArray'], transition['gamma'], label="Standard")
-    ax.plot(transition['TSubsampleArray'], transition['gamma_eff'], label="Effective")
+    transition = load_transition(transition_id, phase_structure)
 
-    plt.xlabel('$T$')
-    plt.ylabel('$\\Gamma(T)$')
+    ax.plot(transition['TSubSampleArray'],
+            transition['gamma'], label="Standard")
+    ax.plot(transition['TSubSampleArray'],
+            transition['gamma_eff'], label="Effective")
 
-    if 'Tn' in transition:
-        plt.axvline(transition['TGammaMax'], c='r', ls=':') 
-    if 'Tn' in transition:
-        plt.axvline(transition['Tmin'], c='r', ls=':')
-    if 'Tn' in transition:
-        plt.axvline(transition['Tn'], c='r', ls=':')
-    if 'Tp' in transition:
-        plt.axvline(transition['Tp'], c='g', ls=':')
-    if 'Te' in transition:
-        plt.axvline(transition['Te'], c='b', ls=':')
-    if 'Tf' in transition:
-        plt.axvline(transition['Tf'], c='k', ls=':')
+    ax.set_xlabel('$T$ (GeV)')
+    ax.set_ylabel('Transition rate, $\\Gamma(T)$')
+
+    add_temp_vlines(transition, ax)
 
     ax.legend()
 
+    if show:
+        plt.show()
+
     return ax
 
-def plot_bubble_number(transition_id, phase_structure_file, ax=None):
+
+def plot_bubble_radius(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
+    """
+    @param transition_id ID of transition
+    @param phase_structure Phase structure
+    @param phase_structure_file Phase structure in JSON format
+
+    @returns Axes of plot of bubble radius
+    """
+    if phase_structure_file is not None:
+        with open(phase_structure_file, encoding="utf8") as f:
+            phase_structure = json.load(f)
 
     if ax is None:
         ax = plt.gca()
 
-    transition = load_transition(transition_id, phase_structure_file)
+    transition = load_transition(transition_id, phase_structure)
 
-    ax.plot(transition['TSubsampleArray'], bubbleNumberDensity)
-
-    plt.xlabel('$T \, \\mathrm{[GeV]}$')
-    plt.ylabel('$n_B(T)$')
+    ax.plot(transition['TSubSampleArray'],
+            transition['meanBubbleRadiusArray'])
+            
+    ax.set_yscale('log')
+    ax.set_xlabel('$T$ (GeV)')
+    ax.set_ylabel('Bubble radius, $\\overline{R}_B(T)$')
     
-    if 'Tn' in transition:
-        plt.axvline(transition['Tn'], c='r', ls=':')
-    if 'Tp' in transition:
-        plt.axvline(transition['Tp'], c='g', ls=':')
-    if 'Te' in transition:
-        plt.axvline(transition['Te'], c='b', ls=':')
-    if 'Tf' in transition:
-        plt.axvline(transition['Tf'], c='k', ls=':')
-        
+    add_temp_vlines(transition, ax)
+
+    if show:
+        plt.show()
+
     return ax
     
-def plot_bubble_radius(transition_id, phase_structure_file, ax=None):
-
-    if ax is None:
-        ax = plt.gca()
-
-    transition = load_transition(transition_id, phase_structure_file)
-
-    highTempIndex = 1
-
-    # Search for the highest temperature for which the mean bubble separation is not larger than it is at the
-    # lowest sampled temperature.
-    for i in range(1, len(transition['TSubsampleArray'])):
-        if transition['meanBubbleSeparationArray'][i] <= transition['meanBubbleSeparationArray'][-1]:
-            highTempIndex = i
-            break
-
-    # If the mean bubble separation is always larger than it is at the lowest sampled temperature, plot the
-    # entire range of sampled temperatures.
-    if highTempIndex == len(transition['TSubsampleArray'])-1:
-        highTempIndex = 0
-
-    ax.plot(transition['TSubsampleArray'], transition['meanBubbleRadiusArray'])
-    ax.plot(transition['TSubsampleArray'], transition['meanBubbleSeparationArray'])
-    plt.xlabel('$T \, \\mathrm{[GeV]}$')
-
-    plt.legend(['$\\overline{R}_B(T)$', '$R_*(T)$'])
-
-    if 'Tn' in transition:
-        plt.axvline(transition['Tn'], c='r', ls=':')
-    if 'Tp' in transition:
-        plt.axvline(transition['Tp'], c='g', ls=':')
-    if 'Te' in transition:
-        plt.axvline(transition['Te'], c='b', ls=':')
-    if 'Tf' in transition:
-        plt.axvline(transition['Tf'], c='k', ls=':')
-
-
-    return ax
-
-def plot_action_curve(transition_id, phase_structure_file, ax=None):
-
-    if ax is None:
-        ax = plt.gca()
-
-    transition = load_transition(transition_id, phase_structure_file)
-
-    plt.plot(transition['T'], transition['SonT'])
     
-    if 'Tn' in transition:
-        plt.axvline(transition['Tn'], c='r', ls=':')
-        plt.axhline(transition['SonTn'], c='r', ls=':')
-    if 'Tp' in transition:
-        plt.axvline(transition['Tp'], c='g', ls=':')
-        plt.axhline(transition['SonTp'], c='g', ls=':')
-    if 'Te' in transition:
-        plt.axvline(transition['Te'], c='b', ls=':')
-        plt.axhline(transition['SonTe'], c='b', ls=':')
-    if 'Tf' in transition:
-        plt.axvline(transition['Tf'], c='k', ls=':')
-        plt.axhline(transition['SonTf'], c='k', ls=':')
+def plot_bubble_separation(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
+    """
+    @param transition_id ID of transition
+    @param phase_structure Phase structure
+    @param phase_structure_file Phase structure in JSON format
 
-    plt.xlabel('$T \, \\mathrm{[GeV]}$')
-    plt.ylabel('$S(T)$')
-
-    return ax
-
-def plot_bubble_number(transition_id, phase_structure_file, ax=None):
+    @returns Axes of plot of bubble separation
+    """
+    if phase_structure_file is not None:
+        with open(phase_structure_file, encoding="utf8") as f:
+            phase_structure = json.load(f)
 
     if ax is None:
         ax = plt.gca()
 
-    transition = load_transition(transition_id, phase_structure_file)
+    transition = load_transition(transition_id, phase_structure)
+
+    ax.plot(transition['TSubSampleArray'],
+            transition['meanBubbleSeparationArray'])
+            
+    ax.set_yscale('log')
+    ax.set_xlabel('$T$ (GeV)')
+    ax.set_ylabel('Bubble separation, $R_*(T)$')
+    
+    add_temp_vlines(transition, ax)
+
+    if show:
+        plt.show()
+
+    return ax
+
+
+def plot_bubble_number(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
+    """
+    @param transition_id ID of transition
+    @param phase_structure Phase structure
+    @param phase_structure_file Phase structure in JSON format
+
+    @returns Axes of plot of number of bubbles
+    """
+    if phase_structure_file is not None:
+        with open(phase_structure_file, encoding="utf8") as f:
+            phase_structure = json.load(f)
+
+    if ax is None:
+        ax = plt.gca()
+
+    transition = load_transition(transition_id, phase_structure)
 
     # Number of bubbles plotted over entire sampled temperature range, using log scale for number of bubbles.
 
-    ax.plot(transition['TSubsampleArray'], transition['totalNumBubblesCorrected'], label='$N(T)$')
-    ax.plot(transition['TSubsampleArray'], transition['totalNumBubbles'], label='$N^{\\mathrm{ext}}(T)$')
+    ax.plot(transition['TSubSampleArray'],
+            transition['totalNumBubblesCorrected'], label='$N(T)$')
+    ax.plot(transition['TSubSampleArray'],
+            transition['totalNumBubbles'], ls="--", label='$N^{\\mathrm{ext}}(T)$')
 
-    if 'Tn' in transition:
-        plt.axvline(transition['Tn'], c='r', ls=':')
-    if 'Tp' in transition:
-        plt.axvline(transition['Tp'], c='g', ls=':')
-    if 'Te' in transition:
-        plt.axvline(transition['Te'], c='b', ls=':')
-    if 'Tf' in transition:
-        plt.axvline(transition['Tf'], c='k', ls=':')
+    add_temp_vlines(transition, ax)
 
-    plt.yscale('log')
+    ax.set_yscale('log')
     ax.legend()
-    plt.xlabel('$T \, \\mathrm{[GeV]}$')
+    ax.set_xlabel('$T$ (GeV)')
+    ax.set_ylabel('Number of bubbles')
+
+    if show:
+        plt.show()
 
     return ax
 
-def plot_p_f(transition_id, phase_structure_file, ax=None):
+
+def plot_pf(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
+    """
+    @param transition_id ID of transition
+    @param phase_structure Phase structure
+    @param phase_structure_file Phase structure in JSON format
+
+    @returns Axes of plot of false vacuum fraction
+    """
+    if phase_structure_file is not None:
+        with open(phase_structure_file, encoding="utf8") as f:
+            phase_structure = json.load(f)
 
     if ax is None:
         ax = plt.gca()
 
-    ax.plot(transition['TSubsampleArray'], transition['Pf']5)
-    
-    if 'Tn' in transition:
-        plt.axvline(transition['Tn'], c='r', ls=':')
-    if 'Tp' in transition:
-        plt.axvline(transition['Tp'], c='g', ls=':')
-    if 'Te' in transition:
-        plt.axvline(transition['Te'], c='b', ls=':')
-    if 'Tf' in transition:
-        plt.axvline(transition['Tf'], c='k', ls=':')
-        
-    plt.xlabel('$T \, \\mathrm{[GeV]}$', fontsize=40)
-    plt.ylabel('$P_f(T)$', fontsize=40)
+    transition = load_transition(transition_id, phase_structure)
+
+    ax.plot(transition['TSubSampleArray'], transition['Pf'])
+
+    add_temp_vlines(transition, ax)
+    ax.set_yscale('log')
+    ax.set_xlabel('$T$ (GeV)')
+    ax.set_ylabel('False vacuum fraction, $P_f(T)$')
+
+    if show:
+        plt.show()
 
     return ax
+
+
+def plot_action_curve(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
+    """
+    @param transition_id ID of transition
+    @param phase_structure Phase structure
+    @param phase_structure_file Phase structure in JSON format
+
+    @returns Axes of plot of action over temperature
+    """
+    if phase_structure_file is not None:
+        with open(phase_structure_file, encoding="utf8") as f:
+            phase_structure = json.load(f)
+
+    if ax is None:
+        ax = plt.gca()
+
+    transition = load_transition(transition_id, phase_structure)
+
+    ax.plot(transition['T'], transition['SonT'])
+
+    add_temp_vlines(transition, ax)
+
+    ax.set_xlabel('$T$ (GeV)')
+    ax.set_ylabel('$S(T) / T$')
+
+    if show:
+        plt.show()
+
+    return ax
+
+
+def plot_summary(transition_id, phase_structure=None, phase_structure_file=None, show=False):
+    """
+    @param transition_id ID of transition
+    @param phase_structure Phase structure
+    @param phase_structure_file Phase structure in JSON format
+
+    @returns Axes of plots
+    """
+    if phase_structure_file is not None:
+        with open(phase_structure_file, encoding="utf8") as f:
+            phase_structure = json.load(f)
+
+    plotters = [plot_volume, plot_vw, plot_gamma, plot_bubble_radius, plot_bubble_separation, plot_bubble_number, plot_action_curve, plot_pf]
+    fig, ax = plt.subplots(len(plotters), sharex=True, figsize=(7, 3 * len(plotters)))
+
+    for a, p in zip(ax, plotters):
+        p(transition_id, phase_structure, ax=a)
+
+    if show:
+        plt.tight_layout()
+        plt.show()
+
+    return fig

@@ -7,3 +7,4 @@ from .effective_potential import load_potential
 from .benchmarks import RSS_BP1
 from .phasetracer import read_phase_tracer, run_phase_tracer, build_phase_tracer
 from .phasehistory import find_phase_history
+from .plot import plot_summary

@@ -366,7 +366,6 @@ class ActionSampler:
         """
         if self.action_ct:
             return action.action_ct(self.potential, T, false_vacuum, true_vacuum, **self.action_ct_kwargs)
-        assert False
         return action.action_pt(self.potential, T, false_vacuum, true_vacuum, **self.action_pt_kwargs)
 
 
@@ -865,9 +864,9 @@ class TransitionAnalyser:
 
         self.properties.T = self.actionSampler.T
         self.properties.SonT = self.actionSampler.SonT
-        self.properties.totalNumBubbles = numBubblesIntegral[-1]
-        self.properties.totalNumBubblesCorrected = numBubblesCorrectedIntegral[-1]
-        self.properties.TSubampleArray = self.actionSampler.subT
+        self.properties.totalNumBubbles = numBubblesIntegral
+        self.properties.totalNumBubblesCorrected = numBubblesCorrectedIntegral
+        self.properties.TSubSampleArray = self.actionSampler.subT
         self.properties.HArray = H
         self.properties.betaArray = betaArray
         self.properties.meanBubbleSeparationArray = meanBubbleSeparationArray
