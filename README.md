@@ -69,7 +69,7 @@ Options:
 For example, try
 ```bash
 ts --model RSS --point ./tests/rss_bp1.txt 
-``
+```
 You can pass a model and model header file etc, and parameter point.
 
 # Scans
