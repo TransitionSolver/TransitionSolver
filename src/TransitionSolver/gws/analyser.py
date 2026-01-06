@@ -316,6 +316,8 @@ class AnalyseIndividualTransition:
         ax.loglog(frequencies, self.gw_turb(frequencies), label="turb")
         ax.loglog(frequencies, self.gw_coll(frequencies), label="coll")
         ax.legend(scatterpoints=1)
+        ax.set_ylabel("Amplitude")
+        ax.set_xlabel("Frequency (Hz)")
 
 
 def extract_relevant_transitions(report: dict) -> list[dict]:
