@@ -88,4 +88,4 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
     with Status("Saving results"):
         folder = saveall(tr_report, gw_report, tr_fig, gw_fig, ctx)
 
-    rich.print(Text.assemble("Results saved to", (folder, "bold magenta")))
+    rich.print(Text.assemble("Results saved to: ", (folder, "bold magenta")))
