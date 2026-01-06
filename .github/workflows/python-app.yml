@@ -34,7 +34,6 @@ jobs:
     - name: Restore PhaseTracer
       continue-on-error: true
       uses: actions/cache/restore@v4
-      id: cache
       with:
         path: /home/runner/.PhaseTracer/
         key: ${{ runner.os }}_phase_tracer
@@ -43,7 +42,6 @@ jobs:
         bash debian_installer_phasetracer.bash
     - name: Save PhaseTracer
       uses: actions/cache/save@v4
-      id: cache
       with:
         path: /home/runner/.PhaseTracer/
         key: ${{ runner.os }}_phase_tracer
