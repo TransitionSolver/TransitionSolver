@@ -306,7 +306,7 @@ def plot_action_curve(transition_id, phase_structure=None, phase_structure_file=
     return ax
 
 
-def plot_summary(transition_id, phase_structure=None, phase_structure_file=None, show=False):
+def plot_summary(phase_structure=None, phase_structure_file=None, show=False):
     """
     @param transition_id ID of transition
     @param phase_structure Phase structure
@@ -318,11 +318,13 @@ def plot_summary(transition_id, phase_structure=None, phase_structure_file=None,
         with open(phase_structure_file, encoding="utf8") as f:
             phase_structure = json.load(f)
 
+    transitions = phase_structure['transitions']
     plotters = [plot_volume, plot_vw, plot_gamma, plot_bubble_radius, plot_bubble_separation, plot_bubble_number, plot_action_curve, plot_pf]
-    fig, ax = plt.subplots(len(plotters), sharex=True, figsize=(7, 3 * len(plotters)))
+    fig, ax = plt.subplots(len(plotters), len(transitions))
 
-    for a, p in zip(ax, plotters):
-        p(transition_id, phase_structure, ax=a)
+    for y, tr in enumerate(transitions):
+        for x, p in enumerate(plotters):
+            p(tr['id'], phase_structure, ax=ax[x, y])
 
     if show:
         plt.tight_layout()

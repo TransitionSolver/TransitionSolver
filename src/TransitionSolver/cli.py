@@ -9,12 +9,14 @@ import ast
 import click
 import numpy as np
 import rich
+from rich.text import Text
 from rich.status import Status
 
 from . import gws
 from . import load_potential
 from . import build_phase_tracer, read_phase_tracer, run_phase_tracer, find_phase_history
 from . import plot_summary
+from . import saveall
 
 
 np.set_printoptions(legacy='1.25')
@@ -34,12 +36,13 @@ LEVELS = {k.lower(): getattr(logging, k) for k in ["DEBUG", "INFO", "WARNING", "
 @click.option('--vw', default=None, help='Bubble wall velocity', type=click.FloatRange(0.))
 @click.option('--detector', default=[], help='Gravitational wave detector', type=click.Choice(DETECTORS.keys()), multiple=True)
 @click.option('--pta', default=[], help='Pulsar Timing Array', type=click.Choice(PTAS.keys()), multiple=True)
-@click.option('--show', default=True, help='Whether to show plots', type=bool)
+@click.option('--show/--no-show', default=True, help='Whether to show plots', type=bool)
 @click.option('--level', default="critical", help='Logging level', type=click.Choice(LEVELS.keys()))
 @click.option("--apply", required=False, help="Apply settings to a potential", type=(str, ast.literal_eval), multiple=True)
 @click.option('--force', help='Force recompilation', required=False, default=False, is_flag=True, type=bool)
 @click.option('--action-ct', help='Use CosmoTransitions for action', required=False, default=False, is_flag=True, type=bool)
-def cli(model, model_header, model_lib, model_namespace, point_file_name, vw, detector, pta, show, level, apply, force, action_ct):
+@click.pass_context
+def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, vw, detector, pta, show, level, apply, force, action_ct):
     """
     Run TransitionSolver on a particular model and point
 
@@ -67,21 +70,22 @@ def cli(model, model_header, model_lib, model_namespace, point_file_name, vw, de
         phase_structure = read_phase_tracer(phase_structure_raw)
 
     with Status("Analyzing phase history"):
-        phase_history = find_phase_history(potential, phase_structure, vw=vw, action_ct=action_ct)
+        tr_report = find_phase_history(potential, phase_structure, vw=vw, action_ct=action_ct)
+        tr_fig = plot_summary(tr_report, show=show)
 
-    rich.print(phase_history)
+    rich.print(tr_report)
     
-    if show:
-        plot_summary(0, phase_history, show=True)
-
     detectors = [DETECTORS[d] for d in detector]
     ptas = [PTAS[p] for p in pta]
 
     with Status("Analyzing gravitational wave signal"):
-        analyser = gws.GWAnalyser(potential, phase_structure, phase_history, is_file=False)  # TODO remove is_file
-        report = analyser.report(*detectors)
+        analyser = gws.GWAnalyser(potential, phase_structure, tr_report, is_file=False)  # TODO remove is_file
+        gw_report = analyser.report(*detectors)
+        gw_fig = analyser.plot(detectors=detectors, ptas=ptas, show=show)
 
+    rich.print(gw_report)
 
+    with Status("Saving results"):
+        folder = saveall(tr_report, gw_report, tr_fig, gw_fig, ctx)
 
-    rich.print(report)
-    analyser.plot(detectors=detectors, ptas=ptas, show=show)
+    rich.print(Text.assemble("Results saved to", (folder, "bold magenta")))
