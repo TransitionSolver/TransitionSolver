@@ -328,11 +328,11 @@ def plot_summary(phase_structure=None, phase_structure_file=None, show=False):
     transitions = phase_structure['transitions']
     plotters = [plot_volume, plot_vw, plot_gamma, plot_bubble_radius, plot_bubble_separation, plot_bubble_number, plot_action_curve, plot_pf]
     fig, ax = plt.subplots(len(plotters), len(transitions), constrained_layout=False, sharex='col', figsize=(10 * len(transitions), 6 * len(plotters)))
-    ax_arr = np.atleast_2d(ax)
+    ax = np.reshape(ax, (len(plotters), len(transitions)))
 
     for x, tr in enumerate(transitions):
         for y, p in enumerate(plotters):
-            this_ax = ax_arr[x, y]
+            this_ax = ax[y, x]
             p(tr['id'], phase_structure, ax=this_ax)
             this_ax.set_xlabel(None)
 
