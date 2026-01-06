@@ -26,7 +26,7 @@ jobs:
         python-version: "3.10"
     - uses: awalsh128/cache-apt-pkgs-action@latest
       with:
-        packages: git cmake libalglib-dev libnlopt-cxx-dev libeigen3-dev libboost-filesystem-dev libboost-log-dev libgsl-dev
+        packages: git cmake libalglib-dev libnlopt-cxx-dev libeigen3-dev libboost-filesystem-dev libboost-log-dev libgsl-dev numdiff
     - name: Install packages
       run: |
         python -m pip install --upgrade pip
@@ -48,15 +48,16 @@ jobs:
     - name: Try CLI
       continue-on-error: true
       run: |
-        ts --model RSS --point tests/rss_bp1.txt --apply set_daisy_method 2 --force --apply set_bUseBoltzmannSuppression True
+        ts --model RSS --point tests/rss_bp1.txt --apply set_daisy_method 2 --apply set_bUseBoltzmannSuppression True --no-show --detector LISA --action-ct --apply set_useGSResummation True --force
+    - name: Install script test dependencies
+      run: |
+        mkdir -p config
+        echo '{ "PhaseTracer_directory": "/home/runner/.PhaseTracer/" }' > config/config_user.json
+        sudo apt install numdiff
     - name: Test script output
       continue-on-error: true
       run: |
-        mkdir -p script_output
-        mkdir -p config
-        echo '{ "PhaseTracer_directory": "/home/runner/.PhaseTracer/" }' > config/config_user.json
         python3 -m examples.command_line_interface rss 1 script_output input/RSS/RSS_BP3.txt
-        sudo apt install numdiff
         sed -i '/^\s*"analysisTime"/d' tests/RSS_BP35ab2907aa2a62d9b479c42c639658bf8ef5b197f/phase_history.json script_output/phase_history.json
         numdiff tests/RSS_BP35ab2907aa2a62d9b479c42c639658bf8ef5b197f/phase_history.json script_output/phase_history.json
         numdiff tests/RSS_BP35ab2907aa2a62d9b479c42c639658bf8ef5b197f/phase_structure.dat script_output/phase_structure.dat
@@ -64,10 +65,7 @@ jobs:
       continue-on-error: true
       run: |
         mkdir -p RSS_new_BP4_output
-        mkdir -p config
-        echo '{ "PhaseTracer_directory": "/home/runner/.PhaseTracer/" }' > config/config_user.json
         python3 -m examples.command_line_interface rss 1 RSS_new_BP4_output input/RSS/RSS_new_BP4.txt
-        sudo apt install numdiff
         sed -i '/^\s*"analysisTime"/d' tests/RSS_new_BP4_23_12_2025/phase_history.json RSS_new_BP4_output/phase_history.json
         numdiff tests/RSS_new_BP4_23_12_2025/phase_history.json RSS_new_BP4_output/phase_history.json
         numdiff tests/RSS_new_BP4_23_12_2025/phase_structure.dat RSS_new_BP4_output/phase_structure.dat
@@ -75,10 +73,7 @@ jobs:
       continue-on-error: true
       run: |
         mkdir -p output/pipeline_example_output
-        mkdir -p config
-        echo '{ "PhaseTracer_directory": "/home/runner/.PhaseTracer/" }' > config/config_user.json
         python3 -m examples.pipeline_example
-        sudo apt install numdiff
         sed -i '/^\s*"analysisTime"/d' tests/pipeline_example30_12_2025/phase_history.json output/pipeline_example_output/phase_history.json
         numdiff tests/pipeline_example30_12_2025/phase_history.json output/pipeline_example_output/phase_history.json
         numdiff tests/pipeline_example30_12_2025/phase_structure.dat output/pipeline_example_output/phase_structure.dat
