@@ -4,6 +4,7 @@ PhaseTracer interface using system calls
 """
 
 import os
+import datetime
 from pathlib import Path
 import subprocess
 
@@ -27,9 +28,19 @@ LIBS = [EP_LIB, PT_LIB, "-lboost_log", "-lboost_filesystem", "-lnlopt"]
 PT_UNIT_TEST = PT_HOME / "bin" / "unit_tests"
 
 
+def phase_tracer_info():
+    """
+    @returns Information about PhaseTracer installation
+    """
+    version = subprocess.check_output(["git", "describe", "--dirty", "--always"], cwd=PT_HOME, text=True)
+    build_time = os.path.getmtime(PT_LIB)
+    build_time = str(datetime.datetime.fromtimestamp(build_time))
+    return {"HOME": str(PT_HOME), "GIT": version, "BUILT": build_time}
+
+
 def rpath(name):
     """
-    @returns Compiler arugment to add an rpath
+    @returns Compiler argument to add an rpath
     """
     return f"-Wl,-rpath={name}"
 
