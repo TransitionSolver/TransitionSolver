@@ -48,7 +48,7 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
 
     Example usage:
 
-    ts --model RSS --point rss_bp1.txt --apply set_daisy_method 2 --apply set_bUseBoltzmannSuppression True --force
+    ts --model RSS --point input/RSS/RSS_BP1.txt --apply set_daisy_method 2 --apply set_bUseBoltzmannSuppression True --force
     """
 
     logging.getLogger().setLevel(LEVELS[level])
