@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
     }
     
     const std::vector<double> point = read_point(argv[1]);
-    const double t_high = std::atof(argv[2]);
+    double t_high = std::atof(argv[2]);
 
     auto model = MODEL_NAME_WITH_NAMESPACE(point);
     
@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
 
     // TODO this is RSS specific. Remove
     double temperatureScale = model.get_temperature_scale();
-    double t_high = model.getMaxTemp(temperatureScale, temperatureScale * 10, 500, temperatureScale * 0.01,temperatureScale * 0.001) * 1.01;   
+    t_high = model.getMaxTemp(temperatureScale, temperatureScale * 10, 500, temperatureScale * 0.01,temperatureScale * 0.001) * 1.01;   
 
     pf.set_t_high(t_high);
     pf.set_check_vacuum_at_high(false);
@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
     tf.set_assume_only_one_transition(true);
     
     tf.find_transitions();
-    tf.find_transition_paths(model, true);
+    tf.find_transition_paths();
     
-    std::cout << PhaseTracer::serialize(tf).str();
+    std::cout << PhaseTracer::serialize(tf);
 }
