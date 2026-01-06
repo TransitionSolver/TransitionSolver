@@ -3,7 +3,7 @@ Test the number of degrees of freedom
 =====================================
 """
 
-import json
+import json_numpy as json
 import os
 from pathlib import Path
 
@@ -13,15 +13,15 @@ import pytest
 
 from TransitionSolver import phasehistory, RSS_BP1
 
-from dictcmp import allclose
+from dictcmp import assert_deep_equal
 
 THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 
 
-def test_dof():
+def test_dof(generate_baseline):
     phase_tracer_file = THIS / "rss_bp1_phase_structure.dat"
     result = phasehistory.trace_dof(RSS_BP1, phase_tracer_file=phase_tracer_file)
-    assert allclose(result, THIS / "rss_bp1_dof.json")
+    assert_deep_equal(result, THIS / "rss_bp1_dof.json", generate_baseline=generate_baseline)
 
 
 @pytest.mark.mpl_image_compare(tolerance=20)

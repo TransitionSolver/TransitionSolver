@@ -13,9 +13,9 @@ from TransitionSolver.plot import plot_summary
 
 THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 phase_structure_file = THIS / "rss_bp1_phase_structure.json"
-transition_id = 0
+
 
 @pytest.mark.mpl_image_compare
 def test_summary():
-    return plot_summary(transition_id, phase_structure_file=phase_structure_file)
+    return plot_summary(phase_structure_file=phase_structure_file)
 

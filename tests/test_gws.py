@@ -13,7 +13,7 @@ import numpy as np
 
 from TransitionSolver.gws import GWAnalyser, lisa
 from TransitionSolver import gws, RSS_BP1
-from dictcmp import allclose
+from dictcmp import assert_deep_equal
 
 
 THIS = Path(os.path.dirname(os.path.abspath(__file__)))
@@ -24,20 +24,21 @@ phase_history_file = THIS / "rss_bp1_phase_structure.json"
 with open(THIS / phase_history_file, 'r') as f:
     phase_history = json.load(f)
 
-analyser = GWAnalyser(RSS_BP1, phase_structure_file, phase_history)
 
-
-def test_report():
+def test_report(generate_baseline):
+    analyser = GWAnalyser(RSS_BP1, phase_structure_file, phase_history)
     report = analyser.report(lisa)
-    assert allclose(report, THIS / "rss_bp1_gw.json")
+    assert_deep_equal(report, THIS / "rss_bp1_gw.json", generate_baseline=generate_baseline)
 
 
 @pytest.mark.mpl_image_compare
 def test_plot_gw():
+    analyser = GWAnalyser(RSS_BP1, phase_structure_file, phase_history)
     return analyser.plot(detectors=[lisa], ptas=[gws.nanograv_15])
 
 
 def test_snr():
+    analyser = GWAnalyser(RSS_BP1, phase_structure_file, phase_history)
     snr = lisa.SNR(analyser.gw_total)
     assert np.isclose(snr, 61.573514537762286)
     
