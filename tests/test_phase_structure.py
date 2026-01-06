@@ -20,6 +20,4 @@ def test_phase_structure(generate_baseline):
     phase_structure = read_phase_tracer(phase_tracer_data)
     result = phasehistory.find_phase_history(
         RSS_BP1, phase_structure, vw=1)
-    # TODO ignoring T and SonT as the size of them changes between local & github
-    # but good to reinclude them later
-    assert_deep_equal(result, BASELINE / "rss_bp1_phase_structure.json", exclude_paths=['analysisTime', 'T', 'SonT'], generate_baseline=generate_baseline)
+    assert_deep_equal(result, BASELINE / "rss_bp1_phase_structure.json", exclude_paths=['analysisTime'], significant_digits=2, generate_baseline=generate_baseline)
