@@ -21,7 +21,6 @@ from src.TransitionSolver.analysis.transition_graph import Path
 from src.TransitionSolver.analysis.transition_analysis import TransitionAnalyser, ActionSampler
 from src.TransitionSolver.analysis import phase_structure
 from src.TransitionSolver.models.analysable_potential import AnalysablePotential
-from src.TransitionSolver.util.events import notifyHandler
 from TransitionSolver import read_phase_tracer
 
 
@@ -130,11 +129,6 @@ def pipeline_workerProcess(pointIndex: int, numSamples: int, scanIndex: int, out
     analyser.bReportAnalysis = True
     analyser.bReportPaths = True
     analyser.timeout_phaseHistoryAnalysis = 100
-
-    def notify_TransitionAnalyser_on_create(transitionAnalyser: TransitionAnalyser):
-        transitionAnalyser.bComputeSubsampledThermalParams = False
-
-    notifyHandler.addEvent('TransitionAnalyser-on_create', notify_TransitionAnalyser_on_create)
 
     # Analyse the phase history.
     paths, _, _ = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=1.)

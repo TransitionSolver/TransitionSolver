@@ -31,7 +31,6 @@ from src.TransitionSolver.analysis.transition_graph import Path
 from src.TransitionSolver.analysis.transition_analysis import TransitionAnalyser, ActionSampler
 from src.TransitionSolver.analysis import phase_structure
 from src.TransitionSolver.models.analysable_potential import AnalysablePotential
-from src.TransitionSolver.util.events import notifyHandler
 from TransitionSolver import read_phase_tracer
 
 class PipelineSettings:
@@ -306,39 +305,6 @@ def writePhaseHistoryReport(paths: list[Path], phaseStructure: PhaseStructure, s
         print('Failed to write report.')
 
 
-def notify_ActionSampler_on_create(actionSampler: ActionSampler):
-    if type(actionSampler) != ActionSampler:
-        raise Exception(f'<{inspect.currentframe().f_code.co_name}> Expected type: TransitionAnalysis.ActionSampler,'
-            f' instead got type: {type(actionSampler).__name__}')
-
-    # The step size doesn't have a huge impact on the number of action samples because it is a remnant of an old
-    # sampling algorithm, and is not properly utilised in the new sampling algorithm. Nevertheless, a smaller value will
-    # result in less action samples. It relates to the ratio between the previous and next action sample values, and
-    # consequently governs the separation between temperature samples. It is the maximum deviation from a unit ratio, so
-    # stepSizeMax=0.5 would mean that ratios above 0.5 are allowed but ratios below 0.5 are not allowed.
-    # If the action sampling needs to be adjusted, it would be best to contact me to update the algorithm itself rather
-    # than trying to adjust this parameter to extreme values.
-    actionSampler.stepSizeMax = 0.9
-    actionSampler.actionTolerance = 1e-6
-    actionSampler.bForcePhaseOnAxis = False
-
-
-def notify_TransitionAnalyser_on_create(transitionAnalyser: TransitionAnalyser):
-    if type(transitionAnalyser) != TransitionAnalyser:
-        raise Exception(f'<{inspect.currentframe().f_code.co_name}> Expected type: TransitionAnalysis.TransitionAnalyse'
-                        f'r, instead got type: {type(transitionAnalyser).__name__}')
-
-    transitionAnalyser.bCheckPossibleCompletion = True
-    transitionAnalyser.bAnalyseTransitionPastCompletion = False
-    transitionAnalyser.bAllowErrorsForTn = True
-
-
-def notify_PhaseHistoryAnalyser_on_create(phaseHistoryAnalyser: PhaseHistoryAnalyser):
-    if type(phaseHistoryAnalyser) != PhaseHistoryAnalyser:
-        raise Exception(f'<{inspect.currentframe().f_code.co_name}> Expected type: PhaseHistoryAnalysis.PhaseHistoryAna'
-            f'lyser, instead got type: {type(phaseHistoryAnalyser).__name__}')
-
-    pass
 
 
 def generateParameterPoint(fileName):
@@ -415,12 +381,6 @@ def generateParameterPoint(fileName):
 # parameter space where the same points should be used. A significant amount of time can be saved if the previous
 # action samples can be reused in the new scan.
 def example_parameterPointFile():
-    # Set up notification events for convenient configuration of other objects required for the analysis. E.g. when the
-    # ActionSampler object is created, call notify_ActionSampler_on_create, passing in the ActionSampler instance so its
-    # properties can be configured. This avoids the need for passing large sets of parameters through multiple objects.
-    notifyHandler.addEvent('ActionSampler-on_create', notify_ActionSampler_on_create)
-    notifyHandler.addEvent('TransitionAnalyser-on_create', notify_TransitionAnalyser_on_create)
-    notifyHandler.addEvent('PhaseHistoryAnalyser-on_create', notify_PhaseHistoryAnalyser_on_create)
 
     # ==================================================================================================================
     # Define configurations for the program.

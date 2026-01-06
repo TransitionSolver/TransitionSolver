@@ -12,7 +12,6 @@ import json
 import pathlib
 import traceback
 import sys
-from src.TransitionSolver.util.events import notifyHandler
 from TransitionSolver import read_phase_tracer
 
 def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: PhaseStructure) -> None:
@@ -107,10 +106,6 @@ def main():
 
     # Create the potential using the parameter point.
     potential = RealScalarSingletModel_Boltz(*parameterPoint)
-    def notify_TransitionAnalyser_on_create(transitionAnalyser: TransitionAnalyser):
-        transitionAnalyser.bComputeSubsampledThermalParams = True
-
-    notifyHandler.addEvent('TransitionAnalyser-on_create', notify_TransitionAnalyser_on_create)
 
     # Analyse the phase history.
     paths, _, _ = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=0.9)

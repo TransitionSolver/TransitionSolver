@@ -20,8 +20,6 @@ import json
 import pathlib
 import sys
 
-from TransitionSolver.util.events import notifyHandler
-
 
 def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: PhaseStructure) -> None:
     report = {}
@@ -117,12 +115,6 @@ def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str,
     # to analysePhaseHistory_supplied if True the vw passed to analysePhaseHistory_supplied
     # is not used
     bUseCJvw = True
-    def notify_TransitionAnalyser_on_create(transitionAnalyser: TransitionAnalyser):
-        transitionAnalyser.bComputeSubsampledThermalParams = True
-        transitionAnalyser.bCheckPossibleCompletion = False
-        transitionAnalyser.bUseChapmanJouguetVelocity = bUseCJvw
-
-    notifyHandler.addEvent('TransitionAnalyser-on_create', notify_TransitionAnalyser_on_create)
 
     origin = np.array([0, 0])
     vev = potential.approxZeroTMin()[0]
