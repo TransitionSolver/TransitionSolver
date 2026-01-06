@@ -46,7 +46,7 @@ Usage: ts [OPTIONS]
 
   Example usage:
 
-  ts --model RSS --point input/RSS/RSS_BP1.txt --apply set_daisy_method 2 --apply set_bUseBoltzmannSuppression True --force
+  ts --model RSS --point input/RSS/RSS_BP1.txt --action-ct --apply set_daisy_method 2 --apply set_bUseBoltzmannSuppression True --force
 
 Options:
   --model TEXT                    Model name  [required]
