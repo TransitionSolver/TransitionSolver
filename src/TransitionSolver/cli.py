@@ -41,8 +41,9 @@ LEVELS = {k.lower(): getattr(logging, k) for k in ["DEBUG", "INFO", "WARNING", "
 @click.option("--apply", required=False, help="Apply settings to a potential", type=(str, ast.literal_eval), multiple=True)
 @click.option('--force', help='Force recompilation', required=False, default=False, is_flag=True, type=bool)
 @click.option('--action-ct', help='Use CosmoTransitions for action', required=False, default=False, is_flag=True, type=bool)
+@click.option('--t-high', help='High temperature to consider in PhaseTracer', required=False, default=1e3, type=float)
 @click.pass_context
-def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, vw, detector, pta, show, level, apply, force, action_ct):
+def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, vw, detector, pta, show, level, apply, force, action_ct, t_high):
     """
     Run TransitionSolver on a particular model and point
 
@@ -66,7 +67,7 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
         exe_name = build_phase_tracer(model, model_header, model_lib, model_namespace, force)
 
     with Status(f"Running PhaseTracer {exe_name}"):
-        phase_structure_raw = run_phase_tracer(exe_name, point_file_name)
+        phase_structure_raw = run_phase_tracer(exe_name, point_file_name, t_high)
         phase_structure = read_phase_tracer(phase_structure_raw)
 
     with Status("Analyzing phase history"):
