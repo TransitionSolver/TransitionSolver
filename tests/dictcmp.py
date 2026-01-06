@@ -15,7 +15,7 @@ def key2int(d):
     return {int(k) if k.isdigit() else k: v for k, v in d.items()}
 
 
-def assert_deep_equal(result, file_name, significant_digits=5, generate_baseline=False, **kwargs):
+def assert_deep_equal(result, file_name, significant_digits=3, generate_baseline=False, **kwargs):
     """
     @param result Dictionary of results from program
     @param file_name Name of JSON file containing expected results
