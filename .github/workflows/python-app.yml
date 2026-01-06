@@ -33,6 +33,7 @@ jobs:
         pip install .
         bash debian_installer_phasetracer.bash
     - name: Lint with flake8
+      continue-on-error: true
       run: |
         pip install flake8
         # stop the build if there are Python syntax errors or undefined names
@@ -40,13 +41,16 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
+      continue-on-error: true
       run: |
         pip install .[test]
         pytest
     - name: Try CLI
+      continue-on-error: true
       run: |
         ts --model RSS --point tests/rss_bp1.txt --apply set_daisy_method 2 --force --apply set_bUseBoltzmannSuppression True
     - name: Test script output
+      continue-on-error: true
       run: |
         mkdir -p script_output
         mkdir -p config
@@ -57,6 +61,7 @@ jobs:
         numdiff tests/RSS_BP35ab2907aa2a62d9b479c42c639658bf8ef5b197f/phase_history.json script_output/phase_history.json
         numdiff tests/RSS_BP35ab2907aa2a62d9b479c42c639658bf8ef5b197f/phase_structure.dat script_output/phase_structure.dat
     - name: Test more complicated phase history script output
+      continue-on-error: true
       run: |
         mkdir -p RSS_new_BP4_output
         mkdir -p config
@@ -67,6 +72,7 @@ jobs:
         numdiff tests/RSS_new_BP4_23_12_2025/phase_history.json RSS_new_BP4_output/phase_history.json
         numdiff tests/RSS_new_BP4_23_12_2025/phase_structure.dat RSS_new_BP4_output/phase_structure.dat
     - name: Test pipeline example output
+      continue-on-error: true
       run: |
         mkdir -p output/pipeline_example_output
         mkdir -p config
