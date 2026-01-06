@@ -21,12 +21,12 @@ THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 def test_dof(generate_baseline):
     phase_tracer_file = THIS / "rss_bp1_phase_structure.dat"
     result = phasehistory.trace_dof(RSS_BP1, phase_tracer_file=phase_tracer_file)
-    assert_deep_equal(result, THIS / "rss_bp1_dof.json", generate_baseline=generate_baseline)
+    assert_deep_equal(result, THIS / "baseline" / "rss_bp1_dof.json", generate_baseline=generate_baseline)
 
 
 @pytest.mark.mpl_image_compare(tolerance=20)
 def test_plot_dof():
-    with open(THIS / "rss_bp1_dof.json", "r") as f:
+    with open(THIS / "baseline" / "rss_bp1_dof.json", "r") as f:
         expected = json.load(f)
 
     fig, ax = plt.subplots()
