@@ -17,18 +17,19 @@ from dictcmp import assert_deep_equal
 
 
 THIS = Path(os.path.dirname(os.path.abspath(__file__)))
+BASELINE = THIS / "baseline"
 
 phase_structure_file = THIS / "rss_bp1_phase_structure.dat"
-phase_history_file = THIS / "rss_bp1_phase_structure.json"
 
-with open(THIS / phase_history_file, 'r') as f:
+
+with open(BASELINE / "rss_bp1_phase_structure.json", 'r') as f:
     phase_history = json.load(f)
 
 
 def test_report(generate_baseline):
     analyser = GWAnalyser(RSS_BP1, phase_structure_file, phase_history)
     report = analyser.report(lisa)
-    assert_deep_equal(report, THIS / "rss_bp1_gw.json", generate_baseline=generate_baseline)
+    assert_deep_equal(report, BASELINE / "rss_bp1_gw.json", generate_baseline=generate_baseline)
 
 
 @pytest.mark.mpl_image_compare
