@@ -46,7 +46,6 @@ jobs:
         path: /home/runner/.PhaseTracer/
         key: ${{ runner.os }}_phase_tracer
     - name: Lint with flake8
-      continue-on-error: true
       run: |
         pip install flake8
         # stop the build if there are Python syntax errors or undefined names
@@ -54,12 +53,10 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
-      continue-on-error: true
       run: |
         pip install .[test]
         pytest
     - name: Try CLI
-      continue-on-error: true
       run: |
         ts --model RSS --point tests/rss_bp1.txt --apply set_daisy_method 2 --apply set_bUseBoltzmannSuppression True --no-show --detector LISA --action-ct --apply set_useGSResummation True --force
     - name: Install script test dependencies
