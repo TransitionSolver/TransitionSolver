@@ -33,6 +33,7 @@ def phase_tracer_info():
     @returns Information about PhaseTracer installation
     """
     version = subprocess.check_output(["git", "describe", "--dirty", "--always"], cwd=PT_HOME, text=True)
+    version = version.strip()
     build_time = os.path.getmtime(PT_LIB)
     build_time = str(datetime.datetime.fromtimestamp(build_time))
     return {"HOME": str(PT_HOME), "GIT": version, "BUILT": build_time}
