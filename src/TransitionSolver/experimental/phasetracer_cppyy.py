@@ -35,4 +35,4 @@ def run_phase_tracer(potential):
     with Status("Running TransitionFinder"):
         tf = PhaseTracer.TransitionFinder(pf)
         transitions = tf.find_transitions()
-        paths = tf.find_transition_paths(potential)  # TODO why take potential again?!
+        paths = tf.find_transition_paths()
