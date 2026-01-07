@@ -9,7 +9,7 @@ nucleation temperature.
 import numpy as np
 
 from TransitionSolver import load_potential
-from TransitionSolver import build_phase_tracer, phase_tracer, find_phase_history
+from TransitionSolver import build_phase_tracer, read_phase_tracer, run_phase_tracer, find_phase_history
 from TransitionSolver.benchmarks import RSS_BP1_POINT
 
 
@@ -36,7 +36,8 @@ for i in range(10):
     
     # Run PhaseTracer and parse output
     
-    phase_structure = phase_tracer(exe_name, point=point, t_high=t_high)
+    phase_structure_raw = run_phase_tracer(exe_name, point=point, t_high=t_high)
+    phase_structure = read_phase_tracer(phase_structure_raw)
     
     # Make potential for this point
     
