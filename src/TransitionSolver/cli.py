@@ -18,6 +18,7 @@ from . import load_potential
 from . import build_phase_tracer, read_phase_tracer, run_phase_tracer, find_phase_history
 from . import plot_summary
 from . import saveall
+from .phasetracer import DEFAULT_NAMESPACE
 
 
 console = Console()
@@ -34,7 +35,7 @@ LEVELS = {k.lower(): getattr(logging, k) for k in ["DEBUG", "INFO", "WARNING", "
 @click.option('--model', help='Model name', required=True, type=str)
 @click.option('--model-header', help='Model header-file', required=False, default=None, type=click.Path(exists=True))
 @click.option('--model-lib', help='Library for model if not header-only', required=False, default=None, type=click.Path(exists=True))
-@click.option('--model-namespace', help='Namespace for model', required=False, default="EffectivePotential", type=str)
+@click.option('--model-namespace', help='Namespace for model', required=False, default=DEFAULT_NAMESPACE, multiple=True)
 @click.option('--point', 'point_file_name', help='Parameter point file', type=click.Path(exists=True), required=True)
 @click.option('--vw', default=None, help='Bubble wall velocity', type=click.FloatRange(0.))
 @click.option('--detector', default=[], help='Gravitational wave detector', type=click.Choice(DETECTORS.keys()), multiple=True)
@@ -61,13 +62,13 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
         model_header = f"{model}.hpp"
 
     point = np.loadtxt(point_file_name)
-    potential = load_potential(point, model_header, class_name=model, lib_name=model_lib)
+    potential = load_potential(model_header, model, model_lib, model_namespace)(point)
 
     for s, t in apply:
         getattr(potential, s)(t)
 
     with Status(f"Building PhaseTracer {model}"):
-        exe_name = build_phase_tracer(model, model_header, model_lib, model_namespace, force)
+        exe_name = build_phase_tracer(model_header, model, model_lib, model_namespace, force)
 
     with Status(f"Running PhaseTracer {exe_name}"):
         phase_structure_raw = run_phase_tracer(exe_name, point_file_name, t_high=t_high)

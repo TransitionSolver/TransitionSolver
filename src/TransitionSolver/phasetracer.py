@@ -28,6 +28,7 @@ CXX = "g++"
 TEMPLATE_CPP = os.path.join(CWD, "interface.cpp")
 LIBS = [EP_LIB, PT_LIB, "-lboost_log", "-lboost_filesystem", "-lnlopt"]
 PT_UNIT_TEST = PT_HOME / "bin" / "unit_tests"
+DEFAULT_NAMESPACE = ("EffectivePotential",)
 
 
 def phase_tracer_info():
@@ -48,24 +49,25 @@ def rpath(name):
     return f"-Wl,-rpath={name}"
 
 
-def build_phase_tracer(model, model_header, model_lib=None, model_namespace="EffectivePotential", force=False):
+def build_phase_tracer(model_header, model=None, model_lib=None, model_namespace=DEFAULT_NAMESPACE, force=False):
     """
     Build PhaseTracer model for use in TransitionSolver
     
     @param model Name of model in C++ header
     @param model_header Header file where model defined
     @param model_lib Library for model, if not header-only
-    @param model_namespace Any namespaces under which model appears in header
+    @param model_namespace Any namespaces under which model appears in header, as list
     @param force Force recompilation even if executable already exists
     
     @returns Path to built executable
     """
+    if model is None:
+        model = str(Path(model_header).stem)
+    
     exe_name = PT_HOME / model
 
     if os.path.exists(exe_name) and not force:
         return exe_name
-
-    cpp_name = os.path.join(PT_HOME, f"{model}.cpp")
 
     cmd = [CXX, TEMPLATE_CPP, "-o", exe_name, "-I", PT_INCLUDE, "-I", EP_MODELS, "-I", EP_INCLUDE, rpath(EP_HOME / 'lib'), rpath(PT_HOME / 'lib')] + LIBS
 
@@ -73,7 +75,8 @@ def build_phase_tracer(model, model_header, model_lib=None, model_namespace="Eff
         cmd.append(model_lib)
 
     if model_namespace:
-        model = f"{model_namespace}::{model}"
+        joined = "::".join(model_namespace)
+        model = f"{joined}::{model}"
 
     cmd.append(f"-DMODEL_NAME_WITH_NAMESPACE={model}")
     cmd.append(f'-DMODEL_HEADER="{model_header}"')

@@ -12,7 +12,7 @@ from numpy import pi
 from cosmoTransitions.generic_potential import generic_potential
 
 from . import eigen
-from .phasetracer import PT_HOME
+from .phasetracer import PT_HOME, DEFAULT_NAMESPACE
 
 EP_HOME = PT_HOME / "EffectivePotential"
 EP_INCLUDE = EP_HOME / "include" / "effectivepotential"
@@ -76,9 +76,11 @@ class MixinCosmoTransitions(generic_potential):
     TnTrans = None 
     
     def Vtot(self, phi, T, *args, **kwargs):
+        T = np.array(T).item()
         return self(phi, T)
         
     def V1T_from_X(self, phi, T, *args, **kwargs):
+        T = np.array(T).item()
         if phi.ndim > 1:
             return np.array([self.V1T_from_X(p, T) for p in phi])
         return self.V1T(eigen.vector(phi), T)
@@ -88,37 +90,40 @@ class MixinCosmoTransitions(generic_potential):
         return self.get_n_scalars()
 
 
-def load_potential(params, header_file, class_name=None, lib_name=None):
+def load_potential(model_header, model=None, model_lib=None, model_namespace=DEFAULT_NAMESPACE):
     """
-    @param params Parameters for constructor e.g., Lagrangian parameters
-    @param header_file Header file where model defined
-    @param class_name Name of model in header file
-    @param lib_name If model compiled (rather than header only), name of built file
+    @param model Name of model in C++ header
+    @param model_header Header file where model defined
+    @param model_lib Library for model, if not header-only
+    @param model_namespace Any namespaces under which model appears in header, as list
 
     @returns Potential object
     """
-    if class_name is None:
-        class_name = str(Path(header_file).stem)
+    if model is None:
+        model = str(Path(model_header).stem)
 
     # include headers
 
     for pth in [EP_INCLUDE, EP_MODELS]:
         cppyy.add_include_path(str(pth))
 
-    cppyy.include(header_file)
+    cppyy.include(model_header)
 
     # load libraries
 
     cppyy.load_library(str(EP_LIB))
 
-    if lib_name is not None:
-        cppyy.load_library(lib_name)
+    if model_lib is not None:
+        cppyy.load_library(model_lib)
 
     # make potential
 
-    Potential = getattr(cppyy.gbl.EffectivePotential, class_name)
+    joined = cppyy.gbl
+    for n in model_namespace:
+        joined = getattr(joined, n)
+    Potential = getattr(joined, model)
 
     class ExtendedPotential(MixinPotential, Potential, MixinCosmoTransitions):
         pass
 
-    return ExtendedPotential(params)
+    return ExtendedPotential

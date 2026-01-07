@@ -27,12 +27,12 @@ def test_pt_unit_test():
     
     
 def test_build_phase_tracer():
-    exe_name = build_phase_tracer("RSS", model_header="RSS.hpp", force=True)
+    exe_name = build_phase_tracer("RSS.hpp", force=True)
     assert exe_name == phasetracer.PT_HOME / "RSS"
 
 
 def test_run_phase_tracer(generate_baseline):
-    exe_name = build_phase_tracer("RSS", model_header="RSS.hpp", force=True)
+    exe_name = build_phase_tracer("RSS.hpp", force=True)
     phase_structure_file = BASELINE / "rss_bp1_phase_structure.dat"
 
     result = run_phase_tracer(exe_name, point=benchmarks.RSS_BP1_POINT)
