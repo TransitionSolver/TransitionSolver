@@ -11,6 +11,7 @@ import numpy as np
 import rich
 from rich.text import Text
 from rich.status import Status
+from rich.console import Console
 
 from . import gws
 from . import load_potential
@@ -18,6 +19,8 @@ from . import build_phase_tracer, read_phase_tracer, run_phase_tracer, find_phas
 from . import plot_summary
 from . import saveall
 
+
+console = Console()
 
 np.set_printoptions(legacy='1.25')
 logging.captureWarnings(True)
@@ -74,7 +77,8 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
         tr_report = find_phase_history(potential, phase_structure, vw=vw, action_ct=action_ct)
         tr_fig = plot_summary(tr_report, show=show)
 
-    rich.print(tr_report)
+    console.rule("[bold red]Transitions")
+    rich.pretty.pprint(tr_report, console=console, max_length=10)
     
     detectors = [DETECTORS[d] for d in detector]
     ptas = [PTAS[p] for p in pta]
@@ -84,9 +88,11 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
         gw_report = analyser.report(*detectors)
         gw_fig = analyser.plot(detectors=detectors, ptas=ptas, show=show)
 
-    rich.print(gw_report)
+    console.rule("[bold red]Gravitational waves")
+    console.print(gw_report)
 
     with Status("Saving results"):
         folder = saveall(tr_report, gw_report, tr_fig, gw_fig, ctx)
 
-    rich.print(Text.assemble("Results saved to: ", (folder, "bold magenta")))
+    console.rule("[bold red]Results")
+    console.print(Text.assemble("Results saved to: ", (folder, "bold magenta")))
