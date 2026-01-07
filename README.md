@@ -71,11 +71,17 @@ ts --model RSS --point ./tests/rss_bp1.txt
 ```
 You can pass a model and model header file etc, and parameter point.
 
-# Scans
+# Use as a library and scanning
+
+You can use `TransitionSolver` inside a parameter scan. To do so, you need to install `TransitionSolver` as a library (perhaps inside a virtual envrionment)
+```bash
+pip install git+https://github.com/TransitionSolver/TransitionSolver
+```
+Then see the example `scan.py` for example usage. In that example, we perform a scan in the real scalar singlet (RSS) model.
 
 # Defining a model
 
-`TransitionSolver` uses models written in C++ in `PhaseTracer`. A new model should implment either a `Potential` or `OneLoopPotential` base class.
+`TransitionSolver` uses models written in C++ in `PhaseTracer`. A new model should implement either a `Potential` or `OneLoopPotential` base class.
 
 # Credit and citations
 
