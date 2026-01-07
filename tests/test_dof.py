@@ -3,12 +3,11 @@ Test the number of degrees of freedom
 =====================================
 """
 
-import json_numpy as json
 import os
 from pathlib import Path
 
+import json_numpy as json
 import matplotlib.pyplot as plt
-import numpy as np
 import pytest
 
 from TransitionSolver import phasehistory, RSS_BP1

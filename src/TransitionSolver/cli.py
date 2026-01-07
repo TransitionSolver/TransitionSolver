@@ -67,7 +67,7 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
         exe_name = build_phase_tracer(model, model_header, model_lib, model_namespace, force)
 
     with Status(f"Running PhaseTracer {exe_name}"):
-        phase_structure_raw = run_phase_tracer(exe_name, point_file_name, t_high)
+        phase_structure_raw = run_phase_tracer(exe_name, point_file_name, t_high=t_high)
         phase_structure = read_phase_tracer(phase_structure_raw)
 
     with Status("Analyzing phase history"):

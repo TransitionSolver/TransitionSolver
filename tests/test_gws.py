@@ -46,7 +46,6 @@ def test_snr():
     
 @pytest.mark.mpl_image_compare
 def test_plot_pta():
-    f = np.logspace(-4, -1, 400)
     fig, ax = plt.subplots()
 
     ax.set_xscale('log')

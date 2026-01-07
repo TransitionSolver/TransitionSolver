@@ -7,6 +7,7 @@ import os
 import datetime
 from pathlib import Path
 import subprocess
+import tempfile
 
 import numpy as np
 
@@ -48,7 +49,13 @@ def rpath(name):
 
 def build_phase_tracer(model, model_header, model_lib=None, model_namespace="EffectivePotential", force=False):
     """
-    Build PhaseTracer model for use in TransitionSolver.
+    Build PhaseTracer model for use in TransitionSolver
+    
+    @param model Name of model in C++ header
+    @param model_header Header file where model defined
+    @param model_lib Library for model, if not header-only
+    @param model_namespace Any namespaces under which model appears in header
+    @param force Force recompilation even if executable already exists
     
     @returns Path to built executable
     """
@@ -78,13 +85,24 @@ def build_phase_tracer(model, model_header, model_lib=None, model_namespace="Eff
     return exe_name
 
 
-def run_phase_tracer(exe_name, point_file_name, t_high=1e3) -> PhaseStructure:
+def run_phase_tracer(exe_name, point_file=None, point=None, t_high=1e3) -> str:
     """
     Run PhaseTracer and read serialzied data
     
-    @returns PhaseTracer serialied output as string
+    @param exe_name Name of executable
+    @param point_file File containing parameter point
+    @param point Array containing parameter point
+    @param t_high Highest temperature to consider in PhaseTracer
+    
+    @returns PhaseTracer serialised output as string
     """
-    run = subprocess.run([exe_name, point_file_name, str(t_high)], capture_output=True, text=True, check=False)
+    if point_file is None:
+        with tempfile.NamedTemporaryFile() as f:
+            point = np.array(point).reshape(1, len(point))
+            np.savetxt(f.name, point)
+            return run_phase_tracer(exe_name, f.name, t_high=t_high)
+
+    run = subprocess.run([exe_name, point_file, str(t_high)], capture_output=True, text=True, check=False)
     if run.returncode != 0:
         raise RuntimeError(run.stderr)
     return run.stdout
@@ -107,6 +125,8 @@ def read_arr(data):
 def read_phase_tracer(phase_tracer_data=None, phase_tracer_file=None) -> PhaseStructure:
     """
     Read serialised data from PhaseTracer
+    
+    @returns Phase structure object from PhaseTracer serialised data
     """
     if phase_tracer_file is not None:
         with open(phase_tracer_file, encoding="utf8") as f:
