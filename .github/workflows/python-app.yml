@@ -58,7 +58,7 @@ jobs:
         pytest
     - name: Try CLI
       run: |
-        ts --model RSS --point tests/rss_bp1.txt --apply set_daisy_method 2 --apply set_bUseBoltzmannSuppression True --no-show --detector LISA --action-ct --apply set_useGSResummation True --force
+        ts --model RSS --point input/RSS/RSS_BP1.txt --apply set_daisy_method 2 --apply set_bUseBoltzmannSuppression True --no-show --detector LISA --action-ct --apply set_useGSResummation True --force
     - name: Install script test dependencies
       run: |
         mkdir -p config
