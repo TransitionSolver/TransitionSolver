@@ -16,7 +16,8 @@ from .analysis.phase_structure import Phase, Transition, PhaseStructure
 
 CWD = os.path.dirname(os.path.abspath(__file__))
 
-PT_HOME = Path(os.getenv("PHASETRACER", Path.home() / ".PhaseTracer"))
+DEFAULT = Path.home() / ".TransitionSolver" / "phasetracer-src"
+PT_HOME = Path(os.getenv("PHASETRACER", DEFAULT))
 PT_LIB = PT_HOME / "lib" / "libphasetracer.so"
 PT_INCLUDE = PT_HOME / "include"
 EP_HOME = PT_HOME / "EffectivePotential"

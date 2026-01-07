@@ -14,11 +14,7 @@ import cppyy
 from cosmoTransitions import pathDeformation
 
 from . import eigen
-
-
-PT_HOME = Path(os.getenv("PHASETRACER", Path.home() / ".PhaseTracer"))
-PT_LIB = PT_HOME / "lib" / "libphasetracer.so"
-PT_INCLUDE = PT_HOME / "include"
+from .phasetracer import PT_HOME, PT_LIB, PT_INCLUDE
 
 
 cppyy.load_library(str(PT_LIB))

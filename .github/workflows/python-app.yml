@@ -27,23 +27,21 @@ jobs:
     - uses: awalsh128/cache-apt-pkgs-action@latest
       with:
         packages: git cmake libalglib-dev libnlopt-cxx-dev libeigen3-dev libboost-filesystem-dev libboost-log-dev libgsl-dev numdiff
-    - name: Install Python packages
-      run: |
-        python -m pip install --upgrade pip
-        pip install .
     - name: Restore PhaseTracer
       continue-on-error: true
       uses: actions/cache/restore@v4
       with:
-        path: /home/runner/.PhaseTracer/
+        path: /home/runner/.TransitionSolver
         key: ${{ runner.os }}_phase_tracer
-    - name: Install PhaseTracer
+    - name: Install TransitionFinder
       run: |
-        bash debian_installer_phasetracer.bash
+        sudo apt install git cmake libalglib-dev libnlopt-cxx-dev libeigen3-dev libboost-filesystem-dev libboost-log-dev libgsl-dev numdiff
+        python -m pip install --upgrade pip
+        pip install .
     - name: Save PhaseTracer
       uses: actions/cache/save@v4
       with:
-        path: /home/runner/.PhaseTracer/
+        path: /home/runner/.TransitionSolver
         key: ${{ runner.os }}_phase_tracer
     - name: Lint with flake8
       run: |

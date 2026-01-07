@@ -15,24 +15,24 @@ TransitionSolver
 
 # Installation 
 
-Install `TransitionSolver` by
+`TransitionSolver` requires `PhaseTracer`, which has several dependencies. On Ubuntu/debian-based systems, the dependencies may be installed by
+```bash
+sudo apt install git cmake libalglib-dev libnlopt-cxx-dev libeigen3-dev libboost-filesystem-dev libboost-log-dev libgsl-dev
+```
+See [here](https://github.com/PhaseTracer/PhaseTracer#requirements) for further installation instructions and the requirements for running `PhaseTracer`.
 
+You can then install `TransitionSolver` by
 ```bash
 pipx install git+https://github.com/TransitionSolver/TransitionSolver
 ```
 This may require e.g.
 ```
-apt install python3-pipx
+sudo apt install python3-pipx
 ```
-
-Running `TransitionSolver` requires `PhaseTracer`, which can be installed by
+This installs `PhaseTracer` in `$HOME/.TransitionSolver`. To use an alternative version or installation of `PhaseTracer`, you can
 ```bash
-# install PhaseTracer and dependencies on debian-based system e.g. Ubuntu
-wget https://raw.githubusercontent.com/TransitionSolver/TransitionSolver/refs/heads/main/debian_installer_phasetracer.bash -O - | sudo bash 
-# or handle installation yourself and do
-export PHASETRACER=/path/to/your/phasetracer/
+export PHASETRACER=/path/to/your/phasetracer
 ```
-See [here](https://github.com/PhaseTracer/PhaseTracer#requirements) for further installation instructions and the requirements for running `PhaseTracer`.
 
 # Command line interface
 

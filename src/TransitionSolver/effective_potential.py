@@ -12,9 +12,9 @@ from numpy import pi
 from cosmoTransitions.generic_potential import generic_potential
 
 from . import eigen
+from .phasetracer import PT_HOME
 
-
-EP_HOME = Path(os.getenv("PHASETRACER", Path.home() / ".PhaseTracer")) / "EffectivePotential"
+EP_HOME = PT_HOME / "EffectivePotential"
 EP_INCLUDE = EP_HOME / "include" / "effectivepotential"
 EP_MODELS = EP_HOME / "include" / "models"
 EP_LIB = EP_HOME / "lib" / "libeffectivepotential.so"
