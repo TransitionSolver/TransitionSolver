@@ -96,6 +96,9 @@ def main():
         print('No valid transition path to the current phase of the Universe.')
         return
 
+    # Create the potential using the parameter point.
+    potential = RealScalarSingletModel_Boltz(*parameterPoint)
+
     # Load and configure a PhaseHistoryAnalyser object.
     analyser = PhaseHistoryAnalyser(potential, phaseStructure)
     analyser.bDebug = True
@@ -103,9 +106,6 @@ def main():
     analyser.bReportAnalysis = True
     analyser.bReportPaths = True
     analyser.timeout_phaseHistoryAnalysis = 100
-
-    # Create the potential using the parameter point.
-    potential = RealScalarSingletModel_Boltz(*parameterPoint)
 
     # Analyse the phase history.
     analyser.analyse(vw=0.9)
