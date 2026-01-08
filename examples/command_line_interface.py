@@ -98,14 +98,6 @@ def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str,
         print('No valid transition path to the current phase of the Universe.')
         return
 
-    # Load and configure a PhaseHistoryAnalyser object.
-    analyser = PhaseHistoryAnalyser(potential, phaseStructure)
-    analyser.bDebug = bDebug
-    analyser.bPlot = bPlot
-    analyser.bReportAnalysis = bDebug
-    analyser.bReportPaths = bDebug
-    analyser.timeout_phaseHistoryAnalysis = 500
-
     # Create the potential using the parameter point.
     if potentialClass == SMplusCubic:
         potential = potentialClass(*parameterPoint, bUseBoltzmannSuppression=bUseBoltzmannSuppression)
@@ -115,6 +107,14 @@ def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str,
     # to analysePhaseHistory_supplied if True the vw passed to analysePhaseHistory_supplied
     # is not used
     bUseCJvw = True
+
+    # Load and configure a PhaseHistoryAnalyser object.
+    analyser = PhaseHistoryAnalyser(potential, phaseStructure)
+    analyser.bDebug = bDebug
+    analyser.bPlot = bPlot
+    analyser.bReportAnalysis = bDebug
+    analyser.bReportPaths = bDebug
+    analyser.timeout_phaseHistoryAnalysis = 500
 
     origin = np.array([0, 0])
     vev = potential.approxZeroTMin()[0]
