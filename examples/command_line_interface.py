@@ -99,7 +99,7 @@ def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str,
         return
 
     # Load and configure a PhaseHistoryAnalyser object.
-    analyser = PhaseHistoryAnalyser()
+    analyser = PhaseHistoryAnalyser(potential, phaseStructure)
     analyser.bDebug = bDebug
     analyser.bPlot = bPlot
     analyser.bReportAnalysis = bDebug
@@ -119,11 +119,11 @@ def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str,
     origin = np.array([0, 0])
     vev = potential.approxZeroTMin()[0]
     # Analyse the phase history.
-    paths, _, _ = analyser.analysePhaseHistory_supplied(potential, phaseStructure)
+    analyser.analyse()
 
     # Write the phase history report. Again, this will be handled within PhaseHistoryAnalysis in a future version of the
     # code.
-    report = writePhaseHistoryReport(outputFolder + '/phase_history.json', paths, phaseStructure)
+    report = writePhaseHistoryReport(outputFolder + '/phase_history.json', analyser.paths, phaseStructure)
     
     if GWs == 0:
         return

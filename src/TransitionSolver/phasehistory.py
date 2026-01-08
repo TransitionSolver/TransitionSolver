@@ -10,18 +10,6 @@ from .analysis.phase_history_analysis import PhaseHistoryAnalyser
 from . import read_phase_tracer
 
 
-def _make_report(paths, phase_structure, analysis_metrics):
-    """
-    @returns Report phase history from TransitionSolver objects
-    """
-    report = {}
-    report['transitions'] = [t.report() for t in phase_structure.transitions]
-    report['paths'] = [p.report() for p in paths]
-    report['valid'] = any(p.is_valid for p in paths)
-    report['analysisTime'] = analysis_metrics.analysisElapsedTime
-    return report
-
-
 def find_phase_history(potential, phase_structure=None, phase_tracer_file=None, vw=None, action_ct=True):  # TODO make false
     """
     @param potential Effective potential
@@ -38,11 +26,9 @@ def find_phase_history(potential, phase_structure=None, phase_tracer_file=None, 
         raise RuntimeError(
             'No valid transition path to the current phase of the Universe')
 
-    analyser = PhaseHistoryAnalyser()
-    paths, _, analysis_metrics = analyser.analysePhaseHistory_supplied(
-        potential, phase_structure, vw=vw, action_ct=action_ct)
-
-    return _make_report(paths, phase_structure, analysis_metrics)
+    analyser = PhaseHistoryAnalyser(potential, phase_structure)
+    analyser.analyse(vw=vw, action_ct=action_ct)
+    return analyser.report()
 
 
 def trace_dof(potential, phase_structure=None, phase_tracer_file=None):

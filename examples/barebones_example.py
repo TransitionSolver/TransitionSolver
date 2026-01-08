@@ -97,7 +97,7 @@ def main():
         return
 
     # Load and configure a PhaseHistoryAnalyser object.
-    analyser = PhaseHistoryAnalyser()
+    analyser = PhaseHistoryAnalyser(potential, phaseStructure)
     analyser.bDebug = True
     analyser.bPlot = True
     analyser.bReportAnalysis = True
@@ -108,11 +108,11 @@ def main():
     potential = RealScalarSingletModel_Boltz(*parameterPoint)
 
     # Analyse the phase history.
-    paths, _, _ = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=0.9)
+    analyser.analyse(vw=0.9)
 
     # Write the phase history report. Again, this will be handled within PhaseHistoryAnalysis in a future version of the
     # code.
-    writePhaseHistoryReport(outputFolder + '/phase_history.json', paths, phaseStructure)
+    writePhaseHistoryReport(outputFolder + '/phase_history.json', analyser.paths, phaseStructure)
 
 
 if __name__ == "__main__":

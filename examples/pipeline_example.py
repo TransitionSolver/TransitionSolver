@@ -253,16 +253,13 @@ def pipeline_getPhaseStructure(settings: PipelineSettings):
 
 
 def pipeline_analysePhaseHistory(potential, phaseStructure, settings: PipelineSettings):
-    analyser = PhaseHistoryAnalyser()
+    analyser = PhaseHistoryAnalyser(potential, phaseStructure)
     settings.fillPhaseHistoryAnalyserSettings(analyser)
 
     
     vw = settings.function_getWallVelocity()
-    paths, timedOut, _ = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=vw)
-    if timedOut:
-        return 'Phase history analysis timed out'
-
-    writePhaseHistoryReport(paths, phaseStructure, settings)
+    analyser.analyse(vw=vw)
+    writePhaseHistoryReport(analyser.paths, phaseStructure, settings)
 
     return 'Success'
     # catch errors like this to preserve scans, just get rid of try and catch if debugging to get the stack traces. 

@@ -3,214 +3,175 @@ Analyse phase history
 =====================
 """
 
-from __future__ import annotations
-
-from typing import Optional
-
-from ..models.analysable_potential import AnalysablePotential
-from .phase_structure import PhaseStructure, Phase
 from .transition_analysis import TransitionAnalyser, Timer
 from .transition_graph import TransitionEdge, Path, PhaseNode
 
 
 class PhaseHistoryAnalyser:
-    bDebug: bool = False
-    bReportAnalysis: bool = False
-    bReportPaths: bool = False
-    bCheckPossibleCompletion: bool = True
-    bAllowErrorsForTn: bool = True
-    bAnalyseTransitionPastCompletion: bool = False
-    bForcePhaseOnAxis: bool = False
-    time_limit: float = 200.
 
-    # Second return value is whether we timed out.
-    def analysePhaseHistory_supplied(self, potential: AnalysablePotential, phaseStructure: PhaseStructure, vw=None, action_ct=True) -> tuple[list[Path], bool, Optional[Timer]]:  # TODO make false
+    def __init__(self, potential, phase_structure, time_limit=200.):
+        self.potential = potential
+        self.phase_structure = phase_structure
+        self.time_limit = time_limit
+        self.paths = []
 
-        timer = Timer(self.time_limit)
-        if self.bDebug:
-            print('Parameter point:', potential.getParameterPoint())
+    def report(self):
+        """
+        @returns Report phase history from TransitionSolver objects
+        """
+        report = {}
+        report['transitions'] = [t.report() for t in self.phase_structure.transitions]
+        report['paths'] = [p.report() for p in self.paths]
+        report['valid'] = any(p.is_valid for p in self.paths)
+        return report
 
-        # Extract high and low temperature phases.
-        phases = phaseStructure.phases
-        transitions = phaseStructure.transitions
-        paths = phaseStructure.paths
+    @property
+    def unique_transition_temperatures(self):
+        return list({t.properties.Tc for t in self.phase_structure.transitions})
 
-        # TODO: added on 23/06/2022 to handle the case where PhaseTracer reports no possible transition paths. Need to
-        #  make sure PhaseTracer would have handled the case where we could stay in the same phase.
-        if not paths:
-            return [], False, None
-       
-        # Find the highest temperature.
-        high_t = [phase.T[-1] for phase in phases]
-        highTemp = max(high_t)
-        bHighTemperaturePhase = [t == highTemp for t in high_t]
+    @property
+    def unique_transition_idx(self):
+        unique = {t.properties.Tc: i for i, t in enumerate(self.phase_structure.transitions)}
+        return list(unique.values())
 
-        # Find all low temperature phases. These are needed to check if a path is valid, i.e. if it terminates at a low
-        # temperature phase.
-        # TODO: why was it necessary to do it this way?
-        bLowTemperaturePhase = [False]*len(phases)
-        for i in range(len(paths)):
-            if paths[i][-1] < 0:
-                phase = -(paths[i][-1]+1)
+    @property
+    def is_high_temperature_phase(self):
+        """
+        @returns Find all high temperature phases
+        """
+        highest_temperatures = [phase.T[-1] for phase in self.phase_structure.phases]
+        max_temperature = max(highest_temperatures)
+        return [
+            temp == max_temperature for temp in highest_temperatures
+        ]
+
+    @property
+    def is_low_temperature_phase(self):
+        """
+        Find all low temperature phases. These are needed to check if a path is valid, i.e. if it terminates at a low
+        temperature phase.
+        """
+        is_low_temperature_phase = [False] * len(self.phase_structure.phases)
+
+        for path in self.phase_structure.paths:
+            last_step = path[-1]
+            if last_step < 0:
+                phase_index = -(last_step + 1)
             else:
-                phase = transitions[paths[i][-1]].true_phase
-            bLowTemperaturePhase[phase] = True
+                phase_index = self.phase_structure.transitions[last_step].true_phase
+            is_low_temperature_phase[phase_index] = True
 
-        if self.bDebug:
-            print('Low temperature phases:', [i for i in range(len(phases)) if bLowTemperaturePhase[i]])
+        return is_low_temperature_phase
 
-        # If there are no transitions, check if any phase is both a high and low temperature phase. This constitutes a
-        # valid path, but with no transitions between phases.
-        if not transitions:
-            validPaths = []
-
-            for i, p in enumerate(phases):
-                if bLowTemperaturePhase[i] and bHighTemperaturePhase[i]:
-                    # The temperature of this phase might as well be the highest sampled temperature.
-                    validPaths.append(Path(PhaseNode(i, p.T[-1])))
-
-            if self.bReportPaths:
-                print('No transitions.')
-                print('Valid paths:', validPaths)
-            return validPaths, False, None
-
-        unique = {t.properties.Tc: i for i, t in enumerate(transitions)}
-        uniqueTransitionTemperatures = list(unique.keys())
-        uniqueTransitionTemperatureIndices = list(unique.values())
-
-        transitionLists = [[]] * len(uniqueTransitionTemperatures)
+    def phase_indexed_trans(self, phase_nodes):
         # The first dimension is the phase index.
-        phaseIndexedTransitions: list[list[TransitionEdge]] = [[] for _ in range(len(phases))]
+        phase_indexed_trans: list[list[TransitionEdge]] = [[] for _ in range(len(self.phase_structure.phases))]
 
-        phaseNodes: list[list[PhaseNode]] = [[] for _ in range(len(phases))]
-
-        # Construct phase nodes segmenting each phase at each unique transition temperature.
-        for i in range(len(phases)):
-            for j in range(len(uniqueTransitionTemperatures)):
-                if phases[i].T[-1] >= uniqueTransitionTemperatures[j] >= phases[i].T[0]:
-                    phaseNodes[i].append(PhaseNode(i, uniqueTransitionTemperatures[j]))
-
-        for i in range(len(uniqueTransitionTemperatures)):
-            if i == len(uniqueTransitionTemperatures)-1:
-                maxIndex = len(transitions)
+        for i in range(len(self.unique_transition_temperatures)):
+            if i == len(self.unique_transition_temperatures)-1:
+                max_idx = len(self.phase_structure.transitions)
             else:
-                maxIndex = uniqueTransitionTemperatureIndices[i+1]
+                max_idx = self.unique_transition_idx[i+1]
 
-            for j in range(uniqueTransitionTemperatureIndices[i], maxIndex):
-                falsePhase = transitions[j].false_phase
-                truePhase = transitions[j].true_phase
+            for j in range(self.unique_transition_idx[i], max_idx):
+                false_phase = self.phase_structure.transitions[j].false_phase
+                true_phase = self.phase_structure.transitions[j].true_phase
 
-                falsePhaseNodeIndex = -1
-                truePhaseNodeIndex = -1
+                false_phase_node_index = next((k for k, node in enumerate(phase_nodes[false_phase]) if node.temperature == self.unique_transition_temperatures[i]), None)
+                true_phase_node_index = next((k for k, node in enumerate(phase_nodes[true_phase]) if node.temperature == self.unique_transition_temperatures[i]), None)
 
-                for k in range(len(phaseNodes[falsePhase])):
-                    if phaseNodes[falsePhase][k].temperature == uniqueTransitionTemperatures[i]:
-                        falsePhaseNodeIndex = k
-                        break
+                transition_edge = TransitionEdge(phase_nodes[false_phase][false_phase_node_index],
+                                                 phase_nodes[true_phase][true_phase_node_index], self.phase_structure.transitions[j], len(phase_indexed_trans[false_phase]))
 
-                for k in range(len(phaseNodes[truePhase])):
-                    if phaseNodes[truePhase][k].temperature == uniqueTransitionTemperatures[i]:
-                        truePhaseNodeIndex = k
-                        break
+                phase_indexed_trans[false_phase].append(transition_edge)
 
-                transitionEdge = TransitionEdge(phaseNodes[falsePhase][falsePhaseNodeIndex],
-                    phaseNodes[truePhase][truePhaseNodeIndex], transitions[j], len(phaseIndexedTransitions[falsePhase]))
+        return phase_indexed_trans
 
-                transitionLists[i].append(transitionEdge)
+    def phase_nodes(self):
+        return [[PhaseNode(i, t) for t in self.unique_transition_temperatures if p.T[-1] >= t >= p.T[0]] for i, p in enumerate(self.phase_structure.phases)]
 
-                phaseIndexedTransitions[falsePhase].append(transitionEdge)
+    def trivial_paths(self):
+        return [Path(PhaseNode(i, p.T[-1])) for i, p in enumerate(self.phase_structure.phases) if self.is_low_temperature_phase[i] and self.is_high_temperature_phase[i]]
 
-            # Need to fill in with other possible transitions. This is what the reverse transition thing was all about!
-            # TODO: do this later.
-
+    def init_frontier(self, phase_indexed_trans, phase_nodes):
         paths = []
         frontier = []
 
-        for i in range(len(phases)):
-            if bHighTemperaturePhase[i]:
-                paths.append(Path(phaseNodes[i][0]))
-                phaseNodes[i][0].paths.append(paths[-1])
+        for i in range(len(self.phase_structure.phases)):
+            if self.is_high_temperature_phase[i]:
+                paths.append(Path(phase_nodes[i][0]))
+                phase_nodes[i][0].paths.append(paths[-1])
 
                 # Find the highest temperature transition from this phase and add it to the frontier.
-                if len(phaseIndexedTransitions[i]) > 0:
-                    frontier.append(phaseIndexedTransitions[i][0])
-                    phaseIndexedTransitions[i][0].path = paths[-1]
+                if len(phase_indexed_trans[i]) > 0:
+                    frontier.append(phase_indexed_trans[i][0])
+                    phase_indexed_trans[i][0].path = paths[-1]
 
                     j = 1
-                    while j < len(phaseIndexedTransitions[i]) and phaseIndexedTransitions[i][j].transition.properties.Tc ==\
-                            highTemp:
-                        paths.append(Path(phaseNodes[i][0]))
-                        phaseNodes[i][0].paths.append(paths[-1])
+                    while j < len(phase_indexed_trans[i]) and phase_indexed_trans[i][j].transition.properties.Tc == max(self.unique_transition_temperatures):
+                        paths.append(Path(phase_nodes[i][0]))
+                        phase_nodes[i][0].paths.append(paths[-1])
 
-                        frontier.append(phaseIndexedTransitions[i][j])
-                        phaseIndexedTransitions[i][j].path = paths[-1]
+                        frontier.append(phase_indexed_trans[i][j])
+                        phase_indexed_trans[i][j].path = paths[-1]
                         j += 1
 
         frontier.sort(key=lambda tr: tr.transition.properties.Tc, reverse=True)
+        return paths, frontier
+
+    def analyse_transition(self, phase_indexed_trans, transition_edge, path, transition, **kwargs):
+        if transition.properties.analysed:
+            return
+            
+        transition.properties.analysed = True
+
+        Tmin = self.min_trans_temperature_idxed(phase_indexed_trans, transition_edge)
+        Tmax = self.max_trans_temperature(path, transition)
+
+        if Tmin < Tmax:
+
+            ta = TransitionAnalyser(self.potential, transition.properties,
+                                                    self.phase_structure.phases[transition.false_phase], self.phase_structure.phases[transition.true_phase],
+                                                    self.phase_structure.groud_state_energy_density, Tmin=Tmin, Tmax=Tmax, **kwargs)
+            ta.analyseTransition()
+
+    def analyse(self, vw=None, action_ct=True):  # TODO make false
+
+        timer = Timer(self.time_limit)
+
+        if not self.phase_structure.paths:
+            self.paths = []
+            return
+
+        # If there are no transitions, check if any phase is both a high and low temperature phase. This constitutes a
+        # valid path, but with no transitions between phases.
+        if not self.phase_structure.transitions:
+            self.paths = self.trivial_paths()
+            return
+
+        # Construct phase nodes segmenting each phase at each unique transition temperature.
+        phase_nodes = self.phase_nodes()
+        phase_indexed_trans = self.phase_indexed_trans(phase_nodes)
+        paths, frontier = self.init_frontier(phase_indexed_trans, phase_nodes)
 
         while frontier:
             if timer.timeout():
-                return [], True, timer
+                self.paths = []
+                return
 
-            if self.bDebug:
-                print('Frontier:')
-                for i in range(len(frontier)):
-                    print(f'{i}: {frontier[i]}')
+            transition_edge = frontier.pop(0)
+            transition = transition_edge.transition
+            path = transition_edge.path
 
-                print('Paths:')
-                for i in range(len(paths)):
-                    print(f'{i}: {paths[i]}')
-            transitionEdge = frontier.pop(0)
-            transition = transitionEdge.transition
-            path = transitionEdge.path
-            if not transition.properties.analysed:
-                transition.properties.analysed = True
-                if self.bReportAnalysis:
-                    print(f'Analysing transition {transition.ID} ({transition.false_phase} --(T={transition.properties.Tc})-->'
-                          f' {transition.true_phase})')
+            self.analyse_transition(phase_indexed_trans, transition_edge, path, transition, vw=vw, action_ct=action_ct)
 
-                Tmin = self.getMinTransitionTemperature_indexed(phases, phaseIndexedTransitions, transitionEdge)
-
-                if path.transitions:
-                    # TODO: changed on 16/11/2021. It is not correct to assume that the last transition along this path
-                    #  gets us to the false phase of the current transition. If the path has been extended from the
-                    #  current false vacuum by an alternative transition, then the end of the path does not correspond
-                    #  to the current false vacuum.
-                    #Tmax = min(transition.Tc, path.transitions[-1].Tn)
-
-                    # Find the most recent transition that has a true phase equal to the current false phase (i.e. which
-                    # transition got us to this point).
-                    Tmax = transition.properties.Tc
-                    for tr in path.transitions:
-                        if tr.true_phase == transition.false_phase:
-                            Tmax = min(Tmax, tr.properties.Tn)
-                            break
-                else:
-                    Tmax = transition.properties.Tc
-
-                if Tmin >= Tmax:
-                    if self.bDebug:
-                        print(f'Transition not possible since Tmin > Tmax ({Tmin} > {Tmax}).')
-                else:
-
-                    transitionAnalyser: TransitionAnalyser = TransitionAnalyser(potential, transition.properties,
-                        phases[transition.false_phase], phases[transition.true_phase],
-                        phaseStructure.groud_state_energy_density, Tmin=Tmin, Tmax=Tmax, vw=vw, action_ct=action_ct)
-
-                    transitionAnalyser.bDebug = self.bDebug
-                    transitionAnalyser.bReportAnalysis = self.bReportAnalysis
-
-                    transitionAnalyser.analyseTransition(startTime=timer.start_time)
-
-                    if timer.timeout():
-                        return [], True, timer
-            else:
-                if self.bDebug:
-                    print(f'Already analysed transition {transition.ID}')
+            if timer.timeout():
+                self.paths = []
+                return
 
             # If the transition begins.
             if transition.properties.Tp and transition.properties.Tf:
-                frontier = [f for f in frontier if f.false_phase_node.phase != transitionEdge.false_phase_node.phase and f.transition.properties.Tc < transition.properties.Tf]
+                frontier = [f for f in frontier if f.false_phase_node.phase != transition_edge.false_phase_node.phase and f.transition.properties.Tc < transition.properties.Tf]
 
                 # First we handle the false phase side. The fact that the transition happened may cause a path splitting
                 # that couldn't be guaranteed before the transition was analysed.
@@ -218,33 +179,28 @@ class PhaseHistoryAnalyser:
                 # in another direction due to a previous element in the frontier. One or two new paths need to be added
                 # to account for this divergence, depending on whether the divergence occurs at the start of the path or
                 # midway through, respectively.
-                if transitionEdge.false_phase_node.phase != path.phases[-1].phase:
+                if transition_edge.false_phase_node.phase != path.phases[-1].phase:
                     # Don't split the path at the first phase along the path.
-                    bSplit = len(path.phases) > 2
-                    if bSplit:
+                    split_path = len(path.phases) > 2
+
+                    if split_path:
                         # TODO: shouldn't we search for the last occurrence of this false phase along the path? Can we
                         #  guarantee that only one phase could have been added?
                         prefix, suffix = path.splitAt(len(path.phases)-1)
                         paths.append(prefix)
 
                     # Create a new path for this recently handled transition.
-                    prevPath = path
-                    path = Path(transitionEdge.false_phase_node)
+                    previous_path = path
+                    path = Path(transition_edge.false_phase_node)
                     paths.append(path)
                     # Add this path to the phase node where this divergence occurs.
-                    # TODO: changed on 15/11/2021 because pipeline/noNucleation_msScan-BP4_1/24 was breaking here.
-                    #prevPath.phases[-2].paths.append(path)
-                    transitionEdge.false_phase_node.paths.append(path)  # is it this simple? (added 15/11/2021)
-                    #if bSplit:
-                    #    paths[-2].phases[-1].paths.append(path)
-                    #else:
-                    #    transitionEdge.false_phase_node.paths.append(path)???
+                    transition_edge.false_phase_node.paths.append(path)
 
                     # If we don't split the path, we still need to handle links between the prefixes of the previous
                     # path and the new path. Whatever path is a prefix of the previous path is also a previous of the
                     # new path.
-                    if not bSplit:
-                        path.prefix_links = prevPath.prefix_links
+                    if not split_path:
+                        path.prefix_links = previous_path.prefix_links
 
                         # This new path is also the suffix of all its prefixes.
                         for prefix in path.prefix_links:
@@ -261,40 +217,33 @@ class PhaseHistoryAnalyser:
                 # the other path as a suffix, implicitly adding the true phase to this path.
                 path.transitions.append(transition)
 
-                truePhase = transitionEdge.true_phase_node
+                true_phase = transition_edge.true_phase_node
 
                 # If the true phase has no paths through it currently, extend the path as usual and mark that this path
                 # goes through the true phase. This is the only case where we check for new transitions to add to the
                 # frontier. In all other cases, a suffix will handle that instead, and this path can be ignored.
-                if len(truePhase.paths) == 0:
+                if not true_phase.paths:
                     # Extend the path.
-                    path.phases.append(transitionEdge.true_phase_node)
+                    path.phases.append(transition_edge.true_phase_node)
                     # Mark that this path goes through the true phase node.
-                    truePhase.paths.append(path)
+                    true_phase.paths.append(path)
                     # Find transitions from this point to add to the frontier.
-                    newFrontier = self.getNewFrontier(transitionEdge, phaseIndexedTransitions, path, True, phases)
-
                     # Insert the new frontier nodes into the frontier, maintaining the sorted order (i.e. decreasing
                     # critical temperature).
-                    for i in range(len(newFrontier)):
-                        frontier.append(newFrontier[i])
+                    frontier += self.new_frontier(transition_edge, phase_indexed_trans, path, True)
+                    frontier.sort(key=lambda tr: tr.transition.properties.Tc, reverse=True)
 
-                        j = len(frontier)-1
-                        while j > 0 and frontier[j].transition.properties.Tc > frontier[j-1].transition.properties.Tc:
-                            temp = frontier[j]
-                            frontier[j] = frontier[j-1]
-                            frontier[j-1] = temp
                 # If there is only one path going through the true phase node, we need to split it at the intersection
                 # point unless the intersection point is the start of the other path.
-                elif len(truePhase.paths) == 1:
+                elif len(true_phase.paths) == 1:
                     # If the intersection point is the start of the other path, simply set the other path as the suffix
                     # of this path.
-                    if truePhase.paths[0].phases[0] == truePhase:
-                        path.suffix_links.append(truePhase.paths[0])
-                        truePhase.paths[0].prefix_links.append(path)
+                    if true_phase.paths[0].phases[0] == true_phase:
+                        path.suffix_links.append(true_phase.paths[0])
+                        true_phase.paths[0].prefix_links.append(path)
                     # Otherwise, the other path needs to be split at the intersection point.
                     else:
-                        prefix, suffix = truePhase.paths[0].split_at_node(truePhase)
+                        prefix, suffix = true_phase.paths[0].split_at_node(true_phase)
                         # Add this path as a prefix of the suffix, and the suffix as a suffix of this path.
                         suffix.prefix_links.append(path)
                         path.suffix_links.append(suffix)
@@ -302,9 +251,9 @@ class PhaseHistoryAnalyser:
                 # begin at that node (i.e. they have been split already as necessary). Simply add those paths as
                 # suffixes of this path.
                 else:
-                    path.suffix_links += truePhase.paths
+                    path.suffix_links += true_phase.paths
 
-                    for suffix in truePhase.paths:
+                    for suffix in true_phase.paths:
                         suffix.prefix_links.append(path)
             # TODO: I only just added this part (as of 20/01/2021). It was completely missing before. Need to make sure
             #  this does all that it needs to, and that a suffix wouldn't have already handled this frontier extension.
@@ -312,129 +261,110 @@ class PhaseHistoryAnalyser:
             else:
                 # We only need to check the false phase side. Add the next highest temperature transition along this
                 # phase to the frontier.
-                newFrontier = self.getNewFrontier(transitionEdge, phaseIndexedTransitions, path, False, phases)
-
                 # Insert the new frontier nodes into the frontier, maintaining the sorted order (i.e. decreasing
                 # critical temperature).
-                for i in range(len(newFrontier)):
-                    frontier.append(newFrontier[i])
+                frontier += self.new_frontier(transition_edge, phase_indexed_trans, path, False)
+                frontier.sort(key=lambda tr: tr.transition.properties.Tc, reverse=True)
 
-                    j = len(frontier) - 1
-                    while j > 0 and frontier[j].transition.properties.Tc > frontier[j-1].transition.properties.Tc:
-                        temp = frontier[j]
-                        frontier[j] = frontier[j-1]
-                        frontier[j-1] = temp
+        self.paths = paths
+        self.set_is_valid()
 
-        validPaths = []
+    def set_is_valid(self):
+        for p in self.paths:
+            p.is_valid = not p.suffix_links and self.is_low_temperature_phase[p.phases[-1].phase]
 
-        for p in paths:
-            if len(p.suffix_links) == 0 and bLowTemperaturePhase[p.phases[-1].phase]:
-                p.is_valid = True
-                validPaths.append(p)
-
-        if self.bReportPaths:
-            print('\nAll paths:')
-            for i in range(len(paths)):
-                print(f'{i}: {paths[i]}')
-
-            print('\nValid paths:')
-            for i in range(len(validPaths)):
-                print(f'{i}: {validPaths[i]}')
-
-        if self.bReportAnalysis:
-            print('\nAnalysed transitions:', [transitions[i].ID for i in range(len(transitions))
-                                              if transitions[i].properties.analysed is True])
-
-        timer.save()
-        return paths, False, timer
-
-    def getNewFrontier(self, transitionEdge: TransitionEdge, phaseIndexedTransitions:
-            list[list[TransitionEdge]], path: Path, bTransitionStarts: bool, phases: list[Phase])\
+    def new_frontier(self, transition_edge: TransitionEdge, phase_indexed_trans:
+                     list[list[TransitionEdge]], path: Path, transition_starts: bool)\
             -> list[TransitionEdge]:
-        newFrontier: list[TransitionEdge] = []
-        falsePhase: int = transitionEdge.false_phase_node.phase
-        truePhase: int = transitionEdge.true_phase_node.phase
+        new_frontier: list[TransitionEdge] = []
+        false_phase: int = transition_edge.false_phase_node.phase
+        true_phase: int = transition_edge.true_phase_node.phase
 
         # Find if there is a transition further down the false phase, and add it to the frontier if it could start
         # before the path transitions to a new phase either through the current transition or another transition along
         # the path.
-        if transitionEdge.index < len(phaseIndexedTransitions[falsePhase])-1:
-            Tc = phaseIndexedTransitions[falsePhase][transitionEdge.index+1].transition.properties.Tc
-            bAlreadyTransitioned = False
+        if transition_edge.index < len(phase_indexed_trans[false_phase])-1:
+            Tc = phase_indexed_trans[false_phase][transition_edge.index+1].transition.properties.Tc
+            already_transitioned = False
             # Check the transitions already in this path, which may include a recent transition from the current false
             # phase with a pending split based on the current transition.
             for transition in path.transitions:
-                if transition.properties.Tc > transitionEdge.transition.properties.Tc and transition.properties.Tf > Tc:
-                    bAlreadyTransitioned = True
+                if transition.properties.Tc > transition_edge.transition.properties.Tc and transition.properties.Tf > Tc:
+                    already_transitioned = True
                     break
 
             # Check the current transition.
-            bAlreadyTransitioned = bAlreadyTransitioned or transitionEdge.transition.properties.Tf is not None
+            already_transitioned = already_transitioned or transition_edge.transition.properties.Tf is not None
 
-            if not bAlreadyTransitioned:
-                newFrontier.append(phaseIndexedTransitions[falsePhase][transitionEdge.index+1])
-                phaseIndexedTransitions[falsePhase][transitionEdge.index+1].path = path
+            if not already_transitioned:
+                new_frontier.append(phase_indexed_trans[false_phase][transition_edge.index+1])
+                phase_indexed_trans[false_phase][transition_edge.index+1].path = path
 
         # Only add transitions from the true phase if the current transition got us to the true phase.
-        if bTransitionStarts:
+        if transition_starts:
             # Find if there is a transition further down the true phase.
             # Add all transitions from this phase above the current temperature that aren't reversed before the current
             # temperature. This represents all transitions that can occur as soon as we transition to this true phase.
-            for i in range(len(phaseIndexedTransitions[truePhase])):
-                newTransition = phaseIndexedTransitions[truePhase][i].transition
+            for i in range(len(phase_indexed_trans[true_phase])):
+                new_transition = phase_indexed_trans[true_phase][i].transition
 
                 # If the transition is no longer possible by the time we get to its false phase, don't consider it.
-                if phases[newTransition.true_phase].T[0] > transitionEdge.transition.properties.Tn:
+                if self.phase_structure.phases[new_transition.true_phase].T[0] > transition_edge.transition.properties.Tn:
                     continue
 
                 # If the new transition could have started above the temperature we get to the true phase, then we may
                 # be able to add it as a subcritical transition.
-                if transitionEdge.transition.properties.Tn < newTransition.properties.Tc:
+                if transition_edge.transition.properties.Tn < new_transition.properties.Tc:
                     # Make sure the transition isn't reversed, removing it as a possibility.
-                    newTruePhase = newTransition.true_phase
-                    bReversed = False
+                    newtrue_phase = new_transition.true_phase
+                    reversed_ = False
 
-                    for j in range(len(phaseIndexedTransitions[newTruePhase])):
-                        reverseTransition = phaseIndexedTransitions[newTruePhase][j].transition
+                    for j in range(len(phase_indexed_trans[newtrue_phase])):
+                        reversed_transition = phase_indexed_trans[newtrue_phase][j].transition
                         # The transition must occur between the current transition's temperature (Tn) and the forward
                         # transition's temperature (Tc).
-                        if reverseTransition.properties.Tc >= newTransition.properties.Tc:
+                        if reversed_transition.properties.Tc >= new_transition.properties.Tc:
                             continue
-                        if reverseTransition.properties.Tc <= transitionEdge.transition.properties.Tn:
+                        if reversed_transition.properties.Tc <= transition_edge.transition.properties.Tn:
                             break
-                        if reverseTransition.true_phase == truePhase:
-                            bReversed = True
+                        if reversed_transition.true_phase == true_phase:
+                            reversed_ = True
                             break
 
                     # If the transition is not reversed, then we can still follow this transition.
-                    if not bReversed:
+                    if not reversed_:
                         # Add it to the frontier.
-                        newFrontier.append(phaseIndexedTransitions[truePhase][i])
-                        phaseIndexedTransitions[truePhase][i].path = path
-                        if self.bDebug:
-                            print('Adding transition subcritically to the frontier!',
-                                phaseIndexedTransitions[truePhase][i])
-                #if phaseIndexedTransitions[truePhase][i].transition.Tc <= transitionEdge.transition.Tn:
+                        new_frontier.append(phase_indexed_trans[true_phase][i])
+                        phase_indexed_trans[true_phase][i].path = path
+
+                # if phase_indexed_trans[true_phase][i].transition.Tc <= transition_edge.transition.Tn:
                 # Otherwise, we can add it as a regular transition.
                 else:
-                    newFrontier.append(phaseIndexedTransitions[truePhase][i])
-                    phaseIndexedTransitions[truePhase][i].path = path
+                    new_frontier.append(phase_indexed_trans[true_phase][i])
+                    phase_indexed_trans[true_phase][i].path = path
                     break
 
-        return newFrontier
+        return new_frontier
 
-    def getMinTransitionTemperature_indexed(self, phases: list[Phase], phaseIndexedTransitions:
-            list[list[TransitionEdge]], transitionEdge: TransitionEdge) -> float:
+    def max_trans_temperature(self, path, transition):
+        if path.transitions:
+            # Find the most recent transition that has a true phase equal to the current false phase (i.e. which
+            # transition got us to this point).
+            for tr in path.transitions:
+                if tr.true_phase == transition.false_phase:
+                    return min(transition.properties.Tc, tr.properties.Tn)
+        return transition.properties.Tc
+
+    def min_trans_temperature_idxed(self, phase_indexed_trans:
+                                    list[list[TransitionEdge]], transition_edge: TransitionEdge) -> float:
         Tmin = 0
-        transition = transitionEdge.transition
 
         # Find if there is a reverse transition. This tells us that the forwards transition cannot occur below the
         # critical temperature of the reverse transition.
-        for p in phaseIndexedTransitions[transition.true_phase][transitionEdge.index+1:]:
+        for p in phase_indexed_trans[transition_edge.transition.true_phase][transition_edge.index+1:]:
             reverse_transition = p.transition
-            if reverse_transition.properties.Tc < transition.properties.Tc and reverse_transition.true_phase == transition.false_phase:
+            if reverse_transition.properties.Tc < transition_edge.transition.properties.Tc and reverse_transition.true_phase == transition_edge.transition.false_phase:
                 Tmin = reverse_transition.properties.Tc
                 break
 
-        return max(Tmin, phases[transition.false_phase].T.min(), phases[transition.true_phase].T.min())
-
+        return max(Tmin, self.phase_structure.phases[transition_edge.transition.false_phase].T.min(), self.phase_structure.phases[transition_edge.transition.true_phase].T.min())

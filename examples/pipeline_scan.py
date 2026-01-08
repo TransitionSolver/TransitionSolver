@@ -123,19 +123,12 @@ def pipeline_workerProcess(pointIndex: int, numSamples: int, scanIndex: int, out
         return
 
     # Load and configure a PhaseHistoryAnalyser object.
-    analyser = PhaseHistoryAnalyser()
-    analyser.bDebug = False
-    analyser.bPlot = False
-    analyser.bReportAnalysis = True
-    analyser.bReportPaths = True
-    analyser.timeout_phaseHistoryAnalysis = 100
-
-    # Analyse the phase history.
-    paths, _, _ = analyser.analysePhaseHistory_supplied(potential, phaseStructure, vw=1.)
+    analyser = PhaseHistoryAnalyser(potential, phaseStructure)
+    analyser.analyse(vw=1.)
 
     # Write the phase history report. Again, this will be handled within PhaseHistoryAnalysis in a future version of the
     # code.
-    writePhaseHistoryReport(outputFolderName + '/phase_history.json', paths, phaseStructure)
+    writePhaseHistoryReport(outputFolderName + '/phase_history.json', analyser.paths, phaseStructure)
 
 
 def scanWithPipeline(outputFolderName: str, scanIndex: int):
