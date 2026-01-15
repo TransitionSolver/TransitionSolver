@@ -473,13 +473,14 @@ class TransitionAnalyser:
         sampleData, _ = self.primeTransitionAnalysis(startTime)
 
         if timer.timeout():
-            return None
-
-        if sampleData is None:
-            self.properties.bFoundNucleationWindow = False
+            self.properties.error = "timed out"
+            self.properties.analysed = False
             return
 
-        self.properties.bFoundNucleationWindow = True
+        if sampleData is None:
+            self.properties.error = "no nucleation window"
+            self.properties.analysed = False
+            return
 
         # Remove any lower_s_on_t_data points that are very close together. We don't need to sample the S/T curve extremely
         # densely (a spacing of 1 is more than reasonable), and doing so causes problems with the subsequent steps along
@@ -822,6 +823,8 @@ class TransitionAnalyser:
             simIndex += 1
 
             if timer.timeout():
+                self.properties.error = "timed out"
+                self.properties.analysed = False
                 return
 
             if not success:
@@ -830,9 +833,8 @@ class TransitionAnalyser:
                 if message in ('Freeze out', 'Reached Tmin'):
                     break
 
-                self.properties.T = self.actionSampler.T
-                self.properties.SonT = self.actionSampler.SonT
-                self.properties.error = f'Failed to get next sample at T = {sampleData.T} because {message}'
+                self.properties.analysed = False
+                self.properties.error = f'failed at T = {sampleData.T}: {message}'
                 return
 
         # ==============================================================================================================
