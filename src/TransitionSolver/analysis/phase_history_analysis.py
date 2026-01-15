@@ -67,18 +67,18 @@ class PhaseHistoryAnalyser:
         # The first dimension is the phase index.
         phase_indexed_trans: list[list[TransitionEdge]] = [[] for _ in range(len(self.phase_structure.phases))]
 
-        for i in range(len(self.unique_transition_temperatures)):
-            if i == len(self.unique_transition_temperatures)-1:
+        for i, ut in enumerate(self.unique_transition_temperatures):
+            if i == len(self.unique_transition_temperatures) - 1:
                 max_idx = len(self.phase_structure.transitions)
             else:
-                max_idx = self.unique_transition_idx[i+1]
+                max_idx = self.unique_transition_idx[i + 1]
 
             for j in range(self.unique_transition_idx[i], max_idx):
                 false_phase = self.phase_structure.transitions[j].false_phase
                 true_phase = self.phase_structure.transitions[j].true_phase
 
-                false_phase_node_index = next((k for k, node in enumerate(phase_nodes[false_phase]) if node.temperature == self.unique_transition_temperatures[i]), None)
-                true_phase_node_index = next((k for k, node in enumerate(phase_nodes[true_phase]) if node.temperature == self.unique_transition_temperatures[i]), None)
+                false_phase_node_index = next((k for k, node in enumerate(phase_nodes[false_phase]) if node.temperature == ut), -1)
+                true_phase_node_index = next((k for k, node in enumerate(phase_nodes[true_phase]) if node.temperature == ut), -1)
 
                 transition_edge = TransitionEdge(phase_nodes[false_phase][false_phase_node_index],
                                                  phase_nodes[true_phase][true_phase_node_index], self.phase_structure.transitions[j], len(phase_indexed_trans[false_phase]))
@@ -123,17 +123,18 @@ class PhaseHistoryAnalyser:
         if transition.properties.analysed:
             return
             
-        transition.properties.analysed = True
-
         Tmin = self.min_trans_temperature_idxed(phase_indexed_trans, transition_edge)
         Tmax = self.max_trans_temperature(path, transition)
 
         if Tmin < Tmax:
-
+            transition.properties.analysed = True
             ta = TransitionAnalyser(self.potential, transition.properties,
                                                     self.phase_structure.phases[transition.false_phase], self.phase_structure.phases[transition.true_phase],
                                                     self.phase_structure.groud_state_energy_density, Tmin=Tmin, Tmax=Tmax, **kwargs)
             ta.analyseTransition()
+        else:
+            transition.properties.analysed = False
+            transition.properties.error = "T_MAX < T_MIN"
 
     def analyse(self, vw=None, action_ct=True):  # TODO make false
 
