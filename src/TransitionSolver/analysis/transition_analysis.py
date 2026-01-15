@@ -1091,9 +1091,6 @@ class TransitionAnalyser:
 
             self.actionSampler.lower_s_on_t_data.pop()
         else:
-            sampleData.action = -1
-            sampleData.SonT = -1
-
             sampleData.S3 = self.actionSampler.evaluate_action(sampleData.T)
 
             if timer.timeout():
