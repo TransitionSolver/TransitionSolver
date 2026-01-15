@@ -3,7 +3,7 @@ Algebraic simplification of CJ velocity + kappa nu model
 ========================================================
 """
 
-from sympy.abc import a, c, v
+from sympy.abc import a, c
 from sympy import sqrt, simplify
 
 

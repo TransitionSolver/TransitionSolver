@@ -1078,8 +1078,7 @@ class TransitionAnalyser:
         sampleData = intermediateData.copy()
         sampleData.T = 2 * intermediateData.T - data.T
 
-        if not subcritical and len(self.actionSampler.lower_s_on_t_data) > 0 and self.actionSampler.lower_s_on_t_data[
-            -1].T >= sampleData.T:
+        if not subcritical and len(self.actionSampler.lower_s_on_t_data) > 0 and self.actionSampler.lower_s_on_t_data[-1].T >= sampleData.T:
             if self.actionSampler.lower_s_on_t_data[-1].T < self.actionSampler.T[-1]:
                 # sampleData.T = actionSampler.lower_s_on_t_data[-1].T
                 # sampleData.action = actionSampler.lower_s_on_t_data[-1].action

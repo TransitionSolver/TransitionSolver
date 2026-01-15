@@ -4,9 +4,7 @@ Compute action by CosmoTransitions or PhaseTracer
 """
 
 import sys
-import os
 import warnings
-from pathlib import Path
 from contextlib import redirect_stdout
 
 import numpy as np
@@ -14,7 +12,7 @@ import cppyy
 from cosmoTransitions import pathDeformation
 
 from . import eigen
-from .phasetracer import PT_HOME, PT_LIB, PT_INCLUDE
+from .phasetracer import PT_LIB, PT_INCLUDE
 
 
 cppyy.load_library(str(PT_LIB))

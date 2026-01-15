@@ -25,7 +25,7 @@ class PTAFromDisk:
     def __init__(self, f, file_name, label=None):
         """
         @param f Frequency data
-        @param file_name File containing log_{10} \Omega h^2 data
+        @param file_name File containing log_{10} \\Omega h^2 data
         """
         self.f = f
         log10_omega_h2 = np.loadtxt(file_name)

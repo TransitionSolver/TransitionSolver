@@ -6,7 +6,6 @@ Make plots from results on disk
 import json_numpy as json
 import matplotlib.pyplot as plt
 import numpy as np
-import warnings
 
 
 def load_transition(transition_id, phase_structure):
@@ -328,7 +327,7 @@ def plot_summary(phase_structure=None, phase_structure_file=None, show=False):
 
     transitions = [t for t in phase_structure['transitions'] if t['analysed']]
 
-    if not transtions:
+    if not transitions:
         return plt.figure()
 
     plotters = [plot_volume, plot_vw, plot_gamma, plot_bubble_radius, plot_bubble_separation, plot_bubble_number, plot_action_curve, plot_pf]
