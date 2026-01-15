@@ -6,6 +6,7 @@ Make plots from results on disk
 import json_numpy as json
 import matplotlib.pyplot as plt
 import numpy as np
+import warnings
 
 
 def load_transition(transition_id, phase_structure):
@@ -38,7 +39,7 @@ def add_labeled_hline(ax, y, label, color):
 
 def add_labeled_vlines(transition, ax):
     if 'TGammaMax' in transition:
-        add_labeled_vline(ax, transition['TGammaMax'], "$T_\Gamma$", 'k')
+        add_labeled_vline(ax, transition['TGammaMax'], r"$T_\Gamma$", 'k')
     if 'Tn' in transition:
         add_labeled_vline(ax, transition['Tn'], "$T_n$", 'r')
     if 'Tp' in transition:
@@ -325,7 +326,7 @@ def plot_summary(phase_structure=None, phase_structure_file=None, show=False):
         with open(phase_structure_file, encoding="utf8") as f:
             phase_structure = json.load(f)
 
-    transitions = phase_structure['transitions']
+    transitions = [t for t in phase_structure['transitions'] if t['analysed']]
     plotters = [plot_volume, plot_vw, plot_gamma, plot_bubble_radius, plot_bubble_separation, plot_bubble_number, plot_action_curve, plot_pf]
     fig, ax = plt.subplots(len(plotters), len(transitions), constrained_layout=False, sharex='col', figsize=(10 * len(transitions), 6 * len(plotters)))
     ax = np.reshape(ax, (len(plotters), len(transitions)))
