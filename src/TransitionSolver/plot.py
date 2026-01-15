@@ -327,6 +327,10 @@ def plot_summary(phase_structure=None, phase_structure_file=None, show=False):
             phase_structure = json.load(f)
 
     transitions = [t for t in phase_structure['transitions'] if t['analysed']]
+
+    if not transtions:
+        return plt.figure()
+
     plotters = [plot_volume, plot_vw, plot_gamma, plot_bubble_radius, plot_bubble_separation, plot_bubble_number, plot_action_curve, plot_pf]
     fig, ax = plt.subplots(len(plotters), len(transitions), constrained_layout=False, sharex='col', figsize=(10 * len(transitions), 6 * len(plotters)))
     ax = np.reshape(ax, (len(plotters), len(transitions)))
