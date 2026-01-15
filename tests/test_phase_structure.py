@@ -12,7 +12,7 @@ from TransitionSolver import phasehistory, RSS_BP1, read_phase_tracer
 from dictcmp import assert_deep_equal
 
 THIS = Path(os.path.dirname(os.path.abspath(__file__)))
-BASELINE = THIS / "baseline" 
+BASELINE = THIS / "baseline"
 
 
 def test_phase_structure(generate_baseline):

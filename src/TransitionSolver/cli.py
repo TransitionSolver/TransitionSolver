@@ -80,7 +80,7 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
 
     console.rule("[bold red]Transitions")
     rich.pretty.pprint(tr_report, console=console, max_length=10)
-    
+
     detectors = [DETECTORS[d] for d in detector]
     ptas = [PTAS[p] for p in pta]
 

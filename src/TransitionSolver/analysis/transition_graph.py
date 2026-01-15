@@ -9,12 +9,14 @@ class PhaseNode:
         self.phase = phase_id
         self.temperature = temperature
         self.paths = []
+
     def __str__(self) -> str:
         return f"{self.phase}({self.temperature})"
 
     def __repr__(self) -> str:
         return str(self)
- 
+
+
 class Path:
 
     def __init__(self, *phases, transitions=None, suffix_links=None, prefix_links=None):

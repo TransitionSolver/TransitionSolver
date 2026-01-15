@@ -122,7 +122,7 @@ class PhaseHistoryAnalyser:
     def analyse_transition(self, phase_indexed_trans, transition_edge, path, transition, **kwargs):
         if transition.properties.analysed:
             return
-            
+
         Tmin = self.min_trans_temperature_idxed(phase_indexed_trans, transition_edge)
         Tmax = self.max_trans_temperature(path, transition)
 

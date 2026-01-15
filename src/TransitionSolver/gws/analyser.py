@@ -332,6 +332,7 @@ def extract_relevant_transitions(report: dict) -> list[dict]:
 
     return [t for t in report['transitions'] if t['id'] in relevant]
 
+
 class GWAnalyser:
     """
     Analyze gravitational wave signals from every transition in cosmological history

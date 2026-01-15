@@ -34,7 +34,7 @@ class CubedNestedIntegrationHelper:
         fn1 = self.f(self.x[0])
         fn2 = self.f(self.x[1])
         fsn2 = fn2 + fn1
-        
+
         gsn3 = self.g(self.x[2]) + self.g(self.x[1])
         gsn2 = self.g(self.x[1]) + self.g(self.x[0])
 

@@ -2,7 +2,7 @@
 Compute geff
 ============
 
-Using digitised curves for fermions and bosons from top panels 
+Using digitised curves for fermions and bosons from top panels
 of Fig. 3 from https://arxiv.org/abs/1609.04979
 """
 

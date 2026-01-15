@@ -99,6 +99,7 @@ class Transition:
     def __repr__(self) -> str:
         return str(self)
 
+
 class PhaseStructure:
 
     def __init__(self, phases=None, transitions=None, paths=None):
@@ -109,7 +110,7 @@ class PhaseStructure:
 
     @property
     def groud_state_energy_density(self):
-        """        
+        """
         @returns The lowest energy of any phase at T = 0
         """
         groud_state_energy_density = np.inf

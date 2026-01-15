@@ -61,7 +61,7 @@ class MixinCosmoTransitions(generic_potential):
     """
     Implement minimum functionality to work
     with CosmoTransitions
-    
+
     See https://clwainwright.net/CosmoTransitions/generic_potential.html
     """
     x_eps = .001
@@ -70,14 +70,14 @@ class MixinCosmoTransitions(generic_potential):
     renormScaleSq = 1000.**2
     Tmax = 1e3
     num_boson_dof = num_fermion_dof = None
-    phases = transitions = None 
-    TcTrans = None  
-    TnTrans = None 
-    
+    phases = transitions = None
+    TcTrans = None
+    TnTrans = None
+
     def Vtot(self, phi, T, *args, **kwargs):
         T = np.array(T).item()
         return self(phi, T)
-        
+
     def V1T_from_X(self, phi, T, *args, **kwargs):
         T = np.array(T).item()
         if phi.ndim > 1:

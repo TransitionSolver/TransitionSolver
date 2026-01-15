@@ -16,7 +16,7 @@ def savejson(report, file_name):
     with open(file_name, "w") as f:
         json.dump(report, f)
 
-  
+
 def make_results_folder():
     timestr = time.strftime("%Y%m%d_%H%M%S")
     folder = Path(f"transition_solver_results_{timestr}")
@@ -27,7 +27,7 @@ def make_results_folder():
 def saveall(tr_report, gw_report, tr_fig, gw_fig, ctx):
     """
     Save all results to a folder named by date/time
-    
+
     @returns Name of results folder
     """
     folder = make_results_folder()
@@ -38,8 +38,3 @@ def saveall(tr_report, gw_report, tr_fig, gw_fig, ctx):
     savejson(gw_report, folder / "gw.json")
     savejson(tr_report, folder / "tr.json")
     return str(folder)
-
-
-
-
-

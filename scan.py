@@ -2,7 +2,7 @@
 Example of performing a scan over parameters
 ============================================
 
-Perturb the RSS benchmark point 1 and re-compute the 
+Perturb the RSS benchmark point 1 and re-compute the
 nucleation temperature.
 """
 
@@ -28,19 +28,19 @@ t_high = 250.
 for i in range(10):
 
     # Select point in RSS parameter space by perturbing BP1
-    
+
     point = np.array(RSS_BP1_POINT)
     point[0] += 0.01 * np.random.randn()
-    
+
     print(f"point {i} = {point}")
-    
+
     # Run PhaseTracer and parse output
-    
+
     phase_structure_raw = run_phase_tracer(exe_name, point=point, t_high=t_high)
     phase_structure = read_phase_tracer(phase_structure_raw)
-    
+
     # Make potential for this point
-    
+
     potential = RSS(point)
     potential.set_daisy_method(2)  # TODO remove all these settings
     potential.set_bUseBoltzmannSuppression(True)
@@ -53,7 +53,7 @@ for i in range(10):
     except Exception as e:
         print(f"error = {e}")
         continue
-        
+
     # Inspect the nucleation temperature in the first transition
 
     Tn = tr_report['transitions'][0]['Tn']

@@ -21,7 +21,7 @@ cppyy.add_include_path(str(PT_INCLUDE))
 cppyy.include(str(PT_INCLUDE / 'phase_finder.hpp'))
 cppyy.include(str(PT_INCLUDE / 'transition_finder.hpp'))
 
-from cppyy.gbl import PhaseTracer
+from cppyy.gbl import PhaseTracer  # noqa: E402
 
 
 def run_phase_tracer(potential):

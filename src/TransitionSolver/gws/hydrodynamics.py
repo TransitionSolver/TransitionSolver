@@ -19,6 +19,7 @@ GRAV_CONST = 6.7088e-39
 def hubble_squared_from_energy_density(energy_density):
     return 8 * pi * GRAV_CONST / 3 * energy_density
 
+
 @dataclass
 class HydroVars:
     """

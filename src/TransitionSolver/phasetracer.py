@@ -52,18 +52,18 @@ def rpath(name):
 def build_phase_tracer(model_header, model=None, model_lib=None, model_namespace=DEFAULT_NAMESPACE, force=False):
     """
     Build PhaseTracer model for use in TransitionSolver
-    
+
     @param model Name of model in C++ header
     @param model_header Header file where model defined
     @param model_lib Library for model, if not header-only
     @param model_namespace Any namespaces under which model appears in header, as list
     @param force Force recompilation even if executable already exists
-    
+
     @returns Path to built executable
     """
     if model is None:
         model = str(Path(model_header).stem)
-    
+
     exe_name = PT_HOME / model
 
     if os.path.exists(exe_name) and not force:
@@ -92,12 +92,12 @@ def build_phase_tracer(model_header, model=None, model_lib=None, model_namespace
 def run_phase_tracer(exe_name, point_file=None, point=None, t_high=1e3) -> str:
     """
     Run PhaseTracer and read serialzied data
-    
+
     @param exe_name Name of executable
     @param point_file File containing parameter point
     @param point Array containing parameter point
     @param t_high Highest temperature to consider in PhaseTracer
-    
+
     @returns PhaseTracer serialised output as string
     """
     if point_file is None:
@@ -113,14 +113,14 @@ def run_phase_tracer(exe_name, point_file=None, point=None, t_high=1e3) -> str:
 
 
 def read_path(data):
-    """  
+    """
     @returns Transition path from lines of data
     """
     return [int(el[1:]) - 1 if el.startswith('-') else int(el) for el in data[0].split()]
 
 
 def read_arr(data):
-    """  
+    """
     @returns Array from lines of data
     """
     return np.squeeze(np.array([np.fromstring(d, sep=' ') for d in data]))
@@ -129,13 +129,13 @@ def read_arr(data):
 def read_phase_tracer(phase_tracer_data=None, phase_tracer_file=None) -> PhaseStructure:
     """
     Read serialised data from PhaseTracer
-    
+
     @returns Phase structure object from PhaseTracer serialised data
     """
     if phase_tracer_file is not None:
         with open(phase_tracer_file, encoding="utf8") as f:
             phase_tracer_data = f.read()
-    
+
     phases = []
     transitions = []
     paths = []

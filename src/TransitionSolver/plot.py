@@ -72,7 +72,7 @@ def plot_volume(transition_id, phase_structure=None, phase_structure_file=None, 
     if 'TVphysDecr_high' in transition and 'TVphysDecr_low' in transition:
         ax.axvspan(transition['TVphysDecr_low'],
                    transition['TVphysDecr_high'], alpha=0.3, color='r', zorder=-1)
-                   
+
     add_labeled_vlines(transition, ax)
     add_labeled_hline(ax, 3., "3", 'gray')
     add_labeled_hline(ax, 0., "0", 'gray')
@@ -105,12 +105,12 @@ def plot_vw(transition_id, phase_structure=None, phase_structure_file=None, ax=N
     transition = load_transition(transition_id, phase_structure)
 
     ax.plot(transition['TSubSampleArray'], transition['vw_samples'])
- 
+
     add_labeled_vlines(transition, ax)
- 
+
     ax.set_xlabel('$T$ (GeV)')
     ax.set_ylabel('Bubble wall velocity, $v_w$')
- 
+
     if show:
         plt.show()
 
@@ -171,19 +171,19 @@ def plot_bubble_radius(transition_id, phase_structure=None, phase_structure_file
 
     ax.plot(transition['TSubSampleArray'],
             transition['meanBubbleRadiusArray'])
-            
+
     ax.set_yscale('log')
     ax.set_xlabel('$T$ (GeV)')
     ax.set_ylabel('Bubble radius, $\\overline{R}_B(T)$')
-    
+
     add_labeled_vlines(transition, ax)
 
     if show:
         plt.show()
 
     return ax
-    
-    
+
+
 def plot_bubble_separation(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
     """
     @param transition_id ID of transition
@@ -203,11 +203,11 @@ def plot_bubble_separation(transition_id, phase_structure=None, phase_structure_
 
     ax.plot(transition['TSubSampleArray'],
             transition['meanBubbleSeparationArray'])
-            
+
     ax.set_yscale('log')
     ax.set_xlabel('$T$ (GeV)')
     ax.set_ylabel('Bubble separation, $R_*(T)$')
-    
+
     add_labeled_vlines(transition, ax)
 
     if show:

@@ -30,7 +30,7 @@ class Timer:
     def __init__(self, limit, start_time=None):
         self.start_time = start_time if start_time else time.perf_counter()
         self.limit = limit
-        
+
     def timeout(self):
         self.save()
         return self.limit > 0 and self.analysisElapsedTime > self.limit
@@ -46,11 +46,11 @@ class ActionSample:
     def __init__(self, T=None, S3=None):
         self.T = T
         self.S3 = S3
-        
+
     @property
     def SonT(self):
         return None if not self.is_valid else self.S3 / self.T
-    
+
     @property
     def is_valid(self):
         return self.S3 is not None and self.T is not None and self.S3 > 0. and self.T > 0.
@@ -74,11 +74,11 @@ class ActionSampler:
     # identically zero. The phase is then shifted to phi1 = 0 before the action is evaluated. See
     # PhaseHistoryAnalysis.evaluate_action for details.
     bForcePhaseOnAxis: bool = False
-    
+
     pd_settings = {'verbose': False, 'maxiter': 20, 'tunneling_findProfile_params': {'phitol': 1e-8, 'xtol': 1e-8}, 'V_spline_samples': 100}
 
     def __init__(self, transitionAnalyser: 'TransitionAnalyser', minSonTThreshold: float, maxSonTThreshold: float,
-            toleranceSonT: float, stepSizeMax=0.95, action_ct=True): # TODO make false
+            toleranceSonT: float, stepSizeMax=0.95, action_ct=True):  # TODO make false
         self.transitionAnalyser = transitionAnalyser
 
         # Copy properties for concision.
@@ -134,7 +134,7 @@ class ActionSampler:
     def getNextSample(self, sampleData: ActionSample, Gamma: list[float], numBubbles: float) -> (bool, str):
         # If we are already near T=0, the transition is assumed to not progress from here. We consider only bubble
         # nucleation via thermal fluctuations.
-        #if len(self.T) > 0 and sampleData.T <= 0.001:
+        # if len(self.T) > 0 and sampleData.T <= 0.001:
         #    return False, 'Freeze out'
 
         # If we are already near the minimum temperature allowed for phase transitions in this potential, we assume the
@@ -175,16 +175,16 @@ class ActionSampler:
             return GammaNew > 0 and (GammaNew/GammaCur < 0.8*GammaCur/GammaPrev or derivTest)
 
         def step_factor():
-        
+
             nearMaxFactor = 0.7
-        
+
             if numBubbles < 1e-4:
                 if GammaNew < GammaCur:
                     return 2.
 
                 if nearMaxNucleation():
                     return nearMaxFactor
-        
+
                 extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew)
 
                 if extraBubbles + numBubbles > 1e-4:
@@ -197,38 +197,38 @@ class ActionSampler:
                 if extraBubbles + numBubbles < 1e-5:
                     return 2.
                 return 1.5
-                    
+
             if numBubbles < 0.1:
                 if GammaNew < GammaCur:
                     return 1.4
-  
+
                 if nearMaxNucleation():
                     return nearMaxFactor
-     
+
                 extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew)
 
                 if extraBubbles > numBubbles*5:
                     if extraBubbles > numBubbles*25:
                         return 0.5
                     return 0.75
-                    
+
                 if extraBubbles < numBubbles:
                     return 1.4
-                        
+
             if numBubbles < 1:
                 if GammaNew < GammaCur:
                     return 1.1
-       
+
                 if nearMaxNucleation():
                     return nearMaxFactor
-   
+
                 extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew)
 
                 if extraBubbles > 0.2*numBubbles:
                     if extraBubbles > 0.5*numBubbles:
                         return 0.5
                     return 0.75
-                    
+
                 if extraBubbles < 0.1*numBubbles:
                     return 1.2
 
@@ -239,12 +239,12 @@ class ActionSampler:
                     return 1.2
                 # Found minimum of Gamma, sample more densely.
                 return 0.6
- 
+
             if numBubbles < 100:
-            
+
                 if nearMaxNucleation():
                     return nearMaxFactor
-            
+
                 extraBubbles = self.calculateExtraBubbles(Tnew, SonTnew)
 
                 if numBubbles < 10:
@@ -256,9 +256,9 @@ class ActionSampler:
                         return 2.
                 return 1.5
             return 1
-            
+
         stepFactor = step_factor()
-            
+
         if numBubbles < 1 and SonTnew < 160:
             if stepFactor > 1:
                 stepFactor = 1 + 0.85 * (stepFactor - 1)
@@ -274,11 +274,11 @@ class ActionSampler:
             Tnew = 0.5*(self.Tmin + self.T[-1])
 
         # Hack for better resolution in supercool GW plots.
-        #maxStep = 0.1 # BP1 and BP2
-        #maxStep = 0.3 # BP3 and BP4
+        # maxStep = 0.1 # BP1 and BP2
+        # maxStep = 0.3 # BP3 and BP4
 
-        #if abs(Tnew - self.T[-1]) > maxStep:
-        #    Tnew = self.T[-1] - maxStep
+        # if abs(Tnew - self.T[-1]) > maxStep:
+        #     Tnew = self.T[-1] - maxStep
 
         sampleData.T = Tnew
 
@@ -321,15 +321,15 @@ class ActionSampler:
         # probability rises exponentially.
         quickFactor = 1.
         # return 3 #max(5, int(100*(self.T[-2] - self.T[-1])))
-        #numSamples = int(quickFactor*(100 + 1000*))
+        # numSamples = int(quickFactor*(100 + 1000*))
         # TODO: make the number of interpolation samples have some physical motivation (e.g. ensure that the true
-        #  vacuum fraction can change by no more than 0.1% of its current value across each sample).
+        # vacuum fraction can change by no more than 0.1% of its current value across each sample).
         actionFactor = abs(self.SonT[-2]/self.SonT[-1] - 1) / (1 - minSonTThreshold/maxSonTThreshold)
-        dTFactor = abs(min(2,self.T[-2]/self.T[-1]) - 1) / (1 - self.Tmin/self.T[0])
+        dTFactor = abs(min(2, self.T[-2]/self.T[-1]) - 1) / (1 - self.Tmin/self.T[0])
         numSamples = max(1, int(quickFactor*(2 + np.sqrt(1000*(actionFactor + dTFactor)))))
         logger.debug('Num samples: {}, {},g {}', numSamples, actionFactor, dTFactor)
         return numSamples
-        
+
     def insert_lower_s_on_t_data(self, data):
         """
         Insert data into lower_s_on_t_data, maintaining the sorted order
@@ -410,7 +410,6 @@ class TransitionAnalyser:
 
     actionSampler: ActionSampler
 
-
     def __init__(self, potential, properties, fromPhase: Phase, toPhase: Phase,
             groud_state_energy_density: float, Tmin=None, Tmax=None, vw=None, action_ct=True):  # TODO make false
         self.potential = potential
@@ -423,7 +422,7 @@ class TransitionAnalyser:
         self.properties.use_cj_velocity = vw is None
         self.properties.vw = vw
         self.action_ct = action_ct
-        
+
         if self.Tmin is None:
             # The minimum temperature for which both phases exist, and prevent analysis below the effective potential's
             # cutoff temperature. Below this cutoff temperature, external effects may dramatically affect the phase
@@ -450,8 +449,8 @@ class TransitionAnalyser:
         return self.properties.vw
 
     # TODO: need to handle subcritical transitions better. Shouldn't use integration if the max sampled action is well
-    #  below the nucleation threshold. Should treat the action as constant or linearise it and estimate transition
-    #  temperatures under that approximation.
+    # below the nucleation threshold. Should treat the action as constant or linearise it and estimate transition
+    # temperatures under that approximation.
     def analyseTransition(self, startTime: float = -1.0):
         # TODO: this should depend on the scale of the transition, so make it configurable.
         # Estimate the maximum significant value of S/T by finding where the instantaneous nucleation rate multiplied by
@@ -460,9 +459,8 @@ class TransitionAnalyser:
         maxSonTThreshold = self.estimateMaximumSignificantSonT() + 80
         minSonTThreshold = 80.0
         toleranceSonT = 3.0
-        
-        timer = Timer(self.timeout, startTime)
 
+        timer = Timer(self.timeout, startTime)
 
         self.actionSampler = ActionSampler(self, minSonTThreshold, maxSonTThreshold, toleranceSonT, action_ct=self.action_ct)
 
@@ -576,10 +574,10 @@ class TransitionAnalyser:
 
         # Don't check for Teq if the transition is subcritical (or evaluated subcritically) and the vacuum energy density
         # already exceeds the radiation energy density at the maximum temperature.
-        #bCheckForTeq = (not transition.subcritical and Tmax == transition.Tc) or\
+        # bCheckForTeq = (not transition.subcritical and Tmax == transition.Tc) or\
         #    calculateEnergyDensityAtT(Tmax)[0] <= radDensity*Tmax**4
 
-        #rho0 = hydrodynamics.energy_density_from_phase(self.fromPhase, self.toPhase, self.potential,
+        # rho0 = hydrodynamics.energy_density_from_phase(self.fromPhase, self.toPhase, self.potential,
         #    self.actionSampler.T[0], forFromPhase=True) - self.groud_state_energy_density
         rho0 = hydroVars[0].energyDensityFalse
         Temp = self.actionSampler.T[0]
@@ -621,9 +619,9 @@ class TransitionAnalyser:
             else:
                 SonT = np.linspace(self.actionSampler.SonT[simIndex], self.actionSampler.SonT[simIndex+1], numSamples)
 
-            #rhof1, rhot1 = hydrodynamics.calculateEnergyDensityAtT(self.fromPhase, self.toPhase, self.potential,
+            # rhof1, rhot1 = hydrodynamics.calculateEnergyDensityAtT(self.fromPhase, self.toPhase, self.potential,
             #    self.actionSampler.T[simIndex])
-            #rhof2, rhot2 = hydrodynamics.calculateEnergyDensityAtT(self.fromPhase, self.toPhase, self.potential,
+            # rhof2, rhot2 = hydrodynamics.calculateEnergyDensityAtT(self.fromPhase, self.toPhase, self.potential,
             #    self.actionSampler.T[simIndex+1])
             T1 = self.actionSampler.T[simIndex]
             T2 = self.actionSampler.T[simIndex+1]
@@ -688,8 +686,6 @@ class TransitionAnalyser:
                         meanBubbleRadiusArray.append(integrationHelper_avgBubRad.data[j])
                         meanBubbleSeparationArray.append((bubbleNumberDensity[j])**(-1/3))
 
-                #H.append(np.sqrt(self.hubble_squared(T[i])))
-                #H.append(np.sqrt(hubble_squared_from_energy_density(rhof[i] - self.groud_state_energy_density)))
                 H.append(hydroVarsInterp[i].hubble_constant)
                 vw_samples.append(self.vw(hydroVarsInterp[i]))
 
@@ -798,7 +794,7 @@ class TransitionAnalyser:
                     self.properties.TVphysDecr_high = Tprev + interpFactor*(Tnew - Tprev)
 
                 # Physical volume of the false vacuum is increasing *again*.
-                if self.properties.TVphysDecr_high is not None and  self.properties.TVphysDecr_low is None and physicalVolume[-1] > 0:
+                if self.properties.TVphysDecr_high is not None and self.properties.TVphysDecr_low is None and physicalVolume[-1] > 0:
                     if physicalVolume[-1] == physicalVolume[-2]:
                         interpFactor = 0
                     else:
@@ -841,8 +837,6 @@ class TransitionAnalyser:
         # End transition analysis.
         # ==============================================================================================================
 
-
-
         # Find the maximum nucleation rate to find TGammaMax. Only do so if there is a minimum in the action.
         if TAtSonTmin > 0:
             gammaMaxIndex = np.argmax(Gamma)
@@ -850,7 +844,6 @@ class TransitionAnalyser:
             self.properties.SonTGammaMax = self.actionSampler.subSonT[gammaMaxIndex]
             self.properties.GammaMax = Gamma[gammaMaxIndex]
             Tlow = self.actionSampler.subT[gammaMaxIndex+1]
-            #Tmid = self.actionSampler.subT[gammaMaxIndex]
             Thigh = self.actionSampler.subT[gammaMaxIndex-1]
             Slow = self.actionSampler.subSonT[gammaMaxIndex+1]
             Smid = self.actionSampler.subSonT[gammaMaxIndex]
@@ -877,7 +870,7 @@ class TransitionAnalyser:
         self.properties.vw_samples = vw_samples
 
         if self.properties.Tp is not None:
-  
+
             hydroVars = hydrodynamics.make_hydro_vars(self.fromPhase, self.toPhase, self.potential, Tp)  # TODO why not pass vacuum energy
             self.properties.transitionStrength = hydroVars.alpha
             self.properties.meanBubbleRadius = meanBubbleRadiusArray[indexTp]
@@ -915,7 +908,6 @@ class TransitionAnalyser:
 
             allSamples = np.array(allSamples)
             minSonTIndex = np.argmin(allSamples[:, 1])
-
 
             if self.bReportAnalysis:
                 print('No transition')
@@ -1123,7 +1115,7 @@ class TransitionAnalyser:
 
             if 0.1 < numBubbles < 10:
                 return action
-            
+
             if numBubbles < 1:
                 actionMax = action
             else:
@@ -1134,10 +1126,10 @@ class TransitionAnalyser:
     def sign_label(self, data):
         if not data.is_valid:
             return 'unknown'
-        
+
         if abs(data.SonT - self.actionSampler.maxSonTThreshold) <= self.actionSampler.toleranceSonT:
             return 'equal'
-        
+
         if data.SonT > self.actionSampler.maxSonTThreshold:
             return 'above'
 
@@ -1237,7 +1229,6 @@ class TransitionAnalyser:
                         data.T = minT
                         data.SonT = minAction
                         actionCurveShapeAnalysisData.copyDesiredData(data)
-                        
 
                     saveCurveShapeAnalysisData()
                     return actionCurveShapeAnalysisData
@@ -1263,10 +1254,9 @@ class TransitionAnalyser:
                 Tstep = 0.1*(self.Tmax - data.T)
                 record_action(data)
 
-
                 # TODO: cleanup if this still works [2023]
-                #calculateActionSimple(potential, data, fromPhase, toPhase, Tstep=-Tstep, bDebug=settings.bDebug)
-                #actionSamples.append((data.T, data.SonT, data.is_valid))
+                # calculateActionSimple(potential, data, fromPhase, toPhase, Tstep=-Tstep, bDebug=settings.bDebug)
+                # actionSamples.append((data.T, data.SonT, data.is_valid))
                 labelLow = 'below'
                 labelHigh = self.sign_label(data)
 
@@ -1293,7 +1283,7 @@ class TransitionAnalyser:
             lowerTSample = data.copy()
             data.T = TMid
             record_action(data)
-            
+
             Tstep *= 0.5
             labelMid = self.sign_label(data)
 
@@ -1412,12 +1402,13 @@ class TransitionAnalyser:
     def reheat_temperature(self, T: float) -> float:
         Tsep = min(0.001*(self.properties.Tc - self.Tmin), 0.5*(T - self.Tmin))
         rhof = hydrodynamics.energy_density_from_phase(self.fromPhase, self.toPhase, self.potential, T)
+
         def objective(t):
             rhot = hydrodynamics.energy_density_to_phase(self.fromPhase, self.toPhase, self.potential, t)
             # Conservation of energy => rhof = rhof*Pf + rhot*Pt which is equivalent to rhof = rhot (evaluated at
             # different temperatures, T and Tt (Treh), respectively).
             return rhot - rhof
-              
+
         if objective(self.properties.Tc) >= 0:
             max_t = self.properties.Tc
         else:
