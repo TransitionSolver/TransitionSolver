@@ -75,8 +75,7 @@ class ActionSampler:
     # PhaseHistoryAnalysis.evaluate_action for details.
     bForcePhaseOnAxis: bool = False
     
-    action_ct_kwargs = {'verbose': False, 'maxiter': 20, 'tunneling_findProfile_params': {'phitol': 1e-8, 'xtol': 1e-8}, 'V_spline_samples': 100}
-    action_pt_kwargs = {}
+    pd_settings = {'verbose': False, 'maxiter': 20, 'tunneling_findProfile_params': {'phitol': 1e-8, 'xtol': 1e-8}, 'V_spline_samples': 100}
 
     def __init__(self, transitionAnalyser: 'TransitionAnalyser', minSonTThreshold: float, maxSonTThreshold: float,
             toleranceSonT: float, stepSizeMax=0.95, action_ct=True): # TODO make false
@@ -364,8 +363,8 @@ class ActionSampler:
         @returns Action at specific temperature and between field configurations
         """
         if self.action_ct:
-            return action.action_ct(self.potential, T, false_vacuum, true_vacuum, **self.action_ct_kwargs)
-        return action.action_pt(self.potential, T, false_vacuum, true_vacuum, **self.action_pt_kwargs)
+            return action.action_ct(self.potential, T, false_vacuum, true_vacuum, **self.pd_settings)
+        return action.action_pt(self.potential, T, false_vacuum, true_vacuum, **self.pd_settings)
 
 
 class ActionCurveShapeAnalysisData:
