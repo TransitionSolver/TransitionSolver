@@ -46,7 +46,7 @@ Usage: ts [OPTIONS]
 
   Example usage:
 
-  ts --model RSS --point input/RSS/RSS_BP1.txt --action-ct --apply set_daisy_method 2 --apply set_bUseBoltzmannSuppression True --force
+  ts --model RSS_BP --point .input/RSS/RSS_BP1.txt
 
 Options:
   --model TEXT                    Model name  [required]
@@ -67,7 +67,7 @@ Options:
 ```
 For example, try
 ```bash
-ts --model RSS --point ./tests/rss_bp1.txt 
+ts --model RSS_BP --point .input/RSS/RSS_BP1.txt
 ```
 You can pass a model and model header file etc, and parameter point.
 

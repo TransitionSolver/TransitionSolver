@@ -42,20 +42,18 @@ LEVELS = {k.lower(): getattr(logging, k) for k in ["DEBUG", "INFO", "WARNING", "
 @click.option('--pta', default=[], help='Pulsar Timing Array', type=click.Choice(PTAS.keys()), multiple=True)
 @click.option('--show/--no-show', default=True, help='Whether to show plots', type=bool)
 @click.option('--level', default="critical", help='Logging level', type=click.Choice(LEVELS.keys()))
-@click.option("--apply", required=False, help="Apply settings to a potential", type=(str, ast.literal_eval), multiple=True)
 @click.option('--force', help='Force recompilation', required=False, default=False, is_flag=True, type=bool)
 @click.option('--action-ct', help='Use CosmoTransitions for action', required=False, default=False, is_flag=True, type=bool)
 @click.option('--t-high', help='High temperature to consider in PhaseTracer', required=False, default=1e3, type=float)
 @click.pass_context
-def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, vw, detector, pta, show, level, apply, force, action_ct, t_high):
+def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, vw, detector, pta, show, level, force, action_ct, t_high):
     """
     Run TransitionSolver on a particular model and point
 
     Example usage:
 
-    ts --model RSS --point input/RSS/RSS_BP1.txt --apply set_daisy_method 2 --apply set_bUseBoltzmannSuppression True --force
+    ts --model RSS_BP --point input/RSS/RSS_BP1.txt
     """
-
     logging.getLogger().setLevel(LEVELS[level])
 
     if model_header is None:
@@ -63,9 +61,6 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
 
     point = np.loadtxt(point_file_name)
     potential = load_potential(model_header, model, model_lib, model_namespace)(point)
-
-    for s, t in apply:
-        getattr(potential, s)(t)
 
     with Status(f"Building PhaseTracer {model}"):
         exe_name = build_phase_tracer(model_header, model, model_lib, model_namespace, force)

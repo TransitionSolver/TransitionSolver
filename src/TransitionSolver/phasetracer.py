@@ -69,7 +69,7 @@ def build_phase_tracer(model_header, model=None, model_lib=None, model_namespace
     if os.path.exists(exe_name) and not force:
         return exe_name
 
-    cmd = [CXX, TEMPLATE_CPP, "-o", exe_name, "-I", PT_INCLUDE, "-I", EP_MODELS, "-I", EP_INCLUDE, rpath(EP_HOME / 'lib'), rpath(PT_HOME / 'lib')] + LIBS
+    cmd = [CXX, TEMPLATE_CPP, "-o", exe_name, "-I", PT_INCLUDE, "-I", EP_MODELS, "-I", EP_INCLUDE, "-I", CWD, rpath(EP_HOME / 'lib'), rpath(PT_HOME / 'lib')] + LIBS
 
     if model_lib:
         cmd.append(model_lib)

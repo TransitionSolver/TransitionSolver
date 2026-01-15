@@ -37,13 +37,7 @@ int main(int argc, char *argv[]) {
     double t_high = std::atof(argv[2]);
 
     auto model = MODEL_NAME_WITH_NAMESPACE(point);
-    
-    // TODO this is RSS specific. Remove
-    model.set_daisy_method(EffectivePotential::DaisyMethod::Parwani);
-    model.set_bUseBoltzmannSuppression(true);
-    model.set_xi(0);
-    model.set_useGSResummation(true);
-    
+
     PhaseTracer::PhaseFinder pf(model);
     pf.set_t_high(t_high);
 

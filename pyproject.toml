@@ -58,7 +58,7 @@ pythonpath = ["."]
 addopts = "--mpl"
 
 [tool.setuptools.package-data]
-"TransitionSolver" = ["geff/*.csv", "gws/detectors/*.txt", "gws/detectors/*.csv", "interface.cpp", "models/util/*.csv"]
+"TransitionSolver" = ["geff/*.csv", "gws/detectors/*.txt", "gws/detectors/*.csv", "interface.cpp", "RSS_BP.hpp", "models/util/*.csv"]
 
 [project.scripts]
 ts = "TransitionSolver.cli:cli"

@@ -3,6 +3,7 @@ Access effective potentials from PhaseTracer
 ============================================
 """
 
+import os
 from pathlib import Path
 
 import cppyy
@@ -13,6 +14,7 @@ from cosmoTransitions.generic_potential import generic_potential
 from . import eigen
 from .phasetracer import PT_HOME, DEFAULT_NAMESPACE
 
+CWD = os.path.dirname(os.path.abspath(__file__))
 EP_HOME = PT_HOME / "EffectivePotential"
 EP_INCLUDE = EP_HOME / "include" / "effectivepotential"
 EP_MODELS = EP_HOME / "include" / "models"
@@ -103,8 +105,9 @@ def load_potential(model_header, model=None, model_lib=None, model_namespace=DEF
 
     # include headers
 
-    for pth in [EP_INCLUDE, EP_MODELS]:
+    for pth in [EP_INCLUDE, EP_MODELS, CWD]:
         cppyy.add_include_path(str(pth))
+
 
     cppyy.include(model_header)
 
@@ -120,6 +123,7 @@ def load_potential(model_header, model=None, model_lib=None, model_namespace=DEF
     joined = cppyy.gbl
     for n in model_namespace:
         joined = getattr(joined, n)
+
     Potential = getattr(joined, model)
 
     class ExtendedPotential(MixinPotential, Potential, MixinCosmoTransitions):
