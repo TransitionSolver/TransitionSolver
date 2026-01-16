@@ -33,12 +33,13 @@ def action_ct(potential, T, false_vacuum, true_vacuum, verbose=False, **kwargs):
             verbose=verbose, **kwargs).action
 
 
-def action_pt(potential, T, false_vacuum, true_vacuum, **kwargs):
+def action_pt(potential, T, false_vacuum, true_vacuum, extend_to_minima=False, **kwargs):
     """
     @returns Action from PhaseTracer's path deformation algorithm
     """
     action_calculator = PhaseTracer.ActionCalculator(potential)
     action_calculator.__python_owns__ = False
+    action_calculator.set_PD_extend_to_minima(extend_to_minima)
 
     if 'maxiter' in kwargs:
         action_calculator.set_PD_path_maxiter(kwargs['maxiter'])
