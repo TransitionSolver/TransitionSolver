@@ -19,7 +19,7 @@ from dictcmp import assert_deep_equal
 THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 BASELINE = THIS / "baseline"
 
-phase_structure_file = THIS / "rss_bp1_phase_structure.dat"
+phase_structure_file = BASELINE / "rss_bp1_phase_structure.dat"
 
 
 with open(BASELINE / "rss_bp1_phase_structure.json", 'r') as f:
@@ -41,7 +41,7 @@ def test_plot_gw():
 def test_snr():
     analyser = GWAnalyser(RSS_BP1, phase_structure_file, phase_history)
     snr = lisa.SNR(analyser.gw_total)
-    assert np.isclose(snr, 61.573514537762286)
+    assert np.isclose(snr, 61.61094261022309)
 
 
 @pytest.mark.mpl_image_compare

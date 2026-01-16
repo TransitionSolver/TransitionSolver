@@ -19,7 +19,7 @@ BASELINE = THIS / "baseline"
 
 
 def test_dof(generate_baseline):
-    phase_tracer_file = THIS / "rss_bp1_phase_structure.dat"
+    phase_tracer_file = BASELINE / "rss_bp1_phase_structure.dat"
     result = phasehistory.trace_dof(RSS_BP1, phase_tracer_file=phase_tracer_file)
     assert_deep_equal(result, BASELINE / "rss_bp1_dof.json", generate_baseline=generate_baseline)
 

@@ -16,7 +16,7 @@ BASELINE = THIS / "baseline"
 
 
 def test_phase_structure(generate_baseline):
-    phase_tracer_file = THIS / "rss_bp1_phase_structure.dat"
+    phase_tracer_file = BASELINE / "rss_bp1_phase_structure.dat"
     with open(phase_tracer_file) as f:
         phase_tracer_data = f.read()
     phase_structure = read_phase_tracer(phase_tracer_data)
