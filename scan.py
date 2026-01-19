@@ -14,11 +14,11 @@ from TransitionSolver.benchmarks import RSS_BP1_POINT
 
 
 # Compile PhaseTracer model
-model_header = "RSS.hpp"
+model_header = "RSS_BP.hpp"
 exe_name = build_phase_tracer(model_header)
 
 # Load C++ potential class
-RSS = load_potential(model_header)
+RSS_BP = load_potential(model_header)
 
 # Highest temperature to consider in PhaseTracer
 t_high = 250.
@@ -41,10 +41,7 @@ for i in range(10):
 
     # Make potential for this point
 
-    potential = RSS(point)
-    potential.set_daisy_method(2)  # TODO remove all these settings
-    potential.set_bUseBoltzmannSuppression(True)
-    potential.set_useGSResummation(True)
+    potential = RSS_BP(point)
 
     # Run TransitionSolver
 
