@@ -5,7 +5,6 @@ Run TransitionSolver on a known model
 
 import logging
 
-import ast
 import click
 import numpy as np
 import rich
