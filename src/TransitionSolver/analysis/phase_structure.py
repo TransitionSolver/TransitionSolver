@@ -64,11 +64,6 @@ class TransitionProperties(dict):
     def completed(self):
         return self.Tf is not None and self.Tf >= 0.
 
-    @property
-    def meanBubbleSeparationArray(self):
-        return [d**(-1/3) if d != 0 else 0 for d in self.bubbleNumberDensity]
-
-
 
 class Transition:
     """

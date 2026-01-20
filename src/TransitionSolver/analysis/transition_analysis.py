@@ -461,6 +461,7 @@ class TransitionAnalyser:
             self.properties.gamma[0], self.action_sampler.T[0], self.properties.HArray[0])]
         self.properties.densityIntegrand = [self.density_integrand(
             self.properties.Pf[0], self.properties.gamma[0], self.action_sampler.T[0], self.properties.HArray[0])]
+        self.properties.meanBubbleSeparationArray = [0]
 
     def check_milestones(self):
         # Unit nucleation (including phantom bubbles)
@@ -577,6 +578,8 @@ class TransitionAnalyser:
 
         self.properties.totalNumBubblesCorrected.append(self.properties.totalNumBubblesCorrected[-1] + 0.5 * dT * (
             self.properties.numBubblesIntegrand[-1] * self.properties.Pf[-1] + self.properties.numBubblesIntegrand[-2] * self.properties.Pf[-2]))
+
+        self.properties.meanBubbleSeparationArray.append(self.properties.bubbleNumberDensity[-1]**(-1/3) if self.properties.bubbleNumberDensity[-1] != 0 else 0)
 
     def update_after_rad(self, data):
         self.properties.meanBubbleRadiusArray.append(data)
