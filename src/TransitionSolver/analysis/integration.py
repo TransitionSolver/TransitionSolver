@@ -88,7 +88,6 @@ class CubedNestedIntegrationHelper:
         Si = self.S1 + self.S2 + self.S3 + self.S4 + self.S5 + self.S6
 
         Ti = fi1*gsi**3*dxi**4
-
         self.data.append(self.data[-1] + (Si + Ti) / 16.0)
 
         self.i += 1

@@ -398,9 +398,11 @@ class ActionCurveShapeAnalysisData:
             if sample[2]:  # is_valid
                 self.actionSamples.append(sample)
 
+
 class LinearInterp:
     def __init__(self, x, target):
-        self.factor = 0. if x[-1] == x[-2] else (x[-1] - target) / (x[-1] - x[-2])
+        self.factor = 0. if x[-1] == x[-2] else (
+            x[-1] - target) / (x[-1] - x[-2])
 
     def __call__(self, z):
         return z[-2] + self.factor * (z[-1] - z[-2])
@@ -457,8 +459,10 @@ class TransitionAnalyser:
         self.properties.vw_samples = [self.vw(hydroVars)]
         self.properties.gamma = [self.gamma_rate(T, SonT)]
         self.properties.physical_volume = [3]
-        self.properties.numBubblesIntegrand = [self.num_bubbles_integrand(self.properties.gamma[0], self.actionSampler.T[0], self.properties.HArray[0])]
-        self.properties.densityIntegrand = [self.density_integrand(self.properties.Pf[0], self.properties.gamma[0], self.actionSampler.T[0], self.properties.HArray[0])]
+        self.properties.numBubblesIntegrand = [self.num_bubbles_integrand(
+            self.properties.gamma[0], self.actionSampler.T[0], self.properties.HArray[0])]
+        self.properties.densityIntegrand = [self.density_integrand(
+            self.properties.Pf[0], self.properties.gamma[0], self.actionSampler.T[0], self.properties.HArray[0])]
 
     def check_milestones(self):
         # Unit nucleation (including phantom bubbles)
@@ -469,7 +473,8 @@ class TransitionAnalyser:
             self.properties.Tn = li(self.actionSampler.subT)
             self.properties.Hn = li(self.properties.HArray)
             self.properties.betaTn = li(self.properties.betaArray)
-            self.properties.Treh_n = self.reheat_temperature(self.properties.Tn)
+            self.properties.Treh_n = self.reheat_temperature(
+                self.properties.Tn)
 
         # Unit nucleation (excluding phantom bubbles)
         if self.properties.Tnbar is None and self.properties.totalNumBubblesCorrected[-1] >= 1:
@@ -479,7 +484,8 @@ class TransitionAnalyser:
             self.properties.Tnbar = li(self.actionSampler.subT)
             self.properties.Hnbar = li(self.properties.HArray)
             self.properties.betaTnbar = li(self.properties.betaArray)
-            self.properties.Treh_nbar = self.reheat_temperature(self.properties.Tnbar)
+            self.properties.Treh_nbar = self.reheat_temperature(
+                self.properties.Tnbar)
 
         # Percolation
         if self.properties.Tp is None and self.properties.Vext[-1] >= self.percolationThreshold_Vext:
@@ -491,14 +497,17 @@ class TransitionAnalyser:
             self.properties.Hp = li(self.properties.HArray)
             self.properties.betaTp = li(self.properties.betaArray)
             self.properties.decreasingVphysAtTp = self.properties.physical_volume[-1] < 0
-            self.properties.Treh_p = self.reheat_temperature(self.properties.Tp)
+            self.properties.Treh_p = self.reheat_temperature(
+                self.properties.Tp)
             hydroVars = hydrodynamics.make_hydro_vars(
                 # TODO why not pass vacuum energy
                 self.fromPhase, self.toPhase, self.potential, self.properties.Tp)
             # TODO names should reflect that they are at TP
             self.properties.transitionStrength = hydroVars.alpha
-            self.properties.meanBubbleRadius = li(self.properties.meanBubbleRadiusArray)
-            self.properties.meanBubbleSeparation = li(self.properties.meanBubbleSeparationArray)
+            self.properties.meanBubbleRadius = li(
+                self.properties.meanBubbleRadiusArray)
+            self.properties.meanBubbleSeparation = li(
+                self.properties.meanBubbleSeparationArray)
 
         # Pf = 1/e
         if self.properties.Te is None and self.properties.Vext[-1] >= 1:
@@ -509,7 +518,8 @@ class TransitionAnalyser:
             self.properties.Te = li(self.actionSampler.subT)
             self.properties.He = li(self.properties.HArray)
             self.properties.betaTe = li(self.properties.betaArray)
-            self.properties.Treh_e = self.reheat_temperature(self.properties.Te)
+            self.properties.Treh_e = self.reheat_temperature(
+                self.properties.Te)
 
         # Completion
         if self.properties.Tf is None and self.properties.Pf[-1] <= self.completionThreshold:
@@ -520,7 +530,8 @@ class TransitionAnalyser:
             self.properties.Hf = li(self.properties.HArray)
             self.properties.betaTf = li(self.properties.betaArray)
             self.properties.decreasingVphysAtTf = self.properties.physical_volume[-1] < 0
-            self.properties.Treh_f = self.reheat_temperature(self.properties.Tf)
+            self.properties.Treh_f = self.reheat_temperature(
+                self.properties.Tf)
 
         # Physical volume of the false vacuum is decreasing
         if self.properties.TVphysDecr_high is None and self.properties.physical_volume[-1] < 0:
@@ -531,7 +542,8 @@ class TransitionAnalyser:
 
         # Physical volume of the false vacuum is increasing *again*
         if self.properties.TVphysDecr_high is not None and self.properties.TVphysDecr_low is None and self.properties.physical_volume[-1] > 0:
-            self.properties.idx_tVphysDecr_low = len(self.properties.HArray) - 1
+            self.properties.idx_tVphysDecr_low = len(
+                self.properties.HArray) - 1
             li = LinearInterp(self.properties.physical_volume, 0)
             self.properties.TVphysDecr_low = li(self.actionSampler.subT)
 
@@ -546,21 +558,27 @@ class TransitionAnalyser:
         self.properties.HArray.append(hydrovars.hubble_constant)
         self.properties.vw_samples.append(self.vw(hydrovars))
         self.properties.gamma.append(self.gamma_rate(T, SonT))
-        self.properties.numBubblesIntegrand.append(self.num_bubbles_integrand(self.properties.gamma[-1], T, self.properties.HArray[-1]))
-        self.properties.totalNumBubbles.append(self.properties.totalNumBubbles[-1] + 0.5 * dT * (self.properties.numBubblesIntegrand[-1] + self.properties.numBubblesIntegrand[-2]))
+        self.properties.numBubblesIntegrand.append(self.num_bubbles_integrand(
+            self.properties.gamma[-1], T, self.properties.HArray[-1]))
+        self.properties.totalNumBubbles.append(self.properties.totalNumBubbles[-1] + 0.5 * dT * (
+            self.properties.numBubblesIntegrand[-1] + self.properties.numBubblesIntegrand[-2]))
         # TODO: not a great derivative, can do better.
-        self.properties.betaArray.append(self.properties.HArray[-1]*self.actionSampler.subT[-1]*(self.actionSampler.subSonT[-2] - self.actionSampler.subSonT[-1])/dT)
+        self.properties.betaArray.append(self.properties.HArray[-1]*self.actionSampler.subT[-1]*(
+            self.actionSampler.subSonT[-2] - self.actionSampler.subSonT[-1])/dT)
 
     def update_after_vac(self, data, T, dT, j):
         self.properties.Vext.append(4/3 * np.pi * data)
-        self.properties.physical_volume.append(3 + T * (self.properties.Vext[-2] - self.properties.Vext[-1]) / dT)
+        self.properties.physical_volume.append(
+            3 + T * (self.properties.Vext[-2] - self.properties.Vext[-1]) / dT)
         self.properties.Pf.append(np.exp(-self.properties.Vext[-1]))
 
-        self.properties.densityIntegrand.append(self.density_integrand(self.properties.Pf[-1], self.properties.gamma[ j], T, self.properties.HArray[ j]))
+        self.properties.densityIntegrand.append(self.density_integrand(
+            self.properties.Pf[-1], self.properties.gamma[j], T, self.properties.HArray[j]))
         self.properties.bubbleNumberDensity.append((T / (T + dT))**3 * self.properties.bubbleNumberDensity[-1]
-                               + 0.5*dT*T**3 * (self.properties.densityIntegrand[-2] + self.properties.densityIntegrand[-1]))
+                                                   + 0.5*dT*T**3 * (self.properties.densityIntegrand[-2] + self.properties.densityIntegrand[-1]))
 
-        self.properties.totalNumBubblesCorrected.append(self.properties.totalNumBubblesCorrected[-1] + 0.5 * dT * (self.properties.numBubblesIntegrand[-1] * self.properties.Pf[-1] + self.properties.numBubblesIntegrand[-2] * self.properties.Pf[-2]))
+        self.properties.totalNumBubblesCorrected.append(self.properties.totalNumBubblesCorrected[-1] + 0.5 * dT * (
+            self.properties.numBubblesIntegrand[-1] * self.properties.Pf[-1] + self.properties.numBubblesIntegrand[-2] * self.properties.Pf[-2]))
 
     def update_after_rad(self, data):
         self.properties.meanBubbleRadiusArray.append(data)
@@ -590,7 +608,7 @@ class TransitionAnalyser:
     def analyseTransition(self, startTime: float = -1.0, percolationThreshold_Pf=0.71, completionThreshold=1e-2):
 
         self.percolationThreshold_Vext = -np.log(percolationThreshold_Pf)
-        self.completionThreshold = completionThreshold # TODO mv to constructor
+        self.completionThreshold = completionThreshold  # TODO mv to constructor
 
         # TODO: this should depend on the scale of the transition, so make it configurable.
         # Estimate the maximum significant value of S/T by finding where the instantaneous nucleation rate multiplied by
@@ -650,8 +668,6 @@ class TransitionAnalyser:
         # linear in this region. If the prediction is bad, the S/T must be noticeably non-linear in this region and thus we
         # need a smaller step size for accurate sampling.
 
-        
-
         # =================================================
         # Calculate the maximum temperature result.
         # This gives a boundary condition for integration.
@@ -693,7 +709,8 @@ class TransitionAnalyser:
         while not self.bCheckPossibleCompletion or self.could_complete(maxSonTThreshold + toleranceSonT):
             # If the action begins increasing with decreasing temperature.
             if not self.properties.SonTmin and self.actionSampler.SonT[simIndex+1] > self.actionSampler.SonT[simIndex]:
-                li = LinearInterp(self.actionSampler.SonT[:simIndex + 1], self.actionSampler.SonT[simIndex + 1])
+                li = LinearInterp(
+                    self.actionSampler.SonT[:simIndex + 1], self.actionSampler.SonT[simIndex + 1])
                 self.properties.Tmin = li(self.actionSampler.T)
                 self.properties.SonTmin = li(self.actionSampler.SonT)
 
@@ -716,8 +733,20 @@ class TransitionAnalyser:
             hydroVars1 = self.get_hydro_vars(T1)
             hydroVars2 = self.get_hydro_vars(T2)
             hydroVarsInterp = [hydrodynamics.interpolate_hydro_vars(
-                hydroVars1, hydroVars2, t) for t in T] # TODO expensive? why not just compute cf interpolate
+                # TODO expensive? why not just compute cf interpolate
+                hydroVars1, hydroVars2, t) for t in T]
 
+            if req_init:
+                self.actionSampler.subT.append(T[0])
+                self.actionSampler.subSonT.append(SonT[0])
+                self.actionSampler.subRhof.append(
+                    hydroVarsInterp[0].energyDensityFalse)
+                self.actionSampler.subRhot.append(
+                    hydroVarsInterp[0].energyDensityTrue)
+
+                self.init_properties(
+                    hydroVarsInterp[0], self.actionSampler.T[0], self.actionSampler.SonT[0])
+                req_init = False
 
             # ==========================================================================================================
             # Begin subsampling.
@@ -725,22 +754,16 @@ class TransitionAnalyser:
 
             # Don't handle the first element of the list, as it is either the boundary condition for the integration (if
             # this is the first integrated data point), or was handled as the last element of the previous data point.
-            for i in range(len(T)):
+            for i in range(1, len(T)):
+                self.actionSampler.subT.append(T[i])
+                self.actionSampler.subSonT.append(SonT[i])
+                self.actionSampler.subRhof.append(
+                    hydroVarsInterp[i].energyDensityFalse)
+                self.actionSampler.subRhot.append(
+                    hydroVarsInterp[i].energyDensityTrue)
 
-                if i != 0 or req_init:
-                  self.actionSampler.subT.append(T[i])
-                  self.actionSampler.subSonT.append(SonT[i])
-                  self.actionSampler.subRhof.append(
-                      hydroVarsInterp[i].energyDensityFalse)
-                  self.actionSampler.subRhot.append(
-                      hydroVarsInterp[i].energyDensityTrue)
-  
-                if req_init:
-                    self.init_properties(hydroVarsInterp[0], self.actionSampler.T[0], self.actionSampler.SonT[0])
-                    req_init = False
-                    continue
-           
-                self.update_properties(hydroVarsInterp[i], SonT[i], T[i], dT)  # for all i > 0
+                self.update_properties(
+                    hydroVarsInterp[i], SonT[i], T[i], dT)  # for all i > 0
 
                 # The integration helper needs three data points before it can be initialised. However, we wait for an
                 # additional point so that we can immediately integrate and add it to the true vacuum fraction and false
@@ -750,7 +773,8 @@ class TransitionAnalyser:
                                                                                             outerFunction_trueVacVol, innerFunction_trueVacVol, sampleTransformationFunction)
 
                     for j, d in enumerate(integrationHelper_trueVacVol.data[1:]):
-                        self.update_after_vac(d, T[j + 1], dT, j + 1)  # for i = 1, 2
+                        self.update_after_vac(
+                            d, T[j + 1], dT, j + 1)  # for i = 1, 2
 
                     # Do the same thing for the average bubble radius integration helper. This needs to be done after Pf
                     # has been filled with data because outerFunction_avgBubRad uses this data.
@@ -762,17 +786,23 @@ class TransitionAnalyser:
                     # initialisation, it currently contains one less data point than it should have. Add one more data
                     # point: the previous temperature sample. The current temperature sample will be added later in this
                     # iteration of i.
-                    integrationHelper_avgBubRad.integrate(len(self.actionSampler.subT)-2)
+                    integrationHelper_avgBubRad.integrate(
+                        len(self.actionSampler.subT)-2)
 
                     # Don't add the first element since we have already stored self.properties.Vext[0] = 0, Pf[0] = 1, etc.
                     for d in integrationHelper_avgBubRad.data[1:]:
                         self.update_after_rad(d)  # for i = 1, 2
 
                 if integrationHelper_trueVacVol is not None:
-                    integrationHelper_trueVacVol.integrate(len(self.actionSampler.subT)-1)
-                    self.update_after_vac(integrationHelper_trueVacVol.data[-1], T[-1], dT, -1) # for i >= 3
-                    integrationHelper_avgBubRad.integrate(len(self.actionSampler.subT)-1)
-                    self.update_after_rad(integrationHelper_avgBubRad.data[-1]) # for i >= 3
+                    integrationHelper_trueVacVol.integrate(
+                        len(self.actionSampler.subT)-1)
+                    self.update_after_vac(
+                        # for i >= 3
+                        integrationHelper_trueVacVol.data[-1], T[-1], dT, -1)
+                    integrationHelper_avgBubRad.integrate(
+                        len(self.actionSampler.subT)-1)
+                    self.update_after_rad(
+                        integrationHelper_avgBubRad.data[-1])  # for i >= 3
 
                 # Check if we have reached any milestones (e.g. unit nucleation, percolation, etc.).
 
@@ -821,7 +851,6 @@ class TransitionAnalyser:
         # ==============================================================================================================
 
         self.finalize_properties()
-
 
     def prime_transition_analysis(self, startTime: float):
         timer = Timer(self.timeout, startTime)
