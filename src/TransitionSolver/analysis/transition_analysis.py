@@ -446,6 +446,10 @@ class TransitionAnalyser:
             0.0005*min(self.fromPhase.T[-1], self.toPhase.T[-1]), 0.0001*self.potential.get_temperature_scale())
 
     def init_properties(self, hydroVars, T, SonT):
+        """
+        Initialise transition properties that are tracked as we 
+        trace temperature.
+        """
         self.properties.totalNumBubbles = [0.]
         self.properties.totalNumBubblesCorrected = [0.]
         self.properties.Vext = [0.]
@@ -458,12 +462,16 @@ class TransitionAnalyser:
         self.properties.gamma = [self.gamma_rate(T, SonT)]
         self.properties.physical_volume = [3]
         self.properties.numBubblesIntegrand = [self.num_bubbles_integrand(
-            self.properties.gamma[0], self.action_sampler.T[0], self.properties.HArray[0])]
+            self.properties.gamma[0], T, self.properties.HArray[0])]
         self.properties.densityIntegrand = [self.density_integrand(
-            self.properties.Pf[0], self.properties.gamma[0], self.action_sampler.T[0], self.properties.HArray[0])]
+            self.properties.Pf[0], self.properties.gamma[0], T, self.properties.HArray[0])]
         self.properties.meanBubbleSeparationArray = [0]
 
     def check_milestones(self):
+        """
+        Check whether any milestones reached (e.g. percolation and nucleation).
+        If so, record properties (e.g. percolation temperature).
+        """
         # Unit nucleation (including phantom bubbles)
         if self.properties.Tn is None and self.properties.totalNumBubbles[-1] >= 1:
             self.properties.idx_tn = len(self.properties.HArray) - 1
@@ -547,6 +555,9 @@ class TransitionAnalyser:
             self.properties.TVphysDecr_low = li(self.action_sampler.subT)
 
     def finalize_properties(self):
+        """
+        Add properties once finished tracing temperature
+        """
         self.properties.T = self.action_sampler.T
         self.properties.SonT = self.action_sampler.SonT
         self.properties.TSubSampleArray = self.action_sampler.subT
@@ -554,6 +565,9 @@ class TransitionAnalyser:
             p * g for p, g in zip(self.properties.Pf, self.properties.gamma)]
 
     def update_properties(self, hydrovars, SonT, T, dT):
+        """
+        Update properties at a new temperature
+        """
         self.properties.HArray.append(hydrovars.hubble_constant)
         self.properties.vw_samples.append(self.vw(hydrovars))
         self.properties.gamma.append(self.gamma_rate(T, SonT))
@@ -566,6 +580,10 @@ class TransitionAnalyser:
             self.action_sampler.subSonT[-2] - self.action_sampler.subSonT[-1])/dT)
 
     def update_after_vac(self, data, T, dT, j):
+        """
+        Update properties at a new temperature that depend on the vacuum
+        volume integral.
+        """
         self.properties.Vext.append(4/3 * np.pi * data)
         self.properties.physical_volume.append(
             3 + T * (self.properties.Vext[-2] - self.properties.Vext[-1]) / dT)
@@ -582,6 +600,10 @@ class TransitionAnalyser:
         self.properties.meanBubbleSeparationArray.append(self.properties.bubbleNumberDensity[-1]**(-1/3) if self.properties.bubbleNumberDensity[-1] != 0 else 0)
 
     def update_after_rad(self, data):
+        """
+        Update properties at a new temperature that depend on the bubble 
+        radius integral.
+        """
         self.properties.meanBubbleRadiusArray.append(data)
 
     def vw(self, hydrovars: HydroVars) -> float:
