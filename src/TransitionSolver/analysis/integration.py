@@ -4,7 +4,7 @@ Integration helper methods
 """
 
 
-class CubedNestedIntegrationHelper:
+class CubedHelper:
     """
     Designed specifically to aid in evaluating integrals of the form
        I(x) = x^-3 * {int_x^a dx' self.f(x') [int_x^x' dx'' self.g(x'')]^3} ,
@@ -93,7 +93,7 @@ class CubedNestedIntegrationHelper:
         self.i += 1
 
 
-class LinearNestedNormalisedIntegrationHelper:
+class LinearHelper:
     """
     Designed specifically to aid in evaluating integrals of the form
        I(x) = x^-1 {[int_x^a dx' self.f(x') int_x^x' dx'' self.g(x'')] / [int_x^a dx' self.h(x')]} ,

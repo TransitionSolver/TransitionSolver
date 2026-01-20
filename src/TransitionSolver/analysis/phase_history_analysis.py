@@ -131,7 +131,7 @@ class PhaseHistoryAnalyser:
             ta = TransitionAnalyser(self.potential, transition.properties,
                                                     self.phase_structure.phases[transition.false_phase], self.phase_structure.phases[transition.true_phase],
                                                     self.phase_structure.groud_state_energy_density, Tmin=Tmin, Tmax=Tmax, **kwargs)
-            ta.analyseTransition()
+            ta.analyse()
         else:
             transition.properties.analysed = False
             transition.properties.error = "T_MAX < T_MIN"
