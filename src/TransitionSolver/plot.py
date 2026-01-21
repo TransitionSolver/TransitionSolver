@@ -3,7 +3,7 @@ Make plots from results on disk
 ===============================
 """
 
-import json_numpy as json
+import json
 import matplotlib.pyplot as plt
 import numpy as np
 
