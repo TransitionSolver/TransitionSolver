@@ -64,6 +64,12 @@ class TransitionProperties(dict):
     def completed(self):
         return self.Tf is not None and self.Tf >= 0.
 
+    def report(self):
+        # add data, but in order that makes it most readable
+        report = {k: v for k, v in self.items() if np.isscalar(v)}
+        report['size'] = len(self.T)
+        report = report | {k: v for k, v in self.items() if not np.isscalar(v)}    
+        return report
 
 class Transition:
     """
@@ -72,8 +78,9 @@ class Transition:
     """
     def __init__(self, transition: np.ndarray):
         self.key = transition[-3]
-        # The ID is used to match up the indices in a transition path (which is a list of transition ids)
-        self.ID = int(transition[-2])
+        # the ID matches up the IDs in a transition path
+        # use string to avoid ambiguity in dict keys when serialized
+        self.ID = str(int(transition[-2]))
         self.false_phase = int(transition[0])
         self.true_phase = int(transition[1])
 
@@ -87,12 +94,10 @@ class Transition:
         @returns Data about transition collated into a dictionary
         """
         report = {}
-        report['id'] = self.ID
         report['false_phase'] = self.false_phase
         report['true_phase'] = self.true_phase
         report['completed'] = self.properties.completed
-        report['size'] = len(self.properties.T)
-        report = report | self.properties
+        report = report | self.properties.report()
         return report
 
     def __str__(self) -> str:

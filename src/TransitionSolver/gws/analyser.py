@@ -327,7 +327,7 @@ def extract_relevant_transitions(report: dict) -> list[dict]:
         if path['valid']:
             relevant += path['transitions']
 
-    return [t for t in report['transitions'] if t['id'] in relevant]
+    return {k: report['transitions'][k] for k in relevant}
 
 
 class GWAnalyser:
@@ -355,15 +355,16 @@ class GWAnalyser:
             raise RuntimeError(
                 'No relevant transition detected in the phase history')
 
-        self.gws = {t['id']: AnalyseIndividualTransition(
-            phase_structure, t, potential, **kwargs) for t in relevant_transitions}
+        self.gws = {k: AnalyseIndividualTransition(
+            phase_structure, v, potential, **kwargs) for k, v in relevant_transitions.items()}
 
     def report(self, *detectors):
         """
         @returns Data on GW spectrum
         """
         reports = {k: v.report(*detectors) for k, v in self.gws.items()}
-        reports["Signal-to-Noise Ratio"] = {d.label: d.SNR(self.gw_total) for d in detectors}
+        reports["Combined"] = {}
+        reports["Combined"]["Signal-to-Noise Ratio"] = {d.label: d.SNR(self.gw_total) for d in detectors}
         return reports
 
     def plot(self, frequencies=None, detectors=None, ptas=None, show=False):

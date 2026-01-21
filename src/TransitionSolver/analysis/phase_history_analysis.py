@@ -22,7 +22,7 @@ class PhaseHistoryAnalyser:
         report = {}
         report['valid'] = any(p.is_valid for p in self.paths)
         report['paths'] = [p.report() for p in self.paths]
-        report['transitions'] = [t.report() for t in self.phase_structure.transitions]
+        report['transitions'] = {t.ID: t.report() for t in self.phase_structure.transitions}
         return report
 
     @property

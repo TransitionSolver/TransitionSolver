@@ -49,6 +49,6 @@ def trace_dof(potential, phase_structure=None, phase_tracer_file=None):
         T = np.geomspace(t1, phase.T[-1], 1000).tolist()
         phi = [phase.find_phase_at_t(t, potential) for t in T]
         dof = [geff.field_dependent_dof(potential, p, t) for p, t in zip(phi, T)]
-        data[phase.key] = {"T": T, "dof": dof}
+        data[str(phase.key)] = {"T": T, "dof": dof}
 
     return data

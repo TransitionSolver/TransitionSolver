@@ -16,7 +16,9 @@
         "Upsilon": 0.4329853367351456,
         "Length scale": 56548127094488.23
     },
-    "Signal-to-Noise Ratio": {
-        "LISA --- Analytic": 59.78483872505715
+    "Combined": {
+        "Signal-to-Noise Ratio": {
+            "LISA --- Analytic": 59.78483872505715
+        }
     }
 }

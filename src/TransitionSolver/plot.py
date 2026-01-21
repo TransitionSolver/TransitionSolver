@@ -8,20 +8,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def load_transition(transition_id, phase_structure):
-    """
-    @param transition_id ID of transition
-    @param phase_structure Phase structure
-
-    @returns Transition data
-    """
-    for tr in phase_structure['transitions']:
-        if tr['id'] == transition_id:
-            return tr
-
-    raise RuntimeError(f"Could not find {transition_id} transition")
-
-
 def add_labeled_vline(ax, x, label, color):
     transform = ax.get_xaxis_transform()
     y = 0.8
@@ -64,7 +50,7 @@ def plot_volume(transition_id, phase_structure=None, phase_structure_file=None, 
     if ax is None:
         ax = plt.gca()
 
-    transition = load_transition(transition_id, phase_structure)
+    transition = phase_structure['transitions'][transition_id]
 
     ax.plot(transition['T'],
             transition['deriv_physical_volume'], zorder=3)
@@ -102,7 +88,7 @@ def plot_bubble_wall_velocity(transition_id, phase_structure=None, phase_structu
     if ax is None:
         ax = plt.gca()
 
-    transition = load_transition(transition_id, phase_structure)
+    transition = phase_structure['transitions'][transition_id]
 
     ax.plot(transition['T'], transition['bubble_wall_velocity'])
 
@@ -132,7 +118,7 @@ def plot_gamma(transition_id, phase_structure=None, phase_structure_file=None, a
     if ax is None:
         ax = plt.gca()
 
-    transition = load_transition(transition_id, phase_structure)
+    transition = phase_structure['transitions'][transition_id]
 
     ax.plot(transition['T'],
             transition['gamma'], label="Standard")
@@ -167,7 +153,7 @@ def plot_bubble_radius(transition_id, phase_structure=None, phase_structure_file
     if ax is None:
         ax = plt.gca()
 
-    transition = load_transition(transition_id, phase_structure)
+    transition = phase_structure['transitions'][transition_id]
 
     ax.plot(transition['T'],
             transition['bubble_radius'])
@@ -199,7 +185,7 @@ def plot_bubble_separation(transition_id, phase_structure=None, phase_structure_
     if ax is None:
         ax = plt.gca()
 
-    transition = load_transition(transition_id, phase_structure)
+    transition = phase_structure['transitions'][transition_id]
 
     ax.plot(transition['T'],
             transition['bubble_separation'])
@@ -231,7 +217,7 @@ def plot_bubble_number(transition_id, phase_structure=None, phase_structure_file
     if ax is None:
         ax = plt.gca()
 
-    transition = load_transition(transition_id, phase_structure)
+    transition = phase_structure['transitions'][transition_id]
 
     # Number of bubbles plotted over entire sampled temperature range, using log scale for number of bubbles.
 
@@ -268,7 +254,7 @@ def plot_pf(transition_id, phase_structure=None, phase_structure_file=None, ax=N
     if ax is None:
         ax = plt.gca()
 
-    transition = load_transition(transition_id, phase_structure)
+    transition = phase_structure['transitions'][transition_id]
 
     ax.plot(transition['T'], transition['Pf'])
 
@@ -298,7 +284,7 @@ def plot_action_curve(transition_id, phase_structure=None, phase_structure_file=
     if ax is None:
         ax = plt.gca()
 
-    transition = load_transition(transition_id, phase_structure)
+    transition = phase_structure['transitions'][transition_id]
 
     ax.plot(transition['T'], transition['action_3d'])
 
@@ -325,7 +311,7 @@ def plot_summary(phase_structure=None, phase_structure_file=None, show=False):
         with open(phase_structure_file, encoding="utf8") as f:
             phase_structure = json.load(f)
 
-    transitions = [t for t in phase_structure['transitions'] if t['analysed']]
+    transitions = {k: v for k, v  in phase_structure['transitions'].items() if v['analysed']}
 
     if not transitions:
         return plt.figure()
@@ -334,10 +320,10 @@ def plot_summary(phase_structure=None, phase_structure_file=None, show=False):
     fig, ax = plt.subplots(len(plotters), len(transitions), constrained_layout=False, sharex='col', figsize=(10 * len(transitions), 6 * len(plotters)))
     ax = np.reshape(ax, (len(plotters), len(transitions)))
 
-    for x, tr in enumerate(transitions):
+    for x, key in enumerate(transitions):
         for y, p in enumerate(plotters):
             this_ax = ax[y, x]
-            p(tr['id'], phase_structure, ax=this_ax)
+            p(key, phase_structure, ax=this_ax)
             this_ax.set_xlabel(None)
 
     fig.supxlabel("$T$ (GeV)", y=0.005)
