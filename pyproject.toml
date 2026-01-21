@@ -13,7 +13,6 @@ dependencies = [
   "scipy",
   "numpy",
   "cosmoTransitions",
-  "pathos",
   "click",
   "rich",
   "cppyy",
