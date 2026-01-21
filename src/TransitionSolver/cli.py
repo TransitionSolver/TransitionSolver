@@ -69,7 +69,7 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
         phase_structure = read_phase_tracer(phase_structure_raw)
 
     with Status("Analyzing phase history"):
-        tr_report = find_phase_history(potential, phase_structure, vw=vw, action_ct=action_ct)
+        tr_report = find_phase_history(potential, phase_structure, bubble_wall_velocity=vw, action_ct=action_ct)
         tr_fig = plot_summary(tr_report, show=show)
 
     console.rule("[bold red]Transitions")

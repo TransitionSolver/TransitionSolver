@@ -67,7 +67,7 @@ class TransitionProperties(dict):
     def report(self):
         # add data, but in order that makes it most readable
         report = {k: v for k, v in self.items() if np.isscalar(v)}
-        report['size'] = len(self.T)
+        report['size'] = len(self.T) if self.analysed else 0
         report = report | {k: v for k, v in self.items() if not np.isscalar(v)}    
         return report
 
