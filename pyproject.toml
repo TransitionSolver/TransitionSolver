@@ -17,7 +17,6 @@ dependencies = [
   "click",
   "rich",
   "cppyy",
-  "json-numpy",
 ]
 requires-python = ">=3.9"
 authors = [

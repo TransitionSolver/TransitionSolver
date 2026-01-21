@@ -3,7 +3,7 @@ Check dictionaries equal within tolerance
 =========================================
 """
 
-import json_numpy as json
+import json
 from deepdiff import DeepDiff
 import numpy as np
 
@@ -22,7 +22,7 @@ def assert_deep_equal(result, file_name, significant_digits=3, generate_baseline
     """
     if generate_baseline:
         with open(file_name, "w") as f:
-            json.dump(result, f)
+            json.dump(result, f, indent=4)
 
     with open(file_name, "r") as f:
         expected = json.load(f, object_hook=key2int)

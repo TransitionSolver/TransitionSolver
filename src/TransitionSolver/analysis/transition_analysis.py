@@ -415,8 +415,8 @@ class TransitionAnalyser:
 
     def __init__(self, potential, properties, fromPhase: Phase, toPhase: Phase,
                  # TODO make false
-                 groud_state_energy_density: float, Tmin=None, Tmax=None, vw=None, action_ct=True,
-                 percolationThreshold_Pf=0.71, completion_threshold=1e-2):
+                 groud_state_energy_density: float, Tmin=None, Tmax=None, bubble_wall_velocity=None, action_ct=True,
+                 perc_threshold_pf=0.71, completion_threshold=1e-2):
         self.potential = potential
         self.properties = properties
         self.fromPhase = fromPhase
@@ -424,12 +424,13 @@ class TransitionAnalyser:
         self.groud_state_energy_density = groud_state_energy_density
         self.Tmin = Tmin
         self.Tmax = Tmax
-        self.properties.use_cj_velocity = vw is None
-        self.properties.vw = vw
+        self.default_bubble_wall_velocity = bubble_wall_velocity
         self.action_ct = action_ct
 
-        self.perc_threshold_vext = -np.log(percolationThreshold_Pf)
-        self.completion_threshold = completion_threshold
+        self.properties.use_cj_velocity = bubble_wall_velocity is None
+        self.properties.perc_threshold_pf = perc_threshold_pf
+        self.properties.perc_threshold_vol_ext = -np.log(perc_threshold_pf)
+        self.properties.completion_threshold = completion_threshold
 
         if self.Tmin is None:
             # The minimum temperature for which both phases exist, and prevent analysis below the effective potential's
@@ -440,7 +441,7 @@ class TransitionAnalyser:
 
         if self.Tmax is None:
             # The transition is not evaluated subcritically.
-            self.Tmax = self.properties.Tc
+            self.Tmax = self.properties.T_c
 
         self.Tstep = max(
             0.0005*min(self.fromPhase.T[-1], self.toPhase.T[-1]), 0.0001*self.potential.get_temperature_scale())
@@ -450,22 +451,22 @@ class TransitionAnalyser:
         Initialise transition properties that are tracked as we 
         trace temperature.
         """
-        self.properties.totalNumBubbles = [0.]
-        self.properties.totalNumBubblesCorrected = [0.]
-        self.properties.Vext = [0.]
+        self.properties.bubble_num = [0.]
+        self.properties.bubble_num_bar = [0.]
+        self.properties.vol_ext = [0.]
         self.properties.Pf = [1.]
-        self.properties.bubbleNumberDensity = [0.]
-        self.properties.meanBubbleRadiusArray = [0.]
-        self.properties.betaArray = [None]
-        self.properties.HArray = [hydroVars.hubble_constant]
-        self.properties.vw_samples = [self.vw(hydroVars)]
+        self.properties.bubble_density = [0.]
+        self.properties.bubble_radius = [0.]
+        self.properties.beta= [None]
+        self.properties.H = [hydroVars.hubble_constant]
+        self.properties.bubble_wall_velocity= [self.bubble_wall_velocity(hydroVars)]
         self.properties.gamma = [self.gamma_rate(T, SonT)]
-        self.properties.physical_volume = [3]
-        self.properties.numBubblesIntegrand = [self.num_bubbles_integrand(
-            self.properties.gamma[0], T, self.properties.HArray[0])]
-        self.properties.densityIntegrand = [self.density_integrand(
-            self.properties.Pf[0], self.properties.gamma[0], T, self.properties.HArray[0])]
-        self.properties.meanBubbleSeparationArray = [0]
+        self.properties.deriv_physical_volume = [3]
+        self.properties.bubble_num_integrand = [self.bubble_num_integrand(
+            self.properties.gamma[0], T, self.properties.H[0])]
+        self.properties.bubble_density_integrand = [self.density_integrand(
+            self.properties.Pf[0], self.properties.gamma[0], T, self.properties.H[0])]
+        self.properties.bubble_separation = [0]
 
     def check_milestones(self):
         """
@@ -473,110 +474,96 @@ class TransitionAnalyser:
         If so, record properties (e.g. percolation temperature).
         """
         # Unit nucleation (including phantom bubbles)
-        if self.properties.Tn is None and self.properties.totalNumBubbles[-1] >= 1:
-            self.properties.idx_tn = len(self.properties.HArray) - 1
-            li = LinearInterp(self.properties.totalNumBubbles, 1)
-            self.properties.SonTn = li(self.action_sampler.subSonT)
-            self.properties.Tn = li(self.action_sampler.subT)
-            self.properties.Hn = li(self.properties.HArray)
-            self.properties.betaTn = li(self.properties.betaArray)
-            self.properties.Treh_n = self.reheat_temperature(
-                self.properties.Tn)
+        if self.properties.T_n is None and self.properties.bubble_num[-1] >= 1:
+            self.properties.idx_n = len(self.properties.H) - 1
+            li = LinearInterp(self.properties.bubble_num, 1)
+            self.properties.action_3d_n = li(self.action_sampler.subSonT)
+            self.properties.T_n = li(self.action_sampler.subT)
+            self.properties.H_n = li(self.properties.H)
+            self.properties.beta_n = li(self.properties.beta)
+            self.properties.Treh_n = self.reheat_temperature(self.properties.T_n)
 
         # Unit nucleation (excluding phantom bubbles)
-        if self.properties.Tnbar is None and self.properties.totalNumBubblesCorrected[-1] >= 1:
-            self.properties.idx_tnbar = len(self.properties.HArray) - 1
-            li = LinearInterp(self.properties.totalNumBubblesCorrected, 1)
-            self.properties.SonTnbar = li(self.action_sampler.subSonT)
-            self.properties.Tnbar = li(self.action_sampler.subT)
-            self.properties.Hnbar = li(self.properties.HArray)
-            self.properties.betaTnbar = li(self.properties.betaArray)
-            self.properties.Treh_nbar = self.reheat_temperature(
-                self.properties.Tnbar)
+        if self.properties.T_nbar is None and self.properties.bubble_num_bar[-1] >= 1:
+            self.properties.idx_nbar = len(self.properties.H) - 1
+            li = LinearInterp(self.properties.bubble_num_bar, 1)
+            self.properties.action_3d_nbar = li(self.action_sampler.subSonT)
+            self.properties.T_nbar = li(self.action_sampler.subT)
+            self.properties.H_nbar = li(self.properties.H)
+            self.properties.beta_nbar = li(self.properties.beta)
+            self.properties.Treh_nbar = self.reheat_temperature(self.properties.T_nbar)
 
         # Percolation
-        if self.properties.Tp is None and self.properties.Vext[-1] >= self.perc_threshold_vext:
-            self.properties.idx_tp = len(self.properties.HArray) - 1
-            li = LinearInterp(self.properties.Vext,
-                              self.perc_threshold_vext)
-            self.properties.SonTp = li(self.action_sampler.subSonT)
-            self.properties.Tp = li(self.action_sampler.subT)
-            self.properties.Hp = li(self.properties.HArray)
-            self.properties.betaTp = li(self.properties.betaArray)
-            self.properties.decreasingVphysAtTp = self.properties.physical_volume[-1] < 0
-            self.properties.Treh_p = self.reheat_temperature(
-                self.properties.Tp)
-            hydroVars = hydrodynamics.make_hydro_vars(
-                # TODO why not pass vacuum energy
-                self.fromPhase, self.toPhase, self.potential, self.properties.Tp)
-            # TODO names should reflect that they are at TP
-            self.properties.transitionStrength = hydroVars.alpha
-            self.properties.meanBubbleRadius = li(
-                self.properties.meanBubbleRadiusArray)
-            self.properties.meanBubbleSeparation = li(
-                self.properties.meanBubbleSeparationArray)
+        if self.properties.T_p is None and self.properties.vol_ext[-1] >= self.properties.perc_threshold_vol_ext:
+            self.properties.idx_p = len(self.properties.H) - 1
+            li = LinearInterp(self.properties.vol_ext, self.properties.perc_threshold_vol_ext)
+            self.properties.action_3d_p = li(self.action_sampler.subSonT)
+            self.properties.T_p = li(self.action_sampler.subT)
+            self.properties.H_p = li(self.properties.H)
+            self.properties.beta_p = li(self.properties.beta)
+            self.properties.decreasing_v_phys_p = bool(self.properties.deriv_physical_volume[-1] < 0)  # don't want a numpy.bool
+            self.properties.Treh_p = self.reheat_temperature(self.properties.T_p)
+            self.properties.bubble_radius_p = li(self.properties.bubble_radius)
+            self.properties.bubble_separation_p = li(self.properties.bubble_separation)
+            self.properties.bubble_wall_velocity_p = li(self.properties.bubble_wall_velocity)
 
         # Pf = 1/e
-        if self.properties.Te is None and self.properties.Vext[-1] >= 1:
-            self.properties.idx_te = len(self.properties.HArray) - 1
-            # max(0, ...) for subcritical transitions, where it is possible that self.properties.Vext[-2] > 1.
-            li = LinearInterp(self.properties.Vext, 1)
-            self.properties.SonTe = li(self.action_sampler.subSonT)
-            self.properties.Te = li(self.action_sampler.subT)
-            self.properties.He = li(self.properties.HArray)
-            self.properties.betaTe = li(self.properties.betaArray)
-            self.properties.Treh_e = self.reheat_temperature(
-                self.properties.Te)
+        if self.properties.T_e is None and self.properties.vol_ext[-1] >= 1:
+            self.properties.idx_e = len(self.properties.H) - 1
+            li = LinearInterp(self.properties.vol_ext, 1)
+            self.properties.action_3d_e = li(self.action_sampler.subSonT)
+            self.properties.T_e = li(self.action_sampler.subT)
+            self.properties.H_e = li(self.properties.H)
+            self.properties.beta_e = li(self.properties.beta)
+            self.properties.Treh_e = self.reheat_temperature(self.properties.T_e)
 
         # Completion
-        if self.properties.Tf is None and self.properties.Pf[-1] <= self.completion_threshold:
-            self.properties.idx_tf = len(self.properties.HArray) - 1
-            li = LinearInterp(self.properties.Pf, self.completion_threshold)
-            self.properties.SonTf = li(self.action_sampler.subSonT)
-            self.properties.Tf = li(self.action_sampler.subT)
-            self.properties.Hf = li(self.properties.HArray)
-            self.properties.betaTf = li(self.properties.betaArray)
-            self.properties.decreasingVphysAtTf = self.properties.physical_volume[-1] < 0
-            self.properties.Treh_f = self.reheat_temperature(
-                self.properties.Tf)
+        if self.properties.T_f is None and self.properties.Pf[-1] <= self.properties.completion_threshold:
+            self.properties.idx_f = len(self.properties.H) - 1
+            li = LinearInterp(self.properties.Pf, self.properties.completion_threshold)
+            self.properties.action_3d_f = li(self.action_sampler.subSonT)
+            self.properties.T_f = li(self.action_sampler.subT)
+            self.properties.Hf = li(self.properties.H)
+            self.properties.beta_f = li(self.properties.beta)
+            self.properties.decreasing_v_phys_f = bool(self.properties.deriv_physical_volume[-1] < 0)  # don't want a numpy.bool
+            self.properties.Treh_f = self.reheat_temperature(self.properties.T_f)
 
         # Physical volume of the false vacuum is decreasing
-        if self.properties.TVphysDecr_high is None and self.properties.physical_volume[-1] < 0:
-            self.properties.idx_tVphysDecr_high = len(
-                self.properties.HArray) - 1
-            li = LinearInterp(self.properties.physical_volume, 0)
-            self.properties.TVphysDecr_high = li(self.action_sampler.subT)
+        if self.properties.T_decreasing_v_phys is None and self.properties.deriv_physical_volume[-1] < 0:
+            self.properties.idx_decreasing_v_phys = len(self.properties.H) - 1
+            li = LinearInterp(self.properties.deriv_physical_volume, 0)
+            self.properties.T_decreasing_v_phys = li(self.action_sampler.subT)
 
         # Physical volume of the false vacuum is increasing *again*
-        if self.properties.TVphysDecr_high is not None and self.properties.TVphysDecr_low is None and self.properties.physical_volume[-1] > 0:
-            self.properties.idx_tVphysDecr_low = len(
-                self.properties.HArray) - 1
-            li = LinearInterp(self.properties.physical_volume, 0)
-            self.properties.TVphysDecr_low = li(self.action_sampler.subT)
+        if self.properties.T_decreasing_v_phys is not None and self.properties.T_increasing_v_phys is None and self.properties.deriv_physical_volume[-1] > 0:
+            self.properties.idx_increasing_v_phys = len(self.properties.H) - 1
+            li = LinearInterp(self.properties.deriv_physical_volume, 0)
+            self.properties.T_increasing_v_phys = li(self.action_sampler.subT)
 
     def finalize_properties(self):
         """
         Add properties once finished tracing temperature
         """
-        self.properties.T = self.action_sampler.T
-        self.properties.SonT = self.action_sampler.SonT
-        self.properties.TSubSampleArray = self.action_sampler.subT
+        self.properties.T = self.action_sampler.subT
+        self.properties.action_3d = self.action_sampler.subSonT
         self.properties.gamma_eff = [
             p * g for p, g in zip(self.properties.Pf, self.properties.gamma)]
+        self.properties.T_gamma = max(self.properties.gamma)
+        self.properties.idx_gamma = self.properties.gamma.index(self.properties.T_gamma)
 
     def update_properties(self, hydrovars, SonT, T, dT):
         """
         Update properties at a new temperature
         """
-        self.properties.HArray.append(hydrovars.hubble_constant)
-        self.properties.vw_samples.append(self.vw(hydrovars))
+        self.properties.H.append(hydrovars.hubble_constant)
+        self.properties.bubble_wall_velocity.append(self.bubble_wall_velocity(hydrovars))
         self.properties.gamma.append(self.gamma_rate(T, SonT))
-        self.properties.numBubblesIntegrand.append(self.num_bubbles_integrand(
-            self.properties.gamma[-1], T, self.properties.HArray[-1]))
-        self.properties.totalNumBubbles.append(self.properties.totalNumBubbles[-1] + 0.5 * dT * (
-            self.properties.numBubblesIntegrand[-1] + self.properties.numBubblesIntegrand[-2]))
+        self.properties.bubble_num_integrand.append(self.bubble_num_integrand(
+            self.properties.gamma[-1], T, self.properties.H[-1]))
+        self.properties.bubble_num.append(self.properties.bubble_num[-1] + 0.5 * dT * (
+            self.properties.bubble_num_integrand[-1] + self.properties.bubble_num_integrand[-2]))
         # TODO: not a great derivative, can do better.
-        self.properties.betaArray.append(self.properties.HArray[-1]*self.action_sampler.subT[-1]*(
+        self.properties.beta.append(self.properties.H[-1]*self.action_sampler.subT[-1]*(
             self.action_sampler.subSonT[-2] - self.action_sampler.subSonT[-1])/dT)
 
     def update_after_vac(self, data, T, dT, j):
@@ -584,45 +571,45 @@ class TransitionAnalyser:
         Update properties at a new temperature that depend on the vacuum
         volume integral.
         """
-        self.properties.Vext.append(4/3 * np.pi * data)
-        self.properties.physical_volume.append(
-            3 + T * (self.properties.Vext[-2] - self.properties.Vext[-1]) / dT)
-        self.properties.Pf.append(np.exp(-self.properties.Vext[-1]))
+        self.properties.vol_ext.append(4/3 * np.pi * data)
+        self.properties.deriv_physical_volume.append(
+            3 + T * (self.properties.vol_ext[-2] - self.properties.vol_ext[-1]) / dT)
+        self.properties.Pf.append(np.exp(-self.properties.vol_ext[-1]))
 
-        self.properties.densityIntegrand.append(self.density_integrand(
-            self.properties.Pf[-1], self.properties.gamma[j], T, self.properties.HArray[j]))
-        self.properties.bubbleNumberDensity.append((T / (T + dT))**3 * self.properties.bubbleNumberDensity[-1]
-                                                   + 0.5*dT*T**3 * (self.properties.densityIntegrand[-2] + self.properties.densityIntegrand[-1]))
+        self.properties.bubble_density_integrand.append(self.density_integrand(
+            self.properties.Pf[-1], self.properties.gamma[j], T, self.properties.H[j]))
+        self.properties.bubble_density.append((T / (T + dT))**3 * self.properties.bubble_density[-1]
+                                                   + 0.5*dT*T**3 * (self.properties.bubble_density_integrand[-2] + self.properties.bubble_density_integrand[-1]))
 
-        self.properties.totalNumBubblesCorrected.append(self.properties.totalNumBubblesCorrected[-1] + 0.5 * dT * (
-            self.properties.numBubblesIntegrand[-1] * self.properties.Pf[-1] + self.properties.numBubblesIntegrand[-2] * self.properties.Pf[-2]))
+        self.properties.bubble_num_bar.append(self.properties.bubble_num_bar[-1] + 0.5 * dT * (
+            self.properties.bubble_num_integrand[-1] * self.properties.Pf[-1] + self.properties.bubble_num_integrand[-2] * self.properties.Pf[-2]))
 
-        self.properties.meanBubbleSeparationArray.append(self.properties.bubbleNumberDensity[-1]**(-1/3) if self.properties.bubbleNumberDensity[-1] != 0 else 0)
+        self.properties.bubble_separation.append(self.properties.bubble_density[-1]**(-1/3) if self.properties.bubble_density[-1] != 0 else 0)
 
     def update_after_rad(self, data):
         """
         Update properties at a new temperature that depend on the bubble 
         radius integral.
         """
-        self.properties.meanBubbleRadiusArray.append(data)
+        self.properties.bubble_radius.append(data)
 
-    def vw(self, hydrovars: HydroVars) -> float:
+    def bubble_wall_velocity(self, hydrovars: HydroVars) -> float:
         """
         @returns Bubble wall velocity
         """
         if self.properties.use_cj_velocity:
-            vw = hydrovars.cj_velocity
-            if np.isnan(vw) or vw > 1.:
-                logger.warning("vw = {}. Adjusting to 1", vw)
+            bubble_wall_velocity = hydrovars.cj_velocity
+            if np.isnan(bubble_wall_velocity) or bubble_wall_velocity > 1.:
+                logger.warning("bubble_wall_velocity = {}. Adjusting to 1", bubble_wall_velocity)
                 return 1.
-            return vw
+            return bubble_wall_velocity
 
-        return self.properties.vw
+        return self.default_bubble_wall_velocity
 
     def density_integrand(self, Pf, gamma, T, H):
         return Pf * gamma / (T**4 * H)
 
-    def num_bubbles_integrand(self, gamma, T, H):
+    def bubble_num_integrand(self, gamma, T, H):
         return gamma / (T * H**4)
 
     # TODO: need to handle subcritical transitions better. Shouldn't use integration if the max sampled action is well
@@ -699,16 +686,16 @@ class TransitionAnalyser:
         req_init = True
 
         def outerFunction_trueVacVol(x):
-            return self.properties.gamma[x] / (self.action_sampler.subT[x]**4 * self.properties.HArray[x])
+            return self.properties.gamma[x] / (self.action_sampler.subT[x]**4 * self.properties.H[x])
 
         def innerFunction_trueVacVol(x):
-            return self.properties.vw_samples[x] / self.properties.HArray[x]
+            return self.properties.bubble_wall_velocity[x] / self.properties.H[x]
 
         def outerFunction_avgBubRad(x):
-            return self.properties.gamma[x]*self.properties.Pf[x] / (self.action_sampler.subT[x]**4 * self.properties.HArray[x])
+            return self.properties.gamma[x]*self.properties.Pf[x] / (self.action_sampler.subT[x]**4 * self.properties.H[x])
 
         def innerFunction_avgBubRad(x):
-            return self.properties.vw_samples[x] / self.properties.HArray[x]
+            return self.properties.bubble_wall_velocity[x] / self.properties.H[x]
 
         def sampleTransformationFunction(x):
             return self.action_sampler.subT[x]
@@ -728,11 +715,11 @@ class TransitionAnalyser:
         # otherewise we can also determine this when could_complete returns false.
         while not self.check_possible_completion or self.could_complete(maxSonTThreshold + toleranceSonT):
             # If the action begins increasing with decreasing temperature.
-            if not self.properties.SonTmin and self.action_sampler.SonT[simIndex+1] > self.action_sampler.SonT[simIndex]:
+            if not self.properties.action_3d_min and self.action_sampler.SonT[simIndex+1] > self.action_sampler.SonT[simIndex]:
                 li = LinearInterp(
                     self.action_sampler.SonT[:simIndex + 1], self.action_sampler.SonT[simIndex + 1])
                 self.properties.Tmin = li(self.action_sampler.T)
-                self.properties.SonTmin = li(self.action_sampler.SonT)
+                self.properties.action_3d_min = li(self.action_sampler.SonT)
 
             num_samples = self.action_sampler.num_sub_samples(
                 minSonTThreshold, maxSonTThreshold)
@@ -808,7 +795,7 @@ class TransitionAnalyser:
                     integrator_bubble_radius.integrate(
                         len(self.action_sampler.subT)-2)
 
-                    # Don't add the first element since we have already stored self.properties.Vext[0] = 0, Pf[0] = 1, etc.
+                    # Don't add the first element since we have already stored self.properties.vol_ext[0] = 0, Pf[0] = 1, etc.
                     for d in integrator_bubble_radius.data[1:]:
                         self.update_after_rad(d)  # for i = 1, 2
 
@@ -845,7 +832,7 @@ class TransitionAnalyser:
 
             # Choose the next value of S/T we're aiming to sample.
             success, message = self.action_sampler.next_sample(
-                sampleData, self.properties.gamma, self.properties.totalNumBubbles[-1])
+                sampleData, self.properties.gamma, self.properties.bubble_num[-1])
 
             simIndex += 1
 
@@ -873,7 +860,7 @@ class TransitionAnalyser:
 
     def prime_transition_analysis(self, startTime: float):
         timer = Timer(self.timeout, startTime)
-        TcData = ActionSample(self.properties.Tc)
+        TcData = ActionSample(self.properties.T_c)
 
         if self.bDebug:
             print(
@@ -897,7 +884,7 @@ class TransitionAnalyser:
 
             allSamples = sorted(allSamples, key=lambda t: t[0])
             self.properties.T = [sample[0] for sample in allSamples]
-            self.properties.SonT = [sample[1] for sample in allSamples]
+            self.properties.action_3d = [sample[1] for sample in allSamples]
             return
 
         intermediateData = data.copy()
@@ -1220,8 +1207,8 @@ class TransitionAnalyser:
 
         # Evaluate the action at Tmax if this transition is not evaluated at the critical temperature. Otherwise we already
         # know the action is divergent at the critical temperature.
-        if self.properties.Tc and (self.Tmax < self.properties.Tc or self.properties.subcritical):
-            if self.Tmax < self.properties.Tc:
+        if self.properties.T_c and (self.Tmax < self.properties.T_c or self.properties.subcritical):
+            if self.Tmax < self.properties.T_c:
                 data.T = self.Tmax
             else:
                 data.T = self.Tmin + 0.98*(self.Tmax - self.Tmin)
@@ -1386,7 +1373,7 @@ class TransitionAnalyser:
                                              self.groud_state_energy_density)
 
     def reheat_temperature(self, T: float) -> float:
-        Tsep = min(0.001*(self.properties.Tc - self.Tmin), 0.5*(T - self.Tmin))
+        Tsep = min(0.001*(self.properties.T_c - self.Tmin), 0.5*(T - self.Tmin))
         rhof = hydrodynamics.energy_density_from_phase(
             self.fromPhase, self.toPhase, self.potential, T)
 
@@ -1397,15 +1384,15 @@ class TransitionAnalyser:
             # different temperatures, T and Tt (Treh), respectively).
             return rhot - rhof
 
-        if objective(self.properties.Tc) >= 0:
-            max_t = self.properties.Tc
+        if objective(self.properties.T_c) >= 0:
+            max_t = self.properties.T_c
         else:
             # If the energy density of the true vacuum is never larger than the current energy density of the false vacuum even
             # at Tc, then reheating goes beyond Tc
             max_t = self.toPhase.T[-1] - 2. * Tsep
             # Also, check the energy density of the true vacuum when it first appears. If a solution still doesn't exist
             # here, return
-            if max_t > self.properties.Tc and objective(max_t) < 0:
+            if max_t > self.properties.T_c and objective(max_t) < 0:
                 warnings.warn("Cannot find reheat temperature")
                 return
 

@@ -7,14 +7,14 @@ import time
 import os
 from pathlib import Path
 
-import json_numpy as json
+import json
 
 from . import phase_tracer_info
 
 
 def savejson(report, file_name):
     with open(file_name, "w") as f:
-        json.dump(report, f)
+        json.dump(report, f, indent=4)
 
 
 def make_results_folder():

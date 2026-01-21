@@ -78,19 +78,21 @@ class Transition:
         self.true_phase = int(transition[1])
 
         self.properties = TransitionProperties()
-        self.properties.subcritical = transition[-1] > 0
-        self.properties.Tc = transition[2]
         self.properties.analysed = False
+        self.properties.T_c = transition[2]
+        self.properties.subcritical = bool(transition[-1] > 0)  # don't want a numpy.bool
 
     def report(self) -> dict:
         """
         @returns Data about transition collated into a dictionary
         """
-        report = self.properties.copy()
+        report = {}
         report['id'] = self.ID
-        report['falsePhase'] = self.false_phase
-        report['truePhase'] = self.true_phase
+        report['false_phase'] = self.false_phase
+        report['true_phase'] = self.true_phase
         report['completed'] = self.properties.completed
+        report['size'] = len(self.properties.T)
+        report = report | self.properties
         return report
 
     def __str__(self) -> str:

@@ -20,18 +20,18 @@ class PhaseHistoryAnalyser:
         @returns Report phase history from TransitionSolver objects
         """
         report = {}
-        report['transitions'] = [t.report() for t in self.phase_structure.transitions]
-        report['paths'] = [p.report() for p in self.paths]
         report['valid'] = any(p.is_valid for p in self.paths)
+        report['paths'] = [p.report() for p in self.paths]
+        report['transitions'] = [t.report() for t in self.phase_structure.transitions]
         return report
 
     @property
     def unique_transition_temperatures(self):
-        return list({t.properties.Tc for t in self.phase_structure.transitions})
+        return list({t.properties.T_c for t in self.phase_structure.transitions})
 
     @property
     def unique_transition_idx(self):
-        unique = {t.properties.Tc: i for i, t in enumerate(self.phase_structure.transitions)}
+        unique = {t.properties.T_c: i for i, t in enumerate(self.phase_structure.transitions)}
         return list(unique.values())
 
     @property
@@ -108,7 +108,7 @@ class PhaseHistoryAnalyser:
                     phase_indexed_trans[i][0].path = paths[-1]
 
                     j = 1
-                    while j < len(phase_indexed_trans[i]) and phase_indexed_trans[i][j].transition.properties.Tc == max(self.unique_transition_temperatures):
+                    while j < len(phase_indexed_trans[i]) and phase_indexed_trans[i][j].transition.properties.T_c == max(self.unique_transition_temperatures):
                         paths.append(Path(phase_nodes[i][0]))
                         phase_nodes[i][0].paths.append(paths[-1])
 
@@ -116,7 +116,7 @@ class PhaseHistoryAnalyser:
                         phase_indexed_trans[i][j].path = paths[-1]
                         j += 1
 
-        frontier.sort(key=lambda tr: tr.transition.properties.Tc, reverse=True)
+        frontier.sort(key=lambda tr: tr.transition.properties.T_c, reverse=True)
         return paths, frontier
 
     def analyse_transition(self, phase_indexed_trans, transition_edge, path, transition, **kwargs):
@@ -136,7 +136,7 @@ class PhaseHistoryAnalyser:
             transition.properties.analysed = False
             transition.properties.error = "T_MAX < T_MIN"
 
-    def analyse(self, vw=None, action_ct=True):  # TODO make false
+    def analyse(self, bubble_wall_velocity=None, action_ct=True):  # TODO make false
 
         timer = Timer(self.time_limit)
 
@@ -164,15 +164,15 @@ class PhaseHistoryAnalyser:
             transition = transition_edge.transition
             path = transition_edge.path
 
-            self.analyse_transition(phase_indexed_trans, transition_edge, path, transition, vw=vw, action_ct=action_ct)
+            self.analyse_transition(phase_indexed_trans, transition_edge, path, transition, bubble_wall_velocity=bubble_wall_velocity, action_ct=action_ct)
 
             if timer.timeout():
                 self.paths = []
                 return
 
             # If the transition begins.
-            if transition.properties.Tp and transition.properties.Tf:
-                frontier = [f for f in frontier if f.false_phase_node.phase != transition_edge.false_phase_node.phase and f.transition.properties.Tc < transition.properties.Tf]
+            if transition.properties.T_p and transition.properties.T_f:
+                frontier = [f for f in frontier if f.false_phase_node.phase != transition_edge.false_phase_node.phase and f.transition.properties.T_c < transition.properties.T_f]
 
                 # First we handle the false phase side. The fact that the transition happened may cause a path splitting
                 # that couldn't be guaranteed before the transition was analysed.
@@ -232,7 +232,7 @@ class PhaseHistoryAnalyser:
                     # Insert the new frontier nodes into the frontier, maintaining the sorted order (i.e. decreasing
                     # critical temperature).
                     frontier += self.new_frontier(transition_edge, phase_indexed_trans, path, True)
-                    frontier.sort(key=lambda tr: tr.transition.properties.Tc, reverse=True)
+                    frontier.sort(key=lambda tr: tr.transition.properties.T_c, reverse=True)
 
                 # If there is only one path going through the true phase node, we need to split it at the intersection
                 # point unless the intersection point is the start of the other path.
@@ -265,7 +265,7 @@ class PhaseHistoryAnalyser:
                 # Insert the new frontier nodes into the frontier, maintaining the sorted order (i.e. decreasing
                 # critical temperature).
                 frontier += self.new_frontier(transition_edge, phase_indexed_trans, path, False)
-                frontier.sort(key=lambda tr: tr.transition.properties.Tc, reverse=True)
+                frontier.sort(key=lambda tr: tr.transition.properties.T_c, reverse=True)
 
         self.paths = paths
         self.set_is_valid()
@@ -285,17 +285,17 @@ class PhaseHistoryAnalyser:
         # before the path transitions to a new phase either through the current transition or another transition along
         # the path.
         if transition_edge.index < len(phase_indexed_trans[false_phase])-1:
-            Tc = phase_indexed_trans[false_phase][transition_edge.index+1].transition.properties.Tc
+            Tc = phase_indexed_trans[false_phase][transition_edge.index+1].transition.properties.T_c
             already_transitioned = False
             # Check the transitions already in this path, which may include a recent transition from the current false
             # phase with a pending split based on the current transition.
             for transition in path.transitions:
-                if transition.properties.Tc > transition_edge.transition.properties.Tc and transition.properties.Tf > Tc:
+                if transition.properties.T_c > transition_edge.transition.properties.T_c and transition.properties.T_f > Tc:
                     already_transitioned = True
                     break
 
             # Check the current transition.
-            already_transitioned = already_transitioned or transition_edge.transition.properties.Tf is not None
+            already_transitioned = already_transitioned or transition_edge.transition.properties.T_f is not None
 
             if not already_transitioned:
                 new_frontier.append(phase_indexed_trans[false_phase][transition_edge.index+1])
@@ -310,12 +310,12 @@ class PhaseHistoryAnalyser:
                 new_transition = phase_indexed_trans[true_phase][i].transition
 
                 # If the transition is no longer possible by the time we get to its false phase, don't consider it.
-                if self.phase_structure.phases[new_transition.true_phase].T[0] > transition_edge.transition.properties.Tn:
+                if self.phase_structure.phases[new_transition.true_phase].T[0] > transition_edge.transition.properties.T_n:
                     continue
 
                 # If the new transition could have started above the temperature we get to the true phase, then we may
                 # be able to add it as a subcritical transition.
-                if transition_edge.transition.properties.Tn < new_transition.properties.Tc:
+                if transition_edge.transition.properties.T_n < new_transition.properties.T_c:
                     # Make sure the transition isn't reversed, removing it as a possibility.
                     newtrue_phase = new_transition.true_phase
                     reversed_ = False
@@ -324,9 +324,9 @@ class PhaseHistoryAnalyser:
                         reversed_transition = phase_indexed_trans[newtrue_phase][j].transition
                         # The transition must occur between the current transition's temperature (Tn) and the forward
                         # transition's temperature (Tc).
-                        if reversed_transition.properties.Tc >= new_transition.properties.Tc:
+                        if reversed_transition.properties.T_c >= new_transition.properties.T_c:
                             continue
-                        if reversed_transition.properties.Tc <= transition_edge.transition.properties.Tn:
+                        if reversed_transition.properties.T_c <= transition_edge.transition.properties.T_n:
                             break
                         if reversed_transition.true_phase == true_phase:
                             reversed_ = True
@@ -353,8 +353,8 @@ class PhaseHistoryAnalyser:
             # transition got us to this point).
             for tr in path.transitions:
                 if tr.true_phase == transition.false_phase:
-                    return min(transition.properties.Tc, tr.properties.Tn)
-        return transition.properties.Tc
+                    return min(transition.properties.T_c, tr.properties.T_n)
+        return transition.properties.T_c
 
     def min_trans_temperature_idxed(self, phase_indexed_trans:
                                     list[list[TransitionEdge]], transition_edge: TransitionEdge) -> float:
@@ -364,8 +364,8 @@ class PhaseHistoryAnalyser:
         # critical temperature of the reverse transition.
         for p in phase_indexed_trans[transition_edge.transition.true_phase][transition_edge.index+1:]:
             reverse_transition = p.transition
-            if reverse_transition.properties.Tc < transition_edge.transition.properties.Tc and reverse_transition.true_phase == transition_edge.transition.false_phase:
-                Tmin = reverse_transition.properties.Tc
+            if reverse_transition.properties.T_c < transition_edge.transition.properties.T_c and reverse_transition.true_phase == transition_edge.transition.false_phase:
+                Tmin = reverse_transition.properties.T_c
                 break
 
         return max(Tmin, self.phase_structure.phases[transition_edge.transition.false_phase].T.min(), self.phase_structure.phases[transition_edge.transition.true_phase].T.min())

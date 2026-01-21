@@ -54,8 +54,8 @@ class AnalyseIndividualTransition:
         self.use_bubble_sep = use_bubble_sep
 
         self.transition_report = transition_report
-        self.from_phase = phase_structure.phases[transition_report['falsePhase']]
-        self.to_phase = phase_structure.phases[transition_report['truePhase']]
+        self.from_phase = phase_structure.phases[transition_report['false_phase']]
+        self.to_phase = phase_structure.phases[transition_report['true_phase']]
         self.potential = potential
 
         self.hydro_transition_temp = hydrodynamics.make_hydro_vars(
@@ -88,7 +88,7 @@ class AnalyseIndividualTransition:
 
     @property
     def Pf(self):
-        return 0.71
+        return self.transition_report['perc_threshold_pf']
 
     @property
     def upsilon(self):
@@ -100,27 +100,22 @@ class AnalyseIndividualTransition:
 
     @property
     def transition_temp(self) -> float:
-        return self.transition_report['Tp']
+        return self.transition_report['T_p']
 
     @cached_property
     def redshift_temp(self) -> float:
         return self.transition_report['Treh_p']
 
     @property
-    def vw(self) -> float:
-        """
-        @returns Either Chapman-Jouguet hydrodynamical estimate or value from transition report if present
-        """
-        if self.transition_report['use_cj_velocity']:
-            return self.hydro_transition_temp.cj_velocity
-        return self.transition_report['vw']
+    def bubble_wall_velocity(self) -> float:
+        return self.transition_report['bubble_wall_velocity_p']
 
     @property
     def peak_frequency_coll(self):
         if self.peak_amplitude_coll == 0:
             return 0.
         return self.redshift_freq * \
-            (0.77 * (8 * np.pi)**(1 / 3) * self.vw /
+            (0.77 * (8 * np.pi)**(1 / 3) * self.bubble_wall_velocity /
              (2 * np.pi * self.length_scale))
 
     @property
@@ -132,8 +127,8 @@ class AnalyseIndividualTransition:
         """
         @returns Ratio of shell thickness and bubble separation
         """
-        return abs(self.vw -
-                   self.hydro_transition_temp.soundSpeedFalse) / self.vw
+        return abs(self.bubble_wall_velocity -
+                   self.hydro_transition_temp.soundSpeedFalse) / self.bubble_wall_velocity
 
     @property
     def peak_frequency_sw_shell_thickness(self):
@@ -170,7 +165,7 @@ class AnalyseIndividualTransition:
             return 0.
         A = 5.13e-2
         return A * self.redshift_amp * (self.hydro_transition_temp.hubble_constant * self.length_scale / (
-            (8 * np.pi)**(1 / 3) * self.vw))**2 * self.kinetic_energy_fraction**2
+            (8 * np.pi)**(1 / 3) * self.bubble_wall_velocity))**2 * self.kinetic_energy_fraction**2
 
     @property
     def peak_amplitude_turb(self) -> float:
@@ -233,20 +228,20 @@ class AnalyseIndividualTransition:
         """
         @returns Efficiency of sound waves using the kappa-nu model
         """
-        # adjust the vw value to avoid numerical instabilities
+        # adjust the bubble wall velocity value to avoid numerical instabilities
 
-        vw = self.vw
-        vw = max(vw, 1e-6)
-        vw = min(vw, 0.999999)
+        bubble_wall_velocity = self.bubble_wall_velocity
+        bubble_wall_velocity = max(bubble_wall_velocity, 1e-6)
+        bubble_wall_velocity = min(bubble_wall_velocity, 0.999999)
 
-        if vw != self.vw:
+        if bubble_wall_velocity != self.bubble_wall_velocity:
             logger.warning(
-                "vw adjusted from %s to %s to avoid numerical instability", self.vw, vw)
+                "bubble wall velocity adjusted from %s to %s to avoid numerical instability", self.bubble_wall_velocity, bubble_wall_velocity)
 
         kappa_sw = kappa_nu_model(
             self.hydro_transition_temp.soundSpeedSqTrue,
             self.hydro_transition_temp.alpha,
-            vw,
+            bubble_wall_velocity,
             self.transition_report['use_cj_velocity'])
 
         if kappa_sw > 1:
@@ -281,22 +276,24 @@ class AnalyseIndividualTransition:
         """
         @returns Characteristic bubble length scale
         """
-        key = 'meanBubbleSeparation' if self.use_bubble_sep else 'meanBubbleRadius'
+        key = 'bubble_separation_p' if self.use_bubble_sep else 'bubble_radius_p'
         return self.transition_report[key]
 
     def report(self, *detectors):
         report = {}
-        report['Peak amplitude (sw, sound shell)'] = self.peak_amplitude_sw_sound_shell
-        report['Peak frequency (sw, bubble separation)'] = self.peak_frequency_sw_bubble_separation
-        report['Peak frequency (sw, shell thickness)'] = self.peak_frequency_sw_shell_thickness
-        report['Peak amplitude (turb)'] = self.peak_amplitude_turb
-        report['Peak frequency (turb)'] = self.peak_frequency_turb
-        report['Peak amplitude (coll)'] = self.peak_amplitude_coll
-        report['Peak frequency (coll)'] = self.peak_frequency_coll
-        report['SNR'] = {d.label: d.SNR(self.gw_total) for d in detectors}
-        report['vw'] = self.vw
-        report['transition temp'] = self.transition_temp
-        report['redshift temp'] = self.redshift_temp
+        report['Peak amplitude (sound waves)'] = self.peak_amplitude_sw_sound_shell if self.use_sound_shell else self.peak_amplitude_sw
+        report['Peak frequency (sound waves)'] = self.peak_frequency_sw_shell_thickness if self.use_sound_shell else self.peak_frequency_sw_bubble_separation
+        report['Peak amplitude (turbulence)'] = self.peak_amplitude_turb
+        report['Peak frequency (turbulence)'] = self.peak_frequency_turb
+        report['Peak amplitude (collisions)'] = self.peak_amplitude_coll
+        report['Peak frequency (collisions)'] = self.peak_frequency_coll
+        report['Signal-to-Noise Ratio'] = {d.label: d.SNR(self.gw_total) for d in detectors}
+        report['Bubble wall velocity'] = self.bubble_wall_velocity
+        report['Transition temperature'] = self.transition_temp
+        report['Redshift temperature'] = self.redshift_temp
+        report['Kinetic energy fraction'] =self. kinetic_energy_fraction
+        report['Upsilon'] = self.upsilon
+        report['Length scale'] = self.length_scale
         return report
 
     def plot(self, frequencies, detectors=None, ptas=None, ax=None):
@@ -366,7 +363,7 @@ class GWAnalyser:
         @returns Data on GW spectrum
         """
         reports = {k: v.report(*detectors) for k, v in self.gws.items()}
-        reports["SNR"] = {d.label: d.SNR(self.gw_total) for d in detectors}
+        reports["Signal-to-Noise Ratio"] = {d.label: d.SNR(self.gw_total) for d in detectors}
         return reports
 
     def plot(self, frequencies=None, detectors=None, ptas=None, show=False):

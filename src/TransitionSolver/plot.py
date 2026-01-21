@@ -37,16 +37,16 @@ def add_labeled_hline(ax, y, label, color):
 
 
 def add_labeled_vlines(transition, ax):
-    if 'TGammaMax' in transition:
-        add_labeled_vline(ax, transition['TGammaMax'], r"$T_\Gamma$", 'k')
-    if 'Tn' in transition:
-        add_labeled_vline(ax, transition['Tn'], "$T_n$", 'r')
-    if 'Tp' in transition:
-        add_labeled_vline(ax, transition['Tp'], "$T_p$", 'g')
-    if 'Te' in transition:
-        add_labeled_vline(ax, transition['Te'], "$T_e$", 'b')
-    if 'Tf' in transition:
-        add_labeled_vline(ax, transition['Tf'], "$T_f$", 'm')
+    if 'T_gamma' in transition:
+        add_labeled_vline(ax, transition['T_gamma'], r"$T_\Gamma$", 'k')
+    if 'T_n' in transition:
+        add_labeled_vline(ax, transition['T_n'], "$T_n$", 'r')
+    if 'T_p' in transition:
+        add_labeled_vline(ax, transition['T_p'], "$T_p$", 'g')
+    if 'T_e' in transition:
+        add_labeled_vline(ax, transition['T_e'], "$T_e$", 'b')
+    if 'T_f' in transition:
+        add_labeled_vline(ax, transition['T_f'], "$T_f$", 'm')
 
 
 def plot_volume(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
@@ -66,12 +66,12 @@ def plot_volume(transition_id, phase_structure=None, phase_structure_file=None, 
 
     transition = load_transition(transition_id, phase_structure)
 
-    ax.plot(transition['TSubSampleArray'],
-            transition['physical_volume'], zorder=3)
+    ax.plot(transition['T'],
+            transition['deriv_physical_volume'], zorder=3)
 
-    if 'TVphysDecr_high' in transition and 'TVphysDecr_low' in transition:
-        ax.axvspan(transition['TVphysDecr_low'],
-                   transition['TVphysDecr_high'], alpha=0.3, color='r', zorder=-1)
+    if 'T_decreasing_v_phys' in transition and 'T_increasing_v_phys' in transition:
+        ax.axvspan(transition['T_decreasing_v_phys'],
+                   transition['T_increasing_v_phys'], alpha=0.3, color='r', zorder=-1)
 
     add_labeled_vlines(transition, ax)
     add_labeled_hline(ax, 3., "3", 'gray')
@@ -87,7 +87,7 @@ def plot_volume(transition_id, phase_structure=None, phase_structure_file=None, 
     return ax
 
 
-def plot_vw(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
+def plot_bubble_wall_velocity(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
     """
     @param transition_id ID of transition
     @param phase_structure Phase structure
@@ -104,7 +104,7 @@ def plot_vw(transition_id, phase_structure=None, phase_structure_file=None, ax=N
 
     transition = load_transition(transition_id, phase_structure)
 
-    ax.plot(transition['TSubSampleArray'], transition['vw_samples'])
+    ax.plot(transition['T'], transition['bubble_wall_velocity'])
 
     add_labeled_vlines(transition, ax)
 
@@ -134,9 +134,9 @@ def plot_gamma(transition_id, phase_structure=None, phase_structure_file=None, a
 
     transition = load_transition(transition_id, phase_structure)
 
-    ax.plot(transition['TSubSampleArray'],
+    ax.plot(transition['T'],
             transition['gamma'], label="Standard")
-    ax.plot(transition['TSubSampleArray'],
+    ax.plot(transition['T'],
             transition['gamma_eff'], label="Effective")
 
     ax.set_xlabel('$T$ (GeV)')
@@ -169,8 +169,8 @@ def plot_bubble_radius(transition_id, phase_structure=None, phase_structure_file
 
     transition = load_transition(transition_id, phase_structure)
 
-    ax.plot(transition['TSubSampleArray'],
-            transition['meanBubbleRadiusArray'])
+    ax.plot(transition['T'],
+            transition['bubble_radius'])
 
     ax.set_yscale('log')
     ax.set_xlabel('$T$ (GeV)')
@@ -201,8 +201,8 @@ def plot_bubble_separation(transition_id, phase_structure=None, phase_structure_
 
     transition = load_transition(transition_id, phase_structure)
 
-    ax.plot(transition['TSubSampleArray'],
-            transition['meanBubbleSeparationArray'])
+    ax.plot(transition['T'],
+            transition['bubble_separation'])
 
     ax.set_yscale('log')
     ax.set_xlabel('$T$ (GeV)')
@@ -235,10 +235,10 @@ def plot_bubble_number(transition_id, phase_structure=None, phase_structure_file
 
     # Number of bubbles plotted over entire sampled temperature range, using log scale for number of bubbles.
 
-    ax.plot(transition['TSubSampleArray'],
-            transition['totalNumBubblesCorrected'], label='$N(T)$')
-    ax.plot(transition['TSubSampleArray'],
-            transition['totalNumBubbles'], ls="--", label='$N^{\\mathrm{ext}}(T)$')
+    ax.plot(transition['T'],
+            transition['bubble_num_bar'], label='$N(T)$')
+    ax.plot(transition['T'],
+            transition['bubble_num'], ls="--", label='$N^{\\mathrm{ext}}(T)$')
 
     add_labeled_vlines(transition, ax)
 
@@ -270,7 +270,7 @@ def plot_pf(transition_id, phase_structure=None, phase_structure_file=None, ax=N
 
     transition = load_transition(transition_id, phase_structure)
 
-    ax.plot(transition['TSubSampleArray'], transition['Pf'])
+    ax.plot(transition['T'], transition['Pf'])
 
     add_labeled_vlines(transition, ax)
     ax.set_yscale('log')
@@ -300,7 +300,7 @@ def plot_action_curve(transition_id, phase_structure=None, phase_structure_file=
 
     transition = load_transition(transition_id, phase_structure)
 
-    ax.plot(transition['T'], transition['SonT'])
+    ax.plot(transition['T'], transition['action_3d'])
 
     add_labeled_vlines(transition, ax)
 
@@ -330,7 +330,7 @@ def plot_summary(phase_structure=None, phase_structure_file=None, show=False):
     if not transitions:
         return plt.figure()
 
-    plotters = [plot_volume, plot_vw, plot_gamma, plot_bubble_radius, plot_bubble_separation, plot_bubble_number, plot_action_curve, plot_pf]
+    plotters = [plot_volume, plot_bubble_wall_velocity, plot_gamma, plot_bubble_radius, plot_bubble_separation, plot_bubble_number, plot_action_curve, plot_pf]
     fig, ax = plt.subplots(len(plotters), len(transitions), constrained_layout=False, sharex='col', figsize=(10 * len(transitions), 6 * len(plotters)))
     ax = np.reshape(ax, (len(plotters), len(transitions)))
 
