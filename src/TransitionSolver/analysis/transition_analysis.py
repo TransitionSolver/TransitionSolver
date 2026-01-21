@@ -466,7 +466,7 @@ class TransitionAnalyser:
             self.properties.gamma[0], T, self.properties.H[0])]
         self.properties.bubble_density_integrand = [self.density_integrand(
             self.properties.Pf[0], self.properties.gamma[0], T, self.properties.H[0])]
-        self.properties.bubble_separation = [0]
+        self.properties.bubble_separation = [np.inf]
 
     def check_milestones(self):
         """
@@ -548,8 +548,10 @@ class TransitionAnalyser:
         self.properties.action_3d = self.action_sampler.subSonT
         self.properties.gamma_eff = [
             p * g for p, g in zip(self.properties.Pf, self.properties.gamma)]
-        self.properties.T_gamma = max(self.properties.gamma)
-        self.properties.idx_gamma = self.properties.gamma.index(self.properties.T_gamma)
+            
+        self.properties.idx_gamma = int(np.nanargmax(self.properties.gamma))
+        self.properties.T_gamma = self.properties.T[self.properties.idx_gamma]
+
 
     def update_properties(self, hydrovars, SonT, T, dT):
         """
@@ -584,7 +586,7 @@ class TransitionAnalyser:
         self.properties.bubble_num_bar.append(self.properties.bubble_num_bar[-1] + 0.5 * dT * (
             self.properties.bubble_num_integrand[-1] * self.properties.Pf[-1] + self.properties.bubble_num_integrand[-2] * self.properties.Pf[-2]))
 
-        self.properties.bubble_separation.append(self.properties.bubble_density[-1]**(-1/3) if self.properties.bubble_density[-1] != 0 else 0)
+        self.properties.bubble_separation.append(self.properties.bubble_density[-1]**(-1/3) if self.properties.bubble_density[-1] != 0 else np.inf)
 
     def update_after_rad(self, data):
         """
@@ -725,7 +727,7 @@ class TransitionAnalyser:
                 minSonTThreshold, maxSonTThreshold)
             T = np.linspace(
                 self.action_sampler.T[simIndex], self.action_sampler.T[simIndex+1], num_samples)
-            dT = T[0] - T[1]  # equally spaced so all same dT
+
             # We can only use quadratic interpolation if we have at least 3 action samples, which occurs for simIndex > 0.
             if simIndex > 0:
                 quadInterp = lagrange(
@@ -768,6 +770,8 @@ class TransitionAnalyser:
                     hydroVarsInterp[i].energyDensityFalse)
                 self.action_sampler.subRhot.append(
                     hydroVarsInterp[i].energyDensityTrue)
+
+                dT = self.action_sampler.subT[-2] - self.action_sampler.subT[-1]  # not equally spaced at gaps between subsamples
 
                 self.update_properties(
                     hydroVarsInterp[i], SonT[i], T[i], dT)  # for all i > 0

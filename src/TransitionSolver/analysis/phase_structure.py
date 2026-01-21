@@ -62,7 +62,7 @@ class TransitionProperties(dict):
 
     @property
     def completed(self):
-        return self.Tf is not None and self.Tf >= 0.
+        return self.T_f is not None and self.T_f >= 0.
 
     def report(self):
         # add data, but in order that makes it most readable
@@ -96,7 +96,7 @@ class Transition:
         report = {}
         report['false_phase'] = self.false_phase
         report['true_phase'] = self.true_phase
-        report['completed'] = self.properties.completed
+        report['completed'] = bool(self.properties.completed)  # don't want np.bool
         report = report | self.properties.report()
         return report
 
