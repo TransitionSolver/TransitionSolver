@@ -6,7 +6,7 @@ Test the number of degrees of freedom
 import os
 from pathlib import Path
 
-import json_numpy as json
+import json
 import matplotlib.pyplot as plt
 import pytest
 
