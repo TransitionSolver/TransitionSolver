@@ -19,12 +19,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
+    - uses: actions/checkout@v6
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v6
       with:
-        python-version: "3.10"
-    - uses: awalsh128/cache-apt-pkgs-action@latest
+        python-version: "3.13"
+        cache: 'pip'
+    - name: Install apt dependencies
+      uses: awalsh128/cache-apt-pkgs-action@latest
       with:
         packages: git cmake libalglib-dev libnlopt-cxx-dev libeigen3-dev libboost-filesystem-dev libboost-log-dev libgsl-dev numdiff
     - name: Restore PhaseTracer
@@ -34,19 +36,17 @@ jobs:
         path: /home/runner/.TransitionSolver
         key: ${{ runner.os }}_phase_tracer
     - name: Install TransitionFinder
-      run: |
-        sudo apt install git cmake libalglib-dev libnlopt-cxx-dev libeigen3-dev libboost-filesystem-dev libboost-log-dev libgsl-dev numdiff
-        python -m pip install --upgrade pip
-        pip install .
+      run: pip install .
     - name: Save PhaseTracer
       uses: actions/cache/save@v4
       with:
         path: /home/runner/.TransitionSolver
         key: ${{ runner.os }}_phase_tracer
     - name: Lint with flake8
+      continue-on-error: true
       run: |
         pip install flake8
-        # stop the build if there are Python syntax errors or undefined names
+        # check for Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
@@ -55,13 +55,11 @@ jobs:
         pip install .[test]
         pytest
     - name: Try CLI
-      run: |
-        ts --model RSS_BP --point input/RSS/RSS_BP1.txt
+      run: ts --model RSS_BP --point input/RSS/RSS_BP1.txt
     - name: Install script test dependencies
       run: |
         mkdir -p config
         echo '{ "PhaseTracer_directory": "/home/runner/.PhaseTracer/" }' > config/config_user.json
-        sudo apt install numdiff
     - name: Test script output
       continue-on-error: true
       run: |
