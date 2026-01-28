@@ -27,12 +27,26 @@ class PhaseHistoryAnalyser:
 
     @property
     def unique_transition_temperatures(self):
-        return list({t.properties.T_c for t in self.phase_structure.transitions})
+        temps = []
+        seen = set()
+        for t in self.phase_structure.transitions:
+            Tc = t.properties.T_c
+            if Tc not in seen:
+                seen.add(Tc)
+                temps.append(Tc)
+        return temps
 
     @property
     def unique_transition_idx(self):
-        unique = {t.properties.T_c: i for i, t in enumerate(self.phase_structure.transitions)}
-        return list(unique.values())
+        idx = []
+        seen = set()
+        for i, t in enumerate(self.phase_structure.transitions):
+            Tc = t.properties.T_c
+            if Tc not in seen:
+                seen.add(Tc)
+                idx.append(i)
+        return idx
+
 
     @property
     def is_high_temperature_phase(self):
