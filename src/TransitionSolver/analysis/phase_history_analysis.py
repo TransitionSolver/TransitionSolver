@@ -371,8 +371,8 @@ class PhaseHistoryAnalyser:
         if path.transitions:
             # Find the most recent transition that has a true phase equal to the current false phase (i.e. which
             # transition got us to this point).
-            for tr in path.transitions:
-                if tr.true_phase == transition.false_phase:
+            for tr in reversed(path.transitions):
+                if tr.true_phase == transition.false_phase and tr.properties.T_n is not None:
                     return min(transition.properties.T_c, tr.properties.T_n)
         return transition.properties.T_c
 
