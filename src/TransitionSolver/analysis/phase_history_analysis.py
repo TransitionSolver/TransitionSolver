@@ -125,7 +125,9 @@ class PhaseHistoryAnalyser:
                     phase_indexed_trans[i][0].path = paths[-1]
 
                     j = 1
-                    while j < len(phase_indexed_trans[i]) and phase_indexed_trans[i][j].transition.properties.T_c == max(self.unique_transition_temperatures):
+                    max_Tc = max(self.unique_transition_temperatures)
+                    while j < len(phase_indexed_trans[i]) and math.isclose(
+        phase_indexed_trans[i][j].transition.properties.T_c, max_Tc, rel_tol=0.0, abs_tol=1e-12):
                         paths.append(Path(phase_nodes[i][0]))
                         phase_nodes[i][0].paths.append(paths[-1])
 
