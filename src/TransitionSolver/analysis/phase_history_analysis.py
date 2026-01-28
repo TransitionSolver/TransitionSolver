@@ -91,8 +91,11 @@ class PhaseHistoryAnalyser:
                 false_phase = self.phase_structure.transitions[j].false_phase
                 true_phase = self.phase_structure.transitions[j].true_phase
 
-                false_phase_node_index = next((k for k, node in enumerate(phase_nodes[false_phase]) if node.temperature == ut), -1)
-                true_phase_node_index = next((k for k, node in enumerate(phase_nodes[true_phase]) if node.temperature == ut), -1)
+                false_phase_node_index = next((k for k, node in enumerate(phase_nodes[false_phase]) if node.temperature == ut), None)
+                true_phase_node_index = next((k for k, node in enumerate(phase_nodes[true_phase]) if node.temperature == ut), None)
+
+                if false_phase_node_index is None or true_phase_node_index is None:
+                    raise KeyError(f"Missing PhaseNode at T_c={ut} for false={false_phase}, true={true_phase}")
 
                 transition_edge = TransitionEdge(phase_nodes[false_phase][false_phase_node_index],
                                                  phase_nodes[true_phase][true_phase_node_index], self.phase_structure.transitions[j], len(phase_indexed_trans[false_phase]))
