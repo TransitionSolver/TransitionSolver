@@ -2,7 +2,7 @@
 Analyse phase history
 =====================
 """
-
+import math
 from .transition_analysis import TransitionAnalyser, Timer
 from .transition_graph import TransitionEdge, Path, PhaseNode
 
@@ -171,7 +171,10 @@ class PhaseHistoryAnalyser:
                 return
 
             # If the transition begins.
-            if transition.properties.T_p and transition.properties.T_f:
+            if transition.properties.T_p is not None  and transition.properties.T_f is not None:
+                # Guard against NaN silently passing through.
+                if math.isnan(transition.properties.T_p) or math.isnan(transition.properties.T_f):
+                    raise ValueError(f"Invalid milestone temperature(s): T_p={Tp}, T_f={Tf} for transition ID={transition.ID}")
                 frontier = [f for f in frontier if f.false_phase_node.phase != transition_edge.false_phase_node.phase and f.transition.properties.T_c < transition.properties.T_f]
 
                 # First we handle the false phase side. The fact that the transition happened may cause a path splitting
