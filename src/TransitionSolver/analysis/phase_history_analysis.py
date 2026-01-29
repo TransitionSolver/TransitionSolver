@@ -105,10 +105,26 @@ class PhaseHistoryAnalyser:
         return phase_indexed_trans
 
     def phase_nodes(self):
-        return [[PhaseNode(i, t) for t in self.unique_transition_temperatures if p.T[-1] >= t >= p.T[0]] for i, p in enumerate(self.phase_structure.phases)]
+        nodes = []
+        for i, p in enumerate(self.phase_structure.phases):
+            Tmin, Tmax = p.T[0], p.T[-1]   # assumes sorted
+            nodes_i = [PhaseNode(i, t) for t in self.unique_transition_temperatures if Tmax >= t >= Tmin]
+            nodes.append(nodes_i)
+        return nodes
 
+    # find the "trivial paths" where there is no transition
     def trivial_paths(self):
-        return [Path(PhaseNode(i, p.T[-1])) for i, p in enumerate(self.phase_structure.phases) if self.is_low_temperature_phase[i] and self.is_high_temperature_phase[i]]
+        paths = []
+        for i, phase in enumerate(self.phase_structure.phases):
+            if not (self.is_high_temperature_phase[i] and self.is_low_temperature_phase[i]):
+                continue # ignore phases not present at highest and lowest temperatures
+
+            Tmax = phase.T[-1]  # assumes phase.T is sorted ascending
+            start_node = PhaseNode(i, Tmax)
+            paths.append(Path(start_node))
+
+        return paths
+
 
     def init_frontier(self, phase_indexed_trans, phase_nodes):
         paths = []
