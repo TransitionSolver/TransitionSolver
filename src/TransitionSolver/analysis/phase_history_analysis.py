@@ -125,12 +125,12 @@ class PhaseHistoryAnalyser:
 
         return paths
 
-
     def init_frontier(self, phase_indexed_trans, phase_nodes):
         paths = []
         frontier = []
 
         for i in range(len(self.phase_structure.phases)):
+            # phases that exist at the highest temperature are valid starting points
             if self.is_high_temperature_phase[i]:
                 paths.append(Path(phase_nodes[i][0]))
                 phase_nodes[i][0].paths.append(paths[-1])
@@ -141,9 +141,11 @@ class PhaseHistoryAnalyser:
                     phase_indexed_trans[i][0].path = paths[-1]
 
                     j = 1
-                    max_Tc = max(self.unique_transition_temperatures)
+                    phase_max_Tc = phase_indexed_trans[i][0].transition.properties.T_c
                     while j < len(phase_indexed_trans[i]) and math.isclose(
-        phase_indexed_trans[i][j].transition.properties.T_c, max_Tc, rel_tol=0.0, abs_tol=1e-12):
+                            phase_indexed_trans[i][j].transition.properties.T_c,
+                            phase_max_Tc, rel_tol=0.0, abs_tol=1e-12):
+
                         paths.append(Path(phase_nodes[i][0]))
                         phase_nodes[i][0].paths.append(paths[-1])
 
