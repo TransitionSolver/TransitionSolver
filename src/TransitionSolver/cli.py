@@ -7,6 +7,7 @@ import logging
 
 import click
 import numpy as np
+import os
 import rich
 from rich.text import Text
 from rich.status import Status
@@ -58,9 +59,25 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
     if model_header is None:
         model_header = f"{model}.hpp"
 
-    point = np.loadtxt(point_file_name)
-    potential = load_potential(model_header, model, model_lib, model_namespace)(point)
+    # point = np.loadtxt(point_file_name)
+    # potential = load_potential(model_header, model, model_lib, model_namespace)(point)
 
+
+
+    point = np.loadtxt(point_file_name)
+    Potential = load_potential(model_header, model, model_lib, model_namespace)
+
+    # 1) Preferred: pass numeric point (keeps RSS_BP behaviour unchanged)
+    try:
+        potential = Potential(point)
+    except TypeError:
+        # 2) Fallback: pass filename (needed for ToyModel(std::string))
+        try:
+            potential = Potential(os.path.abspath(point_file_name))
+        except TypeError:
+            # 3) Last resort: unpack scalars
+            potential = Potential(*np.atleast_1d(point).astype(float).ravel().tolist())
+    
     with Status(f"Building PhaseTracer {model}"):
         exe_name = build_phase_tracer(model_header, model, model_lib, model_namespace, force)
 
