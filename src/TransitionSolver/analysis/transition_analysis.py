@@ -715,7 +715,13 @@ class TransitionAnalyser:
         # Keep sampling until we have identified the end of the phase transition or that the transition doesn't complete.
         # If check_possible_completion is false we determine it does not complete only if we get to T=0 and it has not,
         # otherewise we can also determine this when could_complete returns false.
-        while not self.check_possible_completion or self.could_complete(maxSonTThreshold + toleranceSonT):
+        while (
+                req_init
+                or (not self.check_possible_completion)
+                or (len(self.properties.Pf) < 3)
+                or self.could_complete(maxSonTThreshold + toleranceSonT)
+        ):
+
             # If the action begins increasing with decreasing temperature.
             if not self.properties.action_3d_min and self.action_sampler.SonT[simIndex+1] > self.action_sampler.SonT[simIndex]:
                 li = LinearInterp(
