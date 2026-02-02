@@ -25,12 +25,13 @@ inline ptree read_json_file(const std::string& path) {
 inline bool is_array_node(const ptree& node) {
   if (node.empty()) return false;
   for (const auto& kv : node) {
-    if (!kv.first.empty()) return false; // arrays use empty keys
+    // arrays use empty keys, if non-empty its an object or dictionary
+    if (!kv.first.empty()) return false; 
   }
   return true;
 }
 
-// Deep-merge: src overwrites dst. Objects merge recursively. Arrays overwrite.
+// Deep-merge: src overwrites destination (dst). Objects merge recursively. Arrays overwrite.
 inline void merge_into(ptree& dst, const ptree& src) {
   // If src is an array or a scalar leaf, overwrite completely.
   if (is_array_node(src) || (src.empty() && !src.data().empty())) {
@@ -122,7 +123,10 @@ inline nlopt::algorithm parse_nlopt_algorithm(std::string s) {
   return it->second;
 }
 
-// --- capability detection for getMaxTemp ---
+// Check for existence of getMaxTemp method
+// This is necessary because we currently need RSS specific methiod getMaxTemp
+// for RSS model  making it very hard to write general interface
+// ToDo: find a different way to set t_high for RSS and remove these complications  
 template <typename T, typename = void>
 struct has_getMaxTemp : std::false_type {};
 
@@ -136,7 +140,8 @@ struct has_getMaxTemp<T, std::void_t<
     std::declval<double>()
   ))
 >> : std::true_type {};
-
+  // compute the t_high checking for rss specific appraoch
+  // ToDo: find a different way to set t_high for RSS and remove these complications
 template <typename ModelT>
 double compute_t_high_auto(ModelT& model, const boost::property_tree::ptree& th) {
   // Accept both:

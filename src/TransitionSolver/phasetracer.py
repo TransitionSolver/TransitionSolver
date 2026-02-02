@@ -88,19 +88,22 @@ def build_phase_tracer(model_header, model=None, model_lib=None, model_namespace
 
     return exe_name
 
-def run_phase_tracer(exe_name, point_file=None, point=None, t_high=1e3, pt_settings_file=None) -> str:
+# should remno
+def run_phase_tracer(exe_name, point_file=None, point=None,  pt_settings_file=None) -> str:
     """
     Run PhaseTracer and read serialised data
-
+    @param exe_name Name of executable
+    @param point_file File containing parameter point
+    @param point Array containing parameter point
     @param pt_settings_file Optional JSON file of PhaseFinder/TransitionFinder overrides
     """
     if point_file is None:
         with tempfile.NamedTemporaryFile() as f:
             point = np.array(point).reshape(1, len(point))
             np.savetxt(f.name, point)
-            return run_phase_tracer(exe_name, f.name, t_high=t_high, pt_settings_file=pt_settings_file)
+            return run_phase_tracer(exe_name, f.name, pt_settings_file=pt_settings_file)
 
-    cmd = [str(exe_name), str(point_file), str(t_high)]
+    cmd = [str(exe_name), str(point_file)]
     if pt_settings_file is not None:
         cmd.append(str(pt_settings_file))
 

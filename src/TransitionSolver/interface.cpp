@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <optional>
 
 #include <eigen3/Eigen/Eigenvalues>
 #include "phasetracer.hpp"
@@ -40,25 +41,25 @@ static void validate_top_level_sections_strict(const TS_PT::ptree& cfg) {
 }
 
 
+
 // Parse/compute t_high from settings if present.
-// - if no config or no phase_finder.t_high: returns fallback_t_high
-// - if numeric: uses numeric
+// - if no phase_finder.t_high: returns std::nullopt
+// - if numeric: returns numeric
 // - if string "auto" / "rss_getMaxTemp": uses TS_PT::compute_t_high_auto(model, node)
 // - if object {"mode": "...", ...}: uses TS_PT::compute_t_high_auto(model, node)
+// This can hopefully be removed once we have foudn a way to avoid ethe complictaed aproach to fixing t_high in RSS. But at least for testing we want to keep matrching old output exactly for tests. 
 template <typename ModelT>
-static double resolve_t_high_from_config(
+static std::optional<double> resolve_t_high_from_config(
     ModelT& model,
-    TS_PT::ptree& phase_finder_node,   // passed by ref so we can erase("t_high")
-    double fallback_t_high) {
-
+    TS_PT::ptree& phase_finder_node)  // passed by ref so we can erase("t_high")
+{
   auto th_opt = phase_finder_node.get_child_optional("t_high");
   if (!th_opt) {
-    return fallback_t_high;
+    return std::nullopt;
   }
 
   const TS_PT::ptree& th = *th_opt;
-
-  double t_high_effective = fallback_t_high;
+  double t_high_effective = 0.0;
 
   // property_tree represents numbers as leaf strings; objects have children.
   if (th.empty()) {
@@ -94,18 +95,13 @@ int main(int argc, char* argv[]) {
   LOGGER(error);
 
   try {
-    // Backwards compatible:
-    //   <exe> <point_file> <t_high>
-    //   <exe> <point_file> <t_high> <pt_settings.json>
-    if (!(argc == 3 || argc == 4)) {
-      throw std::runtime_error("Usage: <exe> <point_file> <t_high> [pt_settings.json]");
+    if (!(argc == 2 || argc == 3)) {
+      throw std::runtime_error("Usage: <exe> <point_file> [pt_settings.json]");
     }
 
     const std::string point_file = argv[1];
-    const double t_high_arg = std::atof(argv[2]);
-    const bool has_settings = (argc == 4);
-    const std::string settings_file = has_settings ? std::string(argv[3]) : std::string();
-
+    const bool has_settings = (argc == 3);
+    const std::string settings_file = has_settings ? std::string(argv[2]) : std::string();
     const std::vector<double> point = read_point(point_file);
 
     // Construct the model from the numeric point vector.
@@ -138,14 +134,15 @@ int main(int argc, char* argv[]) {
     pf.set_check_hessian_singular(false);
     pf.set_check_merge_phase_gaps(false);
 
-    // Determine effective t_high:
-    //  - start from CLI t_high
-    //  - allow JSON override or RSS-auto mode
-    double t_high_effective = t_high_arg;
+    // Set t_high ONLY if JSON requests it (number or rss_getMaxTemp/auto)
     if (has_settings && !phase_finder_cfg.empty()) {
-      t_high_effective = resolve_t_high_from_config(model, phase_finder_cfg, t_high_arg);
+      auto th = resolve_t_high_from_config(model, phase_finder_cfg);
+      if (th.has_value()) {
+	pf.set_t_high(*th);
+      }
     }
-    pf.set_t_high(t_high_effective);
+
+    
 
     // Apply remaining PhaseFinder settings strictly (unknown keys -> error)
     if (has_settings && !phase_finder_cfg.empty()) {

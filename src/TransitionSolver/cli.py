@@ -35,21 +35,22 @@ PTAS = {"NANOGrav": gws.nanograv_15, "PPTA": gws.ppta_dr3, "EPTA": gws.epta_dr2_
 LEVELS = {k.lower(): getattr(logging, k) for k in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]}
 
 
-def _deep_merge(a: dict, b: dict) -> dict:
+def deep_merge(a: dict, b: dict) -> dict:
     """Return a merged dict where b overwrites a recursively."""
     out = dict(a)
     for k, v in b.items():
+        # check both values are dictionaries
         if isinstance(v, dict) and isinstance(out.get(k), dict):
-            out[k] = _deep_merge(out[k], v)
+            out[k] = deep_merge(out[k], v)
         else:
             out[k] = v
     return out
 
-def _load_json(path: str) -> dict:
+def load_json(path: str) -> dict:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
-def _autodetect_point_settings(point_file_name: str) -> str | None:
+def autodetect_point_settings(point_file_name: str) -> str | None:
     p = Path(point_file_name)
     candidates = [
         str(p.with_suffix(".pt.json")),        # input/X.txt -> input/X.pt.json
@@ -60,7 +61,7 @@ def _autodetect_point_settings(point_file_name: str) -> str | None:
             return c
     return None
 
-def _autodetect_model_settings(model: str) -> str | None:
+def autodetect_model_settings(model: str) -> str | None:
     # Convention: ./pt_setings/<MODEL>.json (relative to current working dir)
     BASE_DIR = Path(__file__).resolve().parent
     c = BASE_DIR / "pt_settings" / f"{model}.json"
@@ -84,7 +85,6 @@ def _autodetect_model_settings(model: str) -> str | None:
 @click.option('--level', default="critical", help='Logging level', type=click.Choice(LEVELS.keys()))
 @click.option('--force', help='Force recompilation', required=False, default=False, is_flag=True, type=bool)
 @click.option('--action-ct', help='Use CosmoTransitions for action', required=False, default=False, is_flag=True, type=bool)
-@click.option('--t-high', help='High temperature to consider in PhaseTracer', required=False, default=1e3, type=float)
 @click.option('--pt-model-settings', help='JSON file of PhaseTracer settings for this model',
               required=False, default=None, type=click.Path(exists=True))
 @click.option('--pt-point-settings', help='JSON file of PhaseTracer settings for this point (overrides model settings)',
@@ -92,7 +92,7 @@ def _autodetect_model_settings(model: str) -> str | None:
 @click.option('--pt-settings', help='Extra JSON PhaseTracer settings overrides (applied last). Can be repeated.',
               required=False, default=(), multiple=True, type=click.Path(exists=True))
 @click.pass_context
-def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, vw, detector, pta, show, level, force, action_ct, t_high, pt_model_settings, pt_point_settings, pt_settings):
+def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, vw, detector, pta, show, level, force, action_ct, pt_model_settings, pt_point_settings, pt_settings):
     """
     Run TransitionSolver on a particular model and point
 
@@ -113,13 +113,13 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
 
     # Resolve settings files in precedence order:
     # model settings -> point settings -> repeated --pt-settings (applied last)
-    model_cfg = pt_model_settings or _autodetect_model_settings(model)
-    point_cfg = pt_point_settings or _autodetect_point_settings(point_file_name)
+    model_cfg = pt_model_settings or autodetect_model_settings(model)
+    point_cfg = pt_point_settings or autodetect_point_settings(point_file_name)
 
     effective_cfg: dict = {}
     for fp in [model_cfg, point_cfg, *pt_settings]:
         if fp:
-            effective_cfg = _deep_merge(effective_cfg, _load_json(fp))
+            effective_cfg = deep_merge(effective_cfg, load_json(fp))
 
     pt_settings_tmp = None
     pt_settings_file = None
@@ -137,7 +137,6 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
             phase_structure_raw = run_phase_tracer(
                 exe_name,
                 point_file_name,
-                t_high=t_high,
                 pt_settings_file=pt_settings_file
             )
     finally: 
