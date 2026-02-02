@@ -223,6 +223,8 @@ class PhaseHistoryAnalyser:
                 # discard histories involving transitions out of the phase which sis the false vacuum in the transition that completed
                 # whenever the critical temperatrure is below the completion temperature of the transition that completed.
                 # such histories cannot be in the full cosmoplgical history.
+                # note this pruning assumes we never return to this phase with a later transition, so we
+                # we don't handle such cases which is reasonable but we should keep in mind
                 frontier = [
                     f for f in frontier
                     if not (f.false_phase_node.phase == transition_edge.false_phase_node.phase
