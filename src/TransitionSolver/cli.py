@@ -8,6 +8,11 @@ import logging
 import click
 import numpy as np
 import rich
+import json
+import os
+import tempfile
+
+from pathlib import Path
 from rich.text import Text
 from rich.status import Status
 from rich.console import Console
@@ -30,6 +35,42 @@ PTAS = {"NANOGrav": gws.nanograv_15, "PPTA": gws.ppta_dr3, "EPTA": gws.epta_dr2_
 LEVELS = {k.lower(): getattr(logging, k) for k in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]}
 
 
+def _deep_merge(a: dict, b: dict) -> dict:
+    """Return a merged dict where b overwrites a recursively."""
+    out = dict(a)
+    for k, v in b.items():
+        if isinstance(v, dict) and isinstance(out.get(k), dict):
+            out[k] = _deep_merge(out[k], v)
+        else:
+            out[k] = v
+    return out
+
+def _load_json(path: str) -> dict:
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def _autodetect_point_settings(point_file_name: str) -> str | None:
+    p = Path(point_file_name)
+    candidates = [
+        str(p.with_suffix(".pt.json")),        # input/X.txt -> input/X.pt.json
+        str(Path(str(p) + ".pt.json")),        # input/X.txt -> input/X.txt.pt.json
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+    return None
+
+def _autodetect_model_settings(model: str) -> str | None:
+    # Convention: ./pt_setings/<MODEL>.json (relative to current working dir)
+    BASE_DIR = Path(__file__).resolve().parent
+    c = BASE_DIR / "pt_settings" / f"{model}.json"
+    if c.exists():
+        print("finding specfic PT model specvifc settings for this." )
+        return str(c)
+    return None
+
+
+
 @click.command()
 @click.option('--model', help='Model name', required=True, type=str)
 @click.option('--model-header', help='Model header-file', required=False, default=None, type=click.Path(exists=True))
@@ -44,8 +85,14 @@ LEVELS = {k.lower(): getattr(logging, k) for k in ["DEBUG", "INFO", "WARNING", "
 @click.option('--force', help='Force recompilation', required=False, default=False, is_flag=True, type=bool)
 @click.option('--action-ct', help='Use CosmoTransitions for action', required=False, default=False, is_flag=True, type=bool)
 @click.option('--t-high', help='High temperature to consider in PhaseTracer', required=False, default=1e3, type=float)
+@click.option('--pt-model-settings', help='JSON file of PhaseTracer settings for this model',
+              required=False, default=None, type=click.Path(exists=True))
+@click.option('--pt-point-settings', help='JSON file of PhaseTracer settings for this point (overrides model settings)',
+              required=False, default=None, type=click.Path(exists=True))
+@click.option('--pt-settings', help='Extra JSON PhaseTracer settings overrides (applied last). Can be repeated.',
+              required=False, default=(), multiple=True, type=click.Path(exists=True))
 @click.pass_context
-def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, vw, detector, pta, show, level, force, action_ct, t_high):
+def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, vw, detector, pta, show, level, force, action_ct, t_high, pt_model_settings, pt_point_settings, pt_settings):
     """
     Run TransitionSolver on a particular model and point
 
@@ -64,9 +111,42 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
     with Status(f"Building PhaseTracer {model}"):
         exe_name = build_phase_tracer(model_header, model, model_lib, model_namespace, force)
 
-    with Status(f"Running PhaseTracer {exe_name}"):
-        phase_structure_raw = run_phase_tracer(exe_name, point_file_name, t_high=t_high)
-        phase_structure = read_phase_tracer(phase_structure_raw)
+    # Resolve settings files in precedence order:
+    # model settings -> point settings -> repeated --pt-settings (applied last)
+    model_cfg = pt_model_settings or _autodetect_model_settings(model)
+    point_cfg = pt_point_settings or _autodetect_point_settings(point_file_name)
+
+    effective_cfg: dict = {}
+    for fp in [model_cfg, point_cfg, *pt_settings]:
+        if fp:
+            effective_cfg = _deep_merge(effective_cfg, _load_json(fp))
+
+    pt_settings_tmp = None
+    pt_settings_file = None
+
+    try:
+        if effective_cfg:
+            pt_settings_tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+            json.dump(effective_cfg, pt_settings_tmp, indent=2, sort_keys=True)
+            pt_settings_tmp.flush()
+            pt_settings_tmp.close()
+            pt_settings_file = pt_settings_tmp.name
+
+        
+        with Status(f"Running PhaseTracer {exe_name}"):
+            phase_structure_raw = run_phase_tracer(
+                exe_name,
+                point_file_name,
+                t_high=t_high,
+                pt_settings_file=pt_settings_file
+            )
+    finally: 
+        if pt_settings_file is not None:
+            try:
+                os.unlink(pt_settings_file)
+            except OSError:
+                pass
+    phase_structure = read_phase_tracer(phase_structure_raw)
 
     with Status("Analyzing phase history"):
         tr_report = find_phase_history(potential, phase_structure, bubble_wall_velocity=vw, action_ct=action_ct)

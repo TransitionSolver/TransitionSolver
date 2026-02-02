@@ -1,0 +1,12 @@
+{
+  "phase_finder": {
+    "t_high": {
+      "mode": "rss_getMaxTemp",
+      "margin": 1.01,
+      "hi_scale": 10.0,
+      "n": 500,
+      "dt_rel_scale": 0.01,
+      "dt_abs_scale": 0.001
+    }
+  }
+}

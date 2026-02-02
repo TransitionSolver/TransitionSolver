@@ -88,29 +88,26 @@ def build_phase_tracer(model_header, model=None, model_lib=None, model_namespace
 
     return exe_name
 
-
-def run_phase_tracer(exe_name, point_file=None, point=None, t_high=1e3) -> str:
+def run_phase_tracer(exe_name, point_file=None, point=None, t_high=1e3, pt_settings_file=None) -> str:
     """
-    Run PhaseTracer and read serialzied data
+    Run PhaseTracer and read serialised data
 
-    @param exe_name Name of executable
-    @param point_file File containing parameter point
-    @param point Array containing parameter point
-    @param t_high Highest temperature to consider in PhaseTracer
-
-    @returns PhaseTracer serialised output as string
+    @param pt_settings_file Optional JSON file of PhaseFinder/TransitionFinder overrides
     """
     if point_file is None:
         with tempfile.NamedTemporaryFile() as f:
             point = np.array(point).reshape(1, len(point))
             np.savetxt(f.name, point)
-            return run_phase_tracer(exe_name, f.name, t_high=t_high)
+            return run_phase_tracer(exe_name, f.name, t_high=t_high, pt_settings_file=pt_settings_file)
 
-    run = subprocess.run([exe_name, point_file, str(t_high)], capture_output=True, text=True, check=False)
+    cmd = [str(exe_name), str(point_file), str(t_high)]
+    if pt_settings_file is not None:
+        cmd.append(str(pt_settings_file))
+
+    run = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if run.returncode != 0:
         raise RuntimeError(run.stderr)
     return run.stdout
-
 
 def read_path(data):
     """
