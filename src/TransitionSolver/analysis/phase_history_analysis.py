@@ -103,7 +103,7 @@ class PhaseHistoryAnalyser:
                 phase_indexed_trans[false_phase].append(transition_edge)
 
         return phase_indexed_trans
-
+    
     def phase_nodes(self):
         nodes = []
         for i, p in enumerate(self.phase_structure.phases):
@@ -112,7 +112,7 @@ class PhaseHistoryAnalyser:
             nodes.append(nodes_i)
         return nodes
 
-    # find the "trivial paths" where there is no transition
+    # find "trivial paths" with no transition that *may* exist in the cosmological phase history 
     def trivial_paths(self):
         paths = []
         for i, phase in enumerate(self.phase_structure.phases):
@@ -125,6 +125,13 @@ class PhaseHistoryAnalyser:
 
         return paths
 
+    # finds starting point for phase history analysis
+    # Initializes the search for phase transition paths:
+    # - Creates an initial path for each phase existing at the highest temperature
+    # - For each such phase, identifies its highest-temperature transition(s)
+    # - Degenerate case: multiple transitions at the same temperature create separate branching paths
+    # - Builds a frontier queue of transitions to explore, sorted by temperature (highest first)
+    # Returns: (initial_paths, frontier_queue)
     def init_frontier(self, phase_indexed_trans, phase_nodes):
         paths = []
         frontier = []
@@ -176,13 +183,13 @@ class PhaseHistoryAnalyser:
     def analyse(self, bubble_wall_velocity=None, action_ct=True):  # TODO make false
 
         timer = Timer(self.time_limit)
-
+        # if there are no paths in phase_structure, set paths empty and return 
         if not self.phase_structure.paths:
             self.paths = []
             return
 
-        # If there are no transitions, check if any phase is both a high and low temperature phase. This constitutes a
-        # valid path, but with no transitions between phases.
+        # If there are no transitions, check if any phase is both a high and low temperature phase.
+        # This constitutes a valid path, but with no transitions between phases.
         if not self.phase_structure.transitions:
             self.paths = self.trivial_paths()
             return
@@ -207,12 +214,22 @@ class PhaseHistoryAnalyser:
                 self.paths = []
                 return
 
-            # If the transition begins.
+            # If the transition completes.
             if transition.properties.T_p is not None  and transition.properties.T_f is not None:
                 # Guard against NaN silently passing through.
                 if math.isnan(transition.properties.T_p) or math.isnan(transition.properties.T_f):
                     raise ValueError(f"Invalid milestone temperature(s): T_p={Tp}, T_f={Tf} for transition ID={transition.ID}")
-                frontier = [f for f in frontier if f.false_phase_node.phase != transition_edge.false_phase_node.phase and f.transition.properties.T_c < transition.properties.T_f]
+                Tf = transition.properties.T_f
+                # discard histories involving transitions out of the phase which sis the false vacuum in the transition that completed
+                # whenever the critical temperatrure is below the completion temperature of the transition that completed.
+                # such histories cannot be in the full cosmoplgical history.
+                frontier = [
+                    f for f in frontier
+                    if not (f.false_phase_node.phase == transition_edge.false_phase_node.phase
+                            and f.transition.properties.T_c < Tf)
+                ]
+
+
 
                 # First we handle the false phase side. The fact that the transition happened may cause a path splitting
                 # that couldn't be guaranteed before the transition was analysed.
