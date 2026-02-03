@@ -224,7 +224,7 @@ class PhaseHistoryAnalyser:
                 # whenever the critical temperatrure is below the completion temperature of the transition that completed.
                 # such histories cannot be in the full cosmoplgical history.
                 # note this pruning assumes we never return to this phase with a later transition, so we
-                # we don't handle such cases which is reasonable but we should keep in mind
+                # we don't handle such cases which is reasonable but we should keep this in mind
                 frontier = [
                     f for f in frontier
                     if not (f.false_phase_node.phase == transition_edge.false_phase_node.phase
@@ -246,7 +246,7 @@ class PhaseHistoryAnalyser:
                     if split_path:
                         # TODO: shouldn't we search for the last occurrence of this false phase along the path? Can we
                         #  guarantee that only one phase could have been added?
-                        prefix, suffix = path.splitAt(len(path.phases)-1)
+                        prefix, suffix = path.split_at_index(len(path.phases)-1)
                         paths.append(prefix)
 
                     # Create a new path for this recently handled transition.
