@@ -317,7 +317,7 @@ class AnalyseIndividualTransition:
         ax.set_xlabel("Frequency (Hz)")
 
 
-def extract_relevant_transitions(report: dict) -> list[dict]:
+def extract_relevant_transitions(report: dict) -> dict:
     """
     @returns All transitions that are part of valid transition paths
     """
@@ -328,7 +328,6 @@ def extract_relevant_transitions(report: dict) -> list[dict]:
             relevant += path['transitions']
 
     return {k: report['transitions'][k] for k in relevant}
-
 
 class GWAnalyser:
     """
