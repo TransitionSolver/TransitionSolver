@@ -352,8 +352,10 @@ class ActionSampler:
         field_separation_scale = 0.001*self.potential.get_field_scale()
 
         if np.linalg.norm(from_field_config - to_field_config) < field_separation_scale:
-            raise Exception(
-                "The 'from' and 'to' phases merged after optimisation, in preparation for action evaluation.")
+            raise RuntimeError(
+                f"From/to phases merged after optimisation at T={T}. "
+                f"Separation < {field_separation_scale}."
+            )
         
         if self.force_on_axis:
             for i in range(len(from_field_config.size)):
