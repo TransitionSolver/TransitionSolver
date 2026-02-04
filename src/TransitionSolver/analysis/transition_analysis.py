@@ -354,9 +354,9 @@ class ActionSampler:
         if np.linalg.norm(from_field_config - to_field_config) < field_separation_scale:
             raise Exception(
                 "The 'from' and 'to' phases merged after optimisation, in preparation for action evaluation.")
-
+        
         if self.force_on_axis:
-            for i in range(len(from_field_config.shape)):
+            for i in range(len(from_field_config.size)):
                 if abs(from_field_config[i]) < field_separation_scale:
                     from_field_config[i] = 0.0
                 if abs(to_field_config[i]) < field_separation_scale:
