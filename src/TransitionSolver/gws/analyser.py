@@ -10,6 +10,8 @@ from functools import cached_property
 
 import matplotlib.pyplot as plt
 import numpy as np
+import os
+from os import PathLike
 
 from ..analysis.phase_structure import PhaseStructure
 from ..models.analysable_potential import AnalysablePotential
@@ -333,20 +335,17 @@ class GWAnalyser:
     """
     Analyze gravitational wave signals from every transition in cosmological history
     """
-
-    def __init__(
-            self,
-            potential,
-            phase_tracer_file,
-            phase_history,
-            force_relevant=False,
-            is_file=True,  # TODO remove this later
-            **kwargs):
-
-        if is_file:
-            phase_structure = read_phase_tracer(phase_tracer_file=phase_tracer_file)
+    def __init__(self,
+                 potential,
+                 phase_structure_or_file,
+                 phase_history,
+                 force_relevant=False,
+                 **kwargs
+                 ):
+        if isinstance(phase_structure_or_file, (str, PathLike)):
+            phase_structure = read_phase_tracer(phase_tracer_file=str(phase_structure_or_file))
         else:
-            phase_structure = phase_tracer_file
+            phase_structure = phase_structure_or_file
 
         relevant_transitions = phase_history['transitions'] if force_relevant else extract_relevant_transitions(
             phase_history)

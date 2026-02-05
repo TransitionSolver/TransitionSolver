@@ -39,7 +39,7 @@ def deep_merge(a: dict, b: dict) -> dict:
     """Return a merged dict where b overwrites a recursively."""
     out = dict(a)
     for k, v in b.items():
-        # check both values are dictionaries
+        # check both values are dictionaries and recurse if true
         if isinstance(v, dict) and isinstance(out.get(k), dict):
             out[k] = deep_merge(out[k], v)
         else:
@@ -158,7 +158,7 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
     ptas = [PTAS[p] for p in pta]
 
     with Status("Analyzing gravitational wave signal"):
-        analyser = gws.GWAnalyser(potential, phase_structure, tr_report, is_file=False)  # TODO remove is_file
+        analyser = gws.GWAnalyser(potential, phase_structure, tr_report)  # TODO remove is_file
         gw_report = analyser.report(*detectors)
         gw_fig = analyser.plot(detectors=detectors, ptas=ptas, show=show)
 
