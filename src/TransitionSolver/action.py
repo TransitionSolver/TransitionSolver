@@ -3,7 +3,7 @@ Compute action by CosmoTransitions or PhaseTracer
 =================================================
 """
 
-import sys
+import sys, os
 import warnings
 from contextlib import redirect_stdout
 
@@ -23,15 +23,13 @@ cppyy.cppdef('LOGGER(error)')
 
 from cppyy.gbl import PhaseTracer  # noqa: E402
 
-
 def action_ct(potential, T, false_vacuum, true_vacuum, verbose=False, **kwargs):
     """
     @returns Action from CosmoTransitions's path deformation algorithm
     """
-    with redirect_stdout(sys.stdout if verbose else None):
+    with open(os.devnull, "w") as devnull, redirect_stdout(sys.stdout if verbose else devnull):
         return pathDeformation.fullTunneling([true_vacuum, false_vacuum], lambda X: potential(X, T), lambda X: potential.grad(X, T),
             verbose=verbose, **kwargs).action
-
 
 def action_pt(potential, T, false_vacuum, true_vacuum, extend_to_minima=False, **kwargs):
     """
