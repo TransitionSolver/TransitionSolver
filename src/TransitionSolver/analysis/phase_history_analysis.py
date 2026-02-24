@@ -218,7 +218,7 @@ class PhaseHistoryAnalyser:
             if transition.properties.T_p is not None  and transition.properties.T_f is not None:
                 # Guard against NaN silently passing through.
                 if math.isnan(transition.properties.T_p) or math.isnan(transition.properties.T_f):
-                    raise ValueError(f"Invalid milestone temperature(s): T_p={Tp}, T_f={Tf} for transition ID={transition.ID}")
+                    raise ValueError(f"Invalid milestone temperature(s): T_p={transition.properties.Tp}, T_f={transition.properties.Tf} for transition ID={transition.ID}")
                 Tf = transition.properties.T_f
                 # discard histories involving transitions out of the phase which sis the false vacuum in the transition that completed
                 # whenever the critical temperatrure is below the completion temperature of the transition that completed.
