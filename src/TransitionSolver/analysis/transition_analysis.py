@@ -1211,7 +1211,6 @@ class TransitionAnalyser:
                     # that it was the minimum action overall and can return it as the only solution.
                     if minLabel == 'equal':
                         data.T = minT
-                        data.SonT = minAction
                         curve_data.set_desired_data(data)
 
                     save_curve_shape()
