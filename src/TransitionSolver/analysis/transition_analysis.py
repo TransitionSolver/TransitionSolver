@@ -1154,27 +1154,27 @@ class TransitionAnalyser:
                     temp = actionSamples[maxTempBelowIndex][0]
                     action = actionSamples[maxTempBelowIndex][1]
                     dataToUse = ActionSample(temp, action*temp)
-                    dataToUse.is_valid = True
+                    if not dataToUse.is_valid:
+                        logger.warning("Replacement ActionSample is not valid: T=%s S3=%s (ID=%s)", dataToUse.T, dataToUse.S3, transition.ID)
 
                     # Attempt to also store the sample point directly before this in temperature.
                     if prevMaxTempBelowIndex > -1:
                         temp = actionSamples[prevMaxTempBelowIndex][0]
                         action = actionSamples[prevMaxTempBelowIndex][1]
                         lowerTSampleToUse = ActionSample(temp, action*temp)
-                        lowerTSampleToUse.is_valid = True
+                        if not lowerTSampleToUse.is_valid:
+                            logger.warning("Replacement ActionSample is not valid: T=%s S3=%s (ID=%s)", lowerTSampleToUse.T, lowerTSampleToUse.S3, transition.ID)
                     else:
                         lowerTSampleToUse = None
 
             if success:
                 curve_data.set_desired_data(dataToUse)
-                curve_data.set_below_data(
-                    lowerTSampleToUse)
+                curve_data.set_below_data(lowerTSampleToUse)
                 # We probably just stored data in lowerActionData, so remove it since we're using it as the target value.
                 if self.action_sampler.minSonTThreshold < dataToUse.SonT < self.action_sampler.maxSonTThreshold:
                     lowerActionData.pop()
             curve_data.append_action_samples(actionSamples)
-            curve_data.append_lower_action(
-                lowerActionData)
+            curve_data.append_lower_action(lowerActionData)
 
         # Evaluate the action at Tmin. (Actually just above so we avoid issues where the phase might disappear.)
         data = ActionSample(self.Tmin+Tstep)
