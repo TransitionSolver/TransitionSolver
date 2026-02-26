@@ -337,15 +337,15 @@ class GWAnalyser:
     """
     def __init__(self,
                  potential,
-                 phase_structure_or_file,
                  phase_history,
+                 phase_structure=None,
+                 phase_tracer_file=None,
                  force_relevant=False,
                  **kwargs
                  ):
-        if isinstance(phase_structure_or_file, (str, PathLike)):
-            phase_structure = read_phase_tracer(phase_tracer_file=str(phase_structure_or_file))
-        else:
-            phase_structure = phase_structure_or_file
+        if phase_tracer_file is not None:
+            phase_structure = read_phase_tracer(phase_tracer_file=phase_tracer_file)
+
 
         relevant_transitions = phase_history['transitions'] if force_relevant else extract_relevant_transitions(
             phase_history)

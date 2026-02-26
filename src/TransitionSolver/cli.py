@@ -158,7 +158,7 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
     ptas = [PTAS[p] for p in pta]
 
     with Status("Analyzing gravitational wave signal"):
-        analyser = gws.GWAnalyser(potential, phase_structure, tr_report)  # TODO remove is_file
+        analyser = gws.GWAnalyser(potential, tr_report, phase_structure)
         gw_report = analyser.report(*detectors)
         gw_fig = analyser.plot(detectors=detectors, ptas=ptas, show=show)
 
