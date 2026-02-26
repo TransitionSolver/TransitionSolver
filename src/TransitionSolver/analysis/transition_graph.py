@@ -77,7 +77,7 @@ class Path:
         report = {}
         report['valid'] = self.is_valid
         report['phases'] = [p.phase for p in self.phases]
-        report['transitions'] = [t.ID for t in self.transitions]
+        report['transitions'] = [str(t.ID) for t in self.transitions]
         return report
 
     def customPrint(self, bPrintPrefix: bool = True, bPrintSuffix: bool = True) -> str:

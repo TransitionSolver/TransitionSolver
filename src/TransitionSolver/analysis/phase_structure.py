@@ -79,8 +79,8 @@ class Transition:
     def __init__(self, transition: np.ndarray):
         self.key = transition[-3]
         # the ID matches up the IDs in a transition path
-        # use string to avoid ambiguity in dict keys when serialized
-        self.ID = str(int(transition[-2]))
+        # use integer for numeric sorting, stringify when outputting Reports to avoid ambiguity in dict keys when serialized in json output
+        self.ID = int(transition[-2])
         self.false_phase = int(transition[0])
         self.true_phase = int(transition[1])
 
