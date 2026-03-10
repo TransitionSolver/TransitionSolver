@@ -6,7 +6,7 @@ Check PhaseTracer installation
 import os
 import subprocess
 from pathlib import Path
-
+import TransitionSolver
 from TransitionSolver import phasetracer, run_phase_tracer, build_phase_tracer, benchmarks
 
 
@@ -34,8 +34,9 @@ def test_build_phase_tracer():
 def test_run_phase_tracer(generate_baseline):
     exe_name = build_phase_tracer("RSS_BP.hpp", force=True)
     phase_structure_file = BASELINE / "rss_bp1_phase_structure.dat"
+    PT_SETTINGS = Path(TransitionSolver.__file__).resolve().parent / "pt_settings" / "RSS_BP.json"
 
-    result = run_phase_tracer(exe_name, point=benchmarks.RSS_BP1_POINT)
+    result = run_phase_tracer(exe_name, point=benchmarks.RSS_BP1_POINT, pt_settings_file=PT_SETTINGS)
 
     if generate_baseline:
         with open(phase_structure_file, 'w') as f:
