@@ -58,7 +58,7 @@ Repository = "https://github.com/TransitionSolver/TransitionSolver"
 minversion = "6.0"
 norecursedirs = ["examples"]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = ["src"]
 addopts = "--mpl"
 
 [tool.setuptools.package-data]
