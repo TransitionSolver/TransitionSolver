@@ -10,8 +10,6 @@ from functools import cached_property
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
-from os import PathLike
 
 from ..analysis.phase_structure import PhaseStructure
 from ..models.analysable_potential import AnalysablePotential
