@@ -1,4 +1,4 @@
-""""
+""" "
 Test phase structure report
 ===========================
 """
@@ -15,7 +15,10 @@ THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 BASELINE = THIS / "baseline"
 
 
-@pytest.mark.parametrize("name", ["RSS_BP1"])
+NAMES = [f"RSS_BP{k}" for k in range(1, 14)]
+
+
+@pytest.mark.parametrize("name", NAMES)
 def test_phase_structure(generate_baseline, name):
     phase_tracer_file = BASELINE / f"{name.lower()}_phase_structure.dat"
     with open(phase_tracer_file) as f:
@@ -23,5 +26,12 @@ def test_phase_structure(generate_baseline, name):
     phase_structure = read_phase_tracer(phase_tracer_data)
     model = getattr(benchmarks, name)
     result = phasehistory.find_phase_history(
-        model, phase_structure, bubble_wall_velocity=1)
-    assert_deep_equal(result, BASELINE / f"{name.lower()}_phase_structure.json", exclude_types=[list], significant_digits=4, generate_baseline=generate_baseline)
+        model, phase_structure, bubble_wall_velocity=1
+    )
+    assert_deep_equal(
+        result,
+        BASELINE / f"{name.lower()}_phase_structure.json",
+        exclude_types=[list],
+        significant_digits=4,
+        generate_baseline=generate_baseline,
+    )

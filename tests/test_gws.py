@@ -23,15 +23,18 @@ phase_tracer_file = BASELINE / "rss_bp1_phase_structure.dat"
 
 
 # use a function here else failure to decode json brings down whole test suite
-def get_phase_history():
-    with open(BASELINE / "rss_bp1_phase_structure.json", 'r') as f:
+def get_phase_history(name="RSS_BP1"):
+    with open(BASELINE / f"{name.lower()}_phase_structure.json", 'r') as f:
         return json.load(f)
 
 
-def test_report(generate_baseline):
-    analyser = GWAnalyser(RSS_BP1, get_phase_history(), phase_tracer_file=phase_tracer_file)
+NAMES = [f"RSS_BP{k}" for k in range(1, 14)]
+
+@pytest.mark.parametrize("name", NAMES)
+def test_report(generate_baseline, name):
+    analyser = GWAnalyser(RSS_BP1, get_phase_history(name), phase_tracer_file=phase_tracer_file)
     report = analyser.report(lisa)
-    assert_deep_equal(report, BASELINE / "rss_bp1_gw.json", generate_baseline=generate_baseline)
+    assert_deep_equal(report, BASELINE / f"{name}_gw.json", generate_baseline=generate_baseline)
 
 
 @pytest.mark.mpl_image_compare
