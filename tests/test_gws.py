@@ -19,29 +19,32 @@ from dictcmp import assert_deep_equal
 THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 BASELINE = THIS / "baseline"
 
-phase_structure_file = BASELINE / "rss_bp1_phase_structure.dat"
+phase_tracer_file = BASELINE / "rss_bp1_phase_structure.dat"
 
 
 # use a function here else failure to decode json brings down whole test suite
-def get_phase_history():
-    with open(BASELINE / "rss_bp1_phase_structure.json", 'r') as f:
+def get_phase_history(name="RSS_BP1"):
+    with open(BASELINE / f"{name.lower()}_phase_structure.json", 'r') as f:
         return json.load(f)
 
 
-def test_report(generate_baseline):
-    analyser = GWAnalyser(RSS_BP1, phase_structure_file, get_phase_history())
+NAMES = [f"RSS_BP{k}" for k in range(1, 14)]
+
+@pytest.mark.parametrize("name", NAMES)
+def test_report(generate_baseline, name):
+    analyser = GWAnalyser(RSS_BP1, get_phase_history(name), phase_tracer_file=phase_tracer_file)
     report = analyser.report(lisa)
-    assert_deep_equal(report, BASELINE / "rss_bp1_gw.json", generate_baseline=generate_baseline)
+    assert_deep_equal(report, BASELINE / f"{name}_gw.json", generate_baseline=generate_baseline)
 
 
 @pytest.mark.mpl_image_compare
 def test_plot_gw():
-    analyser = GWAnalyser(RSS_BP1, phase_structure_file, get_phase_history())
+    analyser = GWAnalyser(RSS_BP1, get_phase_history(), phase_tracer_file=phase_tracer_file)
     return analyser.plot(detectors=[lisa], ptas=[gws.nanograv_15])
 
 
 def test_snr():
-    analyser = GWAnalyser(RSS_BP1, phase_structure_file, get_phase_history())
+    analyser = GWAnalyser(RSS_BP1, get_phase_history(), phase_tracer_file=phase_tracer_file)
     snr = lisa.SNR(analyser.gw_total)
     assert np.isclose(snr, 59.78483872505715)
 

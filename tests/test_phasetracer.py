@@ -7,6 +7,10 @@ import os
 import subprocess
 from pathlib import Path
 
+import pytest
+
+
+import TransitionSolver
 from TransitionSolver import phasetracer, run_phase_tracer, build_phase_tracer, benchmarks
 
 
@@ -30,12 +34,16 @@ def test_build_phase_tracer():
     exe_name = build_phase_tracer("RSS_BP.hpp", force=True)
     assert exe_name == phasetracer.PT_HOME / "RSS_BP"
 
+MODEL_NAME = [("RSS_BP", f"RSS_BP{k}") for k in range(1, 14)]
 
-def test_run_phase_tracer(generate_baseline):
+@pytest.mark.parametrize("model, name", MODEL_NAME)
+def test_run_phase_tracer(generate_baseline, model, name):
     exe_name = build_phase_tracer("RSS_BP.hpp", force=True)
-    phase_structure_file = BASELINE / "rss_bp1_phase_structure.dat"
+    phase_structure_file = BASELINE / f"{name.lower()}_phase_structure.dat"
+    pt_settings_file = Path(TransitionSolver.__file__).resolve().parent / "pt_settings" / f"{model}.json"
+    point = getattr(benchmarks, f"{name}_POINT")
 
-    result = run_phase_tracer(exe_name, point=benchmarks.RSS_BP1_POINT)
+    result = run_phase_tracer(exe_name, point=point, pt_settings_file=pt_settings_file)
 
     if generate_baseline:
         with open(phase_structure_file, 'w') as f:

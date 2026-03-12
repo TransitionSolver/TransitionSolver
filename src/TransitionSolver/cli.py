@@ -91,8 +91,9 @@ def autodetect_model_settings(model: str) -> str | None:
               required=False, default=None, type=click.Path(exists=True))
 @click.option('--pt-settings', help='Extra JSON PhaseTracer settings overrides (applied last). Can be repeated.',
               required=False, default=(), multiple=True, type=click.Path(exists=True))
+@click.option('--folder', help='Custom name of output folder', required=False, default=None, type=str)
 @click.pass_context
-def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, vw, detector, pta, show, level, force, action_ct, pt_model_settings, pt_point_settings, pt_settings):
+def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, vw, detector, pta, show, level, force, action_ct, pt_model_settings, pt_point_settings, pt_settings, folder):
     """
     Run TransitionSolver on a particular model and point
 
@@ -158,7 +159,7 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
     ptas = [PTAS[p] for p in pta]
 
     with Status("Analyzing gravitational wave signal"):
-        analyser = gws.GWAnalyser(potential, phase_structure, tr_report)  # TODO remove is_file
+        analyser = gws.GWAnalyser(potential, tr_report, phase_structure)
         gw_report = analyser.report(*detectors)
         gw_fig = analyser.plot(detectors=detectors, ptas=ptas, show=show)
 
@@ -166,7 +167,7 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
     console.print(gw_report)
 
     with Status("Saving results"):
-        folder = saveall(tr_report, gw_report, tr_fig, gw_fig, ctx)
+        folder = saveall(tr_report, gw_report, tr_fig, gw_fig, phase_structure_raw, ctx, folder)
 
     console.rule("[bold red]Results")
     console.print(Text.assemble("Results saved to: ", (folder, "bold magenta")))
