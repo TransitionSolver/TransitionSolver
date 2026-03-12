@@ -25,7 +25,7 @@ authors = [
   {name = "Csaba Balazs"},
   {name = "Andrew Fowlie"},
 ]
-# we can keep this updated with lits of actuve developers
+# we can keep this updated with lits of active developers
 maintainers = [
   {name = "Peter Athron", email = "peter.athron@njnu.edu.cn"},
   {name = "Andrew Fowlie", email = "andrew.fowlie@xjtlu.edu.cn"},
