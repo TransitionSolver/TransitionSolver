@@ -66,7 +66,7 @@ def autodetect_model_settings(model: str) -> str | None:
     BASE_DIR = Path(__file__).resolve().parent
     c = BASE_DIR / "pt_settings" / f"{model}.json"
     if c.exists():
-        print("finding specfic PT model specvifc settings for this." )
+        print("finding specific PT model specific settings for this." )
         return str(c)
     return None
 
@@ -91,9 +91,11 @@ def autodetect_model_settings(model: str) -> str | None:
               required=False, default=None, type=click.Path(exists=True))
 @click.option('--pt-settings', help='Extra JSON PhaseTracer settings overrides (applied last). Can be repeated.',
               required=False, default=(), multiple=True, type=click.Path(exists=True))
+
 @click.option('--folder', help='Custom name of output folder', required=False, default=None, type=str)
 @click.pass_context
 def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, vw, detector, pta, show, level, force, action_ct, pt_model_settings, pt_point_settings, pt_settings, folder):
+
     """
     Run TransitionSolver on a particular model and point
 
@@ -167,7 +169,9 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
     console.print(gw_report)
 
     with Status("Saving results"):
+
         folder = saveall(tr_report, gw_report, tr_fig, gw_fig, phase_structure_raw, ctx, folder)
+
 
     console.rule("[bold red]Results")
     console.print(Text.assemble("Results saved to: ", (folder, "bold magenta")))

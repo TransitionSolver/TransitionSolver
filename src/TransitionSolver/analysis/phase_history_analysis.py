@@ -179,7 +179,29 @@ class PhaseHistoryAnalyser:
         else:
             transition.properties.analysed = False
             transition.properties.error = "T_MAX < T_MIN"
+    
+    def expand_path(self, path):
 
+        # return the path if it has no suffix links
+        if not path.suffix_links:
+            return [path]
+
+        expanded = []
+
+        for suffix in path.suffix_links:
+            #a recursive call to finally return a path without suffix links
+            suffix_paths = self.expand_path(suffix)
+
+            for sp in suffix_paths:
+                #create a path object with complete phases and transitions
+                new_path = Path(path.phases[0])               
+                new_path.phases = list(path.phases) + sp.phases
+                new_path.transitions = list(path.transitions) + sp.transitions
+                
+                expanded.append(new_path)
+
+        return expanded
+    
     def analyse(self, bubble_wall_velocity=None, action_ct=True):  # TODO make false
 
         timer = Timer(self.time_limit)
@@ -220,7 +242,7 @@ class PhaseHistoryAnalyser:
                 if math.isnan(transition.properties.T_p) or math.isnan(transition.properties.T_f):
                     raise ValueError(f"Invalid milestone temperature(s): T_p={transition.properties.Tp}, T_f={transition.properties.Tf} for transition ID={transition.ID}")
                 Tf = transition.properties.T_f
-                # discard histories involving transitions out of the phase which sis the false vacuum in the transition that completed
+                # discard histories involving transitions out of the phase which is the false vacuum in the transition that completed
                 # whenever the critical temperatrure is below the completion temperature of the transition that completed.
                 # such histories cannot be in the full cosmoplgical history.
                 # note this pruning assumes we never return to this phase with a later transition, so we
@@ -328,7 +350,16 @@ class PhaseHistoryAnalyser:
 
         self.paths = paths
         self.set_is_valid()
+       
+        explicit_paths = []
+        for p in paths:
+            explicit_paths.extend(self.expand_path(p))
 
+        self.paths = explicit_paths
+
+        self.set_is_valid()
+        
+        
     def set_is_valid(self):
         for p in self.paths:
             p.is_valid = not p.suffix_links and self.is_low_temperature_phase[p.phases[-1].phase]

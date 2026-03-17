@@ -24,6 +24,7 @@ def make_results_folder():
     return folder
 
 
+
 def saveall(tr_report, gw_report, tr_fig, gw_fig, phase_structure_raw, ctx, folder=None):
     """
     Save all results to a folder, by default, named by date/time
@@ -34,6 +35,7 @@ def saveall(tr_report, gw_report, tr_fig, gw_fig, phase_structure_raw, ctx, fold
         folder = make_results_folder()
 
     folder = Path(folder)
+
 
     savejson(ctx.params, folder / "cli.json")
     savejson(phase_tracer_info(), folder / "phasetracer.json")
