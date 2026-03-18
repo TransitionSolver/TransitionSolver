@@ -66,7 +66,7 @@ def autodetect_model_settings(model: str) -> str | None:
     BASE_DIR = Path(__file__).resolve().parent
     c = BASE_DIR / "pt_settings" / f"{model}.json"
     if c.exists():
-        print("finding specfic PT model specvifc settings for this." )
+        print("finding specific PT model specific settings for this.")
         return str(c)
     return None
 
