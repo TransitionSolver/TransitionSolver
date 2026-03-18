@@ -34,7 +34,7 @@ NAMES = [f"RSS_BP{k}" for k in range(1, 14)]
 def test_report(generate_baseline, name):
     analyser = GWAnalyser(RSS_BP1, get_phase_history(name), phase_tracer_file=phase_tracer_file)
     report = analyser.report(lisa)
-    assert_deep_equal(report, BASELINE / f"{name}_gw.json", generate_baseline=generate_baseline)
+    assert_deep_equal(report, BASELINE / f"{name.lower()}_gw.json", generate_baseline=generate_baseline)
 
 
 @pytest.mark.mpl_image_compare
