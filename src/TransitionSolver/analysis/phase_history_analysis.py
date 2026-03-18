@@ -189,11 +189,11 @@ class PhaseHistoryAnalyser:
         expanded = []
 
         for suffix in path.suffix_links:
-            #a recursive call to finally return a path without suffix links
+            # a recursive call to finally return a path without suffix links
             suffix_paths = self.expand_path(suffix)
 
             for sp in suffix_paths:
-                #create a path object with complete phases and transitions
+                # create a path object with complete phases and transitions
                 new_path = Path(path.phases[0])
                 new_path.phases = list(path.phases) + sp.phases
                 new_path.transitions = list(path.transitions) + sp.transitions
@@ -348,14 +348,9 @@ class PhaseHistoryAnalyser:
                 frontier += self.new_frontier(transition_edge, phase_indexed_trans, path, False)
                 frontier.sort(key=lambda tr: tr.transition.properties.T_c, reverse=True)
 
-        self.paths = paths
-        self.set_is_valid()
-
-        explicit_paths = []
+        self.paths = []
         for p in paths:
-            explicit_paths.extend(self.expand_path(p))
-
-        self.paths = explicit_paths
+            self.paths += self.expand_path(p)
 
         self.set_is_valid()
 
