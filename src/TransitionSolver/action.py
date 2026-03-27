@@ -3,7 +3,8 @@ Compute action by CosmoTransitions or PhaseTracer
 =================================================
 """
 
-import sys, os
+import os
+import sys
 import warnings
 from contextlib import redirect_stdout
 
