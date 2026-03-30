@@ -353,7 +353,24 @@ class GWAnalyser:
 
         self.gws = {k: AnalyseIndividualTransition(
             phase_structure, v, potential, **kwargs) for k, v in relevant_transitions.items()}
+    
+    def report_for_transition_ids(self, transition_ids, *detectors):
+        
+        transition_ids = {str(i) for i in transition_ids}
 
+        gws = {k: v for k, v in self.gws.items() if k in transition_ids}
+        reports = {k: v.report(*detectors) for k, v in gws.items()}
+        for k, g in gws.items():
+            val = g.gw_total(1e-3)
+        
+        transition_ids = {str(i) for i in transition_ids}
+
+        if len(gws) > 0:
+            reports["Combined"] = {}
+            reports["Combined"]["Signal-to-Noise Ratio"] = {d.label: d.SNR(lambda f: np.sum([g.gw_total(f) for g in gws.values()], axis=-1)) for d in detectors}
+
+        return reports
+    
     def report(self, *detectors):
         """
         @returns Data on GW spectrum
