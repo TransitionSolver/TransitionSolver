@@ -360,10 +360,6 @@ class GWAnalyser:
 
         gws = {k: v for k, v in self.gws.items() if k in transition_ids}
         reports = {k: v.report(*detectors) for k, v in gws.items()}
-        for k, g in gws.items():
-            val = g.gw_total(1e-3)
-        
-        transition_ids = {str(i) for i in transition_ids}
 
         if len(gws) > 0:
             reports["Combined"] = {}
