@@ -1,5 +1,5 @@
 import numpy as np
-from models.analysable_potential import AnalysablePotential
+from .analysable_potential import AnalysablePotential
 from cosmoTransitions.finiteT import Jf, Jb
 
 # Compute x log|x| with correct limit x→0 → 0 (avoid log(0) issues)

@@ -7,6 +7,7 @@ from TransitionSolver.models.analysable_potential import AnalysablePotential
 from TransitionSolver.models.toy_model import ToyModel
 from TransitionSolver.models.real_scalar_singlet_model_boltz import RealScalarSingletModel_Boltz
 from TransitionSolver.models.real_scalar_singlet_model_ht import RealScalarSingletModel_HT
+from TransitionSolver.models.BminusL import BminusL
 from TransitionSolver.analysis.phase_structure import PhaseStructure
 from TransitionSolver.analysis.phase_history_analysis import PhaseHistoryAnalyser
 from TransitionSolver.analysis.transition_graph import Path
@@ -25,7 +26,7 @@ def writePhaseHistoryReport(fileName: str, paths: list[Path], phaseStructure: Ph
     report = {}
 
     if len(phaseStructure.transitions) > 0:
-        report['transitions'] = [t.report() for t in phaseStructure.transitions]
+        report['transitions'] = {str(t.ID): t.report() for t in phaseStructure.transitions}    
     if len(paths) > 0:
         report['paths'] = [p.report() for p in paths]
     report['valid'] = any([p.is_valid for p in paths])
@@ -101,6 +102,8 @@ def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str,
     # Create the potential using the parameter point.
     if potentialClass == SMplusCubic:
         potential = potentialClass(*parameterPoint, bUseBoltzmannSuppression=bUseBoltzmannSuppression)
+    elif potentialClass == BminusL:
+        potential = potentialClass(*parameterPoint[:6])
     else:
         potential = potentialClass(*parameterPoint[:5])
     # boolean value determines if we use the chapman Jouguet velocity of the vw passed
@@ -128,10 +131,9 @@ def main(potentialClass: Type[AnalysablePotential], GWs: int, outputFolder: str,
     if GWs == 0:
         return
     elif GWs == 1:
-        analyser = GWAnalyser(potential, outputFolder + '/phase_structure.dat', report, kappa_turb=0.05)  
+        analyser = GWAnalyser(potential, report, phase_structure=phaseStructure, kappa_turb=0.05)
     elif GWs == 2:
-        analyser = GWAnalyser(potential, outputFolder + '/phase_structure.dat', report, kappa_coll=1)
-          
+        analyser = GWAnalyser(potential, report, phase_structure=phaseStructure, kappa_coll=1)      
     report = analyser.report(lisa)
     print(report)
 
@@ -148,13 +150,13 @@ if __name__ == "__main__":
     modelLabel = sys.argv[1].lower()
 
     # Support model labels.
-    modelLabels = ['toy', 'rss', 'rss_ht', 'smpluscubic']
+    modelLabels = ['toy', 'rss', 'rss_ht', 'smpluscubic', 'bminusl']
     # The AnalysablePotential subclass corresponding to a particular model label.
-    models = [ToyModel, RealScalarSingletModel_Boltz, RealScalarSingletModel_HT, SMplusCubic]
+    models = [ToyModel, RealScalarSingletModel_Boltz, RealScalarSingletModel_HT, SMplusCubic, BminusL]
     # PhaseTracer script to run, specific to a particular model label.
-    PT_scripts = ['run_ToyModel', 'run_RSS', 'run_RSS', 'run_supercool']
+    PT_scripts = ['run_ToyModel', 'run_RSS', 'run_RSS', 'run_supercool','run_BminusL']
     # Extra arguments to pass to PhaseTracer, specific to a particular model label.
-    PT_paramArrays = [[], ['-boltz'], ['-ht'], ['-boltz']]
+    PT_paramArrays = [[], ['-boltz'], ['-ht'], ['-boltz'], []]
     _potentialClass = None
     _PT_script = ''
     _PT_params = []
