@@ -167,7 +167,8 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
     console.print(gw_report)
 
     with Status("Saving results"):
-        folder = saveall(tr_report, gw_report, tr_fig, gw_fig, phase_structure_raw, ctx, folder)
+        analyser = gws.GWAnalyser(potential, tr_report, phase_structure)
+        folder = saveall(tr_report, gw_report, tr_fig, gw_fig, phase_structure_raw, ctx, analyser, detectors, folder)
 
     console.rule("[bold red]Results")
     console.print(Text.assemble("Results saved to: ", (folder, "bold magenta")))
