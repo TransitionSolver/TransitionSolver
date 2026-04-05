@@ -2,6 +2,20 @@ import numpy as np
 from .analysable_potential import AnalysablePotential
 from cosmoTransitions.finiteT import Jf, Jb
 
+# Add safe versions for J_b and J_f for calling
+# workaround for numpy 2 incompatibility in CT
+def _Jb_safe(x):
+    xa = np.asarray(x)
+    if xa.ndim == 0:
+        return Jb(xa[None], approx='spline')[0]
+    return Jb(xa, approx='spline')
+
+def _Jf_safe(x):
+    xa = np.asarray(x)
+    if xa.ndim == 0:
+        return Jf(xa[None], approx='spline')[0]
+    return Jf(xa, approx='spline')
+
 # Compute x log|x| with correct limit x→0 → 0 (avoid log(0) issues)
 def xlogx(x):
     x = np.asarray(x)
@@ -61,8 +75,8 @@ class BminusL(AnalysablePotential):
         if T == 0.0:
             return VzeroT
         else:
-            yb = (IPi2) * (T4 * Jb(MS2 / (T2), approx='spline')) + 1.5 * (IPi2) * (T4 * Jb(MBL2 / (T2), approx='spline'))
-            yf = (IPi2) * (T4 * Jf(MR12 / (T2), approx='spline')) + (IPi2) * (T4 * Jf(MR22 / (T2), approx='spline'))+ (IPi2) * (T4 * Jf(MR32 / (T2), approx='spline'))
+            yb = (IPi2) * (T4 * Jb_safe(MS2 / (T2), approx='spline')) + 1.5 * (IPi2) * (T4 * Jb_safe(MBL2 / (T2), approx='spline'))
+            yf = (IPi2) * (T4 * Jf_safe(MR12 / (T2), approx='spline')) + (IPi2) * (T4 * Jf_safe(MR22 / (T2), approx='spline'))+ (IPi2) * (T4 * Jf_safe(MR32 / (T2), approx='spline'))
             y3 = - I12PiSqrt2* T * (self.lps ** (3 / 2)) * ((phi_sq + I12 * T ** 2) ** (3 / 2) - phi_sq ** (3 / 2)) - twoI3Pi * T * (self.gbl ** 3) * ((phi_sq + T2) ** (3 / 2) - phi_sq ** (3 / 2))
             result = VzeroT+yb+yf+y3
         return result
