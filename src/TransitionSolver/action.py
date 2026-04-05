@@ -28,8 +28,20 @@ def action_ct(potential, T, false_vacuum, true_vacuum, verbose=False, **kwargs):
     """
     @returns Action from CosmoTransitions's path deformation algorithm
     """
+    true_flat = np.asarray(true_vacuum, dtype=float).reshape(-1)
+    false_flat = np.asarray(false_vacuum, dtype=float).reshape(-1)
+    path_points = np.vstack([true_flat, false_flat])
+
+    def V_ct(X):
+        return potential(X, T)
+
+    def dV_ct(X):
+        X_arr = np.asarray(X, dtype=float)
+        g = np.asarray(potential.grad(X_arr, T), dtype=float)
+        return g.reshape(X_arr.shape)
+
     with open(os.devnull, "w") as devnull, redirect_stdout(sys.stdout if verbose else devnull):
-        return pathDeformation.fullTunneling([true_vacuum, false_vacuum], lambda X: potential(X, T), lambda X: potential.grad(X, T),
+        return pathDeformation.fullTunneling(path_points, V_ct, dV_ct,
             verbose=verbose, **kwargs).action
 
 def action_pt(potential, T, false_vacuum, true_vacuum, extend_to_minima=False, **kwargs):
