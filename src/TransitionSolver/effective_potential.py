@@ -46,7 +46,7 @@ class MixinPotential:
 
     @property
     def raddof(self):
-        return 22.25  # TODO this is real scalar singlet specific
+        return self.get_raddof()
 
     def free_energy_density(self, phi, T):
         """
@@ -56,8 +56,7 @@ class MixinPotential:
 
     @property
     def minimum_temperature(self):
-        return 0.1  # TODO what is this
-
+        return self.get_minimum_temperature()
 
 class MixinCosmoTransitions(generic_potential):
     """

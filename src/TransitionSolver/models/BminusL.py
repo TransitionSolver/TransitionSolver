@@ -34,8 +34,8 @@ class BminusL(AnalysablePotential):
         self.gbl = gbl
         self.minimumTemperature = 0.01
         self.Tmax = 2*vp
-        self.fieldScale = 2*self.vp
-        self.temperatureScale = 2* (self.vp)
+        self.fieldScale = self.vp
+        self.temperatureScale = self.vp
         self.ndof = 106
         self.raddof = self.ndof
 # setting gs energy via the potential at zero temp
