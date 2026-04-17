@@ -31,41 +31,6 @@ inline bool is_array_node(const ptree& node) {
   return true;
 }
 
-// Deep-merge: src overwrites destination (dst). Objects merge recursively. Arrays overwrite.
-inline void merge_into(ptree& dst, const ptree& src) {
-  // If src is an array or a scalar leaf, overwrite completely.
-  if (is_array_node(src) || (src.empty() && !src.data().empty())) {
-    dst = src;
-    return;
-  }
-
-  // src is an object-like node.
-  for (const auto& kv : src) {
-    const std::string& key = kv.first;
-    const ptree& src_child = kv.second;
-
-    auto dst_child_opt = dst.get_child_optional(key);
-    if (!dst_child_opt) {
-      dst.put_child(key, src_child);
-      continue;
-    }
-
-    ptree& dst_child = dst.get_child(key);
-
-    // If either side is array, overwrite.
-    if (is_array_node(src_child) || is_array_node(dst_child)) {
-      dst.put_child(key, src_child);
-      continue;
-    }
-
-    // If both are objects, recurse; otherwise overwrite.
-    if (!src_child.empty() && !dst_child.empty()) {
-      merge_into(dst_child, src_child);
-    } else {
-      dst.put_child(key, src_child);
-    }
-  }
-}
 
 // Parse JSON array -> std::vector<T>
 template <typename T>
