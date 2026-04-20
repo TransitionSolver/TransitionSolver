@@ -1,0 +1,11 @@
+{
+  "phase_finder": {
+    "seed": 10,
+    "check_vacuum_at_high": true,
+    "check_hessian_singular": true
+  },
+  "transition_finder": {
+    "check_subcritical_transitions": false,
+    "assume_only_one_transition": true
+  }
+}

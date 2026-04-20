@@ -1,0 +1,33 @@
+{
+  "phase_finder": {
+    "t_high": { "scale_with": "temperature_scale", "factor": 1.5 },
+
+    "upper_bounds": [
+      { "scale_with": "field_scale", "factor": 10.0 }
+    ],
+    "lower_bounds": [
+      { "scale_with": "field_scale", "factor": -10.0 }
+    ],
+
+    "x_abs_identical": { "scale_with": "field_scale", "factor": 1e-3 },
+    "seed": 10,
+    "x_abs_jump": { "scale_with": "field_scale", "factor": 5e-4 },
+    "find_min_x_tol_abs": { "scale_with": "field_scale", "factor": 1e-7 },
+
+    "find_min_min_step": 1e-4,
+
+    "find_min_trace_abs_step": { "scale_with": "field_scale", "factor": 1e-3 },
+    "find_min_locate_abs_step": { "scale_with": "field_scale", "factor": 1e-3 },
+
+    "dt_max_abs": { "scale_with": "temperature_scale", "factor": 5e-2 },
+    "dt_min_abs": { "scale_with": "temperature_scale", "factor": 1e-13 },
+
+    "check_vacuum_at_high": true,
+    "check_hessian_singular": true,
+    "check_dx_min_dt": true
+  },
+  "transition_finder": {
+    "check_subcritical_transitions": false,
+    "assume_only_one_transition": true
+  }
+}

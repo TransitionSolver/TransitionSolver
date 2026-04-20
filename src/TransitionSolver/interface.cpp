@@ -43,15 +43,11 @@ static void validate_top_level_sections_strict(const TS_PT::ptree& cfg) {
 
 
 // Parse/compute t_high from settings if present.
-// - if no phase_finder.t_high: returns std::nullopt
-// - if numeric: returns numeric
-// - if string "auto" / "rss_getMaxTemp": uses TS_PT::compute_t_high_auto(model, node)
-// - if object {"mode": "...", ...}: uses TS_PT::compute_t_high_auto(model, node)
-// This can hopefully be removed once we have foudn a way to avoid ethe complictaed aproach to fixing t_high in RSS. But at least for testing we want to keep matrching old output exactly for tests. 
+// This can hopefully be removed once we have foudn a way to avoid the complictaed aproach to fixing t_high in RSS. But at least for testing we want to keep matrching old output exactly for tests.
 template <typename ModelT>
 static std::optional<double> resolve_t_high_from_config(
     ModelT& model,
-    TS_PT::ptree& phase_finder_node)  // passed by ref so we can erase("t_high")
+    TS_PT::ptree& phase_finder_node)
 {
   auto th_opt = phase_finder_node.get_child_optional("t_high");
   if (!th_opt) {
@@ -61,34 +57,32 @@ static std::optional<double> resolve_t_high_from_config(
   const TS_PT::ptree& th = *th_opt;
   double t_high_effective = 0.0;
 
-  // property_tree represents numbers as leaf strings; objects have children.
-  if (th.empty()) {
-    // leaf: could be "1200" or "auto"
+  if (TS_PT::is_scale_rule(th)) {
+    t_high_effective = TS_PT::resolve_double(th, model, "phase_finder.t_high");
+  } else if (th.empty()) {
     const std::string raw = th.get_value<std::string>();
 
-    // try numeric
     try {
       size_t idx = 0;
       double val = std::stod(raw, &idx);
       if (idx == raw.size()) {
         t_high_effective = val;
       } else {
-        // trailing junk => treat as mode string
         t_high_effective = TS_PT::compute_t_high_auto(model, th);
       }
     } catch (...) {
-      // not numeric => mode string ("auto"/"rss_getMaxTemp")
       t_high_effective = TS_PT::compute_t_high_auto(model, th);
     }
   } else {
-    // object form => must contain "mode"
-    t_high_effective = TS_PT::compute_t_high_auto(model, th);
+    throw std::runtime_error(
+      "phase_finder.t_high object must be either a scale rule "
+      "{\"scale_with\": ..., ...} or a string 'auto'/'rss_getMaxTemp'.");
   }
 
-  // Remove t_high so strict apply_phase_finder_settings doesn't see a non-double
   phase_finder_node.erase("t_high");
   return t_high_effective;
 }
+
 
 
 int main(int argc, char* argv[]) {
@@ -146,7 +140,7 @@ int main(int argc, char* argv[]) {
 
     // Apply remaining PhaseFinder settings strictly (unknown keys -> error)
     if (has_settings && !phase_finder_cfg.empty()) {
-      TS_PT::apply_phase_finder_settings(pf, phase_finder_cfg);
+      TS_PT::apply_phase_finder_settings(pf, phase_finder_cfg, model);
     }
 
     pf.find_phases();
@@ -160,7 +154,7 @@ int main(int argc, char* argv[]) {
 
     // Apply TransitionFinder settings strictly (unknown keys -> error)
     if (has_settings && !transition_finder_cfg.empty()) {
-      TS_PT::apply_transition_finder_settings(tf, transition_finder_cfg);
+      TS_PT::apply_transition_finder_settings(tf, transition_finder_cfg, model);
     }
 
     tf.find_transitions();
