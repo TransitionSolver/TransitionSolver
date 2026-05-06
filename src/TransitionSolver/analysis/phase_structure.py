@@ -7,7 +7,8 @@ import warnings
 
 import numpy as np
 from scipy.optimize import fmin_powell
-
+from typing import Union
+from scipy import optimize
 
 class Phase:
     """
@@ -19,33 +20,48 @@ class Phase:
         self.V = phase[:, 1].T
         self.phi = phase[:, 2:].T
 
-    def find_phase_at_t(self, T: float, potential, rel_tol=10) -> np.ndarray:
-        """
-        @returns Location of the phase at the given temperature by using interpolation between the stored data points,
-        and local optimisation from that interpolated point
-        """
+    def find_phase_at_t(self, T: float, potential) -> np.ndarray:
         if T < self.T[0] or T > self.T[-1]:
-            raise ValueError(f'Attempted to find phase {self.key} at T={T}, while defined only for'
+            raise InvalidTemperatureException(f'Attempted to find phase {self.key} at T={T}, while defined only for'
                 f'[{self.T[0]}, {self.T[-1]}]')
 
-        idx = np.absolute(self.T - T).argmin()
+        minIndex = 0
+        maxIndex = len(self.T)
 
-        if self.T[idx] == T:
-            return self.phi[..., idx]
+        # Binary search to find the boundary temperature data (specifically, the indices in the T array).
+        while maxIndex - minIndex > 1:
+            midpoint = (minIndex + maxIndex) // 2
 
-        nxt_idx = idx - 1 if self.T[idx] > T else idx + 1
-        dphi = self.phi[..., idx] - self.phi[..., nxt_idx]
-        dt = self.T[idx] - self.T[nxt_idx]
-        linear_interp = self.phi[..., idx] + (T - self.T[idx]) * dphi / dt
-        direc = 0.5 * np.diag(dphi)
+            if self.T[midpoint] == T:
+                return self.phi[..., midpoint]
+            elif self.T[midpoint] < T:
+                minIndex = midpoint
+            else:
+                maxIndex = midpoint
 
-        optimised_point = fmin_powell(lambda X: potential(X, T), linear_interp, disp=False, direc=direc)
+        def V(X) -> Union[float, np.ndarray]: return potential(X, T)
+        offset = 0.001*potential.get_field_scale()
 
-        if np.linalg.norm(optimised_point - linear_interp) > rel_tol * np.linalg.norm(dphi):
-            warnings.warn("Using linear interpolation as the optimiser probably found a different phase")
-            return linear_interp
+        # Interpolate between the most relevant data points.
+        if minIndex == maxIndex:
+            interpPoint = self.phi[..., minIndex]
+        else:
+            interpFactor = (T - self.T[minIndex]) / (self.T[maxIndex] - self.T[minIndex])
+            interpPoint = self.phi[..., minIndex] + interpFactor*(self.phi[..., maxIndex] - self.phi[..., minIndex])
 
-        return np.atleast_1d(optimised_point)
+        direction = np.diag(np.ones(potential.get_n_scalars())*offset)
+        optimisedPoint = optimize.fmin_powell(V, interpPoint, disp=False, direc=direction)
+
+        if len(optimisedPoint.shape) == 0:
+            optimisedPoint = optimisedPoint.ravel()
+        
+        if abs(T - self.T[minIndex]) < 0.2*potential.get_temperature_scale() and \
+                np.linalg.norm(optimisedPoint - interpPoint) > 0.2*potential.get_field_scale():
+            # The minimum shifted too far, so the optimiser probably found a different phase.
+            # Return the previous point.
+            return interpPoint
+
+        return optimisedPoint
 
 
 class TransitionProperties(dict):
