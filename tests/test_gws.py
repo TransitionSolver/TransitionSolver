@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from TransitionSolver.gws import GWAnalyser, lisa
-from TransitionSolver import gws, RSS_BP1
+from TransitionSolver import gws, RSS_BP1, benchmarks
 from dictcmp import assert_deep_equal
 
 
@@ -32,7 +32,7 @@ NAMES = [f"RSS_BP{k}" for k in range(1, 14)]
 
 @pytest.mark.parametrize("name", NAMES)
 def test_report(generate_baseline, name):
-    analyser = GWAnalyser(RSS_BP1, get_phase_history(name), phase_tracer_file=phase_tracer_file)
+    analyser = GWAnalyser(getattr(benchmarks,name), get_phase_history(name), phase_tracer_file=BASELINE / f"{name.lower()}_phase_structure.dat")
     report = analyser.report(lisa)
     assert_deep_equal(report, BASELINE / f"{name.lower()}_gw.json", generate_baseline=generate_baseline)
 
