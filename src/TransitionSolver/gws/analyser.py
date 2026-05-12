@@ -5,8 +5,10 @@ Analyse gravitational wave signals
 
 from __future__ import annotations
 
+import json
 import logging
 from functools import cached_property
+from importlib.resources import files
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -30,6 +32,17 @@ OMEGA_SW = 0.012  # From erratum of https://arxiv.org/abs/1704.05871 TABLE IV.
 
 logger = logging.getLogger(__name__)
 
+GW_TEMPLATE_CHOICES_FILE = "gw_template_choices.json"
+
+
+def read_gw_template_choices() -> dict:
+    template_file = files("TransitionSolver.settings").joinpath(
+        GW_TEMPLATE_CHOICES_FILE
+    )
+
+    with template_file.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
 
 class AnalyseIndividualTransition:
     """
@@ -43,11 +56,16 @@ class AnalyseIndividualTransition:
             potential: AnalysablePotential,
             use_bubble_sep=True,
             rho_t=None,
-            kappa_coll=None,
-            kappa_turb=0.05,
-            use_sound_shell=True):
+            *,
+            sound_wave_template,
+            turbulence_template,
+            collision_template,
+            kappa_coll,
+            kappa_turb):
 
-        self.use_sound_shell = use_sound_shell
+        self.sound_wave_template = sound_wave_template
+        self.turbulence_template = turbulence_template
+        self.collision_template = collision_template
         self.kappa_turb = kappa_turb
         self.kappa_coll = kappa_coll
         self.rho_t = rho_t
@@ -161,11 +179,15 @@ class AnalyseIndividualTransition:
         """
         Based on https://arxiv.org/abs/2208.11697
         """
-        if self.kappa_coll is None:
+        if self.collision_template is None:
             return 0.
+
+        if self.kappa_coll is None:
+            raise ValueError("`kappa_coll` must be set when `collision_template` is not None.")
+
         A = 5.13e-2
         return A * self.redshift_amp * (self.hydro_transition_temp.hubble_constant * self.length_scale / (
-            (8 * np.pi)**(1 / 3) * self.bubble_wall_velocity))**2 * self.kinetic_energy_fraction**2
+            (8 * np.pi)**(1 / 3) * self.bubble_wall_velocity))**2 * self.scalar_field_energy_fraction**2
 
     @property
     def peak_amplitude_turb(self) -> float:
@@ -207,21 +229,69 @@ class AnalyseIndividualTransition:
         return (a + b)**c / (b * x**(-a / c) + a * x**(b / c))**c
 
     def gw_total(self, f):
-        if self.kappa_coll is not None:
-            return self.gw_coll(f)
-        return self.gw_sw(f) + self.gw_turb(f)
+        return self.gw_sw(f) + self.gw_turb(f) + self.gw_coll(f)
 
-    def gw_sw(self, f):
-        if self.use_sound_shell:
-            return self.peak_amplitude_sw_sound_shell * \
-                self.spectral_shape_sw_double_broken(f)
+    def gw_sw_sgbp_lattice_2017(self, f):
         return self.peak_amplitude_sw * self.spectral_shape_sw(f)
 
-    def gw_turb(self, f):
+    def gw_sw_dbpl_sound_shell(self, f):
+        return self.peak_amplitude_sw_sound_shell * \
+            self.spectral_shape_sw_double_broken(f)
+
+    def gw_sw(self, f):
+        if self.sound_wave_template is None:
+            return np.zeros_like(f, dtype=float)
+
+        sound_wave_functions = {
+            "sgbp_lattice_2017": self.gw_sw_sgbp_lattice_2017,
+            "dbpl_sound_shell": self.gw_sw_dbpl_sound_shell,
+        }
+
+        if self.sound_wave_template not in sound_wave_functions:
+            raise ValueError(
+                f"Unknown sound-wave template: {self.sound_wave_template}. "
+                f"Allowed values are: {sorted(sound_wave_functions)}."
+            )
+
+        return sound_wave_functions[self.sound_wave_template](f)
+
+    def gw_turb_analytic_2009(self, f):
         return self.peak_amplitude_turb * self.spectral_shape_turb(f)
 
-    def gw_coll(self, f):
+    def gw_turb(self, f):
+        if self.turbulence_template is None:
+            return np.zeros_like(f, dtype=float)
+
+        turbulence_functions = {
+            "analytic_2009": self.gw_turb_analytic_2009,
+        }
+
+        if self.turbulence_template not in turbulence_functions:
+            raise ValueError(
+                f"Unknown turbulence template: {self.turbulence_template}. "
+                f"Allowed values are: {sorted(turbulence_functions)}."
+            )
+
+        return turbulence_functions[self.turbulence_template](f)
+
+    def gw_coll_semi_analytic_2022(self, f):
         return self.peak_amplitude_coll * self.spectral_shape_coll(f)
+
+    def gw_coll(self, f):
+        if self.collision_template is None:
+            return np.zeros_like(f, dtype=float)
+
+        collision_functions = {
+            "semi-analytic_2022": self.gw_coll_semi_analytic_2022,
+        }
+
+        if self.collision_template not in collision_functions:
+            raise ValueError(
+                f"Unknown collision template: {self.collision_template}. "
+                f"Allowed values are: {sorted(collision_functions)}."
+            )
+
+        return collision_functions[self.collision_template](f)
 
     @cached_property
     def kappa_sw(self) -> float:
@@ -260,8 +330,29 @@ class AnalyseIndividualTransition:
         if self.hydro_transition_temp.soundSpeedSqTrue <= 0:
             return 0.
 
-        factor = self.kappa_coll if self.kappa_coll is not None else self.kappa_sw
-        K = factor * self.hydro_transition_temp.K
+        K = self.kappa_sw * self.hydro_transition_temp.available_energy_fraction
+
+        if K > 1:
+            logger.warning('K > 1: %s', K)
+
+        if K < 0:
+            raise RuntimeError("K < 0: {K}")
+
+        return K
+
+    @property
+    def scalar_field_energy_fraction(self) -> float:
+        """
+        @returns energy fraction in the scalar-field / bubble walls which
+        sources GWs from bubble collisions
+        """
+        if self.collision_template is None:
+            return 0.
+
+        if self.kappa_coll is None:
+            raise ValueError("`kappa_coll` must be set when `collision_template` is not None.")
+
+        K = self.kappa_coll * self.hydro_transition_temp.available_energy_fraction
 
         if K > 1:
             logger.warning('K > 1: %s', K)
@@ -281,12 +372,36 @@ class AnalyseIndividualTransition:
 
     def report(self, *detectors):
         report = {}
-        report['Peak amplitude (sound waves)'] = self.peak_amplitude_sw_sound_shell if self.use_sound_shell else self.peak_amplitude_sw
-        report['Peak frequency (sound waves)'] = self.peak_frequency_sw_shell_thickness if self.use_sound_shell else self.peak_frequency_sw_bubble_separation
-        report['Peak amplitude (turbulence)'] = self.peak_amplitude_turb
-        report['Peak frequency (turbulence)'] = self.peak_frequency_turb
-        report['Peak amplitude (collisions)'] = self.peak_amplitude_coll
-        report['Peak frequency (collisions)'] = self.peak_frequency_coll
+
+        if self.sound_wave_template is None:
+            report['Peak amplitude (sound waves)'] = 0.
+            report['Peak frequency (sound waves)'] = 0.
+        elif self.sound_wave_template == "sgbp_lattice_2017":
+            report['Peak amplitude (sound waves)'] = self.peak_amplitude_sw
+            report['Peak frequency (sound waves)'] = self.peak_frequency_sw_bubble_separation
+        elif self.sound_wave_template == "dbpl_sound_shell":
+            report['Peak amplitude (sound waves)'] = self.peak_amplitude_sw_sound_shell
+            report['Peak frequency (sound waves)'] = self.peak_frequency_sw_shell_thickness
+        else:
+            raise ValueError(
+                f"Unknown sound-wave template: {self.sound_wave_template}."
+            )
+
+        if self.turbulence_template is None:
+            report['Peak amplitude (turbulence)'] = 0.
+            report['Peak frequency (turbulence)'] = 0.
+        else:
+            report['Peak amplitude (turbulence)'] = self.peak_amplitude_turb
+            report['Peak frequency (turbulence)'] = self.peak_frequency_turb
+
+        if self.collision_template is None:
+            report['Peak amplitude (collisions)'] = 0.
+            report['Peak frequency (collisions)'] = 0.
+        else:
+            report['Peak amplitude (collisions)'] = self.peak_amplitude_coll
+            report['Peak frequency (collisions)'] = self.peak_frequency_coll
+
+        
         report['Signal-to-Noise Ratio'] = {d.label: d.SNR(self.gw_total) for d in detectors}
         report['Bubble wall velocity'] = self.bubble_wall_velocity
         report['Transition temperature'] = self.transition_temp
@@ -351,8 +466,11 @@ class GWAnalyser:
             raise RuntimeError(
                 'No relevant transition detected in the phase history')
 
+        gw_kwargs = read_gw_template_choices()
+        gw_kwargs.update(kwargs)
+
         self.gws = {k: AnalyseIndividualTransition(
-            phase_structure, v, potential, **kwargs) for k, v in relevant_transitions.items()}
+            phase_structure, v, potential, **gw_kwargs) for k, v in relevant_transitions.items()}
     
     def report_for_transition_ids(self, transition_ids, *detectors):
         

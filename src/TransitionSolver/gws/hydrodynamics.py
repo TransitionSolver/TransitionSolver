@@ -54,6 +54,8 @@ class HydroVars:
 
     @property
     def pseudotraceTrue(self):
+        # note following #arXiv:2004.06995 we use the speed of sound
+        # in the *true* vacuum here
         return (self.energyDensityTrue -
                 self.pressureTrue / self.soundSpeedSqTrue) / 4
 
@@ -79,9 +81,11 @@ class HydroVars:
                 self.alpha))**0.5) / (1. / self.soundSpeedTrue + 3. * self.soundSpeedTrue * self.alpha)
 
     @property
-    def K(self):
+    def available_energy_fraction(self):
         """
-        @returns Kinetic energy fraction, assuming kappa = 1
+        @returns fraction of energy available for sourcing GWs before
+        accounting for the efficiency coefficients to specific sources
+        (ie taking kappa = 1)
         """
         return (self.pseudotraceFalse - self.pseudotraceTrue) / \
             self.energyDensityFalse

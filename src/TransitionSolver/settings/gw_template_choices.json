@@ -1,0 +1,7 @@
+{
+  "sound_wave_template": "dbpl_sound_shell",
+  "turbulence_template": "analytic_2009",
+  "collision_template": null,
+  "kappa_coll": 0.0,
+  "kappa_turb": 0.05
+}

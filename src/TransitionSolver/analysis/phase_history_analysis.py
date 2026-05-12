@@ -203,7 +203,7 @@ class PhaseHistoryAnalyser:
         return expanded
 
     def analyse(self, bubble_wall_velocity=None, action_ct=True):  # TODO make false
-
+        # time how long the analysis takes
         timer = Timer(self.time_limit)
         # if there are no paths in phase_structure, set paths empty and return 
         if not self.phase_structure.paths:

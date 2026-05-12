@@ -62,9 +62,9 @@ def autodetect_point_settings(point_file_name: str) -> str | None:
     return None
 
 def autodetect_model_settings(model: str) -> str | None:
-    # Convention: ./pt_setings/<MODEL>.json (relative to current working dir)
+    # Convention: src/TransitionSolver/settings/PT_settings_<MODEL>.json
     BASE_DIR = Path(__file__).resolve().parent
-    c = BASE_DIR / "pt_settings" / f"{model}.json"
+    c = BASE_DIR / "settings" / f"PT_settings_{model}.json"
     if c.exists():
         print("finding specific PT model specific settings for this.")
         return str(c)
