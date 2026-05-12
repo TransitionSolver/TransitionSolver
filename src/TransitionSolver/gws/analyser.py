@@ -55,7 +55,6 @@ class AnalyseIndividualTransition:
             transition_report: dict,
             potential: AnalysablePotential,
             use_bubble_sep=True,
-            rho_t=None,
             *,
             sound_wave_template,
             turbulence_template,
@@ -68,7 +67,6 @@ class AnalyseIndividualTransition:
         self.collision_template = collision_template
         self.kappa_turb = kappa_turb
         self.kappa_coll = kappa_coll
-        self.rho_t = rho_t
         self.use_bubble_sep = use_bubble_sep
 
         self.transition_report = transition_report
