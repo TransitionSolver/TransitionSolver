@@ -12,14 +12,14 @@ def add_labeled_vline(ax, x, label, color):
     transform = ax.get_xaxis_transform()
     y = 0.8
     ax.axvline(x, c=color, ls=':')
-    ax.text(x, y, label,  c=color, transform=transform, ha='center', bbox={'fc': 'w', 'ec': color})
+    ax.text(x, y, label, c=color, transform=transform, ha='center', bbox={'fc': 'w', 'ec': color})
 
 
 def add_labeled_hline(ax, y, label, color):
     transform = ax.get_yaxis_transform()
     x = 0.1
     ax.axhline(y, c=color, ls=':')
-    ax.text(x, y, label,  c=color, transform=transform, va='center', bbox={'fc': 'w', 'ec': color})
+    ax.text(x, y, label, c=color, transform=transform, va='center', bbox={'fc': 'w', 'ec': color})
 
 
 def add_labeled_vlines(transition, ax):

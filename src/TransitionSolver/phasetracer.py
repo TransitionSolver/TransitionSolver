@@ -88,8 +88,8 @@ def build_phase_tracer(model_header, model=None, model_lib=None, model_namespace
 
     return exe_name
 
-# should remno
-def run_phase_tracer(exe_name, point_file=None, point=None,  pt_settings_file=None) -> str:
+
+def run_phase_tracer(exe_name, point_file=None, point=None, pt_settings_file=None) -> str:
     """
     Run PhaseTracer and read serialised data
     @param exe_name Name of executable
