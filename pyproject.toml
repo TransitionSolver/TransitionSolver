@@ -18,14 +18,12 @@ dependencies = [
   "cppyy"
 ]
 requires-python = ">=3.9"
-# Note I suggest we make this match the list of authors on the manual
 authors = [
   {name = "Lachlan Morris"},
   {name = "Peter Athron"},
   {name = "Csaba Balazs"},
   {name = "Andrew Fowlie"},
 ]
-# we can keep this updated with lits of active developers
 maintainers = [
   {name = "Peter Athron", email = "peter.athron@njnu.edu.cn"},
   {name = "Andrew Fowlie", email = "andrew.fowlie@xjtlu.edu.cn"},
