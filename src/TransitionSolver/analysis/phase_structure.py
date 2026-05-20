@@ -6,7 +6,6 @@ Represent phase structure
 import warnings
 
 import numpy as np
-from scipy.optimize import fmin_powell
 from typing import Union
 from scipy import optimize
 
