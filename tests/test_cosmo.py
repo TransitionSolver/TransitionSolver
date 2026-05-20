@@ -4,9 +4,9 @@ Test access to CosmoTransitions methods
 """
 
 
-from TransitionSolver import RSS_BP1
+from TransitionSolver import RSS_BP2 as model
 
 
 def test_cosmo():
-    RSS_BP1.getPhases()
-    RSS_BP1.findAllTransitions()
+    model.getPhases()
+    model.findAllTransitions()
