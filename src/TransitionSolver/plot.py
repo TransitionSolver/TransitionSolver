@@ -327,7 +327,7 @@ def plot_summary(phase_structure=None, phase_structure_file=None, show=False):
             this_ax.set_xlabel(None)
 
     fig.supxlabel("$T$ (GeV)", y=0.005)
-    fig.set_tight_layout(True)
+    fig.set_layout_engine('constrained')
 
     if show:
         plt.show()
