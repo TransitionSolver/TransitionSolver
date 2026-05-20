@@ -4,15 +4,16 @@ Run TransitionSolver on a known model
 """
 
 import logging
-
-import click
-import numpy as np
-import rich
 import json
 import os
 import tempfile
 
 from pathlib import Path
+
+import click
+import numpy as np
+import rich
+
 from rich.text import Text
 from rich.status import Status
 from rich.console import Console
@@ -133,14 +134,14 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
             pt_settings_tmp.close()
             pt_settings_file = pt_settings_tmp.name
 
-        
+
         with Status(f"Running PhaseTracer {exe_name}"):
             phase_structure_raw = run_phase_tracer(
                 exe_name,
                 point_file_name,
                 pt_settings_file=pt_settings_file
             )
-    finally: 
+    finally:
         if pt_settings_file is not None:
             try:
                 os.unlink(pt_settings_file)
