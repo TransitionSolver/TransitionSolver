@@ -24,7 +24,7 @@ def make_results_folder():
     return folder
 
 
-def saveall(tr_report, gw_report, tr_fig, gw_fig, phase_structure_raw, ctx, analyser, detectors, folder=None):
+def saveall(tr_report, tr_fig, gw_fig, phase_structure_raw, ctx, analyser, detectors, folder=None):
     if folder is None:
         folder = make_results_folder()
 
@@ -46,7 +46,7 @@ def saveall(tr_report, gw_report, tr_fig, gw_fig, phase_structure_raw, ctx, anal
     for idx, path in enumerate(tr_report["paths"]):
         if not path["valid"]:
             continue
-        
+
         # phases
         phases = "-".join(str(p) for p in path["phases"]) if path["phases"] else "none"
 
@@ -55,13 +55,11 @@ def saveall(tr_report, gw_report, tr_fig, gw_fig, phase_structure_raw, ctx, anal
 
         # folder name
         path_dir = folder / f"path_{idx}_p{phases}_t{transitions}"
-        
         path_dir.mkdir(parents=True, exist_ok=True)
 
-        selected = set(path["transitions"])
-        path_gw_report = analyser.report_for_transition_ids( path["transitions"],*detectors)
+        path_gw_report = analyser.report_for_transition_ids(path["transitions"], *detectors)
 
         savejson(path_gw_report, path_dir / "gw.json")
         savejson(path, path_dir / "tr_path.json")
 
-    return str(folder)    
+    return str(folder)
