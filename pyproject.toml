@@ -58,6 +58,7 @@ norecursedirs = ["examples"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "--mpl"
+filterwarnings = ["ignore::Warning:cosmoTransitions*"]
 
 [tool.setuptools.package-data]
 "TransitionSolver" = ["geff/*.csv", "gws/detectors/*.txt", "gws/detectors/*.csv", "settings/*.json", "interface.cpp", "RSS_BP.hpp", "models/util/*.csv"]
