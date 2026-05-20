@@ -40,7 +40,7 @@ MODEL_NAME = [("RSS_BP", f"RSS_BP{k}") for k in range(1, 14)]
 def test_run_phase_tracer(generate_baseline, model, name):
     exe_name = build_phase_tracer("RSS_BP.hpp", force=True)
     phase_structure_file = BASELINE / f"{name.lower()}_phase_structure.dat"
-    pt_settings_file = Path(TransitionSolver.__file__).resolve().parent / "pt_settings" / f"{model}.json"
+    pt_settings_file = Path(TransitionSolver.__file__).resolve().parent / "settings" / f"PT_settings_{model}.json"
     point = getattr(benchmarks, f"{name}_POINT")
 
     result = run_phase_tracer(exe_name, point=point, pt_settings_file=pt_settings_file)

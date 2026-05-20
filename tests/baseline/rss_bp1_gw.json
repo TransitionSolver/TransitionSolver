@@ -1,24 +1,41 @@
 {
-    "1": {
-        "Peak amplitude (sound waves)": 8.282836859971563e-11,
-        "Peak frequency (sound waves)": 0.00015084374131306636,
-        "Peak amplitude (turbulence)": 7.497787810232033e-13,
-        "Peak frequency (turbulence)": 0.00014166819808056664,
+    "0": {
+        "Peak amplitude (sound waves)": 6.030268973453478e-28,
+        "Peak frequency (sound waves)": 2.596446864011577,
+        "Peak amplitude (turbulence)": 3.797024523575178e-30,
+        "Peak frequency (turbulence)": 2.4318315982790133,
         "Peak amplitude (collisions)": 0.0,
         "Peak frequency (collisions)": 0.0,
         "Signal-to-Noise Ratio": {
-            "LISA --- Analytic": 59.77503594372459
+            "LISA --- Analytic": 6.833814784894399e-21
         },
         "Bubble wall velocity": 1.0,
-        "Transition temperature": 49.70272117197159,
-        "Redshift temperature": 53.57588169714644,
-        "Kinetic energy fraction": 0.04753640671929609,
-        "Upsilon": 0.4329944172611553,
-        "Length scale": 56548127094488.34
+        "Transition temperature": 215.59798193755242,
+        "Redshift temperature": 215.61594199526053,
+        "Kinetic energy fraction": 9.797267185517317e-09,
+        "Upsilon": 0.3267566920957745,
+        "Length scale": 794624219.7272404
+    },
+    "1": {
+        "Peak amplitude (sound waves)": 8.251037533746231e-11,
+        "Peak frequency (sound waves)": 0.00015080959752498203,
+        "Peak amplitude (turbulence)": 7.476414378512441e-13,
+        "Peak frequency (turbulence)": 0.00014163588899154144,
+        "Peak amplitude (collisions)": 0.0,
+        "Peak frequency (collisions)": 0.0,
+        "Signal-to-Noise Ratio": {
+            "LISA --- Analytic": 59.5162563523308
+        },
+        "Bubble wall velocity": 1.0,
+        "Transition temperature": 49.72386200496445,
+        "Redshift temperature": 53.593551481898416,
+        "Kinetic energy fraction": 0.04741081989692237,
+        "Upsilon": 0.4333824492929913,
+        "Length scale": 56541640248475.445
     },
     "Combined": {
         "Signal-to-Noise Ratio": {
-            "LISA --- Analytic": 59.77503594372459
+            "LISA --- Analytic": 59.5162563523308
         }
     }
 }
