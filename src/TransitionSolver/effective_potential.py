@@ -20,6 +20,28 @@ EP_INCLUDE = EP_HOME / "include" / "effectivepotential"
 EP_MODELS = EP_HOME / "include" / "models"
 EP_LIB = EP_HOME / "lib" / "libeffectivepotential.so"
 
+# include headers
+
+for pth in [EP_INCLUDE, EP_MODELS, CWD]:
+    cppyy.add_include_path(str(pth))
+
+# load libraries
+
+cppyy.load_library(str(EP_LIB))
+
+# avoid repeat includes
+
+def once(func):
+    cache = set()
+    def wrapper(arg):
+        if arg not in cache:
+            cache.add(arg)
+            func(arg)
+    return wrapper
+
+load_library = once(cppyy.load_library)
+include = once(cppyy.include)
+
 
 class MixinPotential:
     """
@@ -102,20 +124,10 @@ def load_potential(model_header, model=None, model_lib=None, model_namespace=DEF
     if model is None:
         model = str(Path(model_header).stem)
 
-    # include headers
-
-    for pth in [EP_INCLUDE, EP_MODELS, CWD]:
-        cppyy.add_include_path(str(pth))
-
-
-    cppyy.include(model_header)
-
-    # load libraries
-
-    cppyy.load_library(str(EP_LIB))
+    include(model_header)
 
     if model_lib is not None:
-        cppyy.load_library(model_lib)
+        load_library(model_lib)
 
     # make potential
 
