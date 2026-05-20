@@ -26,7 +26,7 @@ EP_MODELS = EP_HOME / "include" / "models"
 EP_LIB = EP_HOME / "lib" / "libeffectivepotential.so"
 CXX = "g++"
 TEMPLATE_CPP = os.path.join(CWD, "interface.cpp")
-LIBS = [EP_LIB, PT_LIB, "-lboost_log", "-lboost_filesystem", "-lnlopt"]
+LIBS = [EP_LIB, PT_LIB, "-lboost_log", "-lboost_filesystem", "-lnlopt", "-lalglib"]
 PT_UNIT_TEST = PT_HOME / "bin" / "unit_tests"
 DEFAULT_NAMESPACE = ("EffectivePotential",)
 
