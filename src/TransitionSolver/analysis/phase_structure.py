@@ -22,7 +22,7 @@ class Phase:
 
     def find_phase_at_t(self, T: float, potential) -> np.ndarray:
         if T < self.T[0] or T > self.T[-1]:
-            raise InvalidTemperatureException(f'Attempted to find phase {self.key} at T={T}, while defined only for'
+            raise RuntimeError(f'Attempted to find phase {self.key} at T={T}, while defined only for'
                 f'[{self.T[0]}, {self.T[-1]}]')
 
         minIndex = 0
