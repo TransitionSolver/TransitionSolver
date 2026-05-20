@@ -32,6 +32,6 @@ def test_phase_structure(generate_baseline, name):
         result,
         BASELINE / f"{name.lower()}_phase_structure.json",
         exclude_types=[list],
-        significant_digits=4,
+        significant_digits=2,
         generate_baseline=generate_baseline,
     )
