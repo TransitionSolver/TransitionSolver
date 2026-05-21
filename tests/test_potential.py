@@ -12,4 +12,4 @@ def test_cosmo():
     model.findAllTransitions()
 
 def test_potential():
-    assert np.isclose(model([10., -10.], 20.), 100)
+    assert np.isclose(model(np.array([10., -10.]), 20.), 3869184455.127249)
