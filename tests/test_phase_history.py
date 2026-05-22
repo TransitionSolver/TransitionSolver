@@ -1,5 +1,5 @@
 """ "
-Test phase structure report
+Test phase history report
 ===========================
 """
 
@@ -19,7 +19,7 @@ NAMES = [f"RSS_BP{k}" for k in range(1, 14)]
 
 
 @pytest.mark.parametrize("name", NAMES)
-def test_phase_structure(generate_baseline, name):
+def test_phase_history(generate_baseline, name):
     phase_tracer_file = BASELINE / f"{name.lower()}_phase_structure.dat"
     with open(phase_tracer_file) as f:
         phase_tracer_data = f.read()
