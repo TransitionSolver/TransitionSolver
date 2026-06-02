@@ -123,30 +123,17 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
         if fp:
             effective_cfg = deep_merge(effective_cfg, load_json(fp))
 
-    pt_settings_tmp = None
-    pt_settings_file = None
-
-    try:
-        if effective_cfg:
-            pt_settings_tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
-            json.dump(effective_cfg, pt_settings_tmp, indent=2, sort_keys=True)
-            pt_settings_tmp.flush()
-            pt_settings_tmp.close()
-            pt_settings_file = pt_settings_tmp.name
-
+    with tempfile.NamedTemporaryFile(mode="w") as pt_settings_file:
+        json.dump(effective_cfg, pt_settings_file)
+        pt_settings_file.flush()
 
         with Status(f"Running PhaseTracer {exe_name}"):
             phase_structure_raw = run_phase_tracer(
                 exe_name,
                 point_file_name,
-                pt_settings_file=pt_settings_file
+                pt_settings_file=pt_settings_file.name
             )
-    finally:
-        if pt_settings_file is not None:
-            try:
-                os.unlink(pt_settings_file)
-            except OSError:
-                pass
+
     phase_structure = read_phase_tracer(phase_structure_raw)
 
     with Status("Analyzing phase history"):
