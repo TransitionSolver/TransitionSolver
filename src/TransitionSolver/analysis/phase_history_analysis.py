@@ -3,7 +3,7 @@ Analyse phase history
 =====================
 """
 import math
-from .transition_analysis import TransitionAnalyser, Timer
+from .transition_analysis import TransitionAnalyser
 from .transition_graph import TransitionEdge, Path, PhaseNode
 
 
@@ -203,8 +203,7 @@ class PhaseHistoryAnalyser:
         return expanded
 
     def analyse(self, bubble_wall_velocity=None, action_ct=True):  # TODO make false
-        # time how long the analysis takes
-        timer = Timer(self.time_limit)
+
         # if there are no paths in phase_structure, set paths empty and return 
         if not self.phase_structure.paths:
             self.paths = []
@@ -222,19 +221,12 @@ class PhaseHistoryAnalyser:
         paths, frontier = self.init_frontier(phase_indexed_trans, phase_nodes)
 
         while frontier:
-            if timer.timeout():
-                self.paths = []
-                return
 
             transition_edge = frontier.pop(0)
             transition = transition_edge.transition
             path = transition_edge.path
 
             self.analyse_transition(phase_indexed_trans, transition_edge, path, transition, bubble_wall_velocity=bubble_wall_velocity, action_ct=action_ct)
-
-            if timer.timeout():
-                self.paths = []
-                return
 
             # If the transition completes.
             if transition.properties.T_p is not None  and transition.properties.T_f is not None:

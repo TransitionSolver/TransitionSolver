@@ -6,7 +6,6 @@ Transition analysis
 from __future__ import annotations
 
 import logging
-import time
 import warnings
 from typing import Union
 
@@ -22,20 +21,6 @@ from ..gws.hydrodynamics import HydroVars, hubble_squared_from_energy_density
 
 
 logger = logging.getLogger(__name__)
-
-
-class Timer:
-
-    def __init__(self, limit, start_time=None):
-        self.start_time = start_time if start_time else time.perf_counter()
-        self.limit = limit
-
-    def timeout(self):
-        self.save()
-        return self.limit > 0 and self.analysisElapsedTime > self.limit
-
-    def save(self):
-        self.analysisElapsedTime = time.perf_counter() - self.start_time
 
 
 class ActionSample:
@@ -413,7 +398,6 @@ class TransitionAnalyser:
     # completion is found (default behaviour).
     analyse_past_completion: bool = False
     allow_errors_tn: bool = True
-    timeout: float = -1.
 
     def __init__(self, potential, properties, fromPhase: Phase, toPhase: Phase,
                  # TODO make false
@@ -619,7 +603,7 @@ class TransitionAnalyser:
     # TODO: need to handle subcritical transitions better. Shouldn't use integration if the max sampled action is well
     # below the nucleation threshold. Should treat the action as constant or linearise it and estimate transition
     # temperatures under that approximation.
-    def analyse(self, startTime: float = -1.0):
+    def analyse(self):
 
         # TODO: this should depend on the scale of the transition, so make it configurable.
         # Estimate the maximum significant value of S/T by finding where the instantaneous nucleation rate multiplied by
@@ -629,17 +613,10 @@ class TransitionAnalyser:
         minSonTThreshold = 80.0
         toleranceSonT = 3.0
 
-        timer = Timer(self.timeout, startTime)
-
         self.action_sampler = ActionSampler(
             self, minSonTThreshold, maxSonTThreshold, toleranceSonT, action_ct=self.action_ct)
 
-        sampleData = self.prime_transition_analysis(startTime)
-
-        if timer.timeout():
-            self.properties.error = "timed out"
-            self.properties.analysed = False
-            return
+        sampleData = self.prime_transition_analysis()
 
         if sampleData is None:
             self.properties.error = "no nucleation window"
@@ -848,11 +825,6 @@ class TransitionAnalyser:
 
             simIndex += 1
 
-            if timer.timeout():
-                self.properties.error = "timed out"
-                self.properties.analysed = False
-                return
-
             if not success:
                 logger.debug(
                     'Terminating transition analysis after failing to get next action sample. Reason:', message)
@@ -870,8 +842,7 @@ class TransitionAnalyser:
 
         self.finalize_properties()
 
-    def prime_transition_analysis(self, startTime: float):
-        timer = Timer(self.timeout, startTime)
+    def prime_transition_analysis(self):
         TcData = ActionSample(self.properties.T_c)
 
         if self.bDebug:
@@ -879,9 +850,6 @@ class TransitionAnalyser:
                 f'Bisecting to find S/T = {self.action_sampler.maxSonTThreshold} ± {self.action_sampler.toleranceSonT}')
 
         curve_data = self.find_nucleation_temp_window()
-
-        if timer.timeout():
-            return
 
         # TODO: Maybe use the names from here anyway? The current set of names is a little confusing!
         data = curve_data.desired_data
@@ -941,9 +909,6 @@ class TransitionAnalyser:
             intermediateData.S3 = self.action_sampler.evaluate_action(
                 intermediateData.T)
 
-            if timer.timeout():
-                return
-
             if not intermediateData.is_valid:
                 self.properties.error = f'Failed to evaluate action at trial temperature T={intermediateData.T}'
                 return
@@ -968,9 +933,6 @@ class TransitionAnalyser:
                 intermediateData.T = 0.5*(intermediateData.T + data.T)
                 intermediateData.S3 = self.action_sampler.evaluate_action(
                     intermediateData.T)
-
-                if timer.timeout():
-                    return
 
                 # Store this point so we don't have to resample near it.
                 self.action_sampler.insert_lower_s_on_t_data(
@@ -1010,9 +972,6 @@ class TransitionAnalyser:
             intermediateData.T = min(intermediateData.T, 2*data.T - self.Tmax)
             intermediateData.S3 = self.action_sampler.evaluate_action(
                 intermediateData.T)
-
-            if timer.timeout():
-                return
 
             # Don't accept cases where S/T is negative (translated to 0) for the last two evaluations. This suggests the
             # bounce solver is failing and we cannot proceed reliably.
@@ -1057,15 +1016,9 @@ class TransitionAnalyser:
                 sampleData.S3 = self.action_sampler.evaluate_action(
                     sampleData.T)
 
-                if timer.timeout():
-                    return
-
             self.action_sampler.lower_s_on_t_data.pop()
         else:
             sampleData.S3 = self.action_sampler.evaluate_action(sampleData.T)
-
-            if timer.timeout():
-                return
 
             if not sampleData.is_valid:
                 print('Failed to evaluate action at trial temperature T=', sampleData.T)
