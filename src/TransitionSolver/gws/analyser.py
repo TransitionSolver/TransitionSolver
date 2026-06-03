@@ -15,7 +15,8 @@ import numpy as np
 
 from ..analysis.phase_structure import PhaseStructure
 from ..models.analysable_potential import AnalysablePotential
-from . import kappa_nu_model, hydrodynamics
+from .giese_kappa import kappa_nu_model
+from . import hydrodynamics
 from ..phasetracer import read_phase_tracer
 
 
@@ -50,18 +51,18 @@ class AnalyseIndividualTransition:
     """
 
     def __init__(
-            self,
-            phase_structure: PhaseStructure,
-            transition_report: dict,
-            potential: AnalysablePotential,
-            use_bubble_sep=True,
-            *,
-            sound_wave_template,
-            turbulence_template,
-            collision_template,
-            kappa_coll,
-            kappa_turb):
-
+        self,
+        phase_structure: PhaseStructure,
+        transition_report: dict,
+        potential: AnalysablePotential,
+        use_bubble_sep=True,
+        *,
+        sound_wave_template,
+        turbulence_template,
+        collision_template,
+        kappa_coll,
+        kappa_turb,
+    ):
         self.sound_wave_template = sound_wave_template
         self.turbulence_template = turbulence_template
         self.collision_template = collision_template
@@ -70,8 +71,8 @@ class AnalyseIndividualTransition:
         self.use_bubble_sep = use_bubble_sep
 
         self.transition_report = transition_report
-        self.from_phase = phase_structure.phases[transition_report['false_phase']]
-        self.to_phase = phase_structure.phases[transition_report['true_phase']]
+        self.from_phase = phase_structure.phases[transition_report["false_phase"]]
+        self.to_phase = phase_structure.phases[transition_report["true_phase"]]
         self.potential = potential
 
         self.hydro_transition_temp = hydrodynamics.make_hydro_vars(
@@ -79,60 +80,74 @@ class AnalyseIndividualTransition:
             self.to_phase,
             self.potential,
             self.transition_temp,
-            phase_structure.groud_state_energy_density)
+            phase_structure.groud_state_energy_density,
+        )
 
         self.hydro_redshift_temp = hydrodynamics.make_hydro_vars(
             self.from_phase,
             self.to_phase,
             self.potential,
             self.redshift_temp,
-            phase_structure.groud_state_energy_density)
+            phase_structure.groud_state_energy_density,
+        )
 
     @property
     def redshift_freq(self):
         """
         a1/a0 = (s0/s1)^(1/3) and convert from GeV to Hz
         """
-        return (S0 / self.hydro_redshift_temp.entropyDensityTrue)**(1 / 3) * GEV_TO_HZ
+        return (S0 / self.hydro_redshift_temp.entropyDensityTrue) ** (1 / 3) * GEV_TO_HZ
 
     @property
     def redshift_amp(self):
         """
         (a1/a0)^4 (H0/H1)^2 = (s0/s1)^(4/3) * (H0/H1)^2, and absorb h^2 factor
         """
-        return (S0 / self.hydro_redshift_temp.entropyDensityTrue)**(4 / 3) * self.hydro_transition_temp.hubble_constant**2 * H_OVER_H0**2
+        return (
+            (S0 / self.hydro_redshift_temp.entropyDensityTrue) ** (4 / 3)
+            * self.hydro_transition_temp.hubble_constant**2
+            * H_OVER_H0**2
+        )
 
     @property
     def Pf(self):
-        return self.transition_report['perc_threshold_pf']
+        return self.transition_report["perc_threshold_pf"]
 
     @property
     def upsilon(self):
         # Assume the rotational modes are negligible
-        fluid_velocity = (self.kinetic_energy_fraction /
-                          self.hydro_transition_temp.adiabatic_index(self.Pf))**0.5
+        fluid_velocity = (
+            self.kinetic_energy_fraction
+            / self.hydro_transition_temp.adiabatic_index(self.Pf)
+        ) ** 0.5
         tau_sw = self.length_scale / fluid_velocity
-        return 1. - (1 + 2. * self.hydro_transition_temp.hubble_constant * tau_sw)**-0.5
+        return (
+            1.0
+            - (1 + 2.0 * self.hydro_transition_temp.hubble_constant * tau_sw) ** -0.5
+        )
 
     @property
     def transition_temp(self) -> float:
-        return self.transition_report['T_p']
+        return self.transition_report["T_p"]
 
     @cached_property
     def redshift_temp(self) -> float:
-        return self.transition_report['Treh_p']
+        return self.transition_report["Treh_p"]
 
     @property
     def bubble_wall_velocity(self) -> float:
-        return self.transition_report['bubble_wall_velocity_p']
+        return self.transition_report["bubble_wall_velocity_p"]
 
     @property
     def peak_frequency_coll(self):
         if self.peak_amplitude_coll == 0:
-            return 0.
-        return self.redshift_freq * \
-            (0.77 * (8 * np.pi)**(1 / 3) * self.bubble_wall_velocity /
-             (2 * np.pi * self.length_scale))
+            return 0.0
+        return self.redshift_freq * (
+            0.77
+            * (8 * np.pi) ** (1 / 3)
+            * self.bubble_wall_velocity
+            / (2 * np.pi * self.length_scale)
+        )
 
     @property
     def peak_frequency_sw_bubble_separation(self):
@@ -143,8 +158,10 @@ class AnalyseIndividualTransition:
         """
         @returns Ratio of shell thickness and bubble separation
         """
-        return abs(self.bubble_wall_velocity -
-                   self.hydro_transition_temp.soundSpeedFalse) / self.bubble_wall_velocity
+        return (
+            abs(self.bubble_wall_velocity - self.hydro_transition_temp.soundSpeedFalse)
+            / self.bubble_wall_velocity
+        )
 
     @property
     def peak_frequency_sw_shell_thickness(self):
@@ -160,8 +177,16 @@ class AnalyseIndividualTransition:
         Fit from https://arxiv.org/abs/1704.05871 taking account of erratum
         """
         A = 2.061
-        return A * OMEGA_SW * self.redshift_amp * self.kinetic_energy_fraction**2 * self.hydro_transition_temp.hubble_constant * \
-            self.length_scale / self.hydro_transition_temp.soundSpeedFalse * self.upsilon
+        return (
+            A
+            * OMEGA_SW
+            * self.redshift_amp
+            * self.kinetic_energy_fraction**2
+            * self.hydro_transition_temp.hubble_constant
+            * self.length_scale
+            / self.hydro_transition_temp.soundSpeedFalse
+            * self.upsilon
+        )
 
     @property
     def peak_amplitude_sw_sound_shell(self) -> float:
@@ -169,7 +194,7 @@ class AnalyseIndividualTransition:
         Based on https://arxiv.org/abs/1909.10040
         """
         mu_f = 4.78 - 6.27 * self.rb + 3.34 * self.rb**2
-        f = 3. / mu_f / 2.061
+        f = 3.0 / mu_f / 2.061
         return f * self.peak_amplitude_sw
 
     @property
@@ -178,25 +203,41 @@ class AnalyseIndividualTransition:
         Based on https://arxiv.org/abs/2208.11697
         """
         if self.collision_template is None:
-            return 0.
+            return 0.0
 
         if self.kappa_coll is None:
-            raise ValueError("`kappa_coll` must be set when `collision_template` is not None.")
+            raise ValueError(
+                "`kappa_coll` must be set when `collision_template` is not None."
+            )
 
         A = 5.13e-2
-        return A * self.redshift_amp * (self.hydro_transition_temp.hubble_constant * self.length_scale / (
-            (8 * np.pi)**(1 / 3) * self.bubble_wall_velocity))**2 * self.scalar_field_energy_fraction**2
+        return (
+            A
+            * self.redshift_amp
+            * (
+                self.hydro_transition_temp.hubble_constant
+                * self.length_scale
+                / ((8 * np.pi) ** (1 / 3) * self.bubble_wall_velocity)
+            )
+            ** 2
+            * self.scalar_field_energy_fraction**2
+        )
 
     @property
     def peak_amplitude_turb(self) -> float:
-        A = 9.
-        return A * self.redshift_amp * self.hydro_transition_temp.hubble_constant * self.length_scale * \
-            (self.kappa_turb * self.kinetic_energy_fraction)**(3 / 2) * \
-            self._unnormalised_spectral_shape_turb(self.peak_frequency_turb)
+        A = 9.0
+        return (
+            A
+            * self.redshift_amp
+            * self.hydro_transition_temp.hubble_constant
+            * self.length_scale
+            * (self.kappa_turb * self.kinetic_energy_fraction) ** (3 / 2)
+            * self._unnormalised_spectral_shape_turb(self.peak_frequency_turb)
+        )
 
     def spectral_shape_sw(self, f: float) -> float:
         x = f / self.peak_frequency_sw_bubble_separation
-        return x**3 * (7 / (4 + 3 * x**2))**3.5
+        return x**3 * (7 / (4 + 3 * x**2)) ** 3.5
 
     def spectral_shape_sw_double_broken(self, f: float):
         """
@@ -205,17 +246,29 @@ class AnalyseIndividualTransition:
         b = 1
         m = (9 * self.rb**4 + b) / (self.rb**4 + 1)
         x = f / self.peak_frequency_sw_shell_thickness
-        return x**9 * ((1 + self.rb**4) / (self.rb**4 + x**4))**((9 - b) /
-                                                                 4) * ((b + 4) / (b + 4 - m + m * x**2))**((b + 4) / 2)
+        return (
+            x**9
+            * ((1 + self.rb**4) / (self.rb**4 + x**4)) ** ((9 - b) / 4)
+            * ((b + 4) / (b + 4 - m + m * x**2)) ** ((b + 4) / 2)
+        )
 
     def _unnormalised_spectral_shape_turb(self, f: float) -> float:
         x = f / self.peak_frequency_turb
-        return x**3 / ((1 + x)**(11 / 3) * (1 + 8 * np.pi * f /
-                       (self.redshift_freq * self.hydro_transition_temp.hubble_constant)))
+        return x**3 / (
+            (1 + x) ** (11 / 3)
+            * (
+                1
+                + 8
+                * np.pi
+                * f
+                / (self.redshift_freq * self.hydro_transition_temp.hubble_constant)
+            )
+        )
 
     def spectral_shape_turb(self, f: float) -> float:
         return self._unnormalised_spectral_shape_turb(
-            f) / self._unnormalised_spectral_shape_turb(self.peak_frequency_turb)
+            f
+        ) / self._unnormalised_spectral_shape_turb(self.peak_frequency_turb)
 
     def spectral_shape_coll(self, f):
         a = 2.41
@@ -224,7 +277,7 @@ class AnalyseIndividualTransition:
         x = f / self.peak_frequency_coll
         # Using normalised spectral shape, so A = 5.13e-2 is moved to the
         # amplitude calculation.
-        return (a + b)**c / (b * x**(-a / c) + a * x**(b / c))**c
+        return (a + b) ** c / (b * x ** (-a / c) + a * x ** (b / c)) ** c
 
     def gw_total(self, f):
         return self.gw_sw(f) + self.gw_turb(f) + self.gw_coll(f)
@@ -233,8 +286,9 @@ class AnalyseIndividualTransition:
         return self.peak_amplitude_sw * self.spectral_shape_sw(f)
 
     def gw_sw_dbpl_sound_shell(self, f):
-        return self.peak_amplitude_sw_sound_shell * \
-            self.spectral_shape_sw_double_broken(f)
+        return (
+            self.peak_amplitude_sw_sound_shell * self.spectral_shape_sw_double_broken(f)
+        )
 
     def gw_sw(self, f):
         if self.sound_wave_template is None:
@@ -304,13 +358,17 @@ class AnalyseIndividualTransition:
 
         if bubble_wall_velocity != self.bubble_wall_velocity:
             logger.warning(
-                "bubble wall velocity adjusted from %s to %s to avoid numerical instability", self.bubble_wall_velocity, bubble_wall_velocity)
+                "bubble wall velocity adjusted from %s to %s to avoid numerical instability",
+                self.bubble_wall_velocity,
+                bubble_wall_velocity,
+            )
 
         kappa_sw = kappa_nu_model(
             self.hydro_transition_temp.soundSpeedSqTrue,
             self.hydro_transition_temp.alpha,
             bubble_wall_velocity,
-            self.transition_report['use_cj_velocity'])
+            self.transition_report["use_cj_velocity"],
+        )
 
         if kappa_sw > 1:
             raise RuntimeError(f"kappa_sw > 1: {kappa_sw}")
@@ -326,12 +384,12 @@ class AnalyseIndividualTransition:
         @returns Kinetic energy fraction
         """
         if self.hydro_transition_temp.soundSpeedSqTrue <= 0:
-            return 0.
+            return 0.0
 
         K = self.kappa_sw * self.hydro_transition_temp.available_energy_fraction
 
         if K > 1:
-            logger.warning('K > 1: %s', K)
+            logger.warning("K > 1: %s", K)
 
         if K < 0:
             raise RuntimeError("K < 0: {K}")
@@ -345,15 +403,17 @@ class AnalyseIndividualTransition:
         sources GWs from bubble collisions
         """
         if self.collision_template is None:
-            return 0.
+            return 0.0
 
         if self.kappa_coll is None:
-            raise ValueError("`kappa_coll` must be set when `collision_template` is not None.")
+            raise ValueError(
+                "`kappa_coll` must be set when `collision_template` is not None."
+            )
 
         K = self.kappa_coll * self.hydro_transition_temp.available_energy_fraction
 
         if K > 1:
-            logger.warning('K > 1: %s', K)
+            logger.warning("K > 1: %s", K)
 
         if K < 0:
             raise RuntimeError("K < 0: {K}")
@@ -365,48 +425,53 @@ class AnalyseIndividualTransition:
         """
         @returns Characteristic bubble length scale
         """
-        key = 'bubble_separation_p' if self.use_bubble_sep else 'bubble_radius_p'
+        key = "bubble_separation_p" if self.use_bubble_sep else "bubble_radius_p"
         return self.transition_report[key]
 
     def report(self, *detectors):
         report = {}
 
         if self.sound_wave_template is None:
-            report['Peak amplitude (sound waves)'] = 0.
-            report['Peak frequency (sound waves)'] = 0.
+            report["Peak amplitude (sound waves)"] = 0.0
+            report["Peak frequency (sound waves)"] = 0.0
         elif self.sound_wave_template == "sgbp_lattice_2017":
-            report['Peak amplitude (sound waves)'] = self.peak_amplitude_sw
-            report['Peak frequency (sound waves)'] = self.peak_frequency_sw_bubble_separation
+            report["Peak amplitude (sound waves)"] = self.peak_amplitude_sw
+            report["Peak frequency (sound waves)"] = (
+                self.peak_frequency_sw_bubble_separation
+            )
         elif self.sound_wave_template == "dbpl_sound_shell":
-            report['Peak amplitude (sound waves)'] = self.peak_amplitude_sw_sound_shell
-            report['Peak frequency (sound waves)'] = self.peak_frequency_sw_shell_thickness
+            report["Peak amplitude (sound waves)"] = self.peak_amplitude_sw_sound_shell
+            report["Peak frequency (sound waves)"] = (
+                self.peak_frequency_sw_shell_thickness
+            )
         else:
             raise ValueError(
                 f"Unknown sound-wave template: {self.sound_wave_template}."
             )
 
         if self.turbulence_template is None:
-            report['Peak amplitude (turbulence)'] = 0.
-            report['Peak frequency (turbulence)'] = 0.
+            report["Peak amplitude (turbulence)"] = 0.0
+            report["Peak frequency (turbulence)"] = 0.0
         else:
-            report['Peak amplitude (turbulence)'] = self.peak_amplitude_turb
-            report['Peak frequency (turbulence)'] = self.peak_frequency_turb
+            report["Peak amplitude (turbulence)"] = self.peak_amplitude_turb
+            report["Peak frequency (turbulence)"] = self.peak_frequency_turb
 
         if self.collision_template is None:
-            report['Peak amplitude (collisions)'] = 0.
-            report['Peak frequency (collisions)'] = 0.
+            report["Peak amplitude (collisions)"] = 0.0
+            report["Peak frequency (collisions)"] = 0.0
         else:
-            report['Peak amplitude (collisions)'] = self.peak_amplitude_coll
-            report['Peak frequency (collisions)'] = self.peak_frequency_coll
+            report["Peak amplitude (collisions)"] = self.peak_amplitude_coll
+            report["Peak frequency (collisions)"] = self.peak_frequency_coll
 
-        
-        report['Signal-to-Noise Ratio'] = {d.label: d.SNR(self.gw_total) for d in detectors}
-        report['Bubble wall velocity'] = self.bubble_wall_velocity
-        report['Transition temperature'] = self.transition_temp
-        report['Redshift temperature'] = self.redshift_temp
-        report['Kinetic energy fraction'] =self. kinetic_energy_fraction
-        report['Upsilon'] = self.upsilon
-        report['Length scale'] = self.length_scale
+        report["Signal-to-Noise Ratio"] = {
+            d.label: d.SNR(self.gw_total) for d in detectors
+        }
+        report["Bubble wall velocity"] = self.bubble_wall_velocity
+        report["Transition temperature"] = self.transition_temp
+        report["Redshift temperature"] = self.redshift_temp
+        report["Kinetic energy fraction"] = self.kinetic_energy_fraction
+        report["Upsilon"] = self.upsilon
+        report["Length scale"] = self.length_scale
         return report
 
     def plot(self, frequencies, detectors=None, ptas=None, ax=None):
@@ -436,42 +501,47 @@ def extract_relevant_transitions(report: dict) -> dict:
     """
     relevant = []
 
-    for path in report['paths']:
-        if path['valid']:
-            relevant += path['transitions']
+    for path in report["paths"]:
+        if path["valid"]:
+            relevant += path["transitions"]
 
-    return {k: report['transitions'][k] for k in relevant}
+    return {k: report["transitions"][k] for k in relevant}
+
 
 class GWAnalyser:
     """
     Analyze gravitational wave signals from every transition in cosmological history
     """
-    def __init__(self,
-                 potential,
-                 phase_history,
-                 phase_structure=None,
-                 phase_tracer_file=None,
-                 force_relevant=False,
-                 **kwargs
-                 ):
+
+    def __init__(
+        self,
+        potential,
+        phase_history,
+        phase_structure=None,
+        phase_tracer_file=None,
+        force_relevant=False,
+        **kwargs,
+    ):
         if phase_tracer_file is not None:
             phase_structure = read_phase_tracer(phase_tracer_file=phase_tracer_file)
 
-
-        relevant_transitions = phase_history['transitions'] if force_relevant else extract_relevant_transitions(
-            phase_history)
+        relevant_transitions = (
+            phase_history["transitions"]
+            if force_relevant
+            else extract_relevant_transitions(phase_history)
+        )
         if not relevant_transitions:
-            raise RuntimeError(
-                'No relevant transition detected in the phase history')
+            raise RuntimeError("No relevant transition detected in the phase history")
 
         gw_kwargs = read_gw_template_choices()
         gw_kwargs.update(kwargs)
 
-        self.gws = {k: AnalyseIndividualTransition(
-            phase_structure, v, potential, **gw_kwargs) for k, v in relevant_transitions.items()}
-    
+        self.gws = {
+            k: AnalyseIndividualTransition(phase_structure, v, potential, **gw_kwargs)
+            for k, v in relevant_transitions.items()
+        }
+
     def report_for_transition_ids(self, transition_ids, *detectors):
-        
         transition_ids = {str(i) for i in transition_ids}
 
         gws = {k: v for k, v in self.gws.items() if k in transition_ids}
@@ -479,17 +549,24 @@ class GWAnalyser:
 
         if len(gws) > 0:
             reports["Combined"] = {}
-            reports["Combined"]["Signal-to-Noise Ratio"] = {d.label: d.SNR(lambda f: np.sum([g.gw_total(f) for g in gws.values()], axis=-1)) for d in detectors}
+            reports["Combined"]["Signal-to-Noise Ratio"] = {
+                d.label: d.SNR(
+                    lambda f: np.sum([g.gw_total(f) for g in gws.values()], axis=-1)
+                )
+                for d in detectors
+            }
 
         return reports
-    
+
     def report(self, *detectors):
         """
         @returns Data on GW spectrum
         """
         reports = {k: v.report(*detectors) for k, v in self.gws.items()}
         reports["Combined"] = {}
-        reports["Combined"]["Signal-to-Noise Ratio"] = {d.label: d.SNR(self.gw_total) for d in detectors}
+        reports["Combined"]["Signal-to-Noise Ratio"] = {
+            d.label: d.SNR(self.gw_total) for d in detectors
+        }
         return reports
 
     def plot(self, frequencies=None, detectors=None, ptas=None, show=False):

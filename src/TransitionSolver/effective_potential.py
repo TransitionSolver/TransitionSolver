@@ -97,11 +97,11 @@ class MixinCosmoTransitions(generic_potential):
     TcTrans = None
     TnTrans = None
 
-    def Vtot(self, phi, T, *args, **kwargs):
+    def Vtot(self, phi, T, *args, **kwargs):  # pylint: disable=W0613
         T = np.array(T).item()
         return self(phi, T)
 
-    def V1T_from_X(self, phi, T, *args, **kwargs):
+    def V1T_from_X(self, phi, T, *args, **kwargs):  # pylint: disable=W0613
         T = np.array(T).item()
         if phi.ndim > 1:
             return np.array([self.V1T_from_X(p, T) for p in phi])
@@ -138,6 +138,8 @@ def load_potential(model_header, model=None, model_lib=None, model_namespace=DEF
     Potential = getattr(joined, model)
 
     class ExtendedPotential(MixinPotential, Potential, MixinCosmoTransitions):
-        pass
+        """
+        Mix together C++ class with Python functionality
+        """
 
     return ExtendedPotential

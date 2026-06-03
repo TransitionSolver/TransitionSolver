@@ -5,7 +5,6 @@ Run TransitionSolver on a known model
 
 import logging
 import json
-import os
 import tempfile
 
 from pathlib import Path
@@ -47,30 +46,45 @@ def deep_merge(a: dict, b: dict) -> dict:
             out[k] = v
     return out
 
-def load_json(path: str) -> dict:
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+def load_json(path: str | Path) -> dict:
+    if Path(path).exists():
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
 
-def autodetect_point_settings(point_file_name: str) -> str | None:
-    p = Path(point_file_name)
-    candidates = [
-        str(p.with_suffix(".pt.json")),        # input/X.txt -> input/X.pt.json
-        str(Path(str(p) + ".pt.json")),        # input/X.txt -> input/X.txt.pt.json
-    ]
-    for c in candidates:
-        if os.path.exists(c):
-            return c
-    return None
+def load_point_settings(point_settings_file, point_file_name: str) -> dict:
+    """
+    If no file supplied try point file name but with pt.json suffix
+    """
+    if point_settings_file is None:
+        point_settings_file = Path(point_file_name).with_suffix(".pt.json")
+    return load_json(point_settings_file)
 
-def autodetect_model_settings(model: str) -> str | None:
-    # Convention: src/TransitionSolver/settings/PT_settings_<MODEL>.json
-    BASE_DIR = Path(__file__).resolve().parent
-    c = BASE_DIR / "settings" / f"PT_settings_{model}.json"
-    if c.exists():
-        print("finding specific PT model specific settings for this.")
-        return str(c)
-    return None
+def load_model_settings(model_settings_file, model: str) -> dict:
+    """
+    If no file supplied, try
 
+    src/TransitionSolver/settings/PT_settings_<MODEL>.json
+    """
+    if model_settings_file is None:
+        base_dir = Path(__file__).resolve().parent
+        model_settings_file = base_dir / "settings" / f"PT_settings_{model}.json"
+    return load_json(model_settings_file)
+
+def create_pt_settings(model_settings_file, point_settings_file, model, point_file_name, *other_files):
+    """
+    Create settings for PhaseTracer by resolving settings files in precedence order:
+ 
+    model settings -> point settings -> repeated --pt-settings (applied last)
+    """
+    model_settings = load_model_settings(model_settings_file, model)
+    point_settings = load_point_settings(point_settings_file, point_file_name)
+    other_settings = [load_json(name) for name in other_files]
+
+    pt_settings = model_settings.copy()
+    for settings in [point_settings, *other_settings]:
+        pt_settings = deep_merge(pt_settings, settings)
+    return pt_settings
 
 
 @click.command()
@@ -113,18 +127,10 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
     with Status(f"Building PhaseTracer {model}"):
         exe_name = build_phase_tracer(model_header, model, model_lib, model_namespace, force)
 
-    # Resolve settings files in precedence order:
-    # model settings -> point settings -> repeated --pt-settings (applied last)
-    model_cfg = pt_model_settings or autodetect_model_settings(model)
-    point_cfg = pt_point_settings or autodetect_point_settings(point_file_name)
-
-    effective_cfg: dict = {}
-    for fp in [model_cfg, point_cfg, *pt_settings]:
-        if fp:
-            effective_cfg = deep_merge(effective_cfg, load_json(fp))
+    pt_settings = create_pt_settings(pt_model_settings, pt_point_settings, model, point_file_name, pt_settings)
 
     with tempfile.NamedTemporaryFile(mode="w") as pt_settings_file:
-        json.dump(effective_cfg, pt_settings_file)
+        json.dump(pt_settings, pt_settings_file)
         pt_settings_file.flush()
 
         with Status(f"Running PhaseTracer {exe_name}"):

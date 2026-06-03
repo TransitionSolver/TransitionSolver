@@ -9,11 +9,11 @@ from pathlib import Path
 
 import json
 
-from . import phase_tracer_info
+from .phasetracer import phase_tracer_info
 
 
 def savejson(report, file_name):
-    with open(file_name, "w") as f:
+    with open(file_name, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=4)
 
 
@@ -25,6 +25,9 @@ def make_results_folder():
 
 
 def saveall(tr_report, tr_fig, gw_fig, phase_structure_raw, ctx, analyser, detectors, folder=None):
+    """
+    Save results and plots to disk
+    """
     if folder is None:
         folder = make_results_folder()
 

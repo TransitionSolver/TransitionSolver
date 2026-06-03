@@ -7,7 +7,7 @@ import numpy as np
 
 from . import geff
 from .analysis.phase_history_analysis import PhaseHistoryAnalyser
-from . import read_phase_tracer
+from .phasetracer import read_phase_tracer
 
 
 def find_phase_history(potential, phase_structure=None, phase_tracer_file=None, bubble_wall_velocity=None, action_ct=True):  # TODO make false
