@@ -78,6 +78,9 @@ def test_phase_analyser():
 
     analyser.analyse_transition(trans, transition_edge, path, transition)
     assert np.isclose(transition.properties.T_p, 215.59452845391613)
+    assert np.isclose(transition.properties.T_n, 215.65559803530698)
+    assert np.isclose(transition.properties.action_3d_n, 134.661629546104)
+    assert np.isclose(transition.properties.bubble_radius_p, 91854628.11986488)
 
     t_min = analyser.min_trans_temperature_idxed(trans, transition_edge)
     assert np.isclose(t_min, 174.1968886)
