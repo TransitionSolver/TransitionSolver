@@ -18,6 +18,7 @@ BASELINE = THIS / "baseline"
 
 NAMES = [f"RSS_BP{k}" for k in range(1, 14)]
 
+
 @pytest.mark.parametrize("name", NAMES)
 def test_phase_history(generate_baseline, name):
     phase_tracer_file = BASELINE / f"{name.lower()}_phase_structure.dat"
@@ -36,6 +37,7 @@ def test_phase_history(generate_baseline, name):
         generate_baseline=generate_baseline,
     )
 
+
 def test_phase_analyser():
     phase_tracer_file = BASELINE / "rss_bp1_phase_structure.dat"
     with open(phase_tracer_file) as f:
@@ -53,7 +55,9 @@ def test_phase_analyser():
 
     assert analyser.unique_transition_idx == [0, 1]
 
-    assert np.allclose(analyser.unique_transition_temperatures, [216.1466902, 101.2334823])
+    assert np.allclose(
+        analyser.unique_transition_temperatures, [216.1466902, 101.2334823]
+    )
 
     assert analyser.is_high_temperature_phase == [True, True, False]
 
@@ -74,3 +78,14 @@ def test_phase_analyser():
 
     analyser.analyse_transition(trans, transition_edge, path, transition)
     assert np.isclose(transition.properties.T_p, 215.59452845391613)
+
+    t_min = analyser.min_trans_temperature_idxed(trans, transition_edge)
+    assert np.isclose(t_min, 174.1968886)
+
+    t_max = analyser.max_trans_temperature(path, transition)
+    assert np.isclose(t_max, 216.1466902)
+
+    assert np.isclose(analyser.phase_structure.groud_state_energy_density, 852067501.9)
+
+    new = analyser.new_frontier(transition_edge, trans, path, False)
+    assert new == []
