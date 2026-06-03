@@ -89,3 +89,6 @@ def test_phase_analyser():
 
     new = analyser.new_frontier(transition_edge, trans, path, False)
     assert new == []
+
+    expanded = analyser.expand_path(path)
+    assert [t.id for p in expanded for t in p.transitions] == []
