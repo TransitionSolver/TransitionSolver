@@ -11,7 +11,7 @@ from typing import Union
 
 import numpy as np
 import scipy.optimize
-from scipy.interpolate import lagrange
+from scipy.interpolate import BarycentricInterpolator
 
 from .integration import LinearHelper, CubedHelper
 from .phase_structure import Phase
@@ -123,11 +123,11 @@ class ActionSampler:
         while len(self.lower_s_on_t_data) > 0 and self.lower_s_on_t_data[-1].T >= self.T[-1]:
             self.lower_s_on_t_data.pop()
 
-        # Construct a quadratic Lagrange interpolant from the three most recent action samples.
-        quadInterp = lagrange(self.T[-3:], self.SonT[-3:])
+        # Construct a quadratic BarycentricInterpolator interpolant from the three most recent action samples.
+        interp = BarycentricInterpolator(self.T[-3:], self.SonT[-3:])
         # Extrapolate with the same step size as between the last two samples.
         Tnew = max(self.Tmin*1.001, 2*self.T[-1] - self.T[-2])
-        SonTnew = quadInterp(Tnew)
+        SonTnew = interp(Tnew)
 
         # If we are sampling the same point because we've reached Tmin, then the transition cannot progress any
         # further.
@@ -709,9 +709,9 @@ class TransitionAnalyser:
 
             # We can only use quadratic interpolation if we have at least 3 action samples, which occurs for simIndex > 0.
             if simIndex > 0:
-                quadInterp = lagrange(
+                interp = BarycentricInterpolator(
                     self.action_sampler.T[simIndex-1:], self.action_sampler.SonT[simIndex-1:])
-                SonT = quadInterp(T)
+                SonT = interp(T)
             else:
                 SonT = np.linspace(
                     self.action_sampler.SonT[simIndex], self.action_sampler.SonT[simIndex+1], num_samples)
