@@ -23,6 +23,10 @@ from ..gws.hydrodynamics import HydroVars, hubble_squared_from_energy_density
 logger = logging.getLogger(__name__)
 
 
+def gtrsim(x, y):
+    return x >= y or np.isclose(x, y, rtol=1e-2)
+
+
 class ActionSample:
     """
     Container for action sample data
@@ -454,7 +458,7 @@ class TransitionAnalyser:
         If so, record properties (e.g. percolation temperature).
         """
         # Unit nucleation (including phantom bubbles)
-        if self.properties.T_n is None and self.properties.bubble_num[-1] >= 1:
+        if self.properties.T_n is None and gtrsim(self.properties.bubble_num[-1], 1):
             self.properties.idx_n = len(self.properties.H) - 1
             li = LinearInterp(self.properties.bubble_num, 1)
             self.properties.action_3d_n = li(self.action_sampler.subSonT)
@@ -464,7 +468,7 @@ class TransitionAnalyser:
             self.properties.Treh_n = self.reheat_temperature(self.properties.T_n)
 
         # Unit nucleation (excluding phantom bubbles)
-        if self.properties.T_nbar is None and self.properties.bubble_num_bar[-1] >= 1:
+        if self.properties.T_nbar is None and gtrsim(self.properties.bubble_num_bar[-1], 1):
             self.properties.idx_nbar = len(self.properties.H) - 1
             li = LinearInterp(self.properties.bubble_num_bar, 1)
             self.properties.action_3d_nbar = li(self.action_sampler.subSonT)
@@ -474,7 +478,7 @@ class TransitionAnalyser:
             self.properties.Treh_nbar = self.reheat_temperature(self.properties.T_nbar)
 
         # Percolation
-        if self.properties.T_p is None and self.properties.vol_ext[-1] >= self.properties.perc_threshold_vol_ext:
+        if self.properties.T_p is None and gtrsim(self.properties.vol_ext[-1], self.properties.perc_threshold_vol_ext):
             self.properties.idx_p = len(self.properties.H) - 1
             li = LinearInterp(self.properties.vol_ext, self.properties.perc_threshold_vol_ext)
             self.properties.action_3d_p = li(self.action_sampler.subSonT)
@@ -488,7 +492,7 @@ class TransitionAnalyser:
             self.properties.bubble_wall_velocity_p = li(self.properties.bubble_wall_velocity)
 
         # Pf = 1/e
-        if self.properties.T_e is None and self.properties.vol_ext[-1] >= 1:
+        if self.properties.T_e is None and gtrsim(self.properties.vol_ext[-1], 1):
             self.properties.idx_e = len(self.properties.H) - 1
             li = LinearInterp(self.properties.vol_ext, 1)
             self.properties.action_3d_e = li(self.action_sampler.subSonT)
@@ -498,7 +502,7 @@ class TransitionAnalyser:
             self.properties.Treh_e = self.reheat_temperature(self.properties.T_e)
 
         # Completion
-        if self.properties.T_f is None and self.properties.Pf[-1] <= self.properties.completion_threshold:
+        if self.properties.T_f is None and gtrsim(self.properties.completion_threshold, self.properties.Pf[-1]):
             self.properties.idx_f = len(self.properties.H) - 1
             li = LinearInterp(self.properties.Pf, self.properties.completion_threshold)
             self.properties.action_3d_f = li(self.action_sampler.subSonT)
@@ -509,13 +513,13 @@ class TransitionAnalyser:
             self.properties.Treh_f = self.reheat_temperature(self.properties.T_f)
 
         # Physical volume of the false vacuum is decreasing
-        if self.properties.T_decreasing_v_phys is None and self.properties.deriv_physical_volume[-1] < 0:
+        if self.properties.T_decreasing_v_phys is None and gtrsim(0, self.properties.deriv_physical_volume[-1]):
             self.properties.idx_decreasing_v_phys = len(self.properties.H) - 1
             li = LinearInterp(self.properties.deriv_physical_volume, 0)
             self.properties.T_decreasing_v_phys = li(self.action_sampler.subT)
 
         # Physical volume of the false vacuum is increasing *again*
-        if self.properties.T_decreasing_v_phys is not None and self.properties.T_increasing_v_phys is None and self.properties.deriv_physical_volume[-1] > 0:
+        if self.properties.T_decreasing_v_phys is not None and self.properties.T_increasing_v_phys is None and gtrsim(self.properties.deriv_physical_volume[-1], 0):
             self.properties.idx_increasing_v_phys = len(self.properties.H) - 1
             li = LinearInterp(self.properties.deriv_physical_volume, 0)
             self.properties.T_increasing_v_phys = li(self.action_sampler.subT)
