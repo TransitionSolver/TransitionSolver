@@ -43,12 +43,6 @@ class ActionSample:
     def copy(self):
         return ActionSample(self.T, self.S3)
 
-    def __str__(self):
-        return f'(T: {self.T}, S/T: {self.SonT})'
-
-    def __repr__(self):
-        return str(self)
-
 
 PD_DEFAULT_SETTINGS = {'verbose': False, 'maxiter': 20, 'tunneling_findProfile_params': {
     'phitol': 1e-8, 'xtol': 1e-8}, 'V_spline_samples': 100}
