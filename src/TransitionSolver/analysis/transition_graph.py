@@ -27,14 +27,14 @@ class Path:
 
         @returns Paths before and after split
         """
-        # Extract first 'index' phases for the prefix (SAME)
+        # Extract first 'index' phases for the prefix
         prefix_phases = self.phases[:index]
-        # Remove those phases from current path (SAME)
+        # Remove those phases from current path
         del self.phases[:index]
 
-        # Determine how many transitions go with prefix (SAME LOGIC)
+        # Determine how many transitions go with prefix
         prefix_transitions = self.transitions[:index - (0 if self.suffix_links else 1)]
-        # Remove those transitions from current (SAME LOGIC)
+        # Remove those transitions from current
         del self.transitions[:index - (1 if self.suffix_links else 0)]
 
         # Save OLD prefixes before we modify self.prefix_links
@@ -54,7 +54,7 @@ class Path:
                 # Replace self with prefix_path in each old prefix's suffix_links
                 p.suffix_links = [prefix_path if s is self else s for s in p.suffix_links]
 
-        # Update current path to point to new prefix (CORRECT - points to actual prefix_path)
+        # Update current path to point to new prefix
         self.prefix_links = [prefix_path]
 
         # Return the new prefix and modified self as suffix
