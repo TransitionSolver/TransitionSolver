@@ -284,9 +284,9 @@ class ActionSampler:
         SonTList = np.linspace(self.SonT[-1], SonTnew, numPoints)
         GammaList = self.transitionAnalyser.gamma_rate(TList, SonTList)
         energyStart = hydrodynamics.energy_density_from_phase(self.fromPhase, self.toPhase, self.potential,
-                                                              TList[0]) - self.transitionAnalyser.groud_state_energy_density
+                                                              TList[0]) - self.transitionAnalyser.ground_state_energy_density
         energyEnd = hydrodynamics.energy_density_from_phase(self.fromPhase, self.toPhase, self.potential,
-                                                            TList[-1]) - self.transitionAnalyser.groud_state_energy_density
+                                                            TList[-1]) - self.transitionAnalyser.ground_state_energy_density
         # TODO: replace with quadratic interpolation.
         energyDensityList = np.linspace(energyStart, energyEnd, numPoints)
         HList = hubble_squared_from_energy_density(energyDensityList)
@@ -397,13 +397,13 @@ class TransitionAnalyser:
 
     def __init__(self, potential, properties, fromPhase: Phase, toPhase: Phase,
                  # TODO make false
-                 groud_state_energy_density: float, Tmin=None, Tmax=None, bubble_wall_velocity=None, action_ct=True,
+                 ground_state_energy_density: float, Tmin=None, Tmax=None, bubble_wall_velocity=None, action_ct=True,
                  perc_threshold_pf=0.71, completion_threshold=1e-2):
         self.potential = potential
         self.properties = properties
         self.fromPhase = fromPhase
         self.toPhase = toPhase
-        self.groud_state_energy_density = groud_state_energy_density
+        self.ground_state_energy_density = ground_state_energy_density
         self.Tmin = Tmin
         self.Tmax = Tmax
         self.default_bubble_wall_velocity = bubble_wall_velocity
@@ -1326,11 +1326,11 @@ class TransitionAnalyser:
     def hubble_squared(self, T: float) -> float:
         rhof = hydrodynamics.energy_density_from_phase(
             self.fromPhase, self.toPhase, self.potential, T)
-        return hubble_squared_from_energy_density(rhof - self.groud_state_energy_density)
+        return hubble_squared_from_energy_density(rhof - self.ground_state_energy_density)
 
     def get_hydro_vars(self, T: float) -> HydroVars:
         return hydrodynamics.make_hydro_vars(self.fromPhase, self.toPhase, self.potential, T,
-                                             self.groud_state_energy_density)
+                                             self.ground_state_energy_density)
 
     def reheat_temperature(self, T: float) -> float:
         Tsep = min(0.001*(self.properties.T_c - self.Tmin), 0.5*(T - self.Tmin))
@@ -1385,7 +1385,7 @@ class TransitionAnalyser:
 
 
 def hubble_squared(fromPhase: Phase, toPhase: Phase, potential, T: float,
-                   groud_state_energy_density: float) -> float:
+                   ground_state_energy_density: float) -> float:
     rhof = hydrodynamics.energy_density_from_phase(
         fromPhase, toPhase, potential, T)
-    return hubble_squared_from_energy_density(rhof - groud_state_energy_density)
+    return hubble_squared_from_energy_density(rhof - ground_state_energy_density)
