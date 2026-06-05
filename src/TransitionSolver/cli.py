@@ -127,7 +127,7 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
     with Status(f"Building PhaseTracer {model}"):
         exe_name = build_phase_tracer(model_header, model, model_lib, model_namespace, force)
 
-    pt_settings = create_pt_settings(pt_model_settings, pt_point_settings, model, point_file_name, pt_settings)
+    pt_settings = create_pt_settings(pt_model_settings, pt_point_settings, model, point_file_name, *pt_settings)
 
     with tempfile.NamedTemporaryFile(mode="w") as pt_settings_file:
         json.dump(pt_settings, pt_settings_file)
