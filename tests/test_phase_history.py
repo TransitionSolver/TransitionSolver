@@ -15,8 +15,15 @@ from dictcmp import assert_deep_equal
 THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 BASELINE = THIS / "baseline"
 
-
 NAMES = [f"RSS_BP{k}" for k in range(1, 14)]
+
+
+def make_analyser():
+    phase_tracer_file = BASELINE / "rss_bp1_phase_structure.dat"
+    with open(phase_tracer_file) as f:
+        phase_tracer_data = f.read()
+    phase_structure = read_phase_tracer(phase_tracer_data)
+    return phasehistory.PhaseHistoryAnalyser(benchmarks.RSS_BP1, phase_structure)
 
 
 @pytest.mark.parametrize("name", NAMES)
@@ -38,33 +45,52 @@ def test_phase_history(generate_baseline, name):
     )
 
 
-def test_phase_analyser():
-    phase_tracer_file = BASELINE / "rss_bp1_phase_structure.dat"
-    with open(phase_tracer_file) as f:
-        phase_tracer_data = f.read()
-    phase_structure = read_phase_tracer(phase_tracer_data)
-    analyser = phasehistory.PhaseHistoryAnalyser(benchmarks.RSS_BP1, phase_structure)
-
+def test_phase_nodes():
+    analyser = make_analyser()
     nodes = analyser.phase_nodes()
     node_t = [n.temperature for sub in nodes for n in sub]
     assert np.allclose(node_t, [216.1466902, 216.1466902, 101.2334823, 101.2334823])
 
+
+def test_phase_indexed_trans():
+    analyser = make_analyser()
+    nodes = analyser.phase_nodes()
     trans = analyser.phase_indexed_trans(nodes)
     idx = [i.index for sub in trans for i in sub]
     assert idx == [0, 0]
 
+
+def test_unique_transition_idx():
+    analyser = make_analyser()
     assert analyser.unique_transition_idx == [0, 1]
 
+
+def test_unique_transition_temperatures():
+    analyser = make_analyser()
     assert np.allclose(
         analyser.unique_transition_temperatures, [216.1466902, 101.2334823]
     )
 
+
+def test_is_high_temperature_phase():
+    analyser = make_analyser()
     assert analyser.is_high_temperature_phase == [True, True, False]
 
+
+def test_is_low_temperature_phase():
+    analyser = make_analyser()
     assert analyser.is_low_temperature_phase == [False, False, True]
 
+
+def test_trivial_paths():
+    analyser = make_analyser()
     assert analyser.trivial_paths() == []
 
+
+def test_init_frontier():
+    analyser = make_analyser()
+    nodes = analyser.phase_nodes()
+    trans = analyser.phase_indexed_trans(nodes)
     paths, frontier = analyser.init_frontier(trans, nodes)
     id = [t.id for p in paths for t in p.transitions]
     assert id == []
@@ -72,26 +98,22 @@ def test_phase_analyser():
     idx = [i.index for i in frontier]
     assert idx == [0, 0]
 
+
+def test_analyse_transition(generate_baseline):
+    analyser = make_analyser()
+    nodes = analyser.phase_nodes()
+    trans = analyser.phase_indexed_trans(nodes)
+    _, frontier = analyser.init_frontier(trans, nodes)
     transition_edge = frontier.pop(0)
     transition = transition_edge.transition
     path = transition_edge.path
 
     analyser.analyse_transition(trans, transition_edge, path, transition)
-    assert np.isclose(transition.properties.T_p, 215.59452845391613)
-    assert np.isclose(transition.properties.T_n, 215.65559803530698)
-    assert np.isclose(transition.properties.action_3d_n, 134.661629546104)
-    assert np.isclose(transition.properties.bubble_radius_p, 91854628.11986488)
 
-    t_min = analyser.min_trans_temperature_idxed(trans, transition_edge)
-    assert np.isclose(t_min, 174.1968886)
-
-    t_max = analyser.max_trans_temperature(path, transition)
-    assert np.isclose(t_max, 216.1466902)
-
-    assert np.isclose(analyser.phase_structure.groud_state_energy_density, 852067501.9)
-
-    new = analyser.new_frontier(transition_edge, trans, path, False)
-    assert new == []
-
-    expanded = analyser.expand_path(path)
-    assert [t.id for p in expanded for t in p.transitions] == []
+    assert_deep_equal(
+        transition.report(),
+        BASELINE / "transition_phase_structure.json",
+        exclude_types=[list],
+        significant_digits=2,
+        generate_baseline=generate_baseline,
+    )
