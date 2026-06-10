@@ -131,7 +131,7 @@ class ActionSampler:
 
         # If we are sampling the same point because we've reached Tmin, then the transition cannot progress any
         # further.
-        if gtrsim(self.Tmin*1.001, self.T[-1]):
+        if self.T[-1] == self.Tmin*1.001:
             logger.debug(
                 'Already sampled near Tmin ={}. Transition analysis halted', sampleData.T)
             return False, 'Reached Tmin'
