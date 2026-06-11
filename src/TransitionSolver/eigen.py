@@ -17,7 +17,7 @@ def vector(list_):
     @param list_ List-like, iterable Python object
     @returns Eigen::VectorXf object
     """
-    vec = cppyy.gbl.Eigen.Vector[float, len(list_)]()
+    vec = cppyy.gbl.Eigen.Vector["double", len(list_)]()
     for i, e in enumerate(list_):
         vec[i] = e
     return vec

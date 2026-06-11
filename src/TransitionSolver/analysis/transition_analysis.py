@@ -815,21 +815,21 @@ class TransitionAnalyser:
                 break
 
             # Choose the next value of S/T we're aiming to sample.
-            success, message = self.action_sampler.next_sample(
+            sample_obtained, message = self.action_sampler.next_sample(
                 sampleData, self.properties.gamma, self.properties.bubble_num[-1])
 
             simIndex += 1
 
-            if not success:
+            if not sample_obtained and message == 'Reached Tmin':
+                logger.debug('Terminating transition analysis: reached Tmin')
+                break
+
+            if not sample_obtained:
                 logger.debug(
                     'Terminating transition analysis after failing to get next action sample. Reason:', message)
-
-                if message == 'Reached Tmin':
-                    break
-
                 self.properties.analysed = False
                 self.properties.error = f'failed at T = {sampleData.T}: {message}'
-                return
+                return 
 
         # ==============================================================================================================
         # End transition analysis.
