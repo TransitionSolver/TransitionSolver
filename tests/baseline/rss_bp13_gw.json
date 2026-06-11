@@ -1,41 +1,41 @@
 {
     "0": {
-        "Peak amplitude (sound waves)": 4.298270593835056e-24,
-        "Peak frequency (sound waves)": 0.9895658489764736,
-        "Peak amplitude (turbulence)": 1.6779466599996772e-26,
-        "Peak frequency (turbulence)": 0.9254624557735588,
+        "Peak amplitude (sound waves)": 4.285368586627705e-24,
+        "Peak frequency (sound waves)": 0.9911207933118608,
+        "Peak amplitude (turbulence)": 1.6726058372620667e-26,
+        "Peak frequency (turbulence)": 0.9269137005723084,
         "Peak amplitude (collisions)": 0.0,
         "Peak frequency (collisions)": 0.0,
         "Signal-to-Noise Ratio": {
-            "LISA --- Analytic": 2.0486165472376242e-16
+            "LISA --- Analytic": 2.0357962495761841e-16
         },
         "Bubble wall velocity": 1.0,
-        "Transition temperature": 143.49901158217116,
-        "Redshift temperature": 143.63438463891492,
-        "Kinetic energy fraction": 1.2414201433124577e-06,
-        "Upsilon": 0.08231852865438205,
-        "Length scale": 3135974188.5901866
+        "Transition temperature": 143.49900041197878,
+        "Redshift temperature": 143.6343724457471,
+        "Kinetic energy fraction": 1.241375405342595e-06,
+        "Upsilon": 0.08220639892570902,
+        "Length scale": 3131064547.649908
     },
     "1": {
-        "Peak amplitude (sound waves)": 6.933289614855938e-29,
-        "Peak frequency (sound waves)": 86.06894149178778,
-        "Peak amplitude (turbulence)": 2.3263959023641613e-31,
-        "Peak frequency (turbulence)": 82.02693821808843,
+        "Peak amplitude (sound waves)": 1.2079341731416175e-28,
+        "Peak frequency (sound waves)": 65.17395852519944,
+        "Peak amplitude (turbulence)": 4.057134925788383e-31,
+        "Peak frequency (turbulence)": 62.1134791894328,
         "Peak amplitude (collisions)": 0.0,
         "Peak frequency (collisions)": 0.0,
         "Signal-to-Noise Ratio": {
-            "LISA --- Analytic": 3.7205881307173435e-25
+            "LISA --- Analytic": 1.1314677505221093e-24
         },
         "Bubble wall velocity": 1.0,
-        "Transition temperature": 138.67181413577893,
-        "Redshift temperature": 138.73625326444488,
-        "Kinetic energy fraction": 2.967865929156448e-07,
-        "Upsilon": 0.0020813327245148283,
-        "Length scale": 36687503.83295515
+        "Transition temperature": 138.67176260554015,
+        "Redshift temperature": 138.73620152799964,
+        "Kinetic energy fraction": 2.9678425217616523e-07,
+        "Upsilon": 0.002745867511931066,
+        "Length scale": 48449463.74229725
     },
     "Combined": {
         "Signal-to-Noise Ratio": {
-            "LISA --- Analytic": 2.0486165509573388e-16
+            "LISA --- Analytic": 2.0357962608882338e-16
         }
     }
 }
