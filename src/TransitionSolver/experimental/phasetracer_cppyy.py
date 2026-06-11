@@ -7,9 +7,11 @@ import os
 import warnings
 from pathlib import Path
 
-import cppyy
 from rich.status import Status
 
+from ..cppyy_compat import import_cppyy
+
+cppyy = import_cppyy()
 
 PT_HOME = Path(os.getenv("PHASETRACER", Path.home() / ".PhaseTracer"))
 PT_LIB = PT_HOME / "lib" / "libphasetracer.so"

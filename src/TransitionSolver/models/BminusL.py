@@ -1,6 +1,9 @@
 import numpy as np
 from .analysable_potential import AnalysablePotential
-from cosmoTransitions.finiteT import Jf, Jb
+from ..cosmotransitions_compat import ensure_cosmotransitions_writable
+
+ensure_cosmotransitions_writable()
+from cosmoTransitions.finiteT import Jf, Jb  # noqa: E402
 
 # Add safe versions for J_b and J_f for calling
 # workaround for numpy 2 incompatibility in CT

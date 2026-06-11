@@ -1,12 +1,15 @@
 from __future__ import annotations
 import traceback
 
-from cosmoTransitions.generic_potential import generic_potential
 import numpy as np
 from typing import List, Union, Callable
 
+from ..cosmotransitions_compat import ensure_cosmotransitions_writable
 from ..analysis.phase_structure import Phase
 from .util import geff_handler
+
+ensure_cosmotransitions_writable()
+from cosmoTransitions.generic_potential import generic_potential  # noqa: E402
 
 
 class AnalysablePotential(generic_potential):

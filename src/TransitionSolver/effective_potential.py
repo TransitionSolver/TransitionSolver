@@ -6,19 +6,20 @@ Access effective potentials from PhaseTracer
 import os
 from pathlib import Path
 
-import cppyy
 import numpy as np
 from numpy import pi
-from cosmoTransitions.generic_potential import generic_potential
 
 from . import eigen
-from .phasetracer import PT_HOME, DEFAULT_NAMESPACE
+from .cosmotransitions_compat import ensure_cosmotransitions_writable
+from .cppyy_compat import import_cppyy
+from .phasetracer import DEFAULT_NAMESPACE, EP_HOME, EP_INCLUDE, EP_MODELS, EP_LIB
+
+ensure_cosmotransitions_writable()
+from cosmoTransitions.generic_potential import generic_potential  # noqa: E402
+
+cppyy = import_cppyy()
 
 CWD = os.path.dirname(os.path.abspath(__file__))
-EP_HOME = PT_HOME / "EffectivePotential"
-EP_INCLUDE = EP_HOME / "include" / "effectivepotential"
-EP_MODELS = EP_HOME / "include" / "models"
-EP_LIB = EP_HOME / "lib" / "libeffectivepotential.so"
 
 # include headers
 

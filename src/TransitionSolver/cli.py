@@ -8,7 +8,6 @@ import json
 import tempfile
 
 from pathlib import Path
-
 import click
 import numpy as np
 import rich
@@ -17,12 +16,7 @@ from rich.text import Text
 from rich.status import Status
 from rich.console import Console
 
-from . import gws
-from . import load_potential
-from . import build_phase_tracer, read_phase_tracer, run_phase_tracer, find_phase_history
-from . import plot_summary
-from . import saveall
-from .phasetracer import DEFAULT_NAMESPACE
+from .phasetracer import DEFAULT_NAMESPACE, build_phase_tracer, read_phase_tracer, run_phase_tracer
 
 
 console = Console()
@@ -30,8 +24,8 @@ console = Console()
 np.set_printoptions(legacy='1.25')
 logging.captureWarnings(True)
 
-DETECTORS = {"LISA": gws.lisa, "LISA_SNR_10": gws.lisa_thrane_2019_snr_10}
-PTAS = {"NANOGrav": gws.nanograv_15, "PPTA": gws.ppta_dr3, "EPTA": gws.epta_dr2_full}
+DETECTORS = ("LISA", "LISA_SNR_10")
+PTAS = ("NANOGrav", "PPTA", "EPTA")
 LEVELS = {k.lower(): getattr(logging, k) for k in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]}
 
 
@@ -94,8 +88,8 @@ def create_pt_settings(model_settings_file, point_settings_file, model, point_fi
 @click.option('--model-namespace', help='Namespace for model', required=False, default=DEFAULT_NAMESPACE, multiple=True)
 @click.option('--point', 'point_file_name', help='Parameter point file', type=click.Path(exists=True), required=True)
 @click.option('--vw', default=None, help='Bubble wall velocity', type=click.FloatRange(0.))
-@click.option('--detector', default=[], help='Gravitational wave detector', type=click.Choice(DETECTORS.keys()), multiple=True)
-@click.option('--pta', default=[], help='Pulsar Timing Array', type=click.Choice(PTAS.keys()), multiple=True)
+@click.option('--detector', default=[], help='Gravitational wave detector', type=click.Choice(DETECTORS), multiple=True)
+@click.option('--pta', default=[], help='Pulsar Timing Array', type=click.Choice(PTAS), multiple=True)
 @click.option('--show/--no-show', default=True, help='Whether to show plots', type=bool)
 @click.option('--level', default="critical", help='Logging level', type=click.Choice(LEVELS.keys()))
 @click.option('--force', help='Force recompilation', required=False, default=False, is_flag=True, type=bool)
@@ -121,6 +115,8 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
     if model_header is None:
         model_header = f"{model}.hpp"
 
+    from .effective_potential import load_potential
+
     point = np.loadtxt(point_file_name)
     potential = load_potential(model_header, model, model_lib, model_namespace)(point)
 
@@ -142,6 +138,9 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
 
     phase_structure = read_phase_tracer(phase_structure_raw)
 
+    from .phasehistory import find_phase_history
+    from .plot import plot_summary
+
     with Status("Analyzing phase history"):
         tr_report = find_phase_history(potential, phase_structure, bubble_wall_velocity=vw, action_ct=action_ct)
         tr_fig = plot_summary(tr_report, show=show)
@@ -149,8 +148,13 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
     console.rule("[bold red]Transitions")
     rich.pretty.pprint(tr_report, console=console, max_length=10)
 
-    detectors = [DETECTORS[d] for d in detector]
-    ptas = [PTAS[p] for p in pta]
+    from . import gws
+
+    detectors_by_name = {"LISA": gws.lisa, "LISA_SNR_10": gws.lisa_thrane_2019_snr_10}
+    ptas_by_name = {"NANOGrav": gws.nanograv_15, "PPTA": gws.ppta_dr3, "EPTA": gws.epta_dr2_full}
+
+    detectors = [detectors_by_name[d] for d in detector]
+    ptas = [ptas_by_name[p] for p in pta]
 
     with Status("Analyzing gravitational wave signal"):
         analyser = gws.GWAnalyser(potential, tr_report, phase_structure)
@@ -159,6 +163,8 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
 
     console.rule("[bold red]Gravitational waves")
     console.print(gw_report)
+
+    from .report import saveall
 
     with Status("Saving results"):
         folder = saveall(tr_report, tr_fig, gw_fig, phase_structure_raw, ctx, analyser, detectors, folder)
