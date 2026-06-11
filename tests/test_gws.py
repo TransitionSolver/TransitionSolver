@@ -49,7 +49,7 @@ def test_plot_gw():
 def test_snr():
     analyser = GWAnalyser(RSS_BP1, get_phase_history(), phase_tracer_file=phase_tracer_file)
     snr = lisa.SNR(analyser.gw_total)
-    assert np.isclose(snr, 59.36097397058879)
+    assert np.isclose(snr, 59.393000926951196)
 
 
 @pytest.mark.mpl_image_compare

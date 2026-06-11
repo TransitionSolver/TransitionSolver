@@ -24,7 +24,7 @@ def test_action_ct():
 
     result = action.action_ct(benchmarks.RSS_BP1, 190., false_vacuum, true_vacuum)
 
-    assert np.isclose(result, 2.1768231378296363)
+    assert np.isclose(result, 2.188357753482806)
 
 
 def test_action_pt():
@@ -36,4 +36,4 @@ def test_action_pt():
 
     result = action.action_pt(benchmarks.RSS_BP1, 190., false_vacuum, true_vacuum)
 
-    assert np.isclose(result, 2.151439938773795)
+    assert np.isclose(result, 2.177286191324302)

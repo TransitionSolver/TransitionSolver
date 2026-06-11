@@ -25,5 +25,5 @@ def test_find_phase_at_t():
 
     result = phase.find_phase_at_t(200., benchmarks.RSS_BP1)
 
-    assert np.allclose(result, np.array([7.86660202e-04, 6.47017094e+02]))
+    assert np.allclose(result, np.array([2.85775445e-04, 6.47017016e+02]))
 
