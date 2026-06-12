@@ -132,7 +132,8 @@ class ActionSampler:
         # If we are sampling the same point because we've reached Tmin, then the transition cannot progress any
         # further.
         Tmin_buffer = 1e-3
-        if self.T[-1] <= self.Tmin * (1.0 + Tmin_buffer):
+        numeric_tol = 1e-8
+        if self.T[-1] <= self.Tmin * (1.0 + Tmin_buffer) + numeric_tol:
             logger.debug(
                 'Already sampled near Tmin ={}. Transition analysis halted', sampleData.T)
             return False, 'Reached Tmin'
