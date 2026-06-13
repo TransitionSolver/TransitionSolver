@@ -45,6 +45,25 @@ def test_phase_history(generate_baseline, name):
     )
 
 
+@pytest.mark.parametrize("name", NAMES)
+def test_phase_history_pt_action(generate_baseline, name):
+    phase_tracer_file = BASELINE / f"{name.lower()}_phase_structure.dat"
+    with open(phase_tracer_file) as f:
+        phase_tracer_data = f.read()
+    phase_structure = read_phase_tracer(phase_tracer_data)
+    model = getattr(benchmarks, name)
+    result = phasehistory.find_phase_history(
+        model, phase_structure, bubble_wall_velocity=1, action_ct=False
+    )
+    assert_deep_equal(
+        result,
+        BASELINE / f"{name.lower()}_phase_structure_pt_action.json",
+        exclude_types=[list],
+        significant_digits=2,
+        generate_baseline=generate_baseline,
+    )
+
+
 def test_phase_nodes():
     analyser = make_analyser()
     nodes = analyser.phase_nodes()
