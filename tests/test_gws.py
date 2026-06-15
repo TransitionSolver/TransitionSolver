@@ -30,6 +30,9 @@ def get_phase_history(name="RSS_BP1"):
 
 NAMES = [f"RSS_BP{k}" for k in range(1, 14)]
 
+
+PYTEST_MPL_KWARGS = {"remove_text": True, "deterministic": True, "savefig_kwargs": {"format": "pdf"}}
+
 @pytest.mark.parametrize("name", NAMES)
 def test_report(generate_baseline, name):
     if name in ["RSS_BP12"]:
@@ -40,7 +43,7 @@ def test_report(generate_baseline, name):
     assert_deep_equal(report, BASELINE / f"{name.lower()}_gw.json", generate_baseline=generate_baseline)
 
 
-@pytest.mark.mpl_image_compare
+@pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)
 def test_plot_gw():
     analyser = GWAnalyser(RSS_BP1, get_phase_history(), phase_tracer_file=phase_tracer_file)
     return analyser.plot(detectors=[lisa], ptas=[gws.nanograv_15])
@@ -52,7 +55,7 @@ def test_snr():
     assert np.isclose(snr, 59.569044287441514)
 
 
-@pytest.mark.mpl_image_compare
+@pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)
 def test_plot_pta():
     fig, ax = plt.subplots()
 
@@ -69,7 +72,7 @@ def test_plot_pta():
     return fig
 
 
-@pytest.mark.mpl_image_compare
+@pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)
 def test_plot_lisa():
     f = np.logspace(-4, -1, 400)
     fig, ax = plt.subplots()
