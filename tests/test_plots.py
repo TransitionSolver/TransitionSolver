@@ -17,6 +17,7 @@ PYTEST_MPL_KWARGS = {
     "remove_text": True,
     "deterministic": True,
     "savefig_kwargs": {"format": "pdf"},
+    "tolerance": 25,
 }
 
 

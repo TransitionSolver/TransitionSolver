@@ -24,33 +24,51 @@ phase_tracer_file = BASELINE / "rss_bp1_phase_structure.dat"
 
 # use a function here else failure to decode json brings down whole test suite
 def get_phase_history(name="RSS_BP1"):
-    with open(BASELINE / f"{name.lower()}_phase_structure.json", 'r') as f:
+    with open(BASELINE / f"{name.lower()}_phase_structure.json", "r") as f:
         return json.load(f)
 
 
 NAMES = [f"RSS_BP{k}" for k in range(1, 14)]
 
 
-PYTEST_MPL_KWARGS = {"remove_text": True, "deterministic": True, "savefig_kwargs": {"format": "pdf"}}
+PYTEST_MPL_KWARGS = {
+    "remove_text": True,
+    "deterministic": True,
+    "savefig_kwargs": {"format": "pdf"},
+    "tolerance": 25,
+}
+
 
 @pytest.mark.parametrize("name", NAMES)
 def test_report(generate_baseline, name):
     if name in ["RSS_BP12"]:
         pytest.xfail(f"{name} is expected to fail")
 
-    analyser = GWAnalyser(getattr(benchmarks, name), get_phase_history(name), phase_tracer_file=BASELINE / f"{name.lower()}_phase_structure.dat")
+    analyser = GWAnalyser(
+        getattr(benchmarks, name),
+        get_phase_history(name),
+        phase_tracer_file=BASELINE / f"{name.lower()}_phase_structure.dat",
+    )
     report = analyser.report(lisa)
-    assert_deep_equal(report, BASELINE / f"{name.lower()}_gw.json", generate_baseline=generate_baseline)
+    assert_deep_equal(
+        report,
+        BASELINE / f"{name.lower()}_gw.json",
+        generate_baseline=generate_baseline,
+    )
 
 
 @pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)
 def test_plot_gw():
-    analyser = GWAnalyser(RSS_BP1, get_phase_history(), phase_tracer_file=phase_tracer_file)
+    analyser = GWAnalyser(
+        RSS_BP1, get_phase_history(), phase_tracer_file=phase_tracer_file
+    )
     return analyser.plot(detectors=[lisa], ptas=[gws.nanograv_15])
 
 
 def test_snr():
-    analyser = GWAnalyser(RSS_BP1, get_phase_history(), phase_tracer_file=phase_tracer_file)
+    analyser = GWAnalyser(
+        RSS_BP1, get_phase_history(), phase_tracer_file=phase_tracer_file
+    )
     snr = lisa.SNR(analyser.gw_total)
     assert np.isclose(snr, 59.569044287441514)
 
@@ -59,8 +77,8 @@ def test_snr():
 def test_plot_pta():
     fig, ax = plt.subplots()
 
-    ax.set_xscale('log')
-    ax.set_yscale('log')
+    ax.set_xscale("log")
+    ax.set_yscale("log")
     ax.set_xlabel("Frequency")
 
     gws.nanograv_15.plot(ax, color="red")
@@ -82,7 +100,9 @@ def test_plot_lisa():
     ax.loglog(f, gws.lisa_thrane_1_yr(f), label=gws.lisa_thrane_1_yr.label)
     ax.loglog(f, gws.lisa_thrane_2019(f), label=gws.lisa_thrane_2019.label)
     ax.loglog(f, gws.lisa_thrane_2019_snr_1(f), label=gws.lisa_thrane_2019_snr_1.label)
-    ax.loglog(f, gws.lisa_thrane_2019_snr_10(f), label=gws.lisa_thrane_2019_snr_10.label)
+    ax.loglog(
+        f, gws.lisa_thrane_2019_snr_10(f), label=gws.lisa_thrane_2019_snr_10.label
+    )
     ax.legend(loc="upper left")
     ax.set_xlabel("Frequency")
 

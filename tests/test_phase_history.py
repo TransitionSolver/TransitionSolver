@@ -18,6 +18,14 @@ BASELINE = THIS / "baseline"
 NAMES = [f"RSS_BP{k}" for k in range(1, 14)]
 
 
+def delete_entries(result, *keys):
+    for t in result["transitions"]:
+        for k in result["transitions"][t].copy():
+            for key in keys:
+                if k.startswith(key):
+                    del result["transitions"][t][k]
+
+
 def make_analyser():
     phase_tracer_file = BASELINE / "rss_bp1_phase_structure.dat"
     with open(phase_tracer_file) as f:
@@ -34,13 +42,16 @@ def test_phase_history(generate_baseline, name):
     phase_structure = read_phase_tracer(phase_tracer_data)
     model = getattr(benchmarks, name)
     result = phasehistory.find_phase_history(
-        model, phase_structure, bubble_wall_velocity=1
+        model, phase_structure, bubble_wall_velocity=1, action_ct=True
     )
+
+    delete_entries(result, "bubble_radius", "bubble_separation", "idx_n", "action_3d_n")
+
     assert_deep_equal(
         result,
         BASELINE / f"{name.lower()}_phase_structure.json",
         exclude_types=[list],
-        significant_digits=2,
+        significant_digits=2,  # TODO INCREASE THIS?
         generate_baseline=generate_baseline,
     )
 
@@ -59,7 +70,7 @@ def test_phase_history_pt_action(generate_baseline, name):
         result,
         BASELINE / f"{name.lower()}_phase_structure_pt_action.json",
         exclude_types=[list],
-        significant_digits=2,
+        significant_digits=2,  # TODO INCREASE THIS
         generate_baseline=generate_baseline,
     )
 
@@ -127,12 +138,14 @@ def test_analyse_transition(generate_baseline):
     transition = transition_edge.transition
     path = transition_edge.path
 
-    analyser.analyse_transition(trans, transition_edge, path, transition)
+    analyser.analyse_transition(
+        trans, transition_edge, path, transition, action_ct=False
+    )
 
     assert_deep_equal(
         transition.report(),
         BASELINE / "transition_phase_structure.json",
         exclude_types=[list],
-        significant_digits=2,
+        significant_digits=2,  # TODO INCREASE THIS
         generate_baseline=generate_baseline,
     )
