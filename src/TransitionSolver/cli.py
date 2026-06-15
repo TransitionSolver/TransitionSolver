@@ -12,6 +12,7 @@ from pathlib import Path
 import click
 import numpy as np
 import rich
+import rich.pretty
 
 from rich.text import Text
 from rich.status import Status
@@ -19,7 +20,12 @@ from rich.console import Console
 
 from . import gws
 from . import load_potential
-from . import build_phase_tracer, read_phase_tracer, run_phase_tracer, find_phase_history
+from . import (
+    build_phase_tracer,
+    read_phase_tracer,
+    run_phase_tracer,
+    find_phase_history,
+)
 from . import plot_summary
 from . import saveall
 from .phasetracer import DEFAULT_NAMESPACE
@@ -27,12 +33,15 @@ from .phasetracer import DEFAULT_NAMESPACE
 
 console = Console()
 
-np.set_printoptions(legacy='1.25')
+np.set_printoptions(legacy="1.25")
 logging.captureWarnings(True)
 
 DETECTORS = {"LISA": gws.lisa, "LISA_SNR_10": gws.lisa_thrane_2019_snr_10}
 PTAS = {"NANOGrav": gws.nanograv_15, "PPTA": gws.ppta_dr3, "EPTA": gws.epta_dr2_full}
-LEVELS = {k.lower(): getattr(logging, k) for k in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]}
+LEVELS = {
+    k.lower(): getattr(logging, k)
+    for k in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+}
 
 
 def deep_merge(a: dict, b: dict) -> dict:
@@ -46,11 +55,13 @@ def deep_merge(a: dict, b: dict) -> dict:
             out[k] = v
     return out
 
+
 def load_json(path: str | Path) -> dict:
     if Path(path).exists():
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     return {}
+
 
 def load_point_settings(point_settings_file, point_file_name: str) -> dict:
     """
@@ -59,6 +70,7 @@ def load_point_settings(point_settings_file, point_file_name: str) -> dict:
     if point_settings_file is None:
         point_settings_file = Path(point_file_name).with_suffix(".pt.json")
     return load_json(point_settings_file)
+
 
 def load_model_settings(model_settings_file, model: str) -> dict:
     """
@@ -71,10 +83,13 @@ def load_model_settings(model_settings_file, model: str) -> dict:
         model_settings_file = base_dir / "settings" / f"PT_settings_{model}.json"
     return load_json(model_settings_file)
 
-def create_pt_settings(model_settings_file, point_settings_file, model, point_file_name, *other_files):
+
+def create_pt_settings(
+    model_settings_file, point_settings_file, model, point_file_name, *other_files
+):
     """
     Create settings for PhaseTracer by resolving settings files in precedence order:
- 
+
     model settings -> point settings -> repeated --pt-settings (applied last)
     """
     model_settings = load_model_settings(model_settings_file, model)
@@ -88,27 +103,124 @@ def create_pt_settings(model_settings_file, point_settings_file, model, point_fi
 
 
 @click.command()
-@click.option('--model', help='Model name', required=True, type=str)
-@click.option('--model-header', help='Model header-file', required=False, default=None, type=click.Path(exists=True))
-@click.option('--model-lib', help='Library for model if not header-only', required=False, default=None, type=click.Path(exists=True))
-@click.option('--model-namespace', help='Namespace for model', required=False, default=DEFAULT_NAMESPACE, multiple=True)
-@click.option('--point', 'point_file_name', help='Parameter point file', type=click.Path(exists=True), required=True)
-@click.option('--vw', default=None, help='Bubble wall velocity', type=click.FloatRange(0.))
-@click.option('--detector', default=[], help='Gravitational wave detector', type=click.Choice(DETECTORS.keys()), multiple=True)
-@click.option('--pta', default=[], help='Pulsar Timing Array', type=click.Choice(PTAS.keys()), multiple=True)
-@click.option('--show/--no-show', default=True, help='Whether to show plots', type=bool)
-@click.option('--level', default="critical", help='Logging level', type=click.Choice(LEVELS.keys()))
-@click.option('--force', help='Force recompilation', required=False, default=False, is_flag=True, type=bool)
-@click.option('--action-ct', help='Use CosmoTransitions for action', required=False, default=False, is_flag=True, type=bool)
-@click.option('--pt-model-settings', help='JSON file of PhaseTracer settings for this model',
-              required=False, default=None, type=click.Path(exists=True))
-@click.option('--pt-point-settings', help='JSON file of PhaseTracer settings for this point (overrides model settings)',
-              required=False, default=None, type=click.Path(exists=True))
-@click.option('--pt-settings', help='Extra JSON PhaseTracer settings overrides (applied last). Can be repeated.',
-              required=False, default=(), multiple=True, type=click.Path(exists=True))
-@click.option('--folder', help='Custom name of output folder', required=False, default=None, type=str)
+@click.option("--model", help="Model name", required=True, type=str)
+@click.option(
+    "--model-header",
+    help="Model header-file",
+    required=False,
+    default=None,
+    type=click.Path(exists=True),
+)
+@click.option(
+    "--model-lib",
+    help="Library for model if not header-only",
+    required=False,
+    default=None,
+    type=click.Path(exists=True),
+)
+@click.option(
+    "--model-namespace",
+    help="Namespace for model",
+    required=False,
+    default=DEFAULT_NAMESPACE,
+    multiple=True,
+)
+@click.option(
+    "--point",
+    "point_file_name",
+    help="Parameter point file",
+    type=click.Path(exists=True),
+    required=True,
+)
+@click.option(
+    "--vw", default=None, help="Bubble wall velocity", type=click.FloatRange(0.0)
+)
+@click.option(
+    "--detector",
+    default=[],
+    help="Gravitational wave detector",
+    type=click.Choice(DETECTORS.keys()),
+    multiple=True,
+)
+@click.option(
+    "--pta",
+    default=[],
+    help="Pulsar Timing Array",
+    type=click.Choice(PTAS.keys()),
+    multiple=True,
+)
+@click.option("--show/--no-show", default=True, help="Whether to show plots", type=bool)
+@click.option(
+    "--level",
+    default="critical",
+    help="Logging level",
+    type=click.Choice(LEVELS.keys()),
+)
+@click.option(
+    "--force",
+    help="Force recompilation",
+    required=False,
+    default=False,
+    is_flag=True,
+    type=bool,
+)
+@click.option(
+    "--action-ct",
+    help="Use CosmoTransitions for action",
+    required=False,
+    default=False,
+    is_flag=True,
+    type=bool,
+)
+@click.option(
+    "--pt-model-settings",
+    help="JSON file of PhaseTracer settings for this model",
+    required=False,
+    default=None,
+    type=click.Path(exists=True),
+)
+@click.option(
+    "--pt-point-settings",
+    help="JSON file of PhaseTracer settings for this point (overrides model settings)",
+    required=False,
+    default=None,
+    type=click.Path(exists=True),
+)
+@click.option(
+    "--pt-settings",
+    help="Extra JSON PhaseTracer settings overrides (applied last). Can be repeated.",
+    required=False,
+    default=(),
+    multiple=True,
+    type=click.Path(exists=True),
+)
+@click.option(
+    "--folder",
+    help="Custom name of output folder",
+    required=False,
+    default=None,
+    type=str,
+)
 @click.pass_context
-def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, vw, detector, pta, show, level, force, action_ct, pt_model_settings, pt_point_settings, pt_settings, folder):
+def cli(
+    ctx,
+    model,
+    model_header,
+    model_lib,
+    model_namespace,
+    point_file_name,
+    vw,
+    detector,
+    pta,
+    show,
+    level,
+    force,
+    action_ct,
+    pt_model_settings,
+    pt_point_settings,
+    pt_settings,
+    folder,
+):
     """
     Run TransitionSolver on a particular model and point
 
@@ -125,9 +237,13 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
     potential = load_potential(model_header, model, model_lib, model_namespace)(point)
 
     with Status(f"Building PhaseTracer {model}"):
-        exe_name = build_phase_tracer(model_header, model, model_lib, model_namespace, force)
+        exe_name = build_phase_tracer(
+            model_header, model, model_lib, model_namespace, force
+        )
 
-    pt_settings = create_pt_settings(pt_model_settings, pt_point_settings, model, point_file_name, *pt_settings)
+    pt_settings = create_pt_settings(
+        pt_model_settings, pt_point_settings, model, point_file_name, *pt_settings
+    )
 
     with tempfile.NamedTemporaryFile(mode="w") as pt_settings_file:
         json.dump(pt_settings, pt_settings_file)
@@ -135,15 +251,15 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
 
         with Status(f"Running PhaseTracer {exe_name}"):
             phase_structure_raw = run_phase_tracer(
-                exe_name,
-                point_file_name,
-                pt_settings_file=pt_settings_file.name
+                exe_name, point_file_name, pt_settings_file=pt_settings_file.name
             )
 
     phase_structure = read_phase_tracer(phase_structure_raw)
 
     with Status("Analyzing phase history"):
-        tr_report = find_phase_history(potential, phase_structure, bubble_wall_velocity=vw, action_ct=action_ct)
+        tr_report = find_phase_history(
+            potential, phase_structure, bubble_wall_velocity=vw, action_ct=action_ct
+        )
         tr_fig = plot_summary(tr_report, show=show)
 
     console.rule("[bold red]Transitions")
@@ -161,7 +277,16 @@ def cli(ctx, model, model_header, model_lib, model_namespace, point_file_name, v
     console.print(gw_report)
 
     with Status("Saving results"):
-        folder = saveall(tr_report, tr_fig, gw_fig, phase_structure_raw, ctx, analyser, detectors, folder)
+        folder = saveall(
+            tr_report,
+            tr_fig,
+            gw_fig,
+            phase_structure_raw,
+            ctx,
+            analyser,
+            detectors,
+            folder,
+        )
 
     console.rule("[bold red]Results")
     console.print(Text.assemble("Results saved to: ", (folder, "bold magenta")))
