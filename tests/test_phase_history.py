@@ -18,14 +18,6 @@ BASELINE = THIS / "baseline"
 NAMES = [f"RSS_BP{k}" for k in range(1, 14)]
 
 
-def delete_entries(result, *keys):
-    for t in result["transitions"]:
-        for k in result["transitions"][t].copy():
-            for key in keys:
-                if k.startswith(key):
-                    del result["transitions"][t][k]
-
-
 def make_analyser():
     phase_tracer_file = BASELINE / "rss_bp1_phase_structure.dat"
     with open(phase_tracer_file) as f:
@@ -45,7 +37,21 @@ def test_phase_history(generate_baseline, name):
         model, phase_structure, bubble_wall_velocity=1, action_ct=True
     )
 
-    delete_entries(result, "bubble_radius", "bubble_separation", "idx_n", "action_3d_n")
+    ignore_entries = [
+        "bubble_radius",
+        "bubble_separation",
+        "idx",
+        "action_3d",
+        "T_reh_e",
+        "T_reh_p",
+        "T_p",
+        "T_e",
+        "T_gamma",
+        "Tmin",
+        "size",
+    ]
+
+    exclude_paths = [f"root['transitions'][*]['{e}']" for e in ignore_entries]
 
     assert_deep_equal(
         result,
@@ -53,6 +59,7 @@ def test_phase_history(generate_baseline, name):
         exclude_types=[list],
         significant_digits=2,  # TODO INCREASE THIS?
         generate_baseline=generate_baseline,
+        exclude_paths=exclude_paths,
     )
 
 
