@@ -28,7 +28,7 @@ jobs:
     - name: Install apt dependencies
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
-        packages: git cmake libalglib-dev libnlopt-cxx-dev libeigen3-dev libboost-filesystem-dev libboost-log-dev libgsl-dev numdiff
+        packages: git cmake libalglib-dev libnlopt-cxx-dev libeigen3-dev libboost-filesystem-dev libboost-log-dev libgsl-dev numdiff fonts-dejavu
     - name: Restore PhaseTracer
       continue-on-error: true
       uses: actions/cache/restore@v4
