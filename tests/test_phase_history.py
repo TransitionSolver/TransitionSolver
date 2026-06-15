@@ -52,6 +52,7 @@ def test_phase_history(generate_baseline, name):
         "action_3d_n",
         "action_3d_e",
         "action_3d_p",
+        "action_3d_f",
         "Treh_e",
         "Treh_p",
         "T_p",
