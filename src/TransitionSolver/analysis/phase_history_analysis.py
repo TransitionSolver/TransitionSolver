@@ -9,10 +9,9 @@ from .transition_graph import TransitionEdge, Path, PhaseNode
 
 class PhaseHistoryAnalyser:
 
-    def __init__(self, potential, phase_structure, time_limit=200.):
+    def __init__(self, potential, phase_structure):
         self.potential = potential
         self.phase_structure = phase_structure
-        self.time_limit = time_limit
         self.paths = []
 
     def report(self):
