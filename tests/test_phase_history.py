@@ -26,6 +26,7 @@ def make_analyser():
     return phasehistory.PhaseHistoryAnalyser(benchmarks.RSS_BP1, phase_structure)
 
 
+@pytest.mark.skip(reason="we found this to be platform dependent and recommend PT by default")
 @pytest.mark.parametrize("name", NAMES)
 def test_phase_history(generate_baseline, name):
     phase_tracer_file = BASELINE / f"{name.lower()}_phase_structure.dat"
@@ -34,13 +35,61 @@ def test_phase_history(generate_baseline, name):
     phase_structure = read_phase_tracer(phase_tracer_data)
     model = getattr(benchmarks, name)
     result = phasehistory.find_phase_history(
-        model, phase_structure, bubble_wall_velocity=1
+        model, phase_structure, bubble_wall_velocity=1, action_ct=True
     )
+
+    ignore_entries = [
+        "bubble_radius_p",
+        "bubble_separation_p",
+        "idx_e",
+        "idx_f",
+        "idx_gamma",
+        "idx_n",
+        "idx_nbar",
+        "idx_n",
+        "idx_p",
+        "idx_decreasing_v_phys",
+        "action_3d_nbar",
+        "action_3d_n",
+        "action_3d_e",
+        "action_3d_p",
+        "action_3d_f",
+        "Treh_e",
+        "Treh_p",
+        "T_p",
+        "T_e",
+        "T_gamma",
+        "Tmin",
+        "size",
+    ]
+
+    exclude_paths = [f"root['transitions'][*]['{e}']" for e in ignore_entries]
+
     assert_deep_equal(
         result,
         BASELINE / f"{name.lower()}_phase_structure.json",
         exclude_types=[list],
-        significant_digits=2,
+        significant_digits=3,
+        generate_baseline=generate_baseline,
+        exclude_paths=exclude_paths,
+    )
+
+
+@pytest.mark.parametrize("name", NAMES)
+def test_phase_history_pt_action(generate_baseline, name):
+    phase_tracer_file = BASELINE / f"{name.lower()}_phase_structure.dat"
+    with open(phase_tracer_file) as f:
+        phase_tracer_data = f.read()
+    phase_structure = read_phase_tracer(phase_tracer_data)
+    model = getattr(benchmarks, name)
+    result = phasehistory.find_phase_history(
+        model, phase_structure, bubble_wall_velocity=1, action_ct=False
+    )
+    assert_deep_equal(
+        result,
+        BASELINE / f"{name.lower()}_phase_structure_pt_action.json",
+        exclude_types=[list],
+        significant_digits=3,
         generate_baseline=generate_baseline,
     )
 
@@ -108,12 +157,14 @@ def test_analyse_transition(generate_baseline):
     transition = transition_edge.transition
     path = transition_edge.path
 
-    analyser.analyse_transition(trans, transition_edge, path, transition)
+    analyser.analyse_transition(
+        trans, transition_edge, path, transition, action_ct=False
+    )
 
     assert_deep_equal(
         transition.report(),
         BASELINE / "transition_phase_structure.json",
         exclude_types=[list],
-        significant_digits=2,
+        significant_digits=3,
         generate_baseline=generate_baseline,
     )

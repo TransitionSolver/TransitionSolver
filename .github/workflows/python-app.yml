@@ -28,7 +28,7 @@ jobs:
     - name: Install apt dependencies
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
-        packages: git cmake libalglib-dev libnlopt-cxx-dev libeigen3-dev libboost-filesystem-dev libboost-log-dev libgsl-dev numdiff
+        packages: git cmake libalglib-dev libnlopt-cxx-dev libeigen3-dev libboost-filesystem-dev libboost-log-dev libgsl-dev numdiff fonts-dejavu ghostscript
     - name: Restore PhaseTracer
       continue-on-error: true
       uses: actions/cache/restore@v4
@@ -53,7 +53,7 @@ jobs:
     - name: Test with pytest
       run: |
         pip install .[test]
-        pytest
+        pytest -rs
     - name: Try CLI
       run: ts --model RSS_BP --point input/RSS/RSS_BP1.txt
     - name: Install script test dependencies

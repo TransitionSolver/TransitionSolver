@@ -125,18 +125,18 @@ class PhaseStructure:
         self.transitions.sort(key=lambda x: x.ID)
 
     @property
-    def groud_state_energy_density(self):
+    def ground_state_energy_density(self):
         """
         @returns The lowest energy of any phase at T = 0
         """
-        groud_state_energy_density = np.inf
+        ground_state_energy_density = np.inf
 
         for phase in self.phases:
-            if phase.T[0] == 0 and phase.V[0] < groud_state_energy_density:
-                groud_state_energy_density = phase.V[0]
+            if phase.T[0] == 0 and phase.V[0] < ground_state_energy_density:
+                ground_state_energy_density = phase.V[0]
 
-        if np.isinf(groud_state_energy_density):
+        if np.isinf(ground_state_energy_density):
             warnings.warn("Could not determine ground state energy density; assuming 0")
-            groud_state_energy_density = 0.
+            ground_state_energy_density = 0.
 
-        return groud_state_energy_density
+        return ground_state_energy_density

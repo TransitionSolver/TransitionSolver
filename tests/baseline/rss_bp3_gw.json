@@ -1,24 +1,24 @@
 {
     "0": {
-        "Peak amplitude (sound waves)": 4.455419638942134e-14,
-        "Peak frequency (sound waves)": 0.0017472859259428377,
-        "Peak amplitude (turbulence)": 2.484133921231737e-16,
-        "Peak frequency (turbulence)": 0.0016428953211736282,
+        "Peak amplitude (sound waves)": 4.4600170493261044e-14,
+        "Peak frequency (sound waves)": 0.0017458933418872695,
+        "Peak amplitude (turbulence)": 2.486126016489131e-16,
+        "Peak frequency (turbulence)": 0.0016421266506736571,
         "Peak amplitude (collisions)": 0.0,
         "Peak frequency (collisions)": 0.0,
         "Signal-to-Noise Ratio": {
-            "LISA --- Analytic": 1.7144871644320154
+            "LISA --- Analytic": 1.7152169296464437
         },
         "Bubble wall velocity": 1.0,
-        "Transition temperature": 67.2830378153372,
-        "Redshift temperature": 69.04231561249449,
-        "Kinetic energy fraction": 0.0042557216534595075,
-        "Upsilon": 0.26236799198290617,
-        "Length scale": 3751417389993.1694
+        "Transition temperature": 67.28382869249707,
+        "Redshift temperature": 69.04302524755457,
+        "Kinetic energy fraction": 0.004255278102336726,
+        "Upsilon": 0.2624574989081978,
+        "Length scale": 3753133456650.7725
     },
     "Combined": {
         "Signal-to-Noise Ratio": {
-            "LISA --- Analytic": 1.7144871644320154
+            "LISA --- Analytic": 1.7152169296464437
         }
     }
 }

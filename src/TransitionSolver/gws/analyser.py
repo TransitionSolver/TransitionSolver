@@ -80,7 +80,7 @@ class AnalyseIndividualTransition:
             self.to_phase,
             self.potential,
             self.transition_temp,
-            phase_structure.groud_state_energy_density,
+            phase_structure.ground_state_energy_density,
         )
 
         self.hydro_redshift_temp = hydrodynamics.make_hydro_vars(
@@ -88,7 +88,7 @@ class AnalyseIndividualTransition:
             self.to_phase,
             self.potential,
             self.redshift_temp,
-            phase_structure.groud_state_energy_density,
+            phase_structure.ground_state_energy_density,
         )
 
     @property

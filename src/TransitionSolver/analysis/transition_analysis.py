@@ -51,7 +51,7 @@ PD_DEFAULT_SETTINGS = {'verbose': False, 'maxiter': 20, 'tunneling_findProfile_p
 class ActionSampler:
 
     def __init__(self, transitionAnalyser: 'TransitionAnalyser', minSonTThreshold: float, maxSonTThreshold: float,
-                 toleranceSonT: float, stepSizeMax=0.95, action_ct=True, force_on_axis=False, **kwargs):  # TODO make action_ct false
+                 toleranceSonT: float, stepSizeMax=0.95, action_ct=False, force_on_axis=False, **kwargs):
         """
         @param force_on_axis
         Whether a phase with a field value very close to zero compared to its characteristic value should be forced to
@@ -62,7 +62,6 @@ class ActionSampler:
 
         # Copy properties for concision.
         self.transitionAnalyser = transitionAnalyser
-        self.bDebug = transitionAnalyser.bDebug
         self.potential = transitionAnalyser.potential
         self.fromPhase = transitionAnalyser.fromPhase
         self.toPhase = transitionAnalyser.toPhase
@@ -132,7 +131,8 @@ class ActionSampler:
         # If we are sampling the same point because we've reached Tmin, then the transition cannot progress any
         # further.
         Tmin_buffer = 1e-3
-        if self.T[-1] <= self.Tmin * (1.0 + Tmin_buffer):
+        numeric_tol = 1e-8
+        if self.T[-1] <= self.Tmin * (1.0 + Tmin_buffer) + numeric_tol:
             logger.debug(
                 'Already sampled near Tmin ={}. Transition analysis halted', sampleData.T)
             return False, 'Reached Tmin'
@@ -283,9 +283,9 @@ class ActionSampler:
         SonTList = np.linspace(self.SonT[-1], SonTnew, numPoints)
         GammaList = self.transitionAnalyser.gamma_rate(TList, SonTList)
         energyStart = hydrodynamics.energy_density_from_phase(self.fromPhase, self.toPhase, self.potential,
-                                                              TList[0]) - self.transitionAnalyser.groud_state_energy_density
+                                                              TList[0]) - self.transitionAnalyser.ground_state_energy_density
         energyEnd = hydrodynamics.energy_density_from_phase(self.fromPhase, self.toPhase, self.potential,
-                                                            TList[-1]) - self.transitionAnalyser.groud_state_energy_density
+                                                            TList[-1]) - self.transitionAnalyser.ground_state_energy_density
         # TODO: replace with quadratic interpolation.
         energyDensityList = np.linspace(energyStart, energyEnd, numPoints)
         HList = hubble_squared_from_energy_density(energyDensityList)
@@ -385,7 +385,6 @@ class LinearInterp:
 
 
 class TransitionAnalyser:
-    bDebug: bool = False
     # Optimisation: check whether completion can occur before reaching T=0. If it cannot, stop the transition analysis.
     check_possible_completion: bool = True
     # Whether transition analysis should continue after finding the completion temperature, all the way down to the
@@ -396,13 +395,13 @@ class TransitionAnalyser:
 
     def __init__(self, potential, properties, fromPhase: Phase, toPhase: Phase,
                  # TODO make false
-                 groud_state_energy_density: float, Tmin=None, Tmax=None, bubble_wall_velocity=None, action_ct=True,
+                 ground_state_energy_density: float, Tmin=None, Tmax=None, bubble_wall_velocity=None, action_ct=False,
                  perc_threshold_pf=0.71, completion_threshold=1e-2):
         self.potential = potential
         self.properties = properties
         self.fromPhase = fromPhase
         self.toPhase = toPhase
-        self.groud_state_energy_density = groud_state_energy_density
+        self.ground_state_energy_density = ground_state_energy_density
         self.Tmin = Tmin
         self.Tmax = Tmax
         self.default_bubble_wall_velocity = bubble_wall_velocity
@@ -839,11 +838,9 @@ class TransitionAnalyser:
 
     def prime_transition_analysis(self):
         TcData = ActionSample(self.properties.T_c)
-
-        if self.bDebug:
-            print(
-                f'Bisecting to find S/T = {self.action_sampler.maxSonTThreshold} ± {self.action_sampler.toleranceSonT}')
-
+        
+        logger.debug(f'Bisecting to find S/T = {self.action_sampler.maxSonTThreshold} ± {self.action_sampler.toleranceSonT}')
+        
         curve_data = self.find_nucleation_temp_window()
 
         # TODO: Maybe use the names from here anyway? The current set of names is a little confusing!
@@ -865,16 +862,12 @@ class TransitionAnalyser:
         intermediateData = data.copy()
 
         self.action_sampler.lower_s_on_t_data = lower_s_on_t_data
-
-        if self.bDebug:
-            print(
-                'Attempting to find next reasonable (T, S/T) sample below maxSonTThreshold...')
-
+        
+        logger.debug('Attempting to find next reasonable (T, S/T) sample below maxSonTThreshold...')
+        
         if data.SonT > self.action_sampler.minSonTThreshold + 0.8 * (
                 self.action_sampler.maxSonTThreshold - self.action_sampler.minSonTThreshold):
-            if self.bDebug:
-                print(
-                    'Presumably not a subcritical transition curve, with current S/T near maxSonTThreshold.')
+            logger.debug('Presumably not a subcritical transition curve, with current S/T near maxSonTThreshold.')    
             subcritical = False
             # targetSonT is the first S/T value we would like to sample. Skipping this might lead to numerical errors in the
             # integration, and sampling at higher S/T values is numerically insignificant.
@@ -918,11 +911,10 @@ class TransitionAnalyser:
             # While our sample's S/T is too far from the target value, step closer to 'data' and try again.
             while correctionSamplesTaken < maxCorrectionSamples \
                     and abs(1 - abs(intermediateData.SonT - data.SonT) / data.SonT) < self.action_sampler.stepSizeMax:
-                if self.bDebug:
-                    print('Sample too far from target S/T value at T =', intermediateData.T, 'with S/T =',
+                logger.debug('Sample too far from target S/T value at T =', intermediateData.T, 'with S/T =',
                           intermediateData.SonT)
-                    print('Trying again at T =', 0.5 *
-                          (intermediateData.T + data.T))
+                logger.debug('Trying again at T =', 0.5 *
+                          (intermediateData.T + data.T))              
                 correctionSamplesTaken += 1
                 # Step halfway across the interval and try again.
                 intermediateData.T = 0.5*(intermediateData.T + data.T)
@@ -945,16 +937,13 @@ class TransitionAnalyser:
             # is insufficient time for nucleation to occur. It is improbable that S/T would drop to a small enough value
             # within this temperature range to yield nucleation.
             if intermediateData.SonT >= data.SonT:
-                if self.bDebug:
-                    print('S/T increases before nucleation can occur.')
+                logger.debug('S/T increases before nucleation can occur.')
                 return
 
             self.action_sampler.T.extend([data.T, intermediateData.T])
             self.action_sampler.SonT.extend([data.SonT, intermediateData.SonT])
         else:
-            if self.bDebug:
-                print(
-                    'Presumably a subcritical transition curve, with current S/T significantly below maxSonTThreshold.')
+            logger.debug('Presumably a subcritical transition curve, with current S/T significantly below maxSonTThreshold.')
             subcritical = True
 
             # Take a very small step, with the size decreasing as S/T decreases.
@@ -996,8 +985,7 @@ class TransitionAnalyser:
                 self.action_sampler.SonT.extend(
                     [data.SonT, intermediateData.SonT])
 
-        if self.bDebug:
-            print('Found next sample: T =', intermediateData.T,
+            logger.debug('Found next sample: T =', intermediateData.T,
                   'and S/T =', intermediateData.SonT)
 
         # Now take the same step in temperature and evaluate the action again.
@@ -1252,8 +1240,7 @@ class TransitionAnalyser:
             # If the temperature window is becoming too small, claim that the target value cannot be found. The below
             # extrapolation step should make this unnecessary. TODO: [2023] why are we still doing it then?
             if (THigh - TLow) / (self.Tmax - self.Tmin) < 0.01:
-                if self.bDebug:
-                    print('Unable to find action below desired value before temperature window reduced to', THigh - TLow,
+                logger.debug('Unable to find action below desired value before temperature window reduced to', THigh - TLow,
                           'GeV.')
 
                 save_curve_shape()
@@ -1275,8 +1262,7 @@ class TransitionAnalyser:
                 extrapolation_failed = TPredicted > THigh
 
             if extrapolation_failed:
-                if self.bDebug:
-                    print('S/T will not go below', self.action_sampler.maxSonTThreshold,
+                logger.debug('S/T will not go below', self.action_sampler.maxSonTThreshold,
                           'based on linear extrapolation.')
 
                 save_curve_shape()
@@ -1325,11 +1311,11 @@ class TransitionAnalyser:
     def hubble_squared(self, T: float) -> float:
         rhof = hydrodynamics.energy_density_from_phase(
             self.fromPhase, self.toPhase, self.potential, T)
-        return hubble_squared_from_energy_density(rhof - self.groud_state_energy_density)
+        return hubble_squared_from_energy_density(rhof - self.ground_state_energy_density)
 
     def get_hydro_vars(self, T: float) -> HydroVars:
         return hydrodynamics.make_hydro_vars(self.fromPhase, self.toPhase, self.potential, T,
-                                             self.groud_state_energy_density)
+                                             self.ground_state_energy_density)
 
     def reheat_temperature(self, T: float) -> float:
         Tsep = min(0.001*(self.properties.T_c - self.Tmin), 0.5*(T - self.Tmin))
@@ -1384,7 +1370,7 @@ class TransitionAnalyser:
 
 
 def hubble_squared(fromPhase: Phase, toPhase: Phase, potential, T: float,
-                   groud_state_energy_density: float) -> float:
+                   ground_state_energy_density: float) -> float:
     rhof = hydrodynamics.energy_density_from_phase(
         fromPhase, toPhase, potential, T)
-    return hubble_squared_from_energy_density(rhof - groud_state_energy_density)
+    return hubble_squared_from_energy_density(rhof - ground_state_energy_density)

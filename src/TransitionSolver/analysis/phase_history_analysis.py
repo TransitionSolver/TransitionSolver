@@ -9,10 +9,9 @@ from .transition_graph import TransitionEdge, Path, PhaseNode
 
 class PhaseHistoryAnalyser:
 
-    def __init__(self, potential, phase_structure, time_limit=200.):
+    def __init__(self, potential, phase_structure):
         self.potential = potential
         self.phase_structure = phase_structure
-        self.time_limit = time_limit
         self.paths = []
 
     def report(self):
@@ -174,7 +173,7 @@ class PhaseHistoryAnalyser:
             transition.properties.analysed = True
             ta = TransitionAnalyser(self.potential, transition.properties,
                                                     self.phase_structure.phases[transition.false_phase], self.phase_structure.phases[transition.true_phase],
-                                                    self.phase_structure.groud_state_energy_density, Tmin=Tmin, Tmax=Tmax, **kwargs)
+                                                    self.phase_structure.ground_state_energy_density, Tmin=Tmin, Tmax=Tmax, **kwargs)
             ta.analyse()
         else:
             transition.properties.analysed = False
@@ -202,7 +201,7 @@ class PhaseHistoryAnalyser:
 
         return expanded
 
-    def analyse(self, bubble_wall_velocity=None, action_ct=True):  # TODO make false
+    def analyse(self, bubble_wall_velocity=None, action_ct=False):
 
         # if there are no paths in phase_structure, set paths empty and return 
         if not self.phase_structure.paths:
