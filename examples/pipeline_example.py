@@ -23,6 +23,9 @@ import traceback
 import inspect
 # For exiting the program early if necessary.
 import sys
+import logging
+
+logger = logging.getLogger(__name__)
 
 from src.TransitionSolver.models.toy_model import ToyModel
 from src.TransitionSolver.analysis.phase_structure import PhaseStructure
