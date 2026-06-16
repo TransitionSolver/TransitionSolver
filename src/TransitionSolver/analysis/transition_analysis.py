@@ -62,7 +62,6 @@ class ActionSampler:
 
         # Copy properties for concision.
         self.transitionAnalyser = transitionAnalyser
-        self.bDebug = transitionAnalyser.bDebug
         self.potential = transitionAnalyser.potential
         self.fromPhase = transitionAnalyser.fromPhase
         self.toPhase = transitionAnalyser.toPhase
@@ -386,7 +385,6 @@ class LinearInterp:
 
 
 class TransitionAnalyser:
-    bDebug: bool = False
     # Optimisation: check whether completion can occur before reaching T=0. If it cannot, stop the transition analysis.
     check_possible_completion: bool = True
     # Whether transition analysis should continue after finding the completion temperature, all the way down to the
