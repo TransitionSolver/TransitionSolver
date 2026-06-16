@@ -1264,7 +1264,7 @@ class TransitionAnalyser:
                 extrapolation_failed = TPredicted > THigh
 
             if extrapolation_failed:
-                    logger.debug('S/T will not go below', self.action_sampler.maxSonTThreshold,
+                logger.debug('S/T will not go below', self.action_sampler.maxSonTThreshold,
                           'based on linear extrapolation.')
 
                 save_curve_shape()
