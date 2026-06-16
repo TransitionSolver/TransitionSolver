@@ -25,6 +25,7 @@ def make_analyser():
     phase_structure = read_phase_tracer(phase_tracer_data)
     return phasehistory.PhaseHistoryAnalyser(benchmarks.RSS_BP1, phase_structure)
 
+
 @pytest.mark.skip(reason="we found this to be platform dependent and recommend PT by default")
 @pytest.mark.parametrize("name", NAMES)
 def test_phase_history(generate_baseline, name):
@@ -68,7 +69,7 @@ def test_phase_history(generate_baseline, name):
         result,
         BASELINE / f"{name.lower()}_phase_structure.json",
         exclude_types=[list],
-        significant_digits=3,  # TODO INCREASE THIS?
+        significant_digits=3,
         generate_baseline=generate_baseline,
         exclude_paths=exclude_paths,
     )
@@ -88,7 +89,7 @@ def test_phase_history_pt_action(generate_baseline, name):
         result,
         BASELINE / f"{name.lower()}_phase_structure_pt_action.json",
         exclude_types=[list],
-        significant_digits=3,  # TODO INCREASE THIS
+        significant_digits=3,
         generate_baseline=generate_baseline,
     )
 
@@ -164,6 +165,6 @@ def test_analyse_transition(generate_baseline):
         transition.report(),
         BASELINE / "transition_phase_structure.json",
         exclude_types=[list],
-        significant_digits=3,  # TODO INCREASE THIS
+        significant_digits=3,
         generate_baseline=generate_baseline,
     )
