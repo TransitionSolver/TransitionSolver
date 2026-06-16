@@ -51,7 +51,7 @@ PD_DEFAULT_SETTINGS = {'verbose': False, 'maxiter': 20, 'tunneling_findProfile_p
 class ActionSampler:
 
     def __init__(self, transitionAnalyser: 'TransitionAnalyser', minSonTThreshold: float, maxSonTThreshold: float,
-                 toleranceSonT: float, stepSizeMax=0.95, action_ct=True, force_on_axis=False, **kwargs):  # TODO make action_ct false
+                 toleranceSonT: float, stepSizeMax=0.95, action_ct=False, force_on_axis=False, **kwargs):
         """
         @param force_on_axis
         Whether a phase with a field value very close to zero compared to its characteristic value should be forced to
@@ -397,7 +397,7 @@ class TransitionAnalyser:
 
     def __init__(self, potential, properties, fromPhase: Phase, toPhase: Phase,
                  # TODO make false
-                 ground_state_energy_density: float, Tmin=None, Tmax=None, bubble_wall_velocity=None, action_ct=True,
+                 ground_state_energy_density: float, Tmin=None, Tmax=None, bubble_wall_velocity=None, action_ct=False,
                  perc_threshold_pf=0.71, completion_threshold=1e-2):
         self.potential = potential
         self.properties = properties

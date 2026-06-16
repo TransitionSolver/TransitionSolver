@@ -10,7 +10,7 @@ from .analysis.phase_history_analysis import PhaseHistoryAnalyser
 from .phasetracer import read_phase_tracer
 
 
-def find_phase_history(potential, phase_structure=None, phase_tracer_file=None, bubble_wall_velocity=None, action_ct=True):  # TODO make false
+def find_phase_history(potential, phase_structure=None, phase_tracer_file=None, bubble_wall_velocity=None, action_ct=False):
     """
     @param potential Effective potential
     @param phase_structure Parsed phase structure from PT
