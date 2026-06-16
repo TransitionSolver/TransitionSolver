@@ -9,7 +9,6 @@ import pytest
 from TransitionSolver import benchmarks, RSS_BP2 as model
 
 
-@pytest.mark.skip(reason="we found this to be platform dependent and recommend PT by default")
 def test_cosmo():
     model.getPhases()
     model.findAllTransitions()

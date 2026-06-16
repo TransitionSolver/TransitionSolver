@@ -25,7 +25,7 @@ def make_analyser():
     phase_structure = read_phase_tracer(phase_tracer_data)
     return phasehistory.PhaseHistoryAnalyser(benchmarks.RSS_BP1, phase_structure)
 
-
+@pytest.mark.skip(reason="we found this to be platform dependent and recommend PT by default")
 @pytest.mark.parametrize("name", NAMES)
 def test_phase_history(generate_baseline, name):
     phase_tracer_file = BASELINE / f"{name.lower()}_phase_structure.dat"
