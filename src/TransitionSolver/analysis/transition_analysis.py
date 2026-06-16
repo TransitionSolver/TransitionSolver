@@ -1091,7 +1091,7 @@ class TransitionAnalyser:
                     action = actionSamples[maxTempBelowIndex][1]
                     dataToUse = ActionSample(temp, action*temp)
                     if not dataToUse.is_valid:
-                        logger.warning("Replacement ActionSample is not valid: T=%s S3=%s (ID=%s)", dataToUse.T, dataToUse.S3, transition.ID)
+                        logger.warning("Replacement ActionSample is not valid: T=%s S3=%s (ID=%s)", dataToUse.T, dataToUse.S3)
 
                     # Attempt to also store the sample point directly before this in temperature.
                     if prevMaxTempBelowIndex > -1:
@@ -1099,7 +1099,7 @@ class TransitionAnalyser:
                         action = actionSamples[prevMaxTempBelowIndex][1]
                         lowerTSampleToUse = ActionSample(temp, action*temp)
                         if not lowerTSampleToUse.is_valid:
-                            logger.warning("Replacement ActionSample is not valid: T=%s S3=%s (ID=%s)", lowerTSampleToUse.T, lowerTSampleToUse.S3, transition.ID)
+                            logger.warning("Replacement ActionSample is not valid: T=%s S3=%s (ID=%s)", lowerTSampleToUse.T, lowerTSampleToUse.S3)
                     else:
                         lowerTSampleToUse = None
 
