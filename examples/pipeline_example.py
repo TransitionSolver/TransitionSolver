@@ -290,9 +290,8 @@ def writePhaseHistoryReport(paths: list[Path], phaseStructure: PhaseStructure, s
     report['valid'] = any([p.is_valid for p in paths])
     #report['analysisTime'] = analysisMetrics.analysisElapsedTime
 
-    if settings.bDebug:
-        print('Writing report...')
-
+    logger.debug('Writing report...')
+    
     try:
         with open(fileName, 'w', encoding='utf-8') as f:
             json.dump(report, f, ensure_ascii=False, indent=4, default=str)

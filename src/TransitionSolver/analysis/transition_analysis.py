@@ -840,11 +840,9 @@ class TransitionAnalyser:
 
     def prime_transition_analysis(self):
         TcData = ActionSample(self.properties.T_c)
-
-        if self.bDebug:
-            print(
-                f'Bisecting to find S/T = {self.action_sampler.maxSonTThreshold} ± {self.action_sampler.toleranceSonT}')
-
+        
+        logger.debug(f'Bisecting to find S/T = {self.action_sampler.maxSonTThreshold} ± {self.action_sampler.toleranceSonT}')
+        
         curve_data = self.find_nucleation_temp_window()
 
         # TODO: Maybe use the names from here anyway? The current set of names is a little confusing!
@@ -866,16 +864,12 @@ class TransitionAnalyser:
         intermediateData = data.copy()
 
         self.action_sampler.lower_s_on_t_data = lower_s_on_t_data
-
-        if self.bDebug:
-            print(
-                'Attempting to find next reasonable (T, S/T) sample below maxSonTThreshold...')
-
+        
+        logger.debug('Attempting to find next reasonable (T, S/T) sample below maxSonTThreshold...')
+        
         if data.SonT > self.action_sampler.minSonTThreshold + 0.8 * (
                 self.action_sampler.maxSonTThreshold - self.action_sampler.minSonTThreshold):
-            if self.bDebug:
-                print(
-                    'Presumably not a subcritical transition curve, with current S/T near maxSonTThreshold.')
+            logger.debug('Presumably not a subcritical transition curve, with current S/T near maxSonTThreshold.')    
             subcritical = False
             # targetSonT is the first S/T value we would like to sample. Skipping this might lead to numerical errors in the
             # integration, and sampling at higher S/T values is numerically insignificant.
@@ -919,11 +913,10 @@ class TransitionAnalyser:
             # While our sample's S/T is too far from the target value, step closer to 'data' and try again.
             while correctionSamplesTaken < maxCorrectionSamples \
                     and abs(1 - abs(intermediateData.SonT - data.SonT) / data.SonT) < self.action_sampler.stepSizeMax:
-                if self.bDebug:
-                    print('Sample too far from target S/T value at T =', intermediateData.T, 'with S/T =',
+                logger.debug('Sample too far from target S/T value at T =', intermediateData.T, 'with S/T =',
                           intermediateData.SonT)
-                    print('Trying again at T =', 0.5 *
-                          (intermediateData.T + data.T))
+                logger.debug('Trying again at T =', 0.5 *
+                          (intermediateData.T + data.T))              
                 correctionSamplesTaken += 1
                 # Step halfway across the interval and try again.
                 intermediateData.T = 0.5*(intermediateData.T + data.T)
@@ -946,16 +939,13 @@ class TransitionAnalyser:
             # is insufficient time for nucleation to occur. It is improbable that S/T would drop to a small enough value
             # within this temperature range to yield nucleation.
             if intermediateData.SonT >= data.SonT:
-                if self.bDebug:
-                    print('S/T increases before nucleation can occur.')
+                logger.debug('S/T increases before nucleation can occur.')
                 return
 
             self.action_sampler.T.extend([data.T, intermediateData.T])
             self.action_sampler.SonT.extend([data.SonT, intermediateData.SonT])
         else:
-            if self.bDebug:
-                print(
-                    'Presumably a subcritical transition curve, with current S/T significantly below maxSonTThreshold.')
+            logger.debug('Presumably a subcritical transition curve, with current S/T significantly below maxSonTThreshold.')
             subcritical = True
 
             # Take a very small step, with the size decreasing as S/T decreases.
@@ -997,8 +987,7 @@ class TransitionAnalyser:
                 self.action_sampler.SonT.extend(
                     [data.SonT, intermediateData.SonT])
 
-        if self.bDebug:
-            print('Found next sample: T =', intermediateData.T,
+            logger.debug('Found next sample: T =', intermediateData.T,
                   'and S/T =', intermediateData.SonT)
 
         # Now take the same step in temperature and evaluate the action again.
@@ -1253,8 +1242,7 @@ class TransitionAnalyser:
             # If the temperature window is becoming too small, claim that the target value cannot be found. The below
             # extrapolation step should make this unnecessary. TODO: [2023] why are we still doing it then?
             if (THigh - TLow) / (self.Tmax - self.Tmin) < 0.01:
-                if self.bDebug:
-                    print('Unable to find action below desired value before temperature window reduced to', THigh - TLow,
+                logger.debug('Unable to find action below desired value before temperature window reduced to', THigh - TLow,
                           'GeV.')
 
                 save_curve_shape()
@@ -1276,8 +1264,7 @@ class TransitionAnalyser:
                 extrapolation_failed = TPredicted > THigh
 
             if extrapolation_failed:
-                if self.bDebug:
-                    print('S/T will not go below', self.action_sampler.maxSonTThreshold,
+                    logger.debug('S/T will not go below', self.action_sampler.maxSonTThreshold,
                           'based on linear extrapolation.')
 
                 save_curve_shape()
