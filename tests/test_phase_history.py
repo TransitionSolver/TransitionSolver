@@ -68,7 +68,7 @@ def test_phase_history(generate_baseline, name):
         result,
         BASELINE / f"{name.lower()}_phase_structure.json",
         exclude_types=[list],
-        significant_digits=2,  # TODO INCREASE THIS?
+        significant_digits=3,  # TODO INCREASE THIS?
         generate_baseline=generate_baseline,
         exclude_paths=exclude_paths,
     )
@@ -88,7 +88,7 @@ def test_phase_history_pt_action(generate_baseline, name):
         result,
         BASELINE / f"{name.lower()}_phase_structure_pt_action.json",
         exclude_types=[list],
-        significant_digits=2,  # TODO INCREASE THIS
+        significant_digits=3,  # TODO INCREASE THIS
         generate_baseline=generate_baseline,
     )
 
@@ -164,6 +164,6 @@ def test_analyse_transition(generate_baseline):
         transition.report(),
         BASELINE / "transition_phase_structure.json",
         exclude_types=[list],
-        significant_digits=2,  # TODO INCREASE THIS
+        significant_digits=3,  # TODO INCREASE THIS
         generate_baseline=generate_baseline,
     )
