@@ -18,16 +18,17 @@ from rich.text import Text
 from rich.status import Status
 from rich.console import Console
 
-from . import gws
-from . import load_potential
 from . import (
+    gws,
+    load_potential,
     build_phase_tracer,
     read_phase_tracer,
     run_phase_tracer,
     find_phase_history,
+    plot_summary,
+    saveall
 )
-from . import plot_summary
-from . import saveall
+
 from .phasetracer import DEFAULT_NAMESPACE
 
 
