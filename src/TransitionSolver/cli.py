@@ -8,6 +8,7 @@ import json
 import tempfile
 
 from pathlib import Path
+
 import click
 import numpy as np
 import rich
@@ -25,7 +26,7 @@ from . import (
     run_phase_tracer,
     find_phase_history,
     plot_summary,
-    saveall,
+    saveall
 )
 
 from .phasetracer import DEFAULT_NAMESPACE
@@ -36,8 +37,8 @@ console = Console()
 np.set_printoptions(legacy="1.25")
 logging.captureWarnings(True)
 
-DETECTORS = ("LISA", "LISA_SNR_10")
-PTAS = ("NANOGrav", "PPTA", "EPTA")
+DETECTORS = {"LISA": gws.lisa, "LISA_SNR_10": gws.lisa_thrane_2019_snr_10}
+PTAS = {"NANOGrav": gws.nanograv_15, "PPTA": gws.ppta_dr3, "EPTA": gws.epta_dr2_full}
 LEVELS = {
     k.lower(): getattr(logging, k)
     for k in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
@@ -139,14 +140,14 @@ def create_pt_settings(
     "--detector",
     default=[],
     help="Gravitational wave detector",
-    type=click.Choice(DETECTORS),
+    type=click.Choice(DETECTORS.keys()),
     multiple=True,
 )
 @click.option(
     "--pta",
     default=[],
     help="Pulsar Timing Array",
-    type=click.Choice(PTAS),
+    type=click.Choice(PTAS.keys()),
     multiple=True,
 )
 @click.option("--show/--no-show", default=True, help="Whether to show plots", type=bool)
@@ -265,18 +266,8 @@ def cli(
     console.rule("[bold red]Transitions")
     rich.pretty.pprint(tr_report, console=console, max_length=10)
 
-    detectors_by_name = {
-        "LISA": gws.lisa,
-        "LISA_SNR_10": gws.lisa_thrane_2019_snr_10,
-    }
-    ptas_by_name = {
-        "NANOGrav": gws.nanograv_15,
-        "PPTA": gws.ppta_dr3,
-        "EPTA": gws.epta_dr2_full,
-    }
-
-    detectors = [detectors_by_name[d] for d in detector]
-    ptas = [ptas_by_name[p] for p in pta]
+    detectors = [DETECTORS[d] for d in detector]
+    ptas = [PTAS[p] for p in pta]
 
     with Status("Analyzing gravitational wave signal"):
         analyser = gws.GWAnalyser(potential, tr_report, phase_structure)
