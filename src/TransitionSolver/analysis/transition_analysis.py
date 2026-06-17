@@ -385,18 +385,17 @@ class LinearInterp:
 
 
 class TransitionAnalyser:
-    # Optimisation: check whether completion can occur before reaching T=0. If it cannot, stop the transition analysis.
-    check_possible_completion: bool = True
-    # Whether transition analysis should continue after finding the completion temperature, all the way down to the
-    # lowest temperature for which the transition is possible. If this is false, transition analysis stops as soon as
-    # completion is found (default behaviour).
-    analyse_past_completion: bool = False
-    allow_errors_tn: bool = True
 
     def __init__(self, potential, properties, fromPhase: Phase, toPhase: Phase,
-                 # TODO make false
                  ground_state_energy_density: float, Tmin=None, Tmax=None, bubble_wall_velocity=None, action_ct=False,
+                 check_possible_completion=True, analyse_past_completion=False, allow_errors_tn=True,
                  perc_threshold_pf=0.71, completion_threshold=1e-2):
+        """
+        Optimisation: check whether completion can occur before reaching T=0. If it cannot, stop the transition analysis.
+        Whether transition analysis should continue after finding the completion temperature, all the way down to the
+        lowest temperature for which the transition is possible. If this is false, transition analysis stops as soon as
+        completion is found (default behaviour).
+        """
         self.potential = potential
         self.properties = properties
         self.fromPhase = fromPhase
@@ -406,6 +405,9 @@ class TransitionAnalyser:
         self.Tmax = Tmax
         self.default_bubble_wall_velocity = bubble_wall_velocity
         self.action_ct = action_ct
+        self.check_possible_completion = check_possible_completion
+        self.analyse_past_completion = analyse_past_completion
+        self.allow_errors_tn = allow_errors_tn
 
         self.properties.use_cj_velocity = bubble_wall_velocity is None
         self.properties.perc_threshold_pf = perc_threshold_pf
@@ -1091,7 +1093,7 @@ class TransitionAnalyser:
                     action = actionSamples[maxTempBelowIndex][1]
                     dataToUse = ActionSample(temp, action*temp)
                     if not dataToUse.is_valid:
-                        logger.warning("Replacement ActionSample is not valid: T=%s S3=%s (ID=%s)", dataToUse.T, dataToUse.S3)
+                        logger.warning("Replacement ActionSample is not valid: T=%s S3=%s", dataToUse.T, dataToUse.S3)
 
                     # Attempt to also store the sample point directly before this in temperature.
                     if prevMaxTempBelowIndex > -1:
@@ -1099,7 +1101,7 @@ class TransitionAnalyser:
                         action = actionSamples[prevMaxTempBelowIndex][1]
                         lowerTSampleToUse = ActionSample(temp, action*temp)
                         if not lowerTSampleToUse.is_valid:
-                            logger.warning("Replacement ActionSample is not valid: T=%s S3=%s (ID=%s)", lowerTSampleToUse.T, lowerTSampleToUse.S3)
+                            logger.warning("Replacement ActionSample is not valid: T=%s S3=%s", lowerTSampleToUse.T, lowerTSampleToUse.S3)
                     else:
                         lowerTSampleToUse = None
 
