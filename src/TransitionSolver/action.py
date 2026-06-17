@@ -11,6 +11,7 @@ from functools import cache
 
 import numpy as np
 
+from . import eigen
 from .cosmotransitions_compat import ensure_cosmotransitions_writable
 
 ensure_cosmotransitions_writable()
@@ -59,8 +60,6 @@ def action_pt(potential, T, false_vacuum, true_vacuum, **kwargs):
     """
     @returns Action from PhaseTracer's path deformation algorithm
     """
-    from . import eigen
-
     ActionCalculator = _phase_tracer_action_calculator()
     action_calculator = ActionCalculator(potential)
     action_calculator.__python_owns__ = False
