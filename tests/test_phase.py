@@ -1,6 +1,6 @@
 """
 Tests of phase helpers
-Specifically find_at_phase_t which calls scipy.optimize.fmin_powell 
+Specifically find_at_phase_t which calls scipy.optimize.fmin_powell
 ===================================================================
 """
 
@@ -8,7 +8,6 @@ import os
 from pathlib import Path
 
 import numpy as np
-import pytest
 
 from TransitionSolver import benchmarks, read_phase_tracer
 
@@ -23,7 +22,6 @@ def test_find_phase_at_t():
     )
     phase = phase_structure.phases[0]
 
-    result = phase.find_phase_at_t(200., benchmarks.RSS_BP1)
+    result = phase.find_phase_at_t(200.0, benchmarks.RSS_BP1)
 
-    assert np.allclose(result, np.array([2.85775445e-04, 6.47017016e+02]))
-
+    assert np.allclose(result, np.array([2.85775445e-04, 6.47017016e02]))

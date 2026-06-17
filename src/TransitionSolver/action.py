@@ -18,11 +18,12 @@ from .phasetracer import PT_LIB, PT_INCLUDE
 
 cppyy.load_library(str(PT_LIB))
 cppyy.add_include_path(str(PT_INCLUDE))
-cppyy.include(str(PT_INCLUDE / 'action_calculator.hpp'))
-cppyy.cppdef('LOGGER(error)')
+cppyy.include(str(PT_INCLUDE / "action_calculator.hpp"))
+cppyy.cppdef("LOGGER(error)")
 
 
 from cppyy.gbl import PhaseTracer  # noqa: E402
+
 
 def action_ct(potential, T, false_vacuum, true_vacuum, verbose=False, **kwargs):
     """
@@ -40,9 +41,14 @@ def action_ct(potential, T, false_vacuum, true_vacuum, verbose=False, **kwargs):
         g = np.asarray(potential.grad(X_arr, T), dtype=float)
         return g.reshape(X_arr.shape)
 
-    with open(os.devnull, "w") as devnull, redirect_stdout(sys.stdout if verbose else devnull):
-        return pathDeformation.fullTunneling(path_points, V_ct, dV_ct,
-            verbose=verbose, **kwargs).action
+    with (
+        open(os.devnull, "w") as devnull,
+        redirect_stdout(sys.stdout if verbose else devnull),
+    ):
+        return pathDeformation.fullTunneling(
+            path_points, V_ct, dV_ct, verbose=verbose, **kwargs
+        ).action
+
 
 def action_pt(potential, T, false_vacuum, true_vacuum, **kwargs):
     """
@@ -51,21 +57,23 @@ def action_pt(potential, T, false_vacuum, true_vacuum, **kwargs):
     action_calculator = PhaseTracer.ActionCalculator(potential)
     action_calculator.__python_owns__ = False
 
-    if 'maxiter' in kwargs:
-        action_calculator.set_PD_path_maxiter(kwargs['maxiter'])
+    if "maxiter" in kwargs:
+        action_calculator.set_PD_path_maxiter(kwargs["maxiter"])
 
-    if 'V_spline_samples' in kwargs:
-        action_calculator.set_PD_V_spline_samples(kwargs['V_spline_samples'])
+    if "V_spline_samples" in kwargs:
+        action_calculator.set_PD_V_spline_samples(kwargs["V_spline_samples"])
 
-    tunneling_params = kwargs.get('tunneling_findProfile_params', {})
+    tunneling_params = kwargs.get("tunneling_findProfile_params", {})
 
-    if 'xtol' in tunneling_params:
-        action_calculator.set_PD_xtol(tunneling_params['xtol'])
+    if "xtol" in tunneling_params:
+        action_calculator.set_PD_xtol(tunneling_params["xtol"])
 
-    if 'phitol' in tunneling_params:
-        action_calculator.set_PD_phitol(tunneling_params['phitol'])
+    if "phitol" in tunneling_params:
+        action_calculator.set_PD_phitol(tunneling_params["phitol"])
 
-    action = action_calculator.get_action(eigen.vector(true_vacuum), eigen.vector(false_vacuum), T)
+    action = action_calculator.get_action(
+        eigen.vector(true_vacuum), eigen.vector(false_vacuum), T
+    )
 
     if np.isnan(action) or action < 0:
         warnings.warn(f"Failed to compute action at T = {T}. action = {action}")

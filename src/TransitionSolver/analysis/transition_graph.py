@@ -33,7 +33,8 @@ class Path:
         del self.phases[:index]
 
         # Determine how many transitions go with prefix
-        prefix_transitions = self.transitions[:index - (0 if self.suffix_links else 1)]
+        prefix_transitions = self.transitions[:index -
+                                              (0 if self.suffix_links else 1)]
         # Remove those transitions from current
         del self.transitions[:index - (1 if self.suffix_links else 0)]
 
@@ -52,14 +53,14 @@ class Path:
         for p in old_prefixes:
             if self in p.suffix_links:
                 # Replace self with prefix_path in each old prefix's suffix_links
-                p.suffix_links = [prefix_path if s is self else s for s in p.suffix_links]
+                p.suffix_links = [
+                    prefix_path if s is self else s for s in p.suffix_links]
 
         # Update current path to point to new prefix
         self.prefix_links = [prefix_path]
 
         # Return the new prefix and modified self as suffix
         return prefix_path, self
-    
 
     def split_at_node(self, node: PhaseNode):
         for i, p in enumerate(self.phases):

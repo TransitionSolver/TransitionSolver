@@ -31,13 +31,17 @@ cppyy.load_library(str(EP_LIB))
 
 # avoid repeat includes
 
+
 def once(func):
     cache = set()
+
     def wrapper(arg):
         if arg not in cache:
             cache.add(arg)
             func(arg)
+
     return wrapper
+
 
 load_library = once(cppyy.load_library)
 include = once(cppyy.include)
@@ -80,6 +84,7 @@ class MixinPotential:
     def minimum_temperature(self):
         return self.get_minimum_temperature()
 
+
 class MixinCosmoTransitions(generic_potential):
     """
     Implement minimum functionality to work
@@ -87,10 +92,11 @@ class MixinCosmoTransitions(generic_potential):
 
     See https://clwainwright.net/CosmoTransitions/generic_potential.html
     """
-    x_eps = .001
-    T_eps = .001
+
+    x_eps = 0.001
+    T_eps = 0.001
     deriv_order = 4
-    renormScaleSq = 1000.**2
+    renormScaleSq = 1000.0**2
     Tmax = 1e3
     num_boson_dof = num_fermion_dof = None
     phases = transitions = None
@@ -112,7 +118,9 @@ class MixinCosmoTransitions(generic_potential):
         return self.get_n_scalars()
 
 
-def load_potential(model_header, model=None, model_lib=None, model_namespace=DEFAULT_NAMESPACE):
+def load_potential(
+    model_header, model=None, model_lib=None, model_namespace=DEFAULT_NAMESPACE
+):
     """
     @param model Name of model in C++ header
     @param model_header Header file where model defined

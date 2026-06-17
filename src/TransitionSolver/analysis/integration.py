@@ -39,7 +39,8 @@ class CubedHelper:
         gsn2 = self.g(self.x[1]) + self.g(self.x[0])
 
         self.data.append(fn1 * gsn2**3 * dxn2**4 / (16.0))
-        self.data.append((fn2*gsn3**3*dxn3**3*(dxn3 + dxn2) + fn1*(gsn3*dxn3 + gsn2*dxn2)**3*dxn2) / (16.0))
+        self.data.append((fn2*gsn3**3*dxn3**3*(dxn3 + dxn2) +
+                         fn1*(gsn3*dxn3 + gsn2*dxn2)**3*dxn2) / (16.0))
 
         self.S1 = (gsn3*dxn3)**3 * fsn2*dxn2
         self.S2 = 0
@@ -80,7 +81,8 @@ class CubedHelper:
 
         self.S1 = factor**3 * self.S1 + fsi1*gsi**3*dxi**3*dxi1
         self.S2 = factor**2 * self.S2 + 3*gsi**2*gsi1*dxi**2*dxi1 * self.L2
-        self.S3 = factor * self.S3 + 3*gsi*gsi1*dxi*dxi1*(2*self.L3 + gsi1*dxi1*self.L2)
+        self.S3 = factor * self.S3 + 3*gsi*gsi1 * \
+            dxi*dxi1*(2*self.L3 + gsi1*dxi1*self.L2)
         self.S4 = factor**2 * self.S4 + 3*fi2*gsi**2*gsi1*dxi**2*dxi1**2
         self.S5 = factor * self.S5 + 3*fi2*gsi*gsi1**2*dxi*dxi1**3
         self.S6 = factor * self.S6 + 6*gsi*gsi1*dxi*dxi1 * self.L6
