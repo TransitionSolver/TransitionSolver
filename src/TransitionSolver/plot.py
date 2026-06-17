@@ -11,31 +11,49 @@ import numpy as np
 def add_labeled_vline(ax, x, label, color):
     transform = ax.get_xaxis_transform()
     y = 0.8
-    ax.axvline(x, c=color, ls=':')
-    ax.text(x, y, label, c=color, transform=transform, ha='center', bbox={'fc': 'w', 'ec': color})
+    ax.axvline(x, c=color, ls=":")
+    ax.text(
+        x,
+        y,
+        label,
+        c=color,
+        transform=transform,
+        ha="center",
+        bbox={"fc": "w", "ec": color},
+    )
 
 
 def add_labeled_hline(ax, y, label, color):
     transform = ax.get_yaxis_transform()
     x = 0.1
-    ax.axhline(y, c=color, ls=':')
-    ax.text(x, y, label, c=color, transform=transform, va='center', bbox={'fc': 'w', 'ec': color})
+    ax.axhline(y, c=color, ls=":")
+    ax.text(
+        x,
+        y,
+        label,
+        c=color,
+        transform=transform,
+        va="center",
+        bbox={"fc": "w", "ec": color},
+    )
 
 
 def add_labeled_vlines(transition, ax):
-    if 'T_gamma' in transition:
-        add_labeled_vline(ax, transition['T_gamma'], r"$T_\Gamma$", 'k')
-    if 'T_n' in transition:
-        add_labeled_vline(ax, transition['T_n'], "$T_n$", 'r')
-    if 'T_p' in transition:
-        add_labeled_vline(ax, transition['T_p'], "$T_p$", 'g')
-    if 'T_e' in transition:
-        add_labeled_vline(ax, transition['T_e'], "$T_e$", 'b')
-    if 'T_f' in transition:
-        add_labeled_vline(ax, transition['T_f'], "$T_f$", 'm')
+    if "T_gamma" in transition:
+        add_labeled_vline(ax, transition["T_gamma"], r"$T_\Gamma$", "k")
+    if "T_n" in transition:
+        add_labeled_vline(ax, transition["T_n"], "$T_n$", "r")
+    if "T_p" in transition:
+        add_labeled_vline(ax, transition["T_p"], "$T_p$", "g")
+    if "T_e" in transition:
+        add_labeled_vline(ax, transition["T_e"], "$T_e$", "b")
+    if "T_f" in transition:
+        add_labeled_vline(ax, transition["T_f"], "$T_f$", "m")
 
 
-def plot_volume(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
+def plot_volume(
+    transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False
+):
     """
     @param transition_id ID of transition
     @param phase_structure Phase structure
@@ -50,22 +68,25 @@ def plot_volume(transition_id, phase_structure=None, phase_structure_file=None, 
     if ax is None:
         ax = plt.gca()
 
-    transition = phase_structure['transitions'][transition_id]
+    transition = phase_structure["transitions"][transition_id]
 
-    ax.plot(transition['T'],
-            transition['deriv_physical_volume'], zorder=3)
+    ax.plot(transition["T"], transition["deriv_physical_volume"], zorder=3)
 
-    if 'T_decreasing_v_phys' in transition and 'T_increasing_v_phys' in transition:
-        ax.axvspan(transition['T_decreasing_v_phys'],
-                   transition['T_increasing_v_phys'], alpha=0.3, color='r', zorder=-1)
+    if "T_decreasing_v_phys" in transition and "T_increasing_v_phys" in transition:
+        ax.axvspan(
+            transition["T_decreasing_v_phys"],
+            transition["T_increasing_v_phys"],
+            alpha=0.3,
+            color="r",
+            zorder=-1,
+        )
 
     add_labeled_vlines(transition, ax)
-    add_labeled_hline(ax, 3., "3", 'gray')
-    add_labeled_hline(ax, 0., "0", 'gray')
+    add_labeled_hline(ax, 3.0, "3", "gray")
+    add_labeled_hline(ax, 0.0, "0", "gray")
 
-    ax.set_xlabel('$T$ (GeV)')
-    ax.set_ylabel(
-        '$\\frac{d}{dt} \\mathcal{V}_{\\mathrm{phys}}$ (GeV)')
+    ax.set_xlabel("$T$ (GeV)")
+    ax.set_ylabel("$\\frac{d}{dt} \\mathcal{V}_{\\mathrm{phys}}$ (GeV)")
 
     if show:
         plt.show()
@@ -73,7 +94,9 @@ def plot_volume(transition_id, phase_structure=None, phase_structure_file=None, 
     return ax
 
 
-def plot_bubble_wall_velocity(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
+def plot_bubble_wall_velocity(
+    transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False
+):
     """
     @param transition_id ID of transition
     @param phase_structure Phase structure
@@ -88,14 +111,14 @@ def plot_bubble_wall_velocity(transition_id, phase_structure=None, phase_structu
     if ax is None:
         ax = plt.gca()
 
-    transition = phase_structure['transitions'][transition_id]
+    transition = phase_structure["transitions"][transition_id]
 
-    ax.plot(transition['T'], transition['bubble_wall_velocity'])
+    ax.plot(transition["T"], transition["bubble_wall_velocity"])
 
     add_labeled_vlines(transition, ax)
 
-    ax.set_xlabel('$T$ (GeV)')
-    ax.set_ylabel('Bubble wall velocity, $v_w$')
+    ax.set_xlabel("$T$ (GeV)")
+    ax.set_ylabel("Bubble wall velocity, $v_w$")
 
     if show:
         plt.show()
@@ -103,7 +126,9 @@ def plot_bubble_wall_velocity(transition_id, phase_structure=None, phase_structu
     return ax
 
 
-def plot_gamma(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
+def plot_gamma(
+    transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False
+):
     """
     @param transition_id ID of transition
     @param phase_structure Phase structure
@@ -118,15 +143,13 @@ def plot_gamma(transition_id, phase_structure=None, phase_structure_file=None, a
     if ax is None:
         ax = plt.gca()
 
-    transition = phase_structure['transitions'][transition_id]
+    transition = phase_structure["transitions"][transition_id]
 
-    ax.plot(transition['T'],
-            transition['gamma'], label="Standard")
-    ax.plot(transition['T'],
-            transition['gamma_eff'], label="Effective")
+    ax.plot(transition["T"], transition["gamma"], label="Standard")
+    ax.plot(transition["T"], transition["gamma_eff"], label="Effective")
 
-    ax.set_xlabel('$T$ (GeV)')
-    ax.set_ylabel('Transition rate, $\\Gamma(T)$')
+    ax.set_xlabel("$T$ (GeV)")
+    ax.set_ylabel("Transition rate, $\\Gamma(T)$")
 
     add_labeled_vlines(transition, ax)
 
@@ -138,7 +161,9 @@ def plot_gamma(transition_id, phase_structure=None, phase_structure_file=None, a
     return ax
 
 
-def plot_bubble_radius(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
+def plot_bubble_radius(
+    transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False
+):
     """
     @param transition_id ID of transition
     @param phase_structure Phase structure
@@ -153,14 +178,13 @@ def plot_bubble_radius(transition_id, phase_structure=None, phase_structure_file
     if ax is None:
         ax = plt.gca()
 
-    transition = phase_structure['transitions'][transition_id]
+    transition = phase_structure["transitions"][transition_id]
 
-    ax.plot(transition['T'],
-            transition['bubble_radius'])
+    ax.plot(transition["T"], transition["bubble_radius"])
 
-    ax.set_yscale('log')
-    ax.set_xlabel('$T$ (GeV)')
-    ax.set_ylabel('Bubble radius, $\\overline{R}_B(T)$')
+    ax.set_yscale("log")
+    ax.set_xlabel("$T$ (GeV)")
+    ax.set_ylabel("Bubble radius, $\\overline{R}_B(T)$")
 
     add_labeled_vlines(transition, ax)
 
@@ -170,7 +194,9 @@ def plot_bubble_radius(transition_id, phase_structure=None, phase_structure_file
     return ax
 
 
-def plot_bubble_separation(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
+def plot_bubble_separation(
+    transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False
+):
     """
     @param transition_id ID of transition
     @param phase_structure Phase structure
@@ -185,14 +211,13 @@ def plot_bubble_separation(transition_id, phase_structure=None, phase_structure_
     if ax is None:
         ax = plt.gca()
 
-    transition = phase_structure['transitions'][transition_id]
+    transition = phase_structure["transitions"][transition_id]
 
-    ax.plot(transition['T'],
-            transition['bubble_separation'])
+    ax.plot(transition["T"], transition["bubble_separation"])
 
-    ax.set_yscale('log')
-    ax.set_xlabel('$T$ (GeV)')
-    ax.set_ylabel('Bubble separation, $R_*(T)$')
+    ax.set_yscale("log")
+    ax.set_xlabel("$T$ (GeV)")
+    ax.set_ylabel("Bubble separation, $R_*(T)$")
 
     add_labeled_vlines(transition, ax)
 
@@ -202,7 +227,9 @@ def plot_bubble_separation(transition_id, phase_structure=None, phase_structure_
     return ax
 
 
-def plot_bubble_number(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
+def plot_bubble_number(
+    transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False
+):
     """
     @param transition_id ID of transition
     @param phase_structure Phase structure
@@ -217,21 +244,24 @@ def plot_bubble_number(transition_id, phase_structure=None, phase_structure_file
     if ax is None:
         ax = plt.gca()
 
-    transition = phase_structure['transitions'][transition_id]
+    transition = phase_structure["transitions"][transition_id]
 
     # Number of bubbles plotted over entire sampled temperature range, using log scale for number of bubbles.
 
-    ax.plot(transition['T'],
-            transition['bubble_num_bar'], label='$N(T)$')
-    ax.plot(transition['T'],
-            transition['bubble_num'], ls="--", label='$N^{\\mathrm{ext}}(T)$')
+    ax.plot(transition["T"], transition["bubble_num_bar"], label="$N(T)$")
+    ax.plot(
+        transition["T"],
+        transition["bubble_num"],
+        ls="--",
+        label="$N^{\\mathrm{ext}}(T)$",
+    )
 
     add_labeled_vlines(transition, ax)
 
-    ax.set_yscale('log')
+    ax.set_yscale("log")
     ax.legend()
-    ax.set_xlabel('$T$ (GeV)')
-    ax.set_ylabel('Number of bubbles')
+    ax.set_xlabel("$T$ (GeV)")
+    ax.set_ylabel("Number of bubbles")
 
     if show:
         plt.show()
@@ -239,7 +269,9 @@ def plot_bubble_number(transition_id, phase_structure=None, phase_structure_file
     return ax
 
 
-def plot_pf(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
+def plot_pf(
+    transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False
+):
     """
     @param transition_id ID of transition
     @param phase_structure Phase structure
@@ -254,14 +286,14 @@ def plot_pf(transition_id, phase_structure=None, phase_structure_file=None, ax=N
     if ax is None:
         ax = plt.gca()
 
-    transition = phase_structure['transitions'][transition_id]
+    transition = phase_structure["transitions"][transition_id]
 
-    ax.plot(transition['T'], transition['Pf'])
+    ax.plot(transition["T"], transition["Pf"])
 
     add_labeled_vlines(transition, ax)
-    ax.set_yscale('log')
-    ax.set_xlabel('$T$ (GeV)')
-    ax.set_ylabel('False vacuum fraction, $P_f(T)$')
+    ax.set_yscale("log")
+    ax.set_xlabel("$T$ (GeV)")
+    ax.set_ylabel("False vacuum fraction, $P_f(T)$")
 
     if show:
         plt.show()
@@ -269,7 +301,9 @@ def plot_pf(transition_id, phase_structure=None, phase_structure_file=None, ax=N
     return ax
 
 
-def plot_action_curve(transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False):
+def plot_action_curve(
+    transition_id, phase_structure=None, phase_structure_file=None, ax=None, show=False
+):
     """
     @param transition_id ID of transition
     @param phase_structure Phase structure
@@ -284,14 +318,14 @@ def plot_action_curve(transition_id, phase_structure=None, phase_structure_file=
     if ax is None:
         ax = plt.gca()
 
-    transition = phase_structure['transitions'][transition_id]
+    transition = phase_structure["transitions"][transition_id]
 
-    ax.plot(transition['T'], transition['action_3d'])
+    ax.plot(transition["T"], transition["action_3d"])
 
     add_labeled_vlines(transition, ax)
 
-    ax.set_xlabel('$T$ (GeV)')
-    ax.set_ylabel('$S(T) / T$')
+    ax.set_xlabel("$T$ (GeV)")
+    ax.set_ylabel("$S(T) / T$")
 
     if show:
         plt.show()
@@ -311,13 +345,30 @@ def plot_summary(phase_structure=None, phase_structure_file=None, show=False):
         with open(phase_structure_file, encoding="utf8") as f:
             phase_structure = json.load(f)
 
-    transitions = {k: v for k, v  in phase_structure['transitions'].items() if v['analysed']}
+    transitions = {
+        k: v for k, v in phase_structure["transitions"].items() if v["analysed"]
+    }
 
     if not transitions:
         return plt.figure()
 
-    plotters = [plot_volume, plot_bubble_wall_velocity, plot_gamma, plot_bubble_radius, plot_bubble_separation, plot_bubble_number, plot_action_curve, plot_pf]
-    fig, ax = plt.subplots(len(plotters), len(transitions), constrained_layout=False, sharex='col', figsize=(10 * len(transitions), 6 * len(plotters)))
+    plotters = [
+        plot_volume,
+        plot_bubble_wall_velocity,
+        plot_gamma,
+        plot_bubble_radius,
+        plot_bubble_separation,
+        plot_bubble_number,
+        plot_action_curve,
+        plot_pf,
+    ]
+    fig, ax = plt.subplots(
+        len(plotters),
+        len(transitions),
+        constrained_layout=False,
+        sharex="col",
+        figsize=(10 * len(transitions), 6 * len(plotters)),
+    )
     ax = np.reshape(ax, (len(plotters), len(transitions)))
 
     for x, key in enumerate(transitions):
@@ -327,7 +378,7 @@ def plot_summary(phase_structure=None, phase_structure_file=None, show=False):
             this_ax.set_xlabel(None)
 
     fig.supxlabel("$T$ (GeV)", y=0.005)
-    fig.set_layout_engine('constrained')
+    fig.set_layout_engine("constrained")
 
     if show:
         plt.show()

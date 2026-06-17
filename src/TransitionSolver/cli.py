@@ -17,7 +17,18 @@ from rich.text import Text
 from rich.status import Status
 from rich.console import Console
 
-from .phasetracer import DEFAULT_NAMESPACE, build_phase_tracer, read_phase_tracer, run_phase_tracer
+from . import (
+    gws,
+    load_potential,
+    build_phase_tracer,
+    read_phase_tracer,
+    run_phase_tracer,
+    find_phase_history,
+    plot_summary,
+    saveall,
+)
+
+from .phasetracer import DEFAULT_NAMESPACE
 
 
 console = Console()
@@ -222,8 +233,6 @@ def cli(
     if model_header is None:
         model_header = f"{model}.hpp"
 
-    from .effective_potential import load_potential
-
     point = np.loadtxt(point_file_name)
     potential = load_potential(model_header, model, model_lib, model_namespace)(point)
 
@@ -247,9 +256,6 @@ def cli(
 
     phase_structure = read_phase_tracer(phase_structure_raw)
 
-    from .phasehistory import find_phase_history
-    from .plot import plot_summary
-
     with Status("Analyzing phase history"):
         tr_report = find_phase_history(
             potential, phase_structure, bubble_wall_velocity=vw, action_ct=action_ct
@@ -258,8 +264,6 @@ def cli(
 
     console.rule("[bold red]Transitions")
     rich.pretty.pprint(tr_report, console=console, max_length=10)
-
-    from . import gws
 
     detectors_by_name = {
         "LISA": gws.lisa,
@@ -281,8 +285,6 @@ def cli(
 
     console.rule("[bold red]Gravitational waves")
     console.print(gw_report)
-
-    from .report import saveall
 
     with Status("Saving results"):
         folder = saveall(

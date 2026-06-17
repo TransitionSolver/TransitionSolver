@@ -49,7 +49,9 @@ def phase_tracer_info():
     """
     @returns Information about PhaseTracer installation
     """
-    version = subprocess.check_output(["git", "describe", "--dirty", "--always"], cwd=PT_HOME, text=True)
+    version = subprocess.check_output(
+        ["git", "describe", "--dirty", "--always"], cwd=PT_HOME, text=True
+    )
     version = version.strip()
     build_time = os.path.getmtime(PT_LIB)
     build_time = str(datetime.datetime.fromtimestamp(build_time))
@@ -83,7 +85,13 @@ def compiler_search_args(prefixes=COMPILER_PREFIXES):
     return args
 
 
-def build_phase_tracer(model_header, model=None, model_lib=None, model_namespace=DEFAULT_NAMESPACE, force=False):
+def build_phase_tracer(
+    model_header,
+    model=None,
+    model_lib=None,
+    model_namespace=DEFAULT_NAMESPACE,
+    force=False,
+):
     """
     Build PhaseTracer model for use in TransitionSolver
 
@@ -103,23 +111,27 @@ def build_phase_tracer(model_header, model=None, model_lib=None, model_namespace
     if os.path.exists(exe_name) and not force:
         return exe_name
 
-    cmd = [
-        CXX,
-        CXX_STANDARD,
-        TEMPLATE_CPP,
-        "-o",
-        exe_name,
-        "-I",
-        PT_INCLUDE,
-        "-I",
-        EP_MODELS,
-        "-I",
-        EP_INCLUDE,
-        "-I",
-        CWD,
-        rpath(EP_HOME / 'lib'),
-        rpath(PT_HOME / 'lib'),
-    ] + compiler_search_args() + LIBS
+    cmd = (
+        [
+            CXX,
+            CXX_STANDARD,
+            TEMPLATE_CPP,
+            "-o",
+            exe_name,
+            "-I",
+            PT_INCLUDE,
+            "-I",
+            EP_MODELS,
+            "-I",
+            EP_INCLUDE,
+            "-I",
+            CWD,
+            rpath(EP_HOME / "lib"),
+            rpath(PT_HOME / "lib"),
+        ]
+        + compiler_search_args()
+        + LIBS
+    )
 
     if model_lib:
         cmd.append(model_lib)
@@ -139,7 +151,9 @@ def build_phase_tracer(model_header, model=None, model_lib=None, model_namespace
     return exe_name
 
 
-def run_phase_tracer(exe_name, point_file=None, point=None, pt_settings_file=None) -> str:
+def run_phase_tracer(
+    exe_name, point_file=None, point=None, pt_settings_file=None
+) -> str:
     """
     Run PhaseTracer and read serialised data
     @param exe_name Name of executable
@@ -162,18 +176,21 @@ def run_phase_tracer(exe_name, point_file=None, point=None, pt_settings_file=Non
         raise RuntimeError(run.stderr)
     return run.stdout
 
+
 def read_path(data):
     """
     @returns Transition path from lines of data
     """
-    return [int(el[1:]) - 1 if el.startswith('-') else int(el) for el in data[0].split()]
+    return [
+        int(el[1:]) - 1 if el.startswith("-") else int(el) for el in data[0].split()
+    ]
 
 
 def read_arr(data):
     """
     @returns Array from lines of data
     """
-    return np.squeeze(np.array([np.fromstring(d, sep=' ') for d in data]))
+    return np.squeeze(np.array([np.fromstring(d, sep=" ") for d in data]))
 
 
 def read_phase_tracer(phase_tracer_data=None, phase_tracer_file=None) -> PhaseStructure:
@@ -193,7 +210,6 @@ def read_phase_tracer(phase_tracer_data=None, phase_tracer_file=None) -> PhaseSt
     parts = [part.split("\n") for part in phase_tracer_data.strip().split("\n\n")]
 
     for part in parts:
-
         if not part[0].startswith("#"):
             raise RuntimeError(f"Could not read {part}")
 
