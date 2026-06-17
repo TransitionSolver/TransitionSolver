@@ -7,6 +7,7 @@ import os
 import datetime
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 
 import numpy as np
@@ -18,17 +19,19 @@ CWD = os.path.dirname(os.path.abspath(__file__))
 
 DEFAULT = Path.home() / ".TransitionSolver" / "phasetracer-src"
 PT_HOME = Path(os.getenv("PHASETRACER", DEFAULT))
-PT_LIB = PT_HOME / "lib" / "libphasetracer.so"
 PT_INCLUDE = PT_HOME / "include"
 EP_HOME = PT_HOME / "EffectivePotential"
 EP_INCLUDE = EP_HOME / "include" / "effectivepotential"
 EP_MODELS = EP_HOME / "include" / "models"
-EP_LIB = EP_HOME / "lib" / "libeffectivepotential.so"
 CXX = "g++"
+CXX_STANDARD = "-std=c++17"
 TEMPLATE_CPP = os.path.join(CWD, "interface.cpp")
-LIBS = [EP_LIB, PT_LIB, "-lboost_log", "-lboost_filesystem", "-lnlopt", "-lalglib"]
 PT_UNIT_TEST = PT_HOME / "bin" / "unit_tests"
 DEFAULT_NAMESPACE = ("EffectivePotential",)
+LIB_SUFFIX = ".dylib" if sys.platform == "darwin" else ".so"
+PT_LIB = PT_HOME / "lib" / f"libphasetracer{LIB_SUFFIX}"
+EP_LIB = EP_HOME / "lib" / f"libeffectivepotential{LIB_SUFFIX}"
+LIBS = [EP_LIB, PT_LIB, "-lboost_log", "-lboost_filesystem", "-lnlopt", "-lalglib"]
 
 
 def phase_tracer_info():
@@ -48,7 +51,22 @@ def rpath(name):
     """
     @returns Compiler argument to add an rpath
     """
+    if sys.platform == "darwin":
+        return f"-Wl,-rpath,{name}"
     return f"-Wl,-rpath={name}"
+
+
+def compiler_search_args():
+    if sys.platform != "darwin":
+        return []
+
+    args = []
+    for prefix in (Path("/opt/homebrew"), Path("/usr/local"), Path("/opt/local")):
+        if (prefix / "include").exists():
+            args += ["-I", prefix / "include"]
+        if (prefix / "lib").exists():
+            args += [f"-L{prefix / 'lib'}", rpath(prefix / "lib")]
+    return args
 
 
 def build_phase_tracer(
@@ -79,6 +97,7 @@ def build_phase_tracer(
 
     cmd = [
         CXX,
+        CXX_STANDARD,
         TEMPLATE_CPP,
         "-o",
         exe_name,
@@ -92,7 +111,7 @@ def build_phase_tracer(
         CWD,
         rpath(EP_HOME / "lib"),
         rpath(PT_HOME / "lib"),
-    ] + LIBS
+    ] + compiler_search_args() + LIBS
 
     if model_lib:
         cmd.append(model_lib)

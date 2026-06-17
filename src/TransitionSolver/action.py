@@ -9,13 +9,14 @@ import warnings
 from contextlib import redirect_stdout
 
 import numpy as np
-import cppyy
 from cosmoTransitions import pathDeformation
 
 from . import eigen
+from .cppyy_compat import import_cppyy
 from .phasetracer import PT_LIB, PT_INCLUDE
 
 
+cppyy = import_cppyy()
 cppyy.load_library(str(PT_LIB))
 cppyy.add_include_path(str(PT_INCLUDE))
 cppyy.include(str(PT_INCLUDE / "action_calculator.hpp"))
