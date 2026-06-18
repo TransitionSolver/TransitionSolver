@@ -29,6 +29,17 @@ MACOS_SDK_SEARCH_DIRS = (
 )
 
 
+def once(func):
+    cache = set()
+
+    def wrapper(arg):
+        if arg not in cache:
+            cache.add(arg)
+            func(arg)
+
+    return wrapper
+
+
 def import_cppyy():
     """Import cppyy after applying macOS fixes needed by current wheels."""
     _configure_macos_sdk()
@@ -39,6 +50,12 @@ def import_cppyy():
         for include_path in ("/opt/homebrew/include", "/usr/local/include"):
             if pathlib.Path(include_path).exists():
                 cppyy.add_include_path(include_path)
+
+    # do not repeat includes etc
+    cppyy.cache_include = once(cppyy.include)
+    cppyy.cache_load_library = once(cppyy.load_library)
+    cppyy.cache_cppdef = once(cppyy.cppdef)
+    cppyy.cache_add_include_path = once(cppyy.add_include_path)
     return cppyy
 
 

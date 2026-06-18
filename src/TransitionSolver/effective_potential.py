@@ -14,35 +14,8 @@ from . import eigen
 from .cppyy_compat import import_cppyy
 from .phasetracer import DEFAULT_NAMESPACE, EP_HOME, EP_INCLUDE, EP_MODELS, EP_LIB
 
-cppyy = import_cppyy()
 
 CWD = os.path.dirname(os.path.abspath(__file__))
-
-# include headers
-
-for pth in [EP_INCLUDE, EP_MODELS, CWD]:
-    cppyy.add_include_path(str(pth))
-
-# load libraries
-
-cppyy.load_library(str(EP_LIB))
-
-# avoid repeat includes
-
-
-def once(func):
-    cache = set()
-
-    def wrapper(arg):
-        if arg not in cache:
-            cache.add(arg)
-            func(arg)
-
-    return wrapper
-
-
-load_library = once(cppyy.load_library)
-include = once(cppyy.include)
 
 
 class MixinPotential:
@@ -127,13 +100,22 @@ def load_potential(
 
     @returns Potential object
     """
+    cppyy = import_cppyy()
+
+    # include headers
+
+    for pth in [EP_INCLUDE, EP_MODELS, CWD]:
+        cppyy.cache_add_include_path(str(pth))
+
+    cppyy.cache_load_library(str(EP_LIB))
+
     if model is None:
         model = str(Path(model_header).stem)
 
-    include(model_header)
+    cppyy.cache_include(model_header)
 
     if model_lib is not None:
-        load_library(model_lib)
+        cppyy.cache_load_library(model_lib)
 
     # make potential
 

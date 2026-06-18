@@ -16,16 +16,6 @@ from .cppyy_compat import import_cppyy
 from .phasetracer import PT_LIB, PT_INCLUDE
 
 
-cppyy = import_cppyy()
-cppyy.load_library(str(PT_LIB))
-cppyy.add_include_path(str(PT_INCLUDE))
-cppyy.include(str(PT_INCLUDE / "action_calculator.hpp"))
-cppyy.cppdef("LOGGER(error)")
-
-
-from cppyy.gbl import PhaseTracer  # noqa: E402
-
-
 def action_ct(potential, T, false_vacuum, true_vacuum, verbose=False, **kwargs):
     """
     @returns Action from CosmoTransitions's path deformation algorithm
@@ -55,7 +45,13 @@ def action_pt(potential, T, false_vacuum, true_vacuum, **kwargs):
     """
     @returns Action from PhaseTracer's path deformation algorithm
     """
-    action_calculator = PhaseTracer.ActionCalculator(potential)
+    cppyy = import_cppyy()
+    cppyy.cache_add_include_path(str(PT_INCLUDE))
+    cppyy.cache_load_library(str(PT_LIB))
+    cppyy.cache_include(str(PT_INCLUDE / "action_calculator.hpp"))
+    cppyy.cache_cppdef("LOGGER(error)")
+
+    action_calculator = cppyy.gbl.PhaseTracer.ActionCalculator(potential)
     action_calculator.__python_owns__ = False
 
     if "maxiter" in kwargs:

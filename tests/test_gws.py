@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from TransitionSolver.gws import GWAnalyser, lisa
-from TransitionSolver import gws, RSS_BP1, benchmarks
+from TransitionSolver import gws, benchmarks
 from dictcmp import assert_deep_equal
 
 
@@ -60,14 +60,14 @@ def test_report(generate_baseline, name):
 @pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)
 def test_plot_gw():
     analyser = GWAnalyser(
-        RSS_BP1, get_phase_history(), phase_tracer_file=phase_tracer_file
+        benchmarks.RSS_BP1, get_phase_history(), phase_tracer_file=phase_tracer_file
     )
     return analyser.plot(detectors=[lisa], ptas=[gws.nanograv_15])
 
 
 def test_snr():
     analyser = GWAnalyser(
-        RSS_BP1, get_phase_history(), phase_tracer_file=phase_tracer_file
+        benchmarks.RSS_BP1, get_phase_history(), phase_tracer_file=phase_tracer_file
     )
     snr = lisa.SNR(analyser.gw_total)
     assert np.isclose(snr, 59.706589252791396)
