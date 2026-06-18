@@ -6,7 +6,9 @@ Convert Python list-like objects to Eigen
 from pathlib import Path
 import numpy as np
 
-import cppyy
+from .cppyy_compat import import_cppyy
+
+cppyy = import_cppyy()
 
 EIGEN_VECTOR_INCLUDE = Path("eigen3") / "Eigen" / "Core"
 cppyy.include(str(EIGEN_VECTOR_INCLUDE))
