@@ -1,5 +1,6 @@
 """
-Compatibility helpers for importing cppyy on macOS.
+Compatibility helpers for importing cppyy on macOS
+==================================================
 """
 
 from __future__ import annotations
@@ -50,9 +51,10 @@ def _configure_macos_sdk() -> None:
     if sdk_version is None or cling_version is None:
         return
 
-    if (
-        _version_tuple(sdk_version) < (26, 0)
-        or _version_tuple(cling_version) > (6, 32, 8)
+    if _version_tuple(sdk_version) < (26, 0) or _version_tuple(cling_version) > (
+        6,
+        32,
+        8,
     ):
         return
 
