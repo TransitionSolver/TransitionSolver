@@ -15,7 +15,7 @@ TransitionSolver
 
 # Installation 
 
-`TransitionSolver` requires `PhaseTracer`, which has several dependencies. On Ubuntu/debian-based systems, the dependencies may be installed by
+`TransitionSolver` requires `PhaseTracer` v2.2.2 or newer, which has several dependencies. On Ubuntu/debian-based systems, the dependencies may be installed by
 ```bash
 sudo apt install git cmake libalglib-dev libnlopt-cxx-dev libeigen3-dev libboost-filesystem-dev libboost-log-dev libgsl-dev
 ```
@@ -57,12 +57,18 @@ Options:
   --vw FLOAT RANGE                Bubble wall velocity  [x>=0.0]
   --detector [LISA|LISA_SNR_10]   Gravitational wave detector
   --pta [NANOGrav|PPTA|EPTA]      Pulsar Timing Array
-  --show BOOLEAN                  Whether to show plots
+  --show / --no-show              Whether to show plots
   --level [debug|info|warning|error|critical]
                                   Logging level
-  --apply <TEXT LITERAL_EVAL>...  Apply settings to a potential
   --force                         Force recompilation
   --action-ct                     Use CosmoTransitions for action
+  --pt-model-settings PATH        JSON file of PhaseTracer settings for this
+                                  model
+  --pt-point-settings PATH        JSON file of PhaseTracer settings for this
+                                  point (overrides model settings)
+  --pt-settings PATH              Extra JSON PhaseTracer settings overrides
+                                  (applied last). Can be repeated.
+  --folder TEXT                   Custom name of output folder
   --help                          Show this message and exit.
 ```
 For example, try
