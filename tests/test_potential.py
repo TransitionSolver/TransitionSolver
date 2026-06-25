@@ -6,10 +6,11 @@ Test model, including access to CosmoTransitions methods
 import numpy as np
 import pytest
 
-from TransitionSolver import benchmarks, RSS_BP2 as model
+from TransitionSolver import benchmarks
 
 
 def test_cosmo():
+    model = benchmarks.RSS_BP2
     model.getPhases()
     model.findAllTransitions()
 
@@ -26,4 +27,4 @@ POTENTIALS = [
 @pytest.mark.parametrize("name, expected", POTENTIALS)
 def test_potential(name, expected):
     test_model = getattr(benchmarks, name)
-    assert np.isclose(test_model(np.array([10., -10.]), 20.), expected)
+    assert np.isclose(test_model(np.array([10.0, -10.0]), 20.0), expected)

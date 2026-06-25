@@ -29,16 +29,39 @@ MACOS_SDK_SEARCH_DIRS = (
 )
 
 
+def once(func):
+    cache = set()
+
+    def wrapper(arg):
+        if arg not in cache:
+            func(arg)
+            cache.add(arg)
+
+    return wrapper
+
+
 def import_cppyy():
-    """Import cppyy after applying macOS fixes needed by current wheels."""
+    """
+    Import cppyy after applying macOS fixes needed by current wheels
+    and patch it to not repeat including libraries etc.
+    """
     _configure_macos_sdk()
     _patch_macos_zstd()
 
     cppyy = importlib.import_module("cppyy")
-    if sys.platform == "darwin":
-        for include_path in ("/opt/homebrew/include", "/usr/local/include"):
-            if pathlib.Path(include_path).exists():
-                cppyy.add_include_path(include_path)
+
+    if not getattr(cppyy, "__patched__", False):  # do not repeat includes etc
+        cppyy.cache_include = once(cppyy.include)
+        cppyy.cache_load_library = once(cppyy.load_library)
+        cppyy.cache_cppdef = once(cppyy.cppdef)
+        cppyy.cache_add_include_path = once(cppyy.add_include_path)
+        cppyy.__patched__ = True
+
+        if sys.platform == "darwin":
+            for include_path in ("/opt/homebrew/include", "/usr/local/include"):
+                if pathlib.Path(include_path).exists():
+                    cppyy.cache_add_include_path(include_path)
+
     return cppyy
 
 

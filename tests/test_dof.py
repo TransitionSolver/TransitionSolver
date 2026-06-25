@@ -10,7 +10,8 @@ import json
 import matplotlib.pyplot as plt
 import pytest
 
-from TransitionSolver import phasehistory, RSS_BP1
+from TransitionSolver import phasehistory
+from TransitionSolver.benchmarks import RSS_BP1
 
 from dictcmp import assert_deep_equal
 

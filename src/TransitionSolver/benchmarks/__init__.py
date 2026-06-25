@@ -3,10 +3,8 @@ Benchmark models for testing & examples
 =======================================
 """
 
-from .effective_potential import load_potential
+from ..effective_potential import load_potential
 
-
-RSS_BP = load_potential("RSS_BP.hpp")
 
 RSS_BP1_POINT = [
     -7.253805920400513969e02,
@@ -22,7 +20,6 @@ RSS_BP1_POINT = [
     2.791372362500696909e05,
     4.081096031831684377e04,
 ]
-RSS_BP1 = RSS_BP(RSS_BP1_POINT)
 
 RSS_BP2_POINT = [
     -6.299125406135615322e02,
@@ -38,7 +35,6 @@ RSS_BP2_POINT = [
     2.213238210967120831e05,
     3.485642364267897938e04,
 ]
-RSS_BP2 = RSS_BP(RSS_BP2_POINT)
 
 RSS_BP3_POINT = [
     -1.001011782178217800e03,
@@ -54,7 +50,6 @@ RSS_BP3_POINT = [
     4.799661300367517397e05,
     2.568757321790149144e05,
 ]
-RSS_BP3 = RSS_BP(RSS_BP3_POINT)
 
 RSS_BP4_POINT = [
     -694.9968764856733,
@@ -70,7 +65,6 @@ RSS_BP4_POINT = [
     242304.8904015037,
     91506.99917471627,
 ]
-RSS_BP4 = RSS_BP(RSS_BP4_POINT)
 
 RSS_BP5_POINT = [
     -631.978905050505,
@@ -86,7 +80,6 @@ RSS_BP5_POINT = [
     176797.10738538418,
     31168.29408225791,
 ]
-RSS_BP5 = RSS_BP(RSS_BP5_POINT)
 
 RSS_BP6_POINT = [
     -629.9125406135615,
@@ -102,7 +95,6 @@ RSS_BP6_POINT = [
     220595.9267313276,
     34532.01489557282,
 ]
-RSS_BP6 = RSS_BP(RSS_BP6_POINT)
 
 RSS_BP7_POINT = [
     -629.9125406135615,
@@ -118,7 +110,6 @@ RSS_BP7_POINT = [
     221323.82109671208,
     34856.42364267898,
 ]
-RSS_BP7 = RSS_BP(RSS_BP7_POINT)
 
 RSS_BP8_POINT = [
     -629.9125406135615,
@@ -134,7 +125,6 @@ RSS_BP8_POINT = [
     221030.92780991519,
     34723.15933124947,
 ]
-RSS_BP8 = RSS_BP(RSS_BP8_POINT)
 
 # these benchmarks were formally lablled RSS_new_{1 - 5}
 
@@ -152,7 +142,6 @@ RSS_BP9_POINT = [
     220342.79060253908,
     34424.31552983224,
 ]
-RSS_BP9 = RSS_BP(RSS_BP9_POINT)
 
 RSS_BP10_POINT = [
     -629.9125406135615,
@@ -168,7 +157,6 @@ RSS_BP10_POINT = [
     221165.52029856248,
     34783.92689331902,
 ]
-RSS_BP10 = RSS_BP(RSS_BP10_POINT)
 
 RSS_BP11_POINT = [
     -629.9125406135615,
@@ -184,7 +172,6 @@ RSS_BP11_POINT = [
     221343.383896359,
     34865.46054876359,
 ]
-RSS_BP11 = RSS_BP(RSS_BP11_POINT)
 
 RSS_BP12_POINT = [
     -629.9125406135615,
@@ -200,7 +187,6 @@ RSS_BP12_POINT = [
     221356.6499798694,
     34871.59896210079,
 ]
-RSS_BP12 = RSS_BP(RSS_BP12_POINT)
 
 RSS_BP13_POINT = [
     -629.9125406135615,
@@ -216,4 +202,17 @@ RSS_BP13_POINT = [
     212818.5518170534,
     32075.827972784922,
 ]
-RSS_BP13 = RSS_BP(RSS_BP13_POINT)
+
+_cache = {}
+
+
+def __getattr__(name):
+    point_name = f"{name}_POINT"
+    if point_name not in globals():
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+    RSS_BP = load_potential("RSS_BP.hpp")
+    if name not in _cache:
+        _cache[name] = RSS_BP(globals()[point_name])
+
+    return _cache[name]

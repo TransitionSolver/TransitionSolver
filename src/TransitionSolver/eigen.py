@@ -8,10 +8,7 @@ import numpy as np
 
 from .cppyy_compat import import_cppyy
 
-cppyy = import_cppyy()
-
 EIGEN_VECTOR_INCLUDE = Path("eigen3") / "Eigen" / "Core"
-cppyy.include(str(EIGEN_VECTOR_INCLUDE))
 
 
 def vector(list_):
@@ -19,6 +16,8 @@ def vector(list_):
     @param list_ List-like, iterable Python object
     @returns Eigen::VectorXf object
     """
+    cppyy = import_cppyy()
+    cppyy.cache_include(str(EIGEN_VECTOR_INCLUDE))
     vec = cppyy.gbl.Eigen.Vector["double", len(list_)]()
     for i, e in enumerate(list_):
         vec[i] = e

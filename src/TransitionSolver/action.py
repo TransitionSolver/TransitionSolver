@@ -13,17 +13,17 @@ from cosmoTransitions import pathDeformation
 
 from . import eigen
 from .cppyy_compat import import_cppyy
-from .phasetracer import PT_LIB, PT_INCLUDE
+from .phasetracer import PT_LIB, PT_INCLUDE, EP_INCLUDE
 
 
 cppyy = import_cppyy()
-cppyy.load_library(str(PT_LIB))
-cppyy.add_include_path(str(PT_INCLUDE))
-cppyy.include(str(PT_INCLUDE / "action_calculator.hpp"))
-cppyy.cppdef("LOGGER(error)")
+cppyy.cache_load_library(str(PT_LIB))
+cppyy.cache_add_include_path(str(EP_INCLUDE))
+cppyy.cache_add_include_path(str(PT_INCLUDE))
+cppyy.cache_include(str(PT_INCLUDE / "action_calculator.hpp"))
+cppyy.cache_cppdef("LOGGER(error)")
 
-
-from cppyy.gbl import PhaseTracer  # noqa: E402
+from cppyy.gbl import PhaseTracer 
 
 
 def action_ct(potential, T, false_vacuum, true_vacuum, verbose=False, **kwargs):
