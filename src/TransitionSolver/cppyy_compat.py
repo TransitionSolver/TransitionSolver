@@ -34,8 +34,8 @@ def once(func):
 
     def wrapper(arg):
         if arg not in cache:
-            cache.add(arg)
             func(arg)
+            cache.add(arg)
 
     return wrapper
 
