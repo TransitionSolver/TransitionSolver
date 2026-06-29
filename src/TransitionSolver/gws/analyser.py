@@ -210,7 +210,7 @@ class AnalyseIndividualTransition:
     
     @property
     def peak_amplitude_sw_semi_analytic_2022(self) -> float:
-        return self.peak_frequency_coll
+        return self.peak_amplitude_coll
     @property
     def peak_amplitude_coll(self) -> float:
         """
