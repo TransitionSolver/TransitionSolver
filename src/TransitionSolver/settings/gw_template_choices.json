@@ -1,7 +1,10 @@
 {
-  "sound_wave_template": "dbpl_sound_shell",
+  "sound_wave_template": "semi-analytic_2022",
   "turbulence_template": "analytic_2009",
   "collision_template": null,
   "kappa_coll": 0.0,
-  "kappa_turb": 0.05
+  "kappa_turb": 0.05,
+  "spectral_coll_a": 2.41,
+  "spectral_coll_b": 2.42,
+  "spectral_coll_c": 4.08
 }
