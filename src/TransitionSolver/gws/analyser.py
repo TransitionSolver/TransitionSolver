@@ -187,6 +187,7 @@ class AnalyseIndividualTransition:
         Fit from https://arxiv.org/abs/1704.05871 taking account of erratum
         """
         A = 2.061
+        OMEGA_SW = 0.012
         return (
             A
             * OMEGA_SW
@@ -206,7 +207,10 @@ class AnalyseIndividualTransition:
         mu_f = 4.78 - 6.27 * self.rb + 3.34 * self.rb**2
         f = 3.0 / mu_f / 2.061
         return f * self.peak_amplitude_sw
-
+    
+    @property
+    def peak_amplitude_sw_semi_analytic_2022(self) -> float:
+        return self.peak_frequency_coll
     @property
     def peak_amplitude_coll(self) -> float:
         """
@@ -262,7 +266,7 @@ class AnalyseIndividualTransition:
             * ((b + 4) / (b + 4 - m + m * x**2)) ** ((b + 4) / 2)
         )
     
-    def spectral_shape_sw_semi_analytic_2022(f):
+    def spectral_shape_sw_semi_analytic_2022(self, f):
         return self.spectral_shape_coll(f)
     
     def _unnormalised_spectral_shape_turb(self, f: float) -> float:
@@ -303,7 +307,7 @@ class AnalyseIndividualTransition:
             self.peak_amplitude_sw_sound_shell * self.spectral_shape_sw_double_broken(f)
         )
     def gw_sw_semi_analytic_2022(self, f):
-        return self.peak_amplitude_sw_semi_analytic_2022(f) * self.spectral_shape_sw_semi_analytic_2022(f)
+        return self.peak_amplitude_sw_semi_analytic_2022 * self.spectral_shape_sw_semi_analytic_2022(f)
     
     def gw_sw(self, f):
         if self.sound_wave_template is None:
@@ -312,7 +316,7 @@ class AnalyseIndividualTransition:
         sound_wave_functions = {
             "sgbp_lattice_2017": self.gw_sw_sgbp_lattice_2017,
             "dbpl_sound_shell": self.gw_sw_dbpl_sound_shell,
-            "semi-analytic_2022": self.gw_semi_analytic_2022
+            "semi-analytic_2022": self.gw_sw_semi_analytic_2022
         }
 
         if self.sound_wave_template not in sound_wave_functions:
