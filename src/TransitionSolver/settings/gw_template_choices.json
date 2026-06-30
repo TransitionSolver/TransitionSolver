@@ -4,7 +4,10 @@
   "collision_template": null,
   "kappa_coll": 0.0,
   "kappa_turb": 0.05,
-  "spectral_coll_a": 2.41,
-  "spectral_coll_b": 2.42,
-  "spectral_coll_c": 4.08
+  "spectral_coll_semi_analytic_2022_a": 2.41,
+  "spectral_coll_semi_analytic_2022_b": 2.42,
+  "spectral_coll_semi_analytic_2022_c": 4.08,
+  "spectral_sw_semi_analytic_2022_a": 2.41,
+  "spectral_sw_semi_analytic_2022_b": 2.42,
+  "spectral_sw_semi_analytic_2022_c": 4.08
 }

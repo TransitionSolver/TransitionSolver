@@ -62,18 +62,26 @@ class AnalyseIndividualTransition:
         collision_template,
         kappa_coll,
         kappa_turb,
-        spectral_coll_a,
-        spectral_coll_b,
-        spectral_coll_c
+        spectral_coll_semi_analytic_2022_a,
+        spectral_coll_semi_analytic_2022_b,
+        spectral_coll_semi_analytic_2022_c,
+        spectral_sw_semi_analytic_2022_a,
+        spectral_sw_semi_analytic_2022_b,
+        spectral_sw_semi_analytic_2022_c
     ):
         self.sound_wave_template = sound_wave_template
         self.turbulence_template = turbulence_template
         self.collision_template = collision_template
         self.kappa_turb = kappa_turb
         self.kappa_coll = kappa_coll
-        self.spectral_coll_a = spectral_coll_a
-        self.spectral_coll_b = spectral_coll_b
-        self.spectral_coll_c = spectral_coll_c
+        
+        self.spectral_coll_semi_analytic_2022_a = spectral_coll_semi_analytic_2022_a
+        self.spectral_coll_semi_analytic_2022_b = spectral_coll_semi_analytic_2022_b
+        self.spectral_coll_semi_analytic_2022_c = spectral_coll_semi_analytic_2022_c
+        self.spectral_sw_semi_analytic_2022_a = spectral_sw_semi_analytic_2022_a
+        self.spectral_sw_semi_analytic_2022_b = spectral_sw_semi_analytic_2022_b
+        self.spectral_sw_semi_analytic_2022_c = spectral_sw_semi_analytic_2022_c
+        
         self.use_bubble_sep = use_bubble_sep
 
         self.transition_report = transition_report
@@ -267,7 +275,13 @@ class AnalyseIndividualTransition:
         )
     
     def spectral_shape_sw_semi_analytic_2022(self, f):
-        return self.spectral_shape_coll(f)
+        a = self.spectral_sw_semi_analytic_2022_a
+        b = self.spectral_sw_semi_analytic_2022_b
+        c = self.spectral_sw_semi_analytic_2022_c
+        x = f / self.peak_frequency_coll
+        # Using normalised spectral shape, so A = 5.13e-2 is moved to the
+        # amplitude calculation.
+        return (a + b) ** c / (b * x ** (-a / c) + a * x ** (b / c)) ** c
     
     def _unnormalised_spectral_shape_turb(self, f: float) -> float:
         x = f / self.peak_frequency_turb
@@ -288,9 +302,9 @@ class AnalyseIndividualTransition:
         ) / self._unnormalised_spectral_shape_turb(self.peak_frequency_turb)
 
     def spectral_shape_coll(self, f):
-        a = self.spectral_coll_a
-        b = self.spectral_coll_b
-        c = self.spectral_coll_c
+        a = self.spectral_coll_semi_analytic_2022_a
+        b = self.spectral_coll_semi_analytic_2022_b
+        c = self.spectral_coll_semi_analytic_2022_c
         x = f / self.peak_frequency_coll
         # Using normalised spectral shape, so A = 5.13e-2 is moved to the
         # amplitude calculation.
