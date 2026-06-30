@@ -1,4 +1,4 @@
-""" "
+"""
 Benchmark models for testing & examples
 =======================================
 """
