@@ -29,7 +29,6 @@ S0 = 2 * np.pi**2 / 45 * G0 * T0**3
 KM_TO_MPC = 3.241e-20
 H_OVER_H0 = 1.0 / (100 * KM_TO_MPC / GEV_TO_HZ)
 ZP = 10  # Sound wave peak frequency from simulations
-#OMEGA_SW = 0.012  # From erratum of https://arxiv.org/abs/1704.05871 TABLE IV.
 
 logger = logging.getLogger(__name__)
 
@@ -61,26 +60,13 @@ class AnalyseIndividualTransition:
         turbulence_template,
         collision_template,
         kappa_coll,
-        kappa_turb,
-        spectral_coll_semi_analytic_2022_a,
-        spectral_coll_semi_analytic_2022_b,
-        spectral_coll_semi_analytic_2022_c,
-        spectral_sw_semi_analytic_2022_a,
-        spectral_sw_semi_analytic_2022_b,
-        spectral_sw_semi_analytic_2022_c
+        kappa_turb
     ):
         self.sound_wave_template = sound_wave_template
         self.turbulence_template = turbulence_template
         self.collision_template = collision_template
         self.kappa_turb = kappa_turb
         self.kappa_coll = kappa_coll
-        
-        self.spectral_coll_semi_analytic_2022_a = spectral_coll_semi_analytic_2022_a
-        self.spectral_coll_semi_analytic_2022_b = spectral_coll_semi_analytic_2022_b
-        self.spectral_coll_semi_analytic_2022_c = spectral_coll_semi_analytic_2022_c
-        self.spectral_sw_semi_analytic_2022_a = spectral_sw_semi_analytic_2022_a
-        self.spectral_sw_semi_analytic_2022_b = spectral_sw_semi_analytic_2022_b
-        self.spectral_sw_semi_analytic_2022_c = spectral_sw_semi_analytic_2022_c
         
         self.use_bubble_sep = use_bubble_sep
 
@@ -165,11 +151,22 @@ class AnalyseIndividualTransition:
 
     @property
     def peak_frequency_sw_bubble_separation(self):
-        return 1.58 * self.redshift_freq / self.length_scale * ZP / 10
+        """
+        From https://arxiv.org/pdf/2308.12943 table I
+        """
+        return 1.58 * self.redshift_freq / self.length_scale * ZP / 12.37
     
     @property
     def peak_frequency_sw_semi_analytic_2022(self):
-        return self.peak_frequency_coll
+        """
+        From https://arxiv.org/pdf/2208.11697 table I
+        """
+        return self.redshift_freq * (
+            0.66
+            * (8 * np.pi) ** (1 / 3)
+            * self.bubble_wall_velocity
+            / (2 * np.pi * self.length_scale)
+        )
     
     @property
     def rb(self):
@@ -217,9 +214,6 @@ class AnalyseIndividualTransition:
         return f * self.peak_amplitude_sw
     
     @property
-    def peak_amplitude_sw_semi_analytic_2022(self) -> float:
-        return self.peak_amplitude_coll
-    @property
     def peak_amplitude_coll(self) -> float:
         """
         Based on https://arxiv.org/abs/2208.11697
@@ -244,7 +238,23 @@ class AnalyseIndividualTransition:
             ** 2
             * self.scalar_field_energy_fraction**2
         )
-
+    
+    @property
+    def peak_amplitude_sw_semi_analytic_2022(self) -> float:
+        K = self.kappa_sw * self.hydro_transition_temp.available_energy_fraction
+        A = 5.13e-2
+        return (
+            A
+            * self.redshift_amp
+            * (
+                self.hydro_transition_temp.hubble_constant
+                * self.length_scale
+                / ((8 * np.pi) ** (1 / 3) * self.bubble_wall_velocity)
+            )
+            ** 2
+            * K**2
+        )
+    
     @property
     def peak_amplitude_turb(self) -> float:
         A = 9.0
@@ -261,27 +271,36 @@ class AnalyseIndividualTransition:
         x = f / self.peak_frequency_sw_bubble_separation
         return x**3 * (7 / (4 + 3 * x**2)) ** 3.5
 
-    def spectral_shape_sw_double_broken(self, f: float):
+    def spectral_shape_sw_double_broken(self, f: float, k3=True):
         """
-        From https://arxiv.org/abs/2209.13551 (Eq. 2.11), originally from https://arxiv.org/abs/1909.10040 (Eq. 5.7)
+        From https://arxiv.org/abs/2209.13551 (Eq. 2.11). Originally from https://arxiv.org/abs/1909.10040 (Eq. 5.7)
         """
         b = 1
         m = (9 * self.rb**4 + b) / (self.rb**4 + 1)
         x = f / self.peak_frequency_sw_shell_thickness
+        
+        #IR power = 3.Modified according to https://arxiv.org/pdf/2308.12943
+        if k3:
+            return (
+                x**3
+                * ((1 + self.rb**4) / (self.rb**4 + x**4)) ** ((3 - b) / 4)
+                * ((b + 4) / (b + 4 - m + m * x**2)) ** ((b + 4) / 2)
+            )
+        
+        #IR power = 9
         return (
             x**9
             * ((1 + self.rb**4) / (self.rb**4 + x**4)) ** ((9 - b) / 4)
             * ((b + 4) / (b + 4 - m + m * x**2)) ** ((b + 4) / 2)
         )
+        
+        
     
     def spectral_shape_sw_semi_analytic_2022(self, f):
-        a = self.spectral_sw_semi_analytic_2022_a
-        b = self.spectral_sw_semi_analytic_2022_b
-        c = self.spectral_sw_semi_analytic_2022_c
-        x = f / self.peak_frequency_coll
-        # Using normalised spectral shape, so A = 5.13e-2 is moved to the
-        # amplitude calculation.
-        return (a + b) ** c / (b * x ** (-a / c) + a * x ** (b / c)) ** c
+        a = 0
+        b = 0
+        c = 0
+        return self.spectral_shape_semi_analytic_2022_general(f, a, b, c)
     
     def _unnormalised_spectral_shape_turb(self, f: float) -> float:
         x = f / self.peak_frequency_turb
@@ -300,15 +319,18 @@ class AnalyseIndividualTransition:
         return self._unnormalised_spectral_shape_turb(
             f
         ) / self._unnormalised_spectral_shape_turb(self.peak_frequency_turb)
-
-    def spectral_shape_coll(self, f):
-        a = self.spectral_coll_semi_analytic_2022_a
-        b = self.spectral_coll_semi_analytic_2022_b
-        c = self.spectral_coll_semi_analytic_2022_c
+    
+    def spectral_shape_semi_analytic_2022_general(self, f, a, b, c):
         x = f / self.peak_frequency_coll
         # Using normalised spectral shape, so A = 5.13e-2 is moved to the
         # amplitude calculation.
         return (a + b) ** c / (b * x ** (-a / c) + a * x ** (b / c)) ** c
+    
+    def spectral_shape_coll_semi_analytic_2022(self, f):
+        a = 0
+        b = 0
+        c = 0
+        return self.spectral_shape_semi_analytic_2022_general(f, a, b, c)
 
     def gw_total(self, f):
         return self.gw_sw(f) + self.gw_turb(f) + self.gw_coll(f)
@@ -323,6 +345,67 @@ class AnalyseIndividualTransition:
     def gw_sw_semi_analytic_2022(self, f):
         return self.peak_amplitude_sw_semi_analytic_2022 * self.spectral_shape_sw_semi_analytic_2022(f)
     
+    def peak_amplitude_sw_higgsless_2024(self, OMEGA_SW, S, b, bflat=False) -> float:
+        """
+        Fit from https://arxiv.org/abs/2409.03651 Eq.5.8
+        """
+  
+        _k = self.hydro_transition_temp.alpha / (1 + self.hydro_transition_temp.alpha)
+        Ksw = _k * S * self.kappa_sw
+        RH = self.hydro_transition_temp.hubble_constant * self.length_scale
+
+        betaTf = self.transition_report.get('betaTf', None)
+        betaTf = betaTf / self.hydro_transition_temp.hubble_constant
+
+        dt0 = 11 / betaTf
+        fluid_velocity = (self.kinetic_energy_fraction /
+                          self.hydro_transition_temp.adiabatic_index(self.Pf))**0.5
+        tau_sw = 1 / fluid_velocity
+        dtfin = tau_sw 
+        A_hyp = special.hyp2f1(2, 1 - 2*b, 2.0 - 2*b, (dt0 + dtfin) / (dt0 - 1))
+        B_hyp = special.hyp2f1(2, 1 - 2*b, 2.0 - 2*b, dt0 / (dt0 - 1.0))
+        
+        # K2int
+        factor1 = 1.0 / (1.0 - 2 * b)
+        factor2 = (1 + dtfin / dt0) ** (1.0 - 2 * b) * A_hyp - B_hyp
+        
+        #expanding universe
+        K2int = (Ksw**2 * dt0) * factor1 * factor2
+        
+        if bflat:
+            #flat space time
+            K2int = (Ksw**2 * dt0) * (((1 + dtfin / dt0) ** (1.0 - 2 * b) - 1) / (1.0 - 2.0 * b))
+        
+        h2Omega = 3 * OMEGA_SW * self.redshift_amp * K2int * RH
+        return h2Omega
+    
+    @property
+    def peak_frequency_sw_higgsless_2024(self) -> float:
+        """
+        From https://arxiv.org/abs/2409.03651
+        """
+        k2 = 0
+        return k2 * self.redshift_freq / self.length_scale
+    
+    def spectral_shape_sw_higgsless_2024(self, f: float, k1, k2, n3) -> float:
+        """
+        From https://arxiv.org/abs/2409.03651
+        """
+        f1 = k1 * self.redshift_freq / self.length_scale
+        f2 = k2 * self.redshift_freq / self.length_scale
+        n1 = 3.0
+        n2 = 1.0
+        a1 = 3.6
+        a2 = 2.4
+        S = (f / f1)**n1 * (1 + (f / f1)**a1)**((n2 - n1) / a1) * (1 + (f / f2)**a2)**((n3 - n2) / a2)
+        mu = self.safe_trapezoid(S, np.log(f), axis = -1)
+        S2 = S / mu # both are normalized to the same arbitrary constant which drops out here
+        return S2
+
+    def gw_sw_higgsless_2024(self, f, OMEGA_SW, S, b, bflat, k1, k2, n3):
+        return self.peak_amplitude_sw_higgsless_2024(OMEGA_SW, S, b, bflat) * self.spectral_shape_sw_higgsless_2024(f, k1, k2, n3)
+    
+    
     def gw_sw(self, f):
         if self.sound_wave_template is None:
             return np.zeros_like(f, dtype=float)
@@ -330,7 +413,8 @@ class AnalyseIndividualTransition:
         sound_wave_functions = {
             "sgbp_lattice_2017": self.gw_sw_sgbp_lattice_2017,
             "dbpl_sound_shell": self.gw_sw_dbpl_sound_shell,
-            "semi-analytic_2022": self.gw_sw_semi_analytic_2022
+            "semi-analytic_2022": self.gw_sw_semi_analytic_2022,
+            "higgsless_2024": self.gw_sw_higgsless_2024
         }
 
         if self.sound_wave_template not in sound_wave_functions:
@@ -361,7 +445,7 @@ class AnalyseIndividualTransition:
         return turbulence_functions[self.turbulence_template](f)
 
     def gw_coll_semi_analytic_2022(self, f):
-        return self.peak_amplitude_coll * self.spectral_shape_coll(f)
+        return self.peak_amplitude_coll * self.spectral_shape_coll_semi_analytic_2022(f)
 
     def gw_coll(self, f):
         if self.collision_template is None:
@@ -482,7 +566,12 @@ class AnalyseIndividualTransition:
             report['Peak amplitude (sound waves)'] = self.peak_amplitude_sw_semi_analytic_2022
             report['Peak frequency (sound waves)'] = (
                 self.peak_frequency_sw_semi_analytic_2022
-            )       
+            )
+        elif self.sound_wave_template == "higgsless_2024":
+            report['Peak amplitude (sound waves)'] = self.peak_amplitude_sw_higgsless_2024
+            report['Peak frequency (sound waves)'] = (
+                self.peak_frequency_sw_higgsless_2024
+            )           
         else:
             raise ValueError(
                 f"Unknown sound-wave template: {self.sound_wave_template}."
