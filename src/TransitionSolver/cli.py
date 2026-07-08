@@ -26,7 +26,8 @@ from . import (
     run_phase_tracer,
     find_phase_history,
     plot_summary,
-    saveall
+    save_transition_outputs,
+    save_gw_outputs
 )
 
 from .phasetracer import DEFAULT_NAMESPACE
@@ -266,6 +267,11 @@ def cli(
     console.rule("[bold red]Transitions")
     rich.pretty.pprint(tr_report, console=console, max_length=10)
 
+    with Status("Saving transition results"):
+        folder = save_transition_outputs(
+            tr_report, tr_fig, phase_structure_raw, ctx, folder
+        )
+
     detectors = [DETECTORS[d] for d in detector]
     ptas = [PTAS[p] for p in pta]
 
@@ -277,17 +283,8 @@ def cli(
     console.rule("[bold red]Gravitational waves")
     console.print(gw_report)
 
-    with Status("Saving results"):
-        folder = saveall(
-            tr_report,
-            tr_fig,
-            gw_fig,
-            phase_structure_raw,
-            ctx,
-            analyser,
-            detectors,
-            folder,
-        )
+    with Status("Saving gravitational wave results"):
+        folder = save_gw_outputs(tr_report, gw_fig, analyser, detectors, folder)
 
     console.rule("[bold red]Results")
     console.print(Text.assemble("Results saved to: ", (folder, "bold magenta")))

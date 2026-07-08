@@ -24,10 +24,7 @@ def make_results_folder():
     return folder
 
 
-def saveall(tr_report, tr_fig, gw_fig, phase_structure_raw, ctx, analyser, detectors, folder=None):
-    """
-    Save results and plots to disk
-    """
+def prepare_results_folder(folder=None):
     if folder is None:
         folder = make_results_folder()
 
@@ -36,14 +33,29 @@ def saveall(tr_report, tr_fig, gw_fig, phase_structure_raw, ctx, analyser, detec
     if not folder.exists():
         folder.mkdir(parents=True, exist_ok=True)
 
+    return folder
+
+
+def save_transition_outputs(tr_report, tr_fig, phase_structure_raw, ctx, folder=None):
+    """Save outputs available immediately after transition analysis."""
+    folder = prepare_results_folder(folder)
+
     savejson(ctx.params, folder / "cli.json")
     savejson(phase_tracer_info(), folder / "phasetracer.json")
-    gw_fig.savefig(folder / "gw.pdf")
     tr_fig.savefig(folder / "tr.pdf")
     savejson(tr_report, folder / "tr.json")
 
     with open(folder / "phasetracer.txt", "w") as f:
         f.write(phase_structure_raw)
+
+    return str(folder)
+
+
+def save_gw_outputs(tr_report, gw_fig, analyser, detectors, folder):
+    """Save outputs that require successful GW analysis."""
+    folder = prepare_results_folder(folder)
+
+    gw_fig.savefig(folder / "gw.pdf")
 
     # save results from each path
     for idx, path in enumerate(tr_report["paths"]):
