@@ -272,7 +272,7 @@ class AnalyseIndividualTransition:
         x = f / self.peak_frequency_sw_bubble_separation
         return x**3 * (7 / (4 + 3 * x**2)) ** 3.5
 
-    def spectral_shape_sw_double_broken(self, f: float, k3=True):
+    def spectral_shape_sw_double_broken(self, f: float, k3=False):
         """
         From https://arxiv.org/abs/2209.13551 (Eq. 2.11). Originally from https://arxiv.org/abs/1909.10040 (Eq. 5.7)
         """
