@@ -143,7 +143,7 @@ class AnalyseIndividualTransition:
         if self.peak_amplitude_coll_semi_analytic_2022 == 0:
             return 0.0
         A = 0.77
-        return peak_frequency_semi_analytic_2022_general(A)
+        return self.peak_frequency_semi_analytic_2022_general(A)
 
     @property
     def peak_frequency_sw_bubble_separation(self):
@@ -166,7 +166,7 @@ class AnalyseIndividualTransition:
     @property
     def peak_frequency_sw_semi_analytic_2022(self):
         A = 0.66
-        return peak_frequency_semi_analytic_2022_general(A)
+        return self.peak_frequency_semi_analytic_2022_general(A)
 
     @property
     def rb(self):
@@ -378,9 +378,9 @@ class AnalyseIndividualTransition:
     @property
     def peak_frequency_sw_higgsless_2024(self) -> float:
         """
-        From https://arxiv.org/abs/2409.03651
+        From https://arxiv.org/abs/2409.03651 eq.4.18
         """
-        k2 = 0
+        k2 = 0.45
         return k2 * self.redshift_freq / self.length_scale
     
     def spectral_shape_sw_higgsless_2024(self, f: float, k1, k2, n3) -> float:
@@ -583,7 +583,7 @@ class AnalyseIndividualTransition:
         if self.collision_template is None:
             report["Peak amplitude (collisions)"] = 0.0
             report["Peak frequency (collisions)"] = 0.0
-        elif self.collision_template is "semi-analytic_2022":
+        elif self.collision_template == "semi-analytic_2022":
             report["Peak amplitude (collisions)"] = self.peak_amplitude_coll_semi_analytic_2022
             report["Peak frequency (collisions)"] = self.peak_frequency_coll_semi_analytic_2022
 
