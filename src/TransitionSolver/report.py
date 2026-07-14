@@ -17,16 +17,12 @@ def savejson(report, file_name):
         json.dump(report, f, indent=4)
 
 
-def make_results_folder():
-    timestr = time.strftime("%Y%m%d_%H%M%S")
-    folder = Path(f"transition_solver_results_{timestr}")
-    os.mkdir(folder)
-    return folder
-
-
 def prepare_results_folder(folder=None):
     if folder is None:
-        folder = make_results_folder()
+        timestr = time.strftime("%Y%m%d_%H%M%S")
+        folder = Path(f"transition_solver_results_{timestr}")
+        os.mkdir(folder)
+        return folder
 
     folder = Path(folder)
 
