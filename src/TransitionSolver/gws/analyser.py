@@ -60,14 +60,13 @@ class AnalyseIndividualTransition:
         turbulence_template,
         collision_template,
         kappa_coll,
-        kappa_turb
+        kappa_turb,
     ):
         self.sound_wave_template = sound_wave_template
         self.turbulence_template = turbulence_template
         self.collision_template = collision_template
         self.kappa_turb = kappa_turb
         self.kappa_coll = kappa_coll
-        
         self.use_bubble_sep = use_bubble_sep
 
         self.transition_report = transition_report
