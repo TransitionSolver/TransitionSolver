@@ -142,19 +142,22 @@ class AnalyseIndividualTransition:
     def peak_frequency_coll_semi_analytic_2022(self):
         if self.peak_amplitude_coll_semi_analytic_2022 == 0:
             return 0.0
+        """
+        From https://arxiv.org/pdf/2208.11697
+        """    
         A = 0.77
         return self.peak_frequency_semi_analytic_2022_general(A)
 
     @property
     def peak_frequency_sw_bubble_separation(self):
         """
-        From https://arxiv.org/pdf/2308.12943 table I
+        From https://arxiv.org/pdf/2308.12943
         """
         return 1.58 * self.redshift_freq / self.length_scale * ZP / 12.37
     
     def peak_frequency_semi_analytic_2022_general(self, A):
         """
-        From https://arxiv.org/pdf/2208.11697 table I
+        From https://arxiv.org/pdf/2208.11697
         """
         return self.redshift_freq * (
             A
@@ -165,6 +168,9 @@ class AnalyseIndividualTransition:
         
     @property
     def peak_frequency_sw_semi_analytic_2022(self):
+        """
+        From https://arxiv.org/pdf/2208.11697
+        """
         A = 0.66
         return self.peak_frequency_semi_analytic_2022_general(A)
 
@@ -225,7 +231,7 @@ class AnalyseIndividualTransition:
             raise ValueError(
                 "`kappa_coll` must be set when `collision_template` is not None."
             )
-        #fitting parameter
+
         A = 5.13e-2
         return (
             A
@@ -241,8 +247,10 @@ class AnalyseIndividualTransition:
     
     @property
     def peak_amplitude_sw_semi_analytic_2022(self) -> float:
+        """
+        Based on https://arxiv.org/abs/2208.11697
+        """
         K = self.kappa_sw * self.hydro_transition_temp.available_energy_fraction
-        #fitting parameter
         A = 5.14e-2
         return (
             A
@@ -272,9 +280,9 @@ class AnalyseIndividualTransition:
         x = f / self.peak_frequency_sw_bubble_separation
         return x**3 * (7 / (4 + 3 * x**2)) ** 3.5
 
-    def spectral_shape_sw_double_broken(self, f: float, k3=False):
+    def spectral_shape_sw_sound_shell(self, f: float, k3=False):
         """
-        From https://arxiv.org/abs/2209.13551 (Eq. 2.11). Originally from https://arxiv.org/abs/1909.10040 (Eq. 5.7)
+        From https://arxiv.org/abs/2209.13551 Eq. 2.11. Originally from https://arxiv.org/abs/1909.10040 Eq. 5.7
         """
         b = 1
         m = (9 * self.rb**4 + b) / (self.rb**4 + 1)
@@ -298,6 +306,9 @@ class AnalyseIndividualTransition:
         
     
     def spectral_shape_sw_semi_analytic_2022(self, f):
+        """
+        Based on https://arxiv.org/abs/2208.11697
+        """
         a = 2.36
         b = 2.36
         c = 3.69
@@ -326,6 +337,9 @@ class AnalyseIndividualTransition:
         return (a + b) ** c / (b * x ** (-a / c) + a * x ** (b / c)) ** c
     
     def spectral_shape_coll_semi_analytic_2022(self, f):
+        """
+        Based on https://arxiv.org/abs/2208.11697
+        """
         a = 2.41
         b = 2.42
         c = 4.08
@@ -340,7 +354,7 @@ class AnalyseIndividualTransition:
 
     def gw_sw_dbpl_sound_shell(self, f):
         return (
-            self.peak_amplitude_sw_sound_shell * self.spectral_shape_sw_double_broken(f)
+            self.peak_amplitude_sw_sound_shell * self.spectral_shape_sw_sound_shell(f)
         )
     def gw_sw_semi_analytic_2022(self, f):
         return self.peak_amplitude_sw_semi_analytic_2022 * self.spectral_shape_sw_semi_analytic_2022(f)
@@ -398,7 +412,17 @@ class AnalyseIndividualTransition:
         S2 = S / mu # both are normalized to the same arbitrary constant which drops out here
         return S2
 
-    def gw_sw_higgsless_2024(self, f, OMEGA_SW, S, b, k1, k2, n3):
+    def gw_sw_higgsless_2024(self, f):
+        """
+        From https://arxiv.org/abs/2409.03651
+        """
+        OMEGA_SW = 3.11e-2
+        S = 0.84
+        b = 1.17
+        
+        k1 = 0.39
+        k2 = 0.45
+        n3 = -3.0
         return self.peak_amplitude_sw_higgsless_2024(OMEGA_SW, S, b) * self.spectral_shape_sw_higgsless_2024(f, k1, k2, n3)
     
     
