@@ -142,7 +142,7 @@ class AnalyseIndividualTransition:
         if self.peak_amplitude_coll_semi_analytic_2022 == 0:
             return 0.0
         """
-        From https://arxiv.org/pdf/2208.11697
+        From https://arxiv.org/pdf/2208.11697 table I third column
         """    
         A = 0.77
         return self.peak_frequency_semi_analytic_2022_general(A)
@@ -150,9 +150,10 @@ class AnalyseIndividualTransition:
     @property
     def peak_frequency_sw_bubble_separation(self):
         """
-        From https://arxiv.org/pdf/2308.12943
+        From https://arxiv.org/pdf/2308.12943 table I last row
         """
-        return 1.58 * self.redshift_freq / self.length_scale * ZP / 12.37
+        K2 = 12.37
+        return 1.58 * self.redshift_freq / self.length_scale * ZP / K2
     
     def peak_frequency_semi_analytic_2022_general(self, A):
         """
@@ -168,7 +169,7 @@ class AnalyseIndividualTransition:
     @property
     def peak_frequency_sw_semi_analytic_2022(self):
         """
-        From https://arxiv.org/pdf/2208.11697
+        From https://arxiv.org/pdf/2208.11697 table I 6th column
         """
         A = 0.66
         return self.peak_frequency_semi_analytic_2022_general(A)
@@ -221,7 +222,7 @@ class AnalyseIndividualTransition:
     @property
     def peak_amplitude_coll_semi_analytic_2022(self) -> float:
         """
-        Based on https://arxiv.org/abs/2208.11697
+        Based on https://arxiv.org/abs/2208.11697 table I third column
         """
         if self.collision_template is None:
             return 0.0
@@ -247,7 +248,7 @@ class AnalyseIndividualTransition:
     @property
     def peak_amplitude_sw_semi_analytic_2022(self) -> float:
         """
-        Based on https://arxiv.org/abs/2208.11697
+        Based on https://arxiv.org/abs/2208.11697 table I 6th column
         """
         K = self.kappa_sw * self.hydro_transition_temp.available_energy_fraction
         A = 5.14e-2
@@ -306,7 +307,7 @@ class AnalyseIndividualTransition:
     
     def spectral_shape_sw_semi_analytic_2022(self, f):
         """
-        Based on https://arxiv.org/abs/2208.11697
+        Based on https://arxiv.org/abs/2208.11697 table I 6th column
         """
         a = 2.36
         b = 2.36
@@ -337,7 +338,7 @@ class AnalyseIndividualTransition:
     
     def spectral_shape_coll_semi_analytic_2022(self, f):
         """
-        Based on https://arxiv.org/abs/2208.11697
+        Based on https://arxiv.org/abs/2208.11697 table I third column
         """
         a = 2.41
         b = 2.42
@@ -414,6 +415,12 @@ class AnalyseIndividualTransition:
     def gw_sw_higgsless_2024(self, f):
         """
         From https://arxiv.org/abs/2409.03651
+        OMEGA_SW: eq.4.12
+        S: eq.5.4
+        k1: eq.4.19
+        l2: eq.4.18
+        
+        n3: https://arxiv.org/pdf/2403.03723 table I second row
         """
         OMEGA_SW = 3.11e-2
         S = 0.84
