@@ -12,6 +12,7 @@ from importlib.resources import files
 
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy import special
 
 from ..analysis.phase_structure import PhaseStructure
 from ..models.analysable_potential import AnalysablePotential
@@ -359,16 +360,23 @@ class AnalyseIndividualTransition:
     def gw_sw_semi_analytic_2022(self, f):
         return self.peak_amplitude_sw_semi_analytic_2022 * self.spectral_shape_sw_semi_analytic_2022(f)
     
-    def peak_amplitude_sw_higgsless_2024(self, OMEGA_SW, S, b) -> float:
+    @property
+    def peak_amplitude_sw_higgsless_2024(self) -> float:
         """
         Fit from https://arxiv.org/abs/2409.03651 Eq.5.8
+        Parameters from https://arxiv.org/abs/2409.03651
+        OMEGA_SW: eq.4.12
+        S: eq.5.4
         """
+        OMEGA_SW = 3.11e-2
+        S = 0.84
+        b = 1.17
   
         _k = self.hydro_transition_temp.alpha / (1 + self.hydro_transition_temp.alpha)
         Ksw = _k * S * self.kappa_sw
         RH = self.hydro_transition_temp.hubble_constant * self.length_scale
 
-        betaTf = self.transition_report.get('betaTf', None)
+        betaTf = self.transition_report.get('beta_f', None)
         betaTf = betaTf / self.hydro_transition_temp.hubble_constant
 
         dt0 = 11 / betaTf
@@ -408,28 +416,28 @@ class AnalyseIndividualTransition:
         a1 = 3.6
         a2 = 2.4
         S = (f / f1)**n1 * (1 + (f / f1)**a1)**((n2 - n1) / a1) * (1 + (f / f2)**a2)**((n3 - n2) / a2)
-        mu = self.safe_trapezoid(S, np.log(f), axis = -1)
+        def safe_trapezoid(y, x, axis=-1):
+            try:
+                return np.trapezoid(y, x, axis=axis)
+            except AttributeError:
+                return np.trapz(y, x, axis=axis)
+        mu = safe_trapezoid(S, np.log(f), axis = -1)
         S2 = S / mu # both are normalized to the same arbitrary constant which drops out here
         return S2
 
     def gw_sw_higgsless_2024(self, f):
         """
         From https://arxiv.org/abs/2409.03651
-        OMEGA_SW: eq.4.12
-        S: eq.5.4
         k1: eq.4.19
-        l2: eq.4.18
-        
-        n3: https://arxiv.org/pdf/2403.03723 table I second row
+        k2: eq.4.18
+        From https://arxiv.org/pdf/2403.03723
+        n3: table I second row
         """
-        OMEGA_SW = 3.11e-2
-        S = 0.84
-        b = 1.17
         
         k1 = 0.39
         k2 = 0.45
         n3 = -3.0
-        return self.peak_amplitude_sw_higgsless_2024(OMEGA_SW, S, b) * self.spectral_shape_sw_higgsless_2024(f, k1, k2, n3)
+        return self.peak_amplitude_sw_higgsless_2024 * self.spectral_shape_sw_higgsless_2024(f, k1, k2, n3)
     
     
     def gw_sw(self, f):
