@@ -50,6 +50,7 @@ def save_transition_outputs(tr_report, tr_fig, phase_structure_raw, ctx, folder=
 def save_gw_outputs(tr_report, gw_fig, analyser, detectors, folder):
     """Save outputs that require successful GW analysis."""
     folder = prepare_results_folder(folder)
+    path_dirs = []
 
     gw_fig.savefig(folder / "gw.pdf")
 
@@ -67,10 +68,18 @@ def save_gw_outputs(tr_report, gw_fig, analyser, detectors, folder):
         # folder name
         path_dir = folder / f"path_{idx}_p{phases}_t{transitions}"
         path_dir.mkdir(parents=True, exist_ok=True)
+        path_dirs.append(
+            {
+                "index": idx,
+                "phases": path["phases"],
+                "transitions": path["transitions"],
+                "directory": str(path_dir),
+            }
+        )
 
         path_gw_report = analyser.report_for_transition_ids(path["transitions"], *detectors)
 
         savejson(path_gw_report, path_dir / "gw.json")
         savejson(path, path_dir / "tr_path.json")
 
-    return str(folder)
+    return str(folder), path_dirs
