@@ -555,6 +555,11 @@ class TransitionAnalyser:
             self.properties.T_p = li(self.action_sampler.subT)
             self.properties.H_p = li(self.properties.H)
             self.properties.beta_p = li(self.properties.beta)
+            # Evaluate the transition strength directly at the interpolated
+            # percolation temperature. Useful for output for users.
+            self.properties.alpha_p = self.get_hydro_vars(
+                self.properties.T_p
+            ).alpha
             self.properties.decreasing_v_phys_p = bool(
                 # don't want a numpy.bool
                 self.properties.deriv_physical_volume[-1] < 0
