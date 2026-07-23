@@ -272,6 +272,18 @@ def cli(
             tr_report, tr_fig, phase_structure_raw, ctx, folder
         )
 
+    console.rule("[bold red]Results")
+    console.print(
+        Text.assemble("Transition results saved to: ", (folder, "bold magenta"))
+    )
+
+    if not any(path["valid"] and path["transitions"] for path in tr_report["paths"]):
+        console.print(
+            "No relevant transition detected in the phase history; "
+            "skipping gravitational wave analysis."
+        )
+        return
+
     detectors = [DETECTORS[d] for d in detector]
     ptas = [PTAS[p] for p in pta]
 
@@ -284,7 +296,23 @@ def cli(
     console.print(gw_report)
 
     with Status("Saving gravitational wave results"):
-        folder = save_gw_outputs(tr_report, gw_fig, analyser, detectors, folder)
+        folder, gw_path_dirs = save_gw_outputs(
+            tr_report, gw_fig, analyser, detectors, folder
+        )
 
-    console.rule("[bold red]Results")
-    console.print(Text.assemble("Results saved to: ", (folder, "bold magenta")))
+    console.print(
+        Text.assemble(
+            "Gravitational wave results also saved in: ",
+            (folder, "bold magenta"),
+        )
+    )
+    for path in gw_path_dirs:
+        phases = " → ".join(str(p) for p in path["phases"])
+        transitions = ", ".join(path["transitions"])
+        console.print(
+            Text.assemble(
+                f"  Valid cosmological history path {path['index']} "
+                f"(phase sequence {phases}; transition IDs {transitions}): ",
+                (path["directory"], "bold magenta"),
+            )
+        )
