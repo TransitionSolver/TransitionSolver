@@ -57,6 +57,7 @@ def test_phase_history(generate_baseline, name):
         "Treh_e",
         "Treh_p",
         "T_p",
+        "alpha_p",
         "T_e",
         "T_gamma",
         "Tmin",
@@ -85,12 +86,18 @@ def test_phase_history_pt_action(generate_baseline, name):
     result = phasehistory.find_phase_history(
         model, phase_structure, bubble_wall_velocity=1, action_ct=False
     )
+
+    for transition in result["transitions"].values():
+        if transition["T_p"] is not None:
+            assert np.isfinite(transition["alpha_p"])
+
     assert_deep_equal(
         result,
         BASELINE / f"{name.lower()}_phase_structure_pt_action.json",
         exclude_types=[list],
         significant_digits=3,
         generate_baseline=generate_baseline,
+        exclude_paths=["root['transitions'][*]['alpha_p']"],
     )
 
 
