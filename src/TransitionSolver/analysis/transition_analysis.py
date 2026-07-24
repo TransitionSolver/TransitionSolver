@@ -580,7 +580,8 @@ class TransitionAnalyser:
             self.properties.H_e = li(self.properties.H)
             self.properties.beta_e = li(self.properties.beta)
             self.properties.Treh_e = self.reheat_temperature(self.properties.T_e)
-
+            self.properties.bubble_separation_e = li(self.properties.bubble_separation)
+            self.properties.bubble_radius_e = li(self.properties.bubble_radius)
         # Completion
         if (
             self.properties.T_f is None
@@ -597,7 +598,8 @@ class TransitionAnalyser:
                 self.properties.deriv_physical_volume[-1] < 0
             )
             self.properties.Treh_f = self.reheat_temperature(self.properties.T_f)
-
+            self.properties.bubble_separation_f = li(self.properties.bubble_separation)
+            self.properties.bubble_radius_f = li(self.properties.bubble_radius)
         # Physical volume of the false vacuum is decreasing
         if (
             self.properties.T_decreasing_v_phys is None
