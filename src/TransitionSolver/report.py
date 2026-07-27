@@ -47,7 +47,14 @@ def save_transition_outputs(tr_report, tr_fig, phase_structure_raw, ctx, folder=
     return str(folder)
 
 
-def save_gw_outputs(tr_report, gw_fig, analyser, detectors, folder):
+def save_gw_outputs(
+    tr_report,
+    gw_fig,
+    analyser,
+    detectors,
+    folder,
+    temperature_uncertainty=False,
+):
     """Save outputs that require successful GW analysis."""
     folder = prepare_results_folder(folder)
     path_dirs = []
@@ -80,6 +87,16 @@ def save_gw_outputs(tr_report, gw_fig, analyser, detectors, folder):
         path_gw_report = analyser.report_for_transition_ids(path["transitions"], *detectors)
 
         savejson(path_gw_report, path_dir / "gw.json")
+        if temperature_uncertainty:
+            uncertainty_report = (
+                analyser.temperature_uncertainty_report_for_transition_ids(
+                    path["transitions"], *detectors
+                )
+            )
+            savejson(
+                uncertainty_report,
+                path_dir / "gw_temperature_uncertainty.json",
+            )
         savejson(path, path_dir / "tr_path.json")
 
     return str(folder), path_dirs

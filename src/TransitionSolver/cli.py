@@ -203,6 +203,11 @@ def create_pt_settings(
     default=None,
     type=str,
 )
+@click.option(
+    "--temperature-uncertainty",
+    help="Scan GW predictions over the source temperature",
+    is_flag=True,
+)
 @click.pass_context
 def cli(
     ctx,
@@ -222,6 +227,7 @@ def cli(
     pt_point_settings,
     pt_settings,
     folder,
+    temperature_uncertainty,
 ):
     """
     Run TransitionSolver on a particular model and point
@@ -297,7 +303,12 @@ def cli(
 
     with Status("Saving gravitational wave results"):
         folder, gw_path_dirs = save_gw_outputs(
-            tr_report, gw_fig, analyser, detectors, folder
+            tr_report,
+            gw_fig,
+            analyser,
+            detectors,
+            folder,
+            temperature_uncertainty=temperature_uncertainty,
         )
 
     console.print(

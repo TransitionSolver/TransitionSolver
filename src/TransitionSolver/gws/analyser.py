@@ -45,6 +45,16 @@ def read_gw_template_choices() -> dict:
         return json.load(f)
 
 
+def interpolate_transition_report(
+    transition_report: dict, key: str, temperature: float
+) -> float:
+    """Linearly interpolate a transition-history quantity in temperature."""
+    temperatures = np.asarray(transition_report["T"], dtype=float)
+    values = np.asarray(transition_report[key], dtype=float)
+    order = np.argsort(temperatures)
+    return float(np.interp(temperature, temperatures[order], values[order]))
+
+
 class AnalyseIndividualTransition:
     """
     Analyze gravitational wave signals from a single transition
@@ -62,6 +72,7 @@ class AnalyseIndividualTransition:
         collision_template,
         kappa_coll,
         kappa_turb,
+        source_temperature=None,
     ):
         self.sound_wave_template = sound_wave_template
         self.turbulence_template = turbulence_template
@@ -69,11 +80,22 @@ class AnalyseIndividualTransition:
         self.kappa_turb = kappa_turb
         self.kappa_coll = kappa_coll
         self.use_bubble_sep = use_bubble_sep
+        self.source_temperature = source_temperature
 
         self.transition_report = transition_report
         self.from_phase = phase_structure.phases[transition_report["false_phase"]]
         self.to_phase = phase_structure.phases[transition_report["true_phase"]]
         self.potential = potential
+
+        if not self.at_percolation and not (
+            transition_report["T_f"]
+            <= self.source_temperature
+            <= transition_report["T_c"]
+        ):
+            raise ValueError(
+                "Source temperature must be between the completion and "
+                "critical temperatures"
+            )
 
         self.hydro_transition_temp = hydrodynamics.make_hydro_vars(
             self.from_phase,
@@ -111,7 +133,18 @@ class AnalyseIndividualTransition:
 
     @property
     def Pf(self):
+        if not self.at_percolation:
+            return interpolate_transition_report(
+                self.transition_report, "Pf", self.source_temperature
+            )
         return self.transition_report["perc_threshold_pf"]
+
+    @property
+    def at_percolation(self):
+        return (
+            self.source_temperature is None
+            or self.source_temperature == self.transition_report["T_p"]
+        )
 
     @property
     def upsilon(self):
@@ -128,14 +161,36 @@ class AnalyseIndividualTransition:
 
     @property
     def transition_temp(self) -> float:
+        if not self.at_percolation:
+            return self.source_temperature
         return self.transition_report["T_p"]
 
     @cached_property
     def redshift_temp(self) -> float:
+        if not self.at_percolation:
+            T_min = max(
+                self.from_phase.T[0],
+                self.to_phase.T[0],
+                self.potential.minimum_temperature,
+            )
+            return hydrodynamics.reheat_temperature(
+                self.from_phase,
+                self.to_phase,
+                self.potential,
+                self.source_temperature,
+                self.transition_report["T_c"],
+                T_min,
+            )
         return self.transition_report["Treh_p"]
 
     @property
     def bubble_wall_velocity(self) -> float:
+        if not self.at_percolation:
+            return interpolate_transition_report(
+                self.transition_report,
+                "bubble_wall_velocity",
+                self.source_temperature,
+            )
         return self.transition_report["bubble_wall_velocity_p"]
 
     @property
@@ -425,6 +480,12 @@ class AnalyseIndividualTransition:
         """
         @returns Characteristic bubble length scale
         """
+        if not self.at_percolation:
+            key = "bubble_separation" if self.use_bubble_sep else "bubble_radius"
+            return interpolate_transition_report(
+                self.transition_report, key, self.source_temperature
+            )
+
         key = "bubble_separation_p" if self.use_bubble_sep else "bubble_radius_p"
         return self.transition_report[key]
 
@@ -520,6 +581,7 @@ class GWAnalyser:
         phase_structure=None,
         phase_tracer_file=None,
         force_relevant=False,
+        source_temperatures=None,
         **kwargs,
     ):
         if phase_tracer_file is not None:
@@ -535,10 +597,120 @@ class GWAnalyser:
 
         gw_kwargs = read_gw_template_choices()
         gw_kwargs.update(kwargs)
+        source_temperatures = {
+            str(k): v for k, v in (source_temperatures or {}).items()
+        }
+
+        self.phase_structure = phase_structure
+        self.potential = potential
+        self.transition_reports = relevant_transitions
+        self.gw_kwargs = gw_kwargs
 
         self.gws = {
-            k: AnalyseIndividualTransition(phase_structure, v, potential, **gw_kwargs)
+            k: AnalyseIndividualTransition(
+                phase_structure,
+                v,
+                potential,
+                source_temperature=source_temperatures.get(k),
+                **gw_kwargs,
+            )
             for k, v in relevant_transitions.items()
+        }
+
+    def transition_at_temperature(self, transition_id, temperature):
+        """Analyse one transition at a chosen physical temperature."""
+        transition_id = str(transition_id)
+        return AnalyseIndividualTransition(
+            self.phase_structure,
+            self.transition_reports[transition_id],
+            self.potential,
+            source_temperature=temperature,
+            **self.gw_kwargs,
+        )
+
+    def temperature_uncertainty_report(self, transition_id, *detectors):
+        """Scan a transition from near percolation down to completion."""
+        transition_id = str(transition_id)
+        transition_report = self.transition_reports[transition_id]
+        requested_start = transition_report["T_c"] + 0.8 * (
+            transition_report["T_p"] - transition_report["T_c"]
+        )
+        T_f = transition_report["T_f"]
+
+        samples = sorted(
+            (
+                (T, separation)
+                for T, separation in zip(
+                    transition_report["T"],
+                    transition_report["bubble_separation"],
+                )
+                if T_f <= T <= requested_start
+                and np.isfinite(separation)
+                and separation > 0
+            ),
+            reverse=True,
+        )
+
+        if not samples:
+            raise RuntimeError(
+                f"No valid mean bubble separation between T={requested_start} "
+                f"and T_f={T_f} for transition {transition_id}"
+            )
+
+        actual_start = samples[0][0]
+        if not np.isclose(actual_start, requested_start):
+            logger.warning(
+                "Requested temperature-uncertainty start T=%s has no valid "
+                "sampled mean bubble separation at that temperature. Starting "
+                "transition %s at the first valid sampled temperature T=%s.",
+                requested_start,
+                transition_id,
+                actual_start,
+            )
+
+        temperatures = [T for T, _ in samples]
+        if not np.isclose(temperatures[-1], T_f):
+            temperatures.append(T_f)
+
+        results = []
+        for temperature in temperatures:
+            analysis = self.transition_at_temperature(transition_id, temperature)
+            result = analysis.report(*detectors)
+            result["False vacuum fraction"] = analysis.Pf
+            result["Mean bubble separation"] = interpolate_transition_report(
+                transition_report, "bubble_separation", temperature
+            )
+            result["Mean bubble radius"] = interpolate_transition_report(
+                transition_report, "bubble_radius", temperature
+            )
+            result["Beta"] = interpolate_transition_report(
+                transition_report, "beta", temperature
+            )
+            result["Hubble constant"] = interpolate_transition_report(
+                transition_report, "H", temperature
+            )
+            result["Beta/H"] = result["Beta"] / result["Hubble constant"]
+            results.append(result)
+
+        return {
+            "Requested start temperature": requested_start,
+            "Actual start temperature": actual_start,
+            "Start temperature adjusted": not np.isclose(
+                actual_start, requested_start
+            ),
+            "Completion temperature": T_f,
+            "Results": results,
+        }
+
+    def temperature_uncertainty_report_for_transition_ids(
+        self, transition_ids, *detectors
+    ):
+        """Return temperature-uncertainty scans for selected transitions."""
+        return {
+            str(transition_id): self.temperature_uncertainty_report(
+                transition_id, *detectors
+            )
+            for transition_id in transition_ids
         }
 
     def report_for_transition_ids(self, transition_ids, *detectors):
