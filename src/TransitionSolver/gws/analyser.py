@@ -87,15 +87,21 @@ class AnalyseIndividualTransition:
         self.to_phase = phase_structure.phases[transition_report["true_phase"]]
         self.potential = potential
 
-        if not self.at_percolation and not (
-            transition_report["T_f"]
-            <= self.source_temperature
-            <= transition_report["T_c"]
-        ):
-            raise ValueError(
-                "Source temperature must be between the completion and "
-                "critical temperatures"
-            )
+        if not self.at_percolation:
+            if transition_report["T_f"] is None:
+                raise ValueError(
+                    "Cannot vary the source temperature because this transition "
+                    "does not have a completion temperature"
+                )
+            if not (
+                transition_report["T_f"]
+                <= self.source_temperature
+                <= transition_report["T_c"]
+            ):
+                raise ValueError(
+                    "Source temperature must be between the completion and "
+                    "critical temperatures"
+                )
 
         self.hydro_transition_temp = hydrodynamics.make_hydro_vars(
             self.from_phase,
@@ -632,24 +638,29 @@ class GWAnalyser:
         """Scan a transition from near percolation down to completion."""
         transition_id = str(transition_id)
         transition_report = self.transition_reports[transition_id]
+        if transition_report["T_p"] is None or transition_report["T_f"] is None:
+            raise ValueError(
+                "Cannot calculate temperature uncertainty without percolation "
+                "and completion temperatures"
+            )
         requested_start = transition_report["T_c"] + 0.8 * (
             transition_report["T_p"] - transition_report["T_c"]
         )
         T_f = transition_report["T_f"]
 
-        samples = sorted(
-            (
-                (T, separation)
-                for T, separation in zip(
-                    transition_report["T"],
-                    transition_report["bubble_separation"],
-                )
-                if T_f <= T <= requested_start
-                and np.isfinite(separation)
-                and separation > 0
-            ),
-            reverse=True,
-        )
+        # Keep samples in the scan range with a finite, positive bubble separation.
+        samples = []
+        for temperature, separation in zip(
+            transition_report["T"],
+            transition_report["bubble_separation"],
+        ):
+            within_scan_range = T_f <= temperature <= requested_start
+            valid_separation = np.isfinite(separation) and separation > 0
+
+            if within_scan_range and valid_separation:
+                samples.append((temperature, separation))
+
+        samples.sort(reverse=True)
 
         if not samples:
             raise RuntimeError(
