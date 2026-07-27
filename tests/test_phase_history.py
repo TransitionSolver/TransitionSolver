@@ -88,7 +88,7 @@ def test_phase_history_pt_action(generate_baseline, name):
     )
 
     for transition in result["transitions"].values():
-        if transition["T_p"] is not None:
+        if transition.get("T_p") is not None:
             assert np.isfinite(transition["alpha_p"])
 
     assert_deep_equal(
