@@ -6,11 +6,9 @@ Transition analysis
 from __future__ import annotations
 
 import logging
-import warnings
 from typing import Union
 
 import numpy as np
-import scipy.optimize
 from scipy.interpolate import BarycentricInterpolator
 
 from .integration import LinearHelper, CubedHelper
@@ -1603,32 +1601,14 @@ class TransitionAnalyser:
         )
 
     def reheat_temperature(self, T: float) -> float:
-        Tsep = min(0.001 * (self.properties.T_c - self.Tmin), 0.5 * (T - self.Tmin))
-        rhof = hydrodynamics.energy_density_from_phase(
-            self.fromPhase, self.toPhase, self.potential, T
+        return hydrodynamics.reheat_temperature(
+            self.fromPhase,
+            self.toPhase,
+            self.potential,
+            T,
+            self.properties.T_c,
+            self.Tmin,
         )
-
-        def objective(t):
-            rhot = hydrodynamics.energy_density_to_phase(
-                self.fromPhase, self.toPhase, self.potential, t
-            )
-            # Conservation of energy => rhof = rhof*Pf + rhot*Pt which is equivalent to rhof = rhot (evaluated at
-            # different temperatures, T and Tt (Treh), respectively).
-            return rhot - rhof
-
-        if objective(self.properties.T_c) >= 0:
-            max_t = self.properties.T_c
-        else:
-            # If the energy density of the true vacuum is never larger than the current energy density of the false vacuum even
-            # at Tc, then reheating goes beyond Tc
-            max_t = self.toPhase.T[-1] - 2.0 * Tsep
-            # Also, check the energy density of the true vacuum when it first appears. If a solution still doesn't exist
-            # here, return
-            if max_t > self.properties.T_c and objective(max_t) < 0:
-                warnings.warn("Cannot find reheat temperature")
-                return
-
-        return scipy.optimize.toms748(objective, T, max_t)
 
     def could_complete(self, maxAction: float) -> bool:
         if self.action_sampler.T[-1] <= self.potential.minimum_temperature:
