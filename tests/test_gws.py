@@ -74,27 +74,18 @@ def test_snr():
     assert np.isclose(snr, 59.706589252791396)
 
 
-def test_source_temperature_at_percolation_uses_existing_values():
-    phase_history = get_phase_history("RSS_BP4")
+def test_source_temperature_report(generate_baseline):
     analyser = GWAnalyser(
         benchmarks.RSS_BP4,
-        phase_history,
+        get_phase_history("RSS_BP4"),
         phase_tracer_file=BASELINE / "rss_bp4_phase_structure.dat",
     )
-    transition_id = next(iter(analyser.gws))
-    transition = phase_history["transitions"][transition_id]
+    analysis = analyser.transition_at_temperature("0", 63.5)
 
-    at_percolation = analyser.transition_at_temperature(
-        transition_id, transition["T_p"]
-    )
-
-    assert at_percolation.transition_temp == transition["T_p"]
-    assert at_percolation.redshift_temp == transition["Treh_p"]
-    assert at_percolation.Pf == transition["perc_threshold_pf"]
-    assert at_percolation.length_scale == transition["bubble_separation_p"]
-    assert (
-        at_percolation.bubble_wall_velocity
-        == transition["bubble_wall_velocity_p"]
+    assert_deep_equal(
+        analysis.report(lisa),
+        BASELINE / "rss_bp4_gw_at_temperature.json",
+        generate_baseline=generate_baseline,
     )
 
 
