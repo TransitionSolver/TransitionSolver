@@ -6,6 +6,7 @@ Test gravitational waves
 import json
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import matplotlib.pyplot as plt
@@ -71,6 +72,61 @@ def test_snr():
     )
     snr = lisa.SNR(analyser.gw_total)
     assert np.isclose(snr, 59.706589252791396)
+
+
+def test_source_temperature_at_percolation_uses_existing_values():
+    phase_history = get_phase_history("RSS_BP4")
+    analyser = GWAnalyser(
+        benchmarks.RSS_BP4,
+        phase_history,
+        phase_tracer_file=BASELINE / "rss_bp4_phase_structure.dat",
+    )
+    transition_id = next(iter(analyser.gws))
+    transition = phase_history["transitions"][transition_id]
+
+    at_percolation = analyser.transition_at_temperature(
+        transition_id, transition["T_p"]
+    )
+
+    assert at_percolation.transition_temp == transition["T_p"]
+    assert at_percolation.redshift_temp == transition["Treh_p"]
+    assert at_percolation.Pf == transition["perc_threshold_pf"]
+    assert at_percolation.length_scale == transition["bubble_separation_p"]
+    assert (
+        at_percolation.bubble_wall_velocity
+        == transition["bubble_wall_velocity_p"]
+    )
+
+
+def test_temperature_uncertainty_scan_uses_first_valid_sample(monkeypatch, caplog):
+    phase_history = get_phase_history("RSS_BP4")
+    analyser = GWAnalyser(
+        benchmarks.RSS_BP4,
+        phase_history,
+        phase_tracer_file=BASELINE / "rss_bp4_phase_structure.dat",
+    )
+
+    def fake_analysis(_, temperature):
+        return SimpleNamespace(
+            Pf=0.5,
+            report=lambda *detectors: {"Transition temperature": temperature},
+        )
+
+    monkeypatch.setattr(analyser, "transition_at_temperature", fake_analysis)
+    report = analyser.temperature_uncertainty_report("0")
+
+    transition = phase_history["transitions"]["0"]
+    expected_start = transition["T_c"] + 0.8 * (
+        transition["T_p"] - transition["T_c"]
+    )
+    assert report["Requested start temperature"] == expected_start
+    assert report["Actual start temperature"] <= expected_start
+    assert report["Start temperature adjusted"]
+    assert report["Results"][0]["Transition temperature"] == report[
+        "Actual start temperature"
+    ]
+    assert report["Results"][-1]["Transition temperature"] == transition["T_f"]
+    assert "first valid sampled temperature" in caplog.text
 
 
 @pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)
