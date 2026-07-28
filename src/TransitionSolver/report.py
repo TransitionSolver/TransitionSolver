@@ -8,8 +8,10 @@ import os
 from pathlib import Path
 
 import json
+import matplotlib.pyplot as plt
 
 from .phasetracer import phase_tracer_info
+from .plot import plot_temperature_uncertainty
 
 
 def savejson(report, file_name):
@@ -61,6 +63,27 @@ def save_gw_outputs(
 
     gw_fig.savefig(folder / "gw.pdf")
 
+    uncertainty_reports = {}
+    uncertainty_figures = {}
+    if temperature_uncertainty:
+        transition_ids = list(
+            dict.fromkeys(
+                transition_id
+                for path in tr_report["paths"]
+                if path["valid"]
+                for transition_id in path["transitions"]
+            )
+        )
+        uncertainty_reports = (
+            analyser.temperature_uncertainty_report_for_transition_ids(
+                transition_ids, *detectors
+            )
+        )
+        uncertainty_figures = {
+            transition_id: plot_temperature_uncertainty(report, transition_id)
+            for transition_id, report in uncertainty_reports.items()
+        }
+
     # save results from each path
     for idx, path in enumerate(tr_report["paths"]):
         if not path["valid"]:
@@ -88,15 +111,22 @@ def save_gw_outputs(
 
         savejson(path_gw_report, path_dir / "gw.json")
         if temperature_uncertainty:
-            uncertainty_report = (
-                analyser.temperature_uncertainty_report_for_transition_ids(
-                    path["transitions"], *detectors
-                )
-            )
+            path_uncertainty_reports = {
+                transition_id: uncertainty_reports[transition_id]
+                for transition_id in path["transitions"]
+            }
             savejson(
-                uncertainty_report,
+                path_uncertainty_reports,
                 path_dir / "gw_temperature_uncertainty.json",
             )
+            for transition_id in path["transitions"]:
+                uncertainty_figures[transition_id].savefig(
+                    path_dir
+                    / f"gw_temperature_uncertainty_transition_{transition_id}.pdf"
+                )
         savejson(path, path_dir / "tr_path.json")
+
+    for figure in uncertainty_figures.values():
+        plt.close(figure)
 
     return str(folder), path_dirs

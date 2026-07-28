@@ -39,16 +39,111 @@ def add_labeled_hline(ax, y, label, color):
 
 
 def add_labeled_vlines(transition, ax):
-    if "T_gamma" in transition:
+    if transition.get("T_gamma") is not None:
         add_labeled_vline(ax, transition["T_gamma"], r"$T_\Gamma$", "k")
-    if "T_n" in transition:
+    if transition.get("T_n") is not None:
         add_labeled_vline(ax, transition["T_n"], "$T_n$", "r")
-    if "T_p" in transition:
+    if transition.get("T_p") is not None:
         add_labeled_vline(ax, transition["T_p"], "$T_p$", "g")
-    if "T_e" in transition:
+    if transition.get("T_e") is not None:
         add_labeled_vline(ax, transition["T_e"], "$T_e$", "b")
-    if "T_f" in transition:
+    if transition.get("T_f") is not None:
         add_labeled_vline(ax, transition["T_f"], "$T_f$", "m")
+
+
+def plot_temperature_uncertainty(report: dict, transition_id=None):
+    """Plot the quantities stored in one temperature-uncertainty report."""
+    results = report["Results"]
+    temperatures = np.asarray(
+        [result["Transition temperature"] for result in results]
+    )
+    figure, axes = plt.subplots(3, 3, figsize=(13, 11), constrained_layout=False)
+
+    def plot_positive(axis, key, label=None):
+        values = np.asarray([result[key] for result in results], dtype=float)
+        mask = np.isfinite(values) & (values > 0)
+        if np.any(mask):
+            axis.semilogy(temperatures[mask], values[mask], label=label)
+
+    plot_positive(axes[0, 0], "False vacuum fraction")
+    axes[0, 0].set_ylabel("False vacuum fraction")
+
+    plot_positive(axes[0, 1], "Kinetic energy fraction", "Kinetic energy fraction")
+    plot_positive(axes[0, 1], "Upsilon", "Upsilon")
+    axes[0, 1].set_ylabel("Energy fraction")
+    axes[0, 1].legend()
+
+    for key in ("Mean bubble separation", "Mean bubble radius"):
+        plot_positive(axes[0, 2], key, key)
+    axes[0, 2].set_ylabel("Length scale [GeV$^{-1}$]")
+    axes[0, 2].legend()
+
+    plot_positive(axes[1, 0], "Beta/H")
+    axes[1, 0].set_ylabel(r"$\beta/H$")
+
+    axes[1, 1].plot(
+        temperatures, [result["Bubble wall velocity"] for result in results]
+    )
+    axes[1, 1].set_ylabel("Bubble wall velocity")
+
+    axes[1, 2].plot(
+        temperatures, [result["Redshift temperature"] for result in results]
+    )
+    axes[1, 2].set_ylabel("Redshift temperature [GeV]")
+
+    for source in ("sound waves", "turbulence", "collisions"):
+        plot_positive(
+            axes[2, 0], f"Peak amplitude ({source})", source.capitalize()
+        )
+        plot_positive(
+            axes[2, 1], f"Peak frequency ({source})", source.capitalize()
+        )
+    axes[2, 0].set_ylabel(r"Peak $\Omega h^2$")
+    axes[2, 1].set_ylabel("Peak frequency [Hz]")
+    axes[2, 0].legend()
+    axes[2, 1].legend()
+
+    detector_labels = results[0]["Signal-to-Noise Ratio"]
+    for detector in detector_labels:
+        values = [result["Signal-to-Noise Ratio"][detector] for result in results]
+        axes[2, 2].semilogy(temperatures, values, label=detector)
+    axes[2, 2].set_ylabel("Signal-to-noise ratio")
+    if detector_labels:
+        axes[2, 2].legend()
+    else:
+        axes[2, 2].text(0.5, 0.5, "No detectors selected", ha="center")
+
+    boundaries = []
+    if report["Start temperature adjusted"]:
+        boundaries.append(
+            (
+                report["Requested start temperature"],
+                r"$T_\mathrm{req}$",
+                "k",
+            )
+        )
+    boundaries.extend(
+        [
+            (report["Actual start temperature"], r"$T_s$", "g"),
+            (report["Completion temperature"], "$T_f$", "m"),
+        ]
+    )
+
+    for axis in axes.flat:
+        for temperature, label, color in boundaries:
+            if axis is axes[0, 0]:
+                add_labeled_vline(axis, temperature, label, color)
+            else:
+                axis.axvline(temperature, c=color, ls=":")
+        axis.set_xlabel("Transition temperature [GeV]")
+        axis.grid(alpha=0.25)
+
+    title = "GW temperature uncertainty"
+    if transition_id is not None:
+        title += f" — transition {transition_id}"
+    figure.suptitle(title)
+    figure.subplots_adjust(wspace=0.3, hspace=0.3, top=0.94)
+    return figure
 
 
 def plot_volume(

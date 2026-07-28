@@ -78,7 +78,7 @@ ts --model RSS_BP --point input/RSS/RSS_BP1.txt
 ```
 You can pass a model and model header file etc, and parameter point.
 
-Pass `--temperature-uncertainty` to also save `gw_temperature_uncertainty.json`. For each transition, this evaluates the GW prediction from the first valid sampled temperature at or below $T_c + 0.8(T_p-T_c)$ down to $T_f$.
+Pass `--temperature-uncertainty` to also save `gw_temperature_uncertainty.json` and one `gw_temperature_uncertainty_transition_<id>.pdf` plot per transition. For each transition, this evaluates the GW prediction from the first valid sampled temperature at or below $T_c + 0.8(T_p-T_c)$ down to $T_f$.
 
 A single temperature can be evaluated from Python with `analyser.transition_at_temperature(transition_id, temperature)`; temperatures must lie between $T_c$ and $T_f$.
 
