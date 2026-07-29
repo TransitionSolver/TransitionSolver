@@ -587,17 +587,24 @@ class GWAnalyser:
         phase_structure=None,
         phase_tracer_file=None,
         force_relevant=False,
+        transition_ids=None,
         source_temperatures=None,
         **kwargs,
     ):
         if phase_tracer_file is not None:
             phase_structure = read_phase_tracer(phase_tracer_file=phase_tracer_file)
 
-        relevant_transitions = (
-            phase_history["transitions"]
-            if force_relevant
-            else extract_relevant_transitions(phase_history)
-        )
+        if transition_ids is not None:
+            transition_ids = [str(transition_id) for transition_id in transition_ids]
+            relevant_transitions = {
+                transition_id: phase_history["transitions"][transition_id]
+                for transition_id in transition_ids
+            }
+        elif force_relevant:
+            relevant_transitions = phase_history["transitions"]
+        else:
+            relevant_transitions = extract_relevant_transitions(phase_history)
+
         if not relevant_transitions:
             raise RuntimeError("No relevant transition detected in the phase history")
 
@@ -756,16 +763,30 @@ class GWAnalyser:
         """
         @returns Figure of plot of data on GW spectrum
         """
+        return self.plot_for_transition_ids(
+            self.gws, frequencies, detectors, ptas, show
+        )
+
+    def plot_for_transition_ids(
+        self,
+        transition_ids,
+        frequencies=None,
+        detectors=None,
+        ptas=None,
+        show=False,
+    ):
+        """Plot GW spectra for selected transitions."""
         if frequencies is None:
             frequencies = np.logspace(-11, 3, 1000)
 
-        n = len(self.gws)
+        selected = [self.gws[str(i)] for i in transition_ids]
+        n = len(selected)
         fig, ax = plt.subplots(n)
 
         if n <= 1:
             ax = [ax]
 
-        for a, gw in zip(ax, self.gws.values()):
+        for a, gw in zip(ax, selected):
             gw.plot(frequencies, detectors, ptas, ax=a)
 
         if show:

@@ -104,6 +104,80 @@ def create_pt_settings(
     return pt_settings
 
 
+def valid_transition_ids(transition_report: dict) -> list[str]:
+    """Return unique transition IDs from valid cosmological paths."""
+    return list(
+        dict.fromkeys(
+            str(transition_id)
+            for path in transition_report["paths"]
+            if path["valid"]
+            for transition_id in path["transitions"]
+        )
+    )
+
+
+def transitions_with_percolation_temperature(
+    transition_report: dict,
+) -> list[str]:
+    """Return valid-path and conventional-percolation transition IDs."""
+    valid_ids = valid_transition_ids(transition_report)
+    return list(
+        dict.fromkeys(
+            valid_ids
+            + [
+                str(transition_id)
+                for transition_id, transition in transition_report[
+                    "transitions"
+                ].items()
+                if transition.get("T_p") is not None
+            ]
+        )
+    )
+
+
+def transition_diagnostics(transition: dict) -> dict:
+    """Describe completion and physical-volume checks at percolation."""
+    warnings = []
+    if transition.get("T_f") is None:
+        warnings.append(
+            "This transition has no completion temperature and does not reach "
+            "the specified completion threshold in the analysed range."
+        )
+
+    decreasing_at_percolation = transition.get("decreasing_v_phys_p")
+    decreasing_temperature = transition.get("T_decreasing_v_phys")
+    if decreasing_at_percolation is False:
+        if decreasing_temperature is None:
+            warnings.append(
+                "The physical false-vacuum volume is not decreasing at T_p, "
+                "and no temperature at which it begins decreasing was found "
+                "in the analysed range. Global physical percolation and "
+                "completion are therefore not established. Local bubble "
+                "collisions are not excluded, but the assumptions underlying "
+                "this GW prediction may not be realised."
+            )
+        else:
+            warnings.append(
+                "The physical false-vacuum volume is not decreasing at T_p. "
+                "Cosmic expansion may therefore prevent true percolation, "
+                "where bubbles collide across space, making significant GW "
+                "production questionable. The physical false-vacuum volume "
+                "does, however, begin decreasing later in the analysed "
+                "evolution, and this could be investigated in more detail."
+            )
+
+    return {
+        "Completion temperature exists": transition.get("T_f") is not None,
+        "Physical false-vacuum volume decreasing at T_p": (
+            decreasing_at_percolation
+        ),
+        "Temperature where physical false-vacuum volume begins decreasing": (
+            decreasing_temperature
+        ),
+        "Warnings": warnings,
+    }
+
+
 @click.command()
 @click.option("--model", help="Model name", required=True, type=str)
 @click.option(
@@ -204,8 +278,18 @@ def create_pt_settings(
     type=str,
 )
 @click.option(
+    "--transitions-only",
+    help="Stop after saving the transition analysis",
+    is_flag=True,
+)
+@click.option(
     "--temperature-uncertainty",
     help="Scan GW predictions over the source temperature",
+    is_flag=True,
+)
+@click.option(
+    "--include-all-transitions-with-perc-temp",
+    help="Also calculate GWs for every transition with a percolation temperature",
     is_flag=True,
 )
 @click.pass_context
@@ -227,7 +311,9 @@ def cli(
     pt_point_settings,
     pt_settings,
     folder,
+    transitions_only,
     temperature_uncertainty,
+    include_all_transitions_with_perc_temp,
 ):
     """
     Run TransitionSolver on a particular model and point
@@ -275,7 +361,12 @@ def cli(
 
     with Status("Saving transition results"):
         folder = save_transition_outputs(
-            tr_report, tr_fig, phase_structure_raw, ctx, folder
+            tr_report,
+            tr_fig,
+            phase_structure_raw,
+            ctx,
+            folder,
+            point_file_name,
         )
 
     console.rule("[bold red]Results")
@@ -283,25 +374,79 @@ def cli(
         Text.assemble("Transition results saved to: ", (folder, "bold magenta"))
     )
 
-    if not any(path["valid"] and path["transitions"] for path in tr_report["paths"]):
+    if transitions_only:
+        return
+
+    valid_ids = valid_transition_ids(tr_report)
+    transition_ids = valid_ids
+    if include_all_transitions_with_perc_temp:
+        transition_ids = transitions_with_percolation_temperature(tr_report)
+
+    if not transition_ids:
         console.print(
             "No relevant transition detected in the phase history; "
             "skipping gravitational wave analysis."
         )
         return
 
+    diagnostics = {}
+    if include_all_transitions_with_perc_temp:
+        diagnostics = {
+            transition_id: transition_diagnostics(
+                tr_report["transitions"][transition_id]
+            )
+            for transition_id in transition_ids
+        }
+        for transition_id, diagnostic in diagnostics.items():
+            for warning in diagnostic["Warnings"]:
+                console.print(f"Warning for transition {transition_id}: {warning}")
+            if (
+                temperature_uncertainty
+                and tr_report["transitions"][transition_id].get("T_f") is None
+            ):
+                console.print(
+                    f"Warning for transition {transition_id}: The temperature-"
+                    "uncertainty scan is skipped because there is no completion "
+                    "temperature."
+                )
+
     detectors = [DETECTORS[d] for d in detector]
     ptas = [PTAS[p] for p in pta]
 
     with Status("Analyzing gravitational wave signal"):
-        analyser = gws.GWAnalyser(potential, tr_report, phase_structure)
-        gw_report = analyser.report(*detectors)
+        if include_all_transitions_with_perc_temp:
+            analyser = gws.GWAnalyser(
+                potential,
+                tr_report,
+                phase_structure,
+                transition_ids=transition_ids,
+            )
+            gw_report = {
+                transition_id: analyser.gws[transition_id].report(*detectors)
+                for transition_id in transition_ids
+            }
+            for transition_id in diagnostics:
+                gw_report[transition_id]["Transition diagnostics"] = diagnostics[
+                    transition_id
+                ]
+        else:
+            analyser = gws.GWAnalyser(
+                potential,
+                tr_report,
+                phase_structure,
+            )
+            gw_report = analyser.report(*detectors)
         gw_fig = analyser.plot(detectors=detectors, ptas=ptas, show=show)
 
     console.rule("[bold red]Gravitational waves")
     console.print(gw_report)
 
-    with Status("Saving gravitational wave results"):
+    additional_ids = [
+        transition_id
+        for transition_id in transition_ids
+        if transition_id not in valid_ids
+    ]
+    with Status("Calculating and saving gravitational wave results"):
         folder, gw_path_dirs = save_gw_outputs(
             tr_report,
             gw_fig,
@@ -309,6 +454,9 @@ def cli(
             detectors,
             folder,
             temperature_uncertainty=temperature_uncertainty,
+            ptas=ptas,
+            additional_transition_ids=additional_ids,
+            transition_diagnostics=diagnostics,
         )
 
     console.print(
@@ -327,3 +475,10 @@ def cli(
                 (path["directory"], "bold magenta"),
             )
         )
+    for transition_id in additional_ids:
+        directory = (
+            Path(folder)
+            / "transitions_with_perc_temp"
+            / f"transition_{transition_id}"
+        )
+        console.print(f"  Additional transition {transition_id}: {directory}")
