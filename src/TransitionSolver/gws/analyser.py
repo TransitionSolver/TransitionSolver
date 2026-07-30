@@ -51,6 +51,11 @@ def interpolate_transition_report(
     """Linearly interpolate a transition-history quantity in temperature."""
     temperatures = np.asarray(transition_report["T"], dtype=float)
     values = np.asarray(transition_report[key], dtype=float)
+    if not temperatures.min() <= temperature <= temperatures.max():
+        raise ValueError(
+            f"Cannot interpolate {key} at T={temperature}: the saved "
+            f"temperature range is [{temperatures.min()}, {temperatures.max()}]"
+        )
     order = np.argsort(temperatures)
     return float(np.interp(temperature, temperatures[order], values[order]))
 
@@ -88,19 +93,12 @@ class AnalyseIndividualTransition:
         self.potential = potential
 
         if not self.at_percolation:
-            if transition_report["T_f"] is None:
+            sampled_min = min(transition_report["T"])
+            sampled_max = max(transition_report["T"])
+            if not sampled_min <= self.source_temperature <= sampled_max:
                 raise ValueError(
-                    "Cannot vary the source temperature because this transition "
-                    "does not have a completion temperature"
-                )
-            if not (
-                transition_report["T_f"]
-                <= self.source_temperature
-                <= transition_report["T_c"]
-            ):
-                raise ValueError(
-                    "Source temperature must be between the completion and "
-                    "critical temperatures"
+                    "Source temperature must be within the saved transition-history "
+                    f"range [{sampled_min}, {sampled_max}]"
                 )
 
         self.hydro_transition_temp = hydrodynamics.make_hydro_vars(
@@ -149,7 +147,7 @@ class AnalyseIndividualTransition:
     def at_percolation(self):
         return (
             self.source_temperature is None
-            or self.source_temperature == self.transition_report["T_p"]
+            or self.source_temperature == self.transition_report.get("T_p")
         )
 
     @property
@@ -641,92 +639,207 @@ class GWAnalyser:
             **self.gw_kwargs,
         )
 
-    def temperature_uncertainty_report(self, transition_id, *detectors):
-        """Scan a transition from near percolation down to completion."""
+    def _report_at_temperature(self, transition_id, temperature, *detectors):
+        """Report all scan quantities for one transition temperature."""
         transition_id = str(transition_id)
         transition_report = self.transition_reports[transition_id]
-        if transition_report["T_p"] is None or transition_report["T_f"] is None:
-            raise ValueError(
-                "Cannot calculate temperature uncertainty without percolation "
-                "and completion temperatures"
-            )
-        requested_start = transition_report["T_c"] + 0.8 * (
-            transition_report["T_p"] - transition_report["T_c"]
+        analysis = self.transition_at_temperature(transition_id, temperature)
+        result = analysis.report(*detectors)
+        result["False vacuum fraction"] = analysis.Pf
+        result["Mean bubble separation"] = interpolate_transition_report(
+            transition_report, "bubble_separation", temperature
         )
-        T_f = transition_report["T_f"]
+        result["Mean bubble radius"] = interpolate_transition_report(
+            transition_report, "bubble_radius", temperature
+        )
+        result["Beta"] = interpolate_transition_report(
+            transition_report, "beta", temperature
+        )
+        result["Hubble constant"] = interpolate_transition_report(
+            transition_report, "H", temperature
+        )
+        result["Beta/H"] = result["Beta"] / result["Hubble constant"]
+        return result
 
-        # Keep samples in the scan range with a finite, positive bubble separation.
-        samples = []
+    def temperature_scan_report(self, transition_id, *detectors):
+        """Evaluate GWs over the full valid sampled temperature history."""
+        transition_id = str(transition_id)
+        transition_report = self.transition_reports[transition_id]
+
+        # Keep all temperatures with a finite, positive mean bubble separation.
+        temperatures = []
         for temperature, separation in zip(
             transition_report["T"],
             transition_report["bubble_separation"],
         ):
-            within_scan_range = T_f <= temperature <= requested_start
-            valid_separation = np.isfinite(separation) and separation > 0
+            if np.isfinite(separation) and separation > 0:
+                temperatures.append(temperature)
 
-            if within_scan_range and valid_separation:
-                samples.append((temperature, separation))
-
-        samples.sort(reverse=True)
-
-        if not samples:
+        temperatures.sort(reverse=True)
+        if not temperatures:
             raise RuntimeError(
-                f"No valid mean bubble separation between T={requested_start} "
-                f"and T_f={T_f} for transition {transition_id}"
+                "No finite, positive mean bubble separation was found for "
+                f"transition {transition_id}"
             )
 
-        actual_start = samples[0][0]
-        if not np.isclose(actual_start, requested_start):
+        return {
+            "Highest sampled temperature": temperatures[0],
+            "Lowest sampled temperature": temperatures[-1],
+            "Milestone temperatures": {
+                key: transition_report.get(key)
+                for key in ("T_gamma", "T_n", "T_p", "T_e", "T_f")
+            },
+            "Results": [
+                self._report_at_temperature(transition_id, temperature, *detectors)
+                for temperature in temperatures
+            ],
+        }
+
+    def temperature_scan_report_for_transition_ids(self, transition_ids, *detectors):
+        """Return full temperature scans for selected transitions."""
+        return {
+            str(transition_id): self.temperature_scan_report(
+                transition_id, *detectors
+            )
+            for transition_id in transition_ids
+        }
+
+    @staticmethod
+    def _sampled_range(results, key):
+        """Return sampled extrema and the temperatures where they occur."""
+        finite_results = [result for result in results if np.isfinite(result[key])]
+        minimum = min(finite_results, key=lambda result: result[key])
+        maximum = max(finite_results, key=lambda result: result[key])
+        return {
+            "Minimum": minimum[key],
+            "Maximum": maximum[key],
+            "Temperature at minimum": minimum["Transition temperature"],
+            "Temperature at maximum": maximum["Transition temperature"],
+        }
+
+    def temperature_uncertainty_report(
+        self, transition_id, *detectors, scan_report=None
+    ):
+        """Return sampled prediction ranges from near percolation to completion."""
+        transition_id = str(transition_id)
+        transition_report = self.transition_reports[transition_id]
+        T_p = transition_report.get("T_p")
+        T_f = transition_report.get("T_f")
+        if T_p is None or T_f is None:
+            raise ValueError(
+                "Cannot calculate temperature uncertainty without percolation "
+                "and completion temperatures"
+            )
+
+        requested_start = transition_report["T_c"] + 0.8 * (
+            T_p - transition_report["T_c"]
+        )
+        if scan_report is None:
+            temperatures = [
+                temperature
+                for temperature, separation in zip(
+                    transition_report["T"],
+                    transition_report["bubble_separation"],
+                )
+                if T_f <= temperature <= requested_start
+                and np.isfinite(separation)
+                and separation > 0
+            ]
+            results = [
+                self._report_at_temperature(
+                    transition_id, temperature, *detectors
+                )
+                for temperature in temperatures
+            ]
+        else:
+            results = [
+                result
+                for result in scan_report["Results"]
+                if T_f <= result["Transition temperature"] <= requested_start
+            ]
+
+        for boundary in (requested_start, T_f):
+            if not any(
+                np.isclose(result["Transition temperature"], boundary)
+                for result in results
+            ):
+                separation = interpolate_transition_report(
+                    transition_report, "bubble_separation", boundary
+                )
+                if np.isfinite(separation) and separation > 0:
+                    results.append(
+                        self._report_at_temperature(
+                            transition_id, boundary, *detectors
+                        )
+                    )
+
+        results.sort(key=lambda result: result["Transition temperature"], reverse=True)
+        if not results:
+            raise RuntimeError(
+                "No valid temperatures in the uncertainty interval "
+                f"[{T_f}, {requested_start}] for transition {transition_id}"
+            )
+
+        actual_start = results[0]["Transition temperature"]
+        start_adjusted = not np.isclose(actual_start, requested_start)
+        if start_adjusted:
             logger.warning(
                 "Requested temperature-uncertainty start T=%s has no valid "
-                "sampled mean bubble separation at that temperature. Starting "
-                "transition %s at the first valid sampled temperature T=%s.",
+                "mean bubble separation. Starting transition %s at the first "
+                "valid sampled temperature T=%s.",
                 requested_start,
                 transition_id,
                 actual_start,
             )
 
-        temperatures = [T for T, _ in samples]
-        if not np.isclose(temperatures[-1], T_f):
-            temperatures.append(T_f)
-
-        results = []
-        for temperature in temperatures:
-            analysis = self.transition_at_temperature(transition_id, temperature)
-            result = analysis.report(*detectors)
-            result["False vacuum fraction"] = analysis.Pf
-            result["Mean bubble separation"] = interpolate_transition_report(
-                transition_report, "bubble_separation", temperature
+        scalar_keys = [
+            key
+            for key, value in results[0].items()
+            if key not in ("Transition temperature", "Signal-to-Noise Ratio")
+            and np.isscalar(value)
+        ]
+        ranges = {
+            key: self._sampled_range(results, key)
+            for key in scalar_keys
+            if any(np.isfinite(result[key]) for result in results)
+        }
+        snr_ranges = {
+            detector: self._sampled_range(
+                [
+                    {
+                        "Transition temperature": result["Transition temperature"],
+                        detector: result["Signal-to-Noise Ratio"][detector],
+                    }
+                    for result in results
+                ],
+                detector,
             )
-            result["Mean bubble radius"] = interpolate_transition_report(
-                transition_report, "bubble_radius", temperature
-            )
-            result["Beta"] = interpolate_transition_report(
-                transition_report, "beta", temperature
-            )
-            result["Hubble constant"] = interpolate_transition_report(
-                transition_report, "H", temperature
-            )
-            result["Beta/H"] = result["Beta"] / result["Hubble constant"]
-            results.append(result)
+            for detector in results[0]["Signal-to-Noise Ratio"]
+        }
+        if snr_ranges:
+            ranges["Signal-to-Noise Ratio"] = snr_ranges
 
         return {
             "Requested start temperature": requested_start,
             "Actual start temperature": actual_start,
-            "Start temperature adjusted": not np.isclose(
-                actual_start, requested_start
-            ),
+            "Start temperature adjusted": start_adjusted,
             "Completion temperature": T_f,
-            "Results": results,
+            "Highest evaluated temperature": results[0]["Transition temperature"],
+            "Lowest evaluated temperature": results[-1]["Transition temperature"],
+            "Extrema are over sampled and interpolated endpoint evaluations": True,
+            "Ranges": ranges,
         }
 
     def temperature_uncertainty_report_for_transition_ids(
-        self, transition_ids, *detectors
+        self, transition_ids, *detectors, scan_reports=None
     ):
-        """Return temperature-uncertainty scans for selected transitions."""
+        """Return temperature-uncertainty ranges for selected transitions."""
+        scan_reports = scan_reports or {}
         return {
             str(transition_id): self.temperature_uncertainty_report(
-                transition_id, *detectors
+                transition_id,
+                *detectors,
+                scan_report=scan_reports.get(str(transition_id)),
             )
             for transition_id in transition_ids
         }

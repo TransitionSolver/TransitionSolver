@@ -283,8 +283,13 @@ def transition_diagnostics(transition: dict) -> dict:
     is_flag=True,
 )
 @click.option(
+    "--temperature-scan",
+    help="Scan GW predictions over all valid saved temperatures",
+    is_flag=True,
+)
+@click.option(
     "--temperature-uncertainty",
-    help="Scan GW predictions over the source temperature",
+    help="Save sampled GW prediction ranges near percolation",
     is_flag=True,
 )
 @click.option(
@@ -312,6 +317,7 @@ def cli(
     pt_settings,
     folder,
     transitions_only,
+    temperature_scan,
     temperature_uncertainty,
     include_all_transitions_with_perc_temp,
 ):
@@ -406,7 +412,8 @@ def cli(
             ):
                 console.print(
                     f"Warning for transition {transition_id}: The temperature-"
-                    "uncertainty scan is skipped because there is no completion "
+                    "uncertainty calculation is skipped because there is no "
+                    "completion "
                     "temperature."
                 )
 
@@ -453,6 +460,7 @@ def cli(
             analyser,
             detectors,
             folder,
+            temperature_scan=temperature_scan,
             temperature_uncertainty=temperature_uncertainty,
             ptas=ptas,
             additional_transition_ids=additional_ids,

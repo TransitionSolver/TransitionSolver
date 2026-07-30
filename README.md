@@ -70,7 +70,8 @@ Options:
                                   (applied last). Can be repeated.
   --folder TEXT                   Custom name of output folder
   --transitions-only              Stop after saving the transition analysis
-  --temperature-uncertainty       Scan GW predictions over the source temperature
+  --temperature-scan              Scan GWs over all valid saved temperatures
+  --temperature-uncertainty       Save sampled prediction ranges from near percolation to completion
   --include-all-transitions-with-perc-temp
                                   Also calculate GWs for every transition with T_p
   --help                          Show this message and exit.
@@ -81,7 +82,9 @@ ts --model RSS_BP --point input/RSS/RSS_BP1.txt
 ```
 You can pass a model and model header file etc, and parameter point.
 
-Pass `--temperature-uncertainty` to also save `gw_temperature_uncertainty.json` and one `gw_temperature_uncertainty_transition_<id>.pdf` plot per transition. For each transition, this evaluates the GW prediction from the first valid sampled temperature at or below $T_c + 0.8(T_p-T_c)$ down to $T_f$.
+Pass `--temperature-scan` to save `gw_temperature_scan.json` and one `gw_temperature_scan_transition_<id>.pdf` plot per transition. The scan uses the full saved temperature history for which the mean bubble separation is finite and positive.
+
+Pass `--temperature-uncertainty` to save `gw_temperature_uncertainty.json`. For each completed transition, this reports the minimum and maximum sampled predictions between $T_c + 0.8(T_p-T_c)$ and $T_f$, including evaluations at the interval endpoints when necessary. These are sampled numerical ranges, not continuously optimised extrema.
 
 ## Gravitational-wave post-processing
 
@@ -93,7 +96,7 @@ ts --model RSS_BP --point input/RSS/RSS_BP1.txt \
 ts-gw RSS_BP1 --detector LISA
 ```
 
-The transition-only run saves a copy of the input point as `parameter_point.txt`, alongside `tr.json` and `phasetracer.txt`. `ts-gw` reconstructs the potential and phase structure from these files, without rerunning PhaseTracer or the transition analysis. By default it calculates GWs only for transitions on valid cosmological paths. It accepts the same detector, PTA and temperature-uncertainty options used for the immediate GW calculation.
+The transition-only run saves a copy of the input point as `parameter_point.txt`, alongside `tr.json` and `phasetracer.txt`. `ts-gw` reconstructs the potential and phase structure from these files, without rerunning PhaseTracer or the transition analysis. By default it calculates GWs only for transitions on valid cosmological paths. It accepts the same detector, PTA, temperature-scan and temperature-uncertainty options used for the immediate GW calculation.
 
 To also calculate a diagnostic GW prediction for every transition that has a conventional percolation temperature $T_p$, use:
 

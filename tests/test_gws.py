@@ -6,13 +6,13 @@ Test gravitational waves
 import json
 import os
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 import matplotlib.pyplot as plt
 import numpy as np
 
 from TransitionSolver.gws import GWAnalyser, lisa
+from TransitionSolver.gws.analyser import interpolate_transition_report
 from TransitionSolver import gws, benchmarks
 from dictcmp import assert_deep_equal
 
@@ -89,35 +89,72 @@ def test_source_temperature_report(generate_baseline):
     )
 
 
-def test_temperature_uncertainty_scan_uses_first_valid_sample(monkeypatch, caplog):
+def test_temperature_scan_uses_all_valid_samples(monkeypatch):
+    phase_history = get_phase_history("RSS_BP4")
+    phase_history["transitions"]["0"]["T_f"] = None
+    analyser = GWAnalyser(
+        benchmarks.RSS_BP4,
+        phase_history,
+        phase_tracer_file=BASELINE / "rss_bp4_phase_structure.dat",
+    )
+    monkeypatch.setattr(
+        analyser,
+        "_report_at_temperature",
+        lambda _, temperature, *detectors: {
+            "Transition temperature": temperature,
+        },
+    )
+
+    report = analyser.temperature_scan_report("0")
+    transition = phase_history["transitions"]["0"]
+    expected = [
+        temperature
+        for temperature, separation in zip(
+            transition["T"], transition["bubble_separation"]
+        )
+        if np.isfinite(separation) and separation > 0
+    ]
+
+    assert [result["Transition temperature"] for result in report["Results"]] == sorted(
+        expected, reverse=True
+    )
+
+
+def test_temperature_uncertainty_reports_sampled_ranges(monkeypatch):
     phase_history = get_phase_history("RSS_BP4")
     analyser = GWAnalyser(
         benchmarks.RSS_BP4,
         phase_history,
         phase_tracer_file=BASELINE / "rss_bp4_phase_structure.dat",
     )
-
-    def fake_analysis(_, temperature):
-        return SimpleNamespace(
-            Pf=0.5,
-            report=lambda *detectors: {"Transition temperature": temperature},
-        )
-
-    monkeypatch.setattr(analyser, "transition_at_temperature", fake_analysis)
-    report = analyser.temperature_uncertainty_report("0")
-
     transition = phase_history["transitions"]["0"]
-    expected_start = transition["T_c"] + 0.8 * (
+    start = transition["T_c"] + 0.8 * (
         transition["T_p"] - transition["T_c"]
     )
-    assert report["Requested start temperature"] == expected_start
-    assert report["Actual start temperature"] <= expected_start
-    assert report["Start temperature adjusted"]
-    assert report["Results"][0]["Transition temperature"] == report[
-        "Actual start temperature"
-    ]
-    assert report["Results"][-1]["Transition temperature"] == transition["T_f"]
-    assert "first valid sampled temperature" in caplog.text
+
+    def fake_report(_, temperature, *detectors):
+        return {
+            "Transition temperature": temperature,
+            "Test quantity": (temperature - transition["T_p"]) ** 2,
+            "Signal-to-Noise Ratio": {"Test detector": temperature},
+        }
+
+    monkeypatch.setattr(analyser, "_report_at_temperature", fake_report)
+    report = analyser.temperature_uncertainty_report("0")
+    value_range = report["Ranges"]["Test quantity"]
+
+    assert report["Highest evaluated temperature"] == start
+    assert report["Lowest evaluated temperature"] == transition["T_f"]
+    assert value_range["Minimum"] >= 0
+    assert value_range["Temperature at minimum"] <= start
+    assert "Test detector" in report["Ranges"]["Signal-to-Noise Ratio"]
+
+
+def test_interpolation_rejects_temperature_outside_saved_history():
+    transition = {"T": [10.0, 5.0], "value": [1.0, 2.0]}
+
+    with pytest.raises(ValueError, match="saved temperature range"):
+        interpolate_transition_report(transition, "value", 11.0)
 
 
 @pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)

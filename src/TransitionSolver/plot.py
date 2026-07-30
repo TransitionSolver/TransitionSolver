@@ -51,8 +51,8 @@ def add_labeled_vlines(transition, ax):
         add_labeled_vline(ax, transition["T_f"], "$T_f$", "m")
 
 
-def plot_temperature_uncertainty(report: dict, transition_id=None):
-    """Plot the quantities stored in one temperature-uncertainty report."""
+def plot_temperature_scan(report: dict, transition_id=None):
+    """Plot the quantities stored in one full temperature-scan report."""
     results = report["Results"]
     temperatures = np.asarray(
         [result["Transition temperature"] for result in results]
@@ -105,32 +105,36 @@ def plot_temperature_uncertainty(report: dict, transition_id=None):
 
     detector_labels = results[0]["Signal-to-Noise Ratio"]
     for detector in detector_labels:
-        values = [result["Signal-to-Noise Ratio"][detector] for result in results]
-        axes[2, 2].semilogy(temperatures, values, label=detector)
+        values = np.asarray(
+            [result["Signal-to-Noise Ratio"][detector] for result in results],
+            dtype=float,
+        )
+        mask = np.isfinite(values) & (values > 0)
+        if np.any(mask):
+            axes[2, 2].semilogy(temperatures[mask], values[mask], label=detector)
     axes[2, 2].set_ylabel("Signal-to-noise ratio")
     if detector_labels:
         axes[2, 2].legend()
     else:
         axes[2, 2].text(0.5, 0.5, "No detectors selected", ha="center")
 
-    boundaries = []
-    if report["Start temperature adjusted"]:
-        boundaries.append(
-            (
-                report["Requested start temperature"],
-                r"$T_\mathrm{req}$",
-                "k",
-            )
-        )
-    boundaries.extend(
-        [
-            (report["Actual start temperature"], r"$T_s$", "g"),
-            (report["Completion temperature"], "$T_f$", "m"),
-        ]
-    )
+    milestone_styles = {
+        "T_gamma": (r"$T_\Gamma$", "k"),
+        "T_n": (r"$T_n$", "r"),
+        "T_p": (r"$T_p$", "g"),
+        "T_e": (r"$T_e$", "b"),
+        "T_f": (r"$T_f$", "m"),
+    }
+    milestones = [
+        (temperature, *milestone_styles[key])
+        for key, temperature in report["Milestone temperatures"].items()
+        if temperature is not None
+        and report["Lowest sampled temperature"] <= temperature
+        <= report["Highest sampled temperature"]
+    ]
 
     for axis in axes.flat:
-        for temperature, label, color in boundaries:
+        for temperature, label, color in milestones:
             if axis is axes[0, 0]:
                 add_labeled_vline(axis, temperature, label, color)
             else:
@@ -138,7 +142,7 @@ def plot_temperature_uncertainty(report: dict, transition_id=None):
         axis.set_xlabel("Transition temperature [GeV]")
         axis.grid(alpha=0.25)
 
-    title = "GW temperature uncertainty"
+    title = "GW temperature scan"
     if transition_id is not None:
         title += f" — transition {transition_id}"
     figure.suptitle(title)

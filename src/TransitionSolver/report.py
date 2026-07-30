@@ -12,7 +12,7 @@ import json
 import matplotlib.pyplot as plt
 
 from .phasetracer import phase_tracer_info
-from .plot import plot_temperature_uncertainty
+from .plot import plot_temperature_scan
 
 
 def savejson(report, file_name):
@@ -68,6 +68,7 @@ def save_gw_outputs(
     analyser,
     detectors,
     folder,
+    temperature_scan=False,
     temperature_uncertainty=False,
     ptas=None,
     additional_transition_ids=(),
@@ -95,28 +96,38 @@ def save_gw_outputs(
         if str(transition_id) not in valid_transition_ids
     ]
 
-    uncertainty_reports = {}
-    uncertainty_plot_files = {}
-    if temperature_uncertainty:
-        transition_ids = valid_transition_ids + additional_transition_ids
-        transition_ids = [
-            transition_id
-            for transition_id in transition_ids
-            if analyser.transition_reports[transition_id].get("T_f") is not None
-        ]
-        uncertainty_reports = (
-            analyser.temperature_uncertainty_report_for_transition_ids(
-                transition_ids, *detectors
-            )
+    transition_ids = valid_transition_ids + additional_transition_ids
+    uncertainty_transition_ids = [
+        transition_id
+        for transition_id in transition_ids
+        if analyser.transition_reports[transition_id].get("T_p") is not None
+        and analyser.transition_reports[transition_id].get("T_f") is not None
+    ]
+
+    scan_reports = {}
+    scan_plot_files = {}
+    if temperature_scan:
+        scan_reports = analyser.temperature_scan_report_for_transition_ids(
+            transition_ids, *detectors
         )
-        for transition_id, report in uncertainty_reports.items():
-            figure = plot_temperature_uncertainty(report, transition_id)
-            plot_file = (
-                folder / f"gw_temperature_uncertainty_transition_{transition_id}.pdf"
-            )
+
+    if temperature_scan:
+        for transition_id, report in scan_reports.items():
+            figure = plot_temperature_scan(report, transition_id)
+            plot_file = folder / f"gw_temperature_scan_transition_{transition_id}.pdf"
             figure.savefig(plot_file)
             plt.close(figure)
-            uncertainty_plot_files[transition_id] = plot_file
+            scan_plot_files[transition_id] = plot_file
+
+    uncertainty_reports = {}
+    if temperature_uncertainty:
+        uncertainty_reports = (
+            analyser.temperature_uncertainty_report_for_transition_ids(
+                uncertainty_transition_ids,
+                *detectors,
+                scan_reports=scan_reports,
+            )
+        )
 
     # save results from each path
     for idx, path in enumerate(tr_report["paths"]):
@@ -149,23 +160,32 @@ def save_gw_outputs(
                 )
 
         savejson(path_gw_report, path_dir / "gw.json")
+        if temperature_scan:
+            path_scan_reports = {
+                transition_id: scan_reports[transition_id]
+                for transition_id in path["transitions"]
+                if transition_id in scan_reports
+            }
+            savejson(
+                path_scan_reports,
+                path_dir / "gw_temperature_scan.json",
+            )
+            for transition_id in path_scan_reports:
+                shutil.copyfile(
+                    scan_plot_files[transition_id],
+                    path_dir / f"gw_temperature_scan_transition_{transition_id}.pdf",
+                )
+
         if temperature_uncertainty:
             path_uncertainty_reports = {
                 transition_id: uncertainty_reports[transition_id]
                 for transition_id in path["transitions"]
                 if transition_id in uncertainty_reports
             }
-            if path_uncertainty_reports:
-                savejson(
-                    path_uncertainty_reports,
-                    path_dir / "gw_temperature_uncertainty.json",
-                )
-            for transition_id in path_uncertainty_reports:
-                shutil.copyfile(
-                    uncertainty_plot_files[transition_id],
-                    path_dir
-                    / f"gw_temperature_uncertainty_transition_{transition_id}.pdf",
-                )
+            savejson(
+                path_uncertainty_reports,
+                path_dir / "gw_temperature_uncertainty.json",
+            )
         savejson(path, path_dir / "tr_path.json")
 
     for transition_id in additional_transition_ids:
@@ -185,15 +205,25 @@ def save_gw_outputs(
         figure.savefig(transition_dir / "gw.pdf")
         plt.close(figure)
 
-        if transition_id in uncertainty_reports:
+        if temperature_scan:
             savejson(
-                {transition_id: uncertainty_reports[transition_id]},
-                transition_dir / "gw_temperature_uncertainty.json",
+                {transition_id: scan_reports[transition_id]},
+                transition_dir / "gw_temperature_scan.json",
             )
             shutil.copyfile(
-                uncertainty_plot_files[transition_id],
-                transition_dir
-                / f"gw_temperature_uncertainty_transition_{transition_id}.pdf",
+                scan_plot_files[transition_id],
+                transition_dir / f"gw_temperature_scan_transition_{transition_id}.pdf",
+            )
+
+        if temperature_uncertainty:
+            report = (
+                {transition_id: uncertainty_reports[transition_id]}
+                if transition_id in uncertainty_reports
+                else {}
+            )
+            savejson(
+                report,
+                transition_dir / "gw_temperature_uncertainty.json",
             )
 
     return str(folder), path_dirs
