@@ -68,10 +68,8 @@ def plot_temperature_scan(report: dict, transition_id=None):
     plot_positive(axes[0, 0], "False vacuum fraction")
     axes[0, 0].set_ylabel("False vacuum fraction")
 
-    plot_positive(axes[0, 1], "Kinetic energy fraction", "Kinetic energy fraction")
-    plot_positive(axes[0, 1], "Upsilon", "Upsilon")
-    axes[0, 1].set_ylabel("Energy fraction")
-    axes[0, 1].legend()
+    plot_positive(axes[0, 1], "Kinetic energy fraction")
+    axes[0, 1].set_ylabel("Kinetic energy fraction")
 
     for key in ("Mean bubble separation", "Mean bubble radius"):
         plot_positive(axes[0, 2], key, key)
