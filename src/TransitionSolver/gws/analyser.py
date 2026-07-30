@@ -659,6 +659,27 @@ class GWAnalyser:
             transition_report, "H", temperature
         )
         result["Beta/H"] = result["Beta"] / result["Hubble constant"]
+
+        propagation_velocity = max(
+            analysis.bubble_wall_velocity,
+            analysis.hydro_transition_temp.soundSpeedFalse,
+        )
+        conversion = (8 * np.pi) ** (1 / 3) * propagation_velocity
+        result["Mean bubble separation from beta"] = (
+            conversion / result["Beta"]
+            if np.isfinite(result["Beta"]) and result["Beta"] > 0
+            else np.nan
+        )
+        result["Beta/H from mean bubble separation"] = (
+            conversion
+            / result["Mean bubble separation"]
+            / result["Hubble constant"]
+            if np.isfinite(result["Mean bubble separation"])
+            and result["Mean bubble separation"] > 0
+            and np.isfinite(result["Hubble constant"])
+            and result["Hubble constant"] > 0
+            else np.nan
+        )
         return result
 
     def temperature_scan_report(self, transition_id, *detectors):
