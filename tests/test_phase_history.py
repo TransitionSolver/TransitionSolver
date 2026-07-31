@@ -10,12 +10,19 @@ import pytest
 import numpy as np
 
 from TransitionSolver import phasehistory, benchmarks, read_phase_tracer
+from TransitionSolver.analysis.transition_analysis import LinearInterp
 from dictcmp import assert_deep_equal
 
 THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 BASELINE = THIS / "baseline"
 
 NAMES = [f"RSS_BP{k}" for k in range(1, 14)]
+
+
+def test_linear_interp():
+    interpolate = LinearInterp([0.0, 10.0], 8.0)
+
+    assert interpolate([100.0, 200.0]) == 180.0
 
 
 def make_analyser():
