@@ -30,6 +30,7 @@ KM_TO_MPC = 3.241e-20
 H_OVER_H0 = 1.0 / (100 * KM_TO_MPC / GEV_TO_HZ)
 ZP = 10  # Sound wave peak frequency from simulations
 OMEGA_SW = 0.012  # From erratum of https://arxiv.org/abs/1704.05871 TABLE IV.
+TEMPERATURE_UNCERTAINTY_START_PF = 0.9
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,41 @@ def interpolate_transition_report(
         )
     order = np.argsort(temperatures)
     return float(np.interp(temperature, temperatures[order], values[order]))
+
+
+# TODO: consider making T_s solving Pf(T_s) = 0.9 a milestoine temp in
+#       transition analysis.  Then the function below is not needed
+def _temperature_at_false_vacuum_fraction(
+    transition_report: dict, target_pf: float
+) -> float:
+    """Interpolate the temperature at the first downward crossing of target Pf."""
+    temperatures = np.asarray(transition_report["T"], dtype=float)
+    false_vacuum_fractions = np.asarray(transition_report["Pf"], dtype=float)
+    if temperatures.shape != false_vacuum_fractions.shape:
+        raise ValueError("Saved T and Pf histories have different lengths")
+    if len(temperatures) == 0:
+        raise ValueError("Saved T and Pf histories are empty")
+    if false_vacuum_fractions[0] == target_pf:
+        return float(temperatures[0])
+
+    for i in range(1, len(false_vacuum_fractions)):
+        previous_pf = false_vacuum_fractions[i - 1]
+        current_pf = false_vacuum_fractions[i]
+        if previous_pf >= target_pf >= current_pf:
+            if previous_pf == current_pf:
+                return float(temperatures[i - 1])
+            return float(
+                np.interp(
+                    target_pf,
+                    [current_pf, previous_pf],
+                    [temperatures[i], temperatures[i - 1]],
+                )
+            )
+
+    raise ValueError(
+        f"Cannot determine the temperature at Pf={target_pf}: the saved "
+        "history does not contain a downward crossing of this value"
+    )
 
 
 class AnalyseIndividualTransition:
@@ -738,20 +774,26 @@ class GWAnalyser:
     def temperature_uncertainty_report(
         self, transition_id, *detectors, scan_report=None
     ):
-        """Return sampled prediction ranges from near percolation to completion."""
+        """Return sampled prediction ranges from Pf=0.9 to completion."""
         transition_id = str(transition_id)
         transition_report = self.transition_reports[transition_id]
-        T_p = transition_report.get("T_p")
         T_f = transition_report.get("T_f")
-        if T_p is None or T_f is None:
+        if T_f is None:
             raise ValueError(
-                "Cannot calculate temperature uncertainty without percolation "
-                "and completion temperatures"
+                "Cannot calculate temperature uncertainty without a completion "
+                "temperature"
             )
 
-        requested_start = transition_report["T_c"] + 0.8 * (
-            T_p - transition_report["T_c"]
+        start_temperature = _temperature_at_false_vacuum_fraction(
+            transition_report, TEMPERATURE_UNCERTAINTY_START_PF
         )
+        if T_f > start_temperature:
+            raise ValueError(
+                f"Completion temperature T_f={T_f} is above the Pf="
+                f"{TEMPERATURE_UNCERTAINTY_START_PF} start temperature "
+                f"T={start_temperature}"
+            )
+
         if scan_report is None:
             temperatures = [
                 temperature
@@ -759,7 +801,7 @@ class GWAnalyser:
                     transition_report["T"],
                     transition_report["bubble_separation"],
                 )
-                if T_f <= temperature <= requested_start
+                if T_f <= temperature <= start_temperature
                 and np.isfinite(separation)
                 and separation > 0
             ]
@@ -773,41 +815,34 @@ class GWAnalyser:
             results = [
                 result
                 for result in scan_report["Results"]
-                if T_f <= result["Transition temperature"] <= requested_start
+                if T_f <= result["Transition temperature"] <= start_temperature
             ]
 
-        for boundary in (requested_start, T_f):
+        for boundary in (start_temperature, T_f):
             if not any(
-                np.isclose(result["Transition temperature"], boundary)
+                result["Transition temperature"] == boundary
                 for result in results
             ):
                 separation = interpolate_transition_report(
                     transition_report, "bubble_separation", boundary
                 )
-                if np.isfinite(separation) and separation > 0:
-                    results.append(
-                        self._report_at_temperature(
-                            transition_id, boundary, *detectors
-                        )
+                if not np.isfinite(separation) or separation <= 0:
+                    raise ValueError(
+                        "Cannot evaluate the temperature-uncertainty endpoint "
+                        f"T={boundary}: the interpolated mean bubble separation "
+                        f"is {separation}"
                     )
+                results.append(
+                    self._report_at_temperature(
+                        transition_id, boundary, *detectors
+                    )
+                )
 
         results.sort(key=lambda result: result["Transition temperature"], reverse=True)
         if not results:
             raise RuntimeError(
                 "No valid temperatures in the uncertainty interval "
-                f"[{T_f}, {requested_start}] for transition {transition_id}"
-            )
-
-        actual_start = results[0]["Transition temperature"]
-        start_adjusted = not np.isclose(actual_start, requested_start)
-        if start_adjusted:
-            logger.warning(
-                "Requested temperature-uncertainty start T=%s has no valid "
-                "mean bubble separation. Starting transition %s at the first "
-                "valid sampled temperature T=%s.",
-                requested_start,
-                transition_id,
-                actual_start,
+                f"[{T_f}, {start_temperature}] for transition {transition_id}"
             )
 
         scalar_keys = [
@@ -838,9 +873,11 @@ class GWAnalyser:
             ranges["Signal-to-Noise Ratio"] = snr_ranges
 
         return {
-            "Requested start temperature": requested_start,
-            "Actual start temperature": actual_start,
-            "Start temperature adjusted": start_adjusted,
+            "Start false-vacuum fraction": TEMPERATURE_UNCERTAINTY_START_PF,
+            "Start temperature": start_temperature,
+            "Completion false-vacuum fraction threshold": transition_report.get(
+                "completion_threshold"
+            ),
             "Completion temperature": T_f,
             "Highest evaluated temperature": results[0]["Transition temperature"],
             "Lowest evaluated temperature": results[-1]["Transition temperature"],

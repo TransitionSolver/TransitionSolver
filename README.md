@@ -84,7 +84,7 @@ You can pass a model and model header file etc, and parameter point.
 
 Pass `--temperature-scan` to save `gw_temperature_scan.json` and one `gw_temperature_scan_transition_<id>.pdf` plot per transition. The scan uses the full saved temperature history for which the mean bubble separation is finite and positive.
 
-Pass `--temperature-uncertainty` to save `gw_temperature_uncertainty.json`. For each completed transition, this reports the minimum and maximum sampled predictions between $T_c + 0.8(T_p-T_c)$ and $T_f$, including evaluations at the interval endpoints when necessary. These are sampled numerical ranges, not continuously optimised extrema.
+Pass `--temperature-uncertainty` to save `gw_temperature_uncertainty.json`. For each completed transition, this reports the minimum and maximum sampled predictions between the first downward crossing of false-vacuum fraction $P_f=0.9$ and the completion temperature $T_f$, including evaluations at the interval endpoints when necessary. These are sampled numerical ranges, not continuously optimised extrema.
 
 ## Gravitational-wave post-processing
 
