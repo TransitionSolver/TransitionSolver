@@ -259,6 +259,7 @@ def analyse_and_save_gws(
             analyser,
             detectors,
             folder,
+            valid_ids,
             temperature_scan=temperature_scan,
             temperature_uncertainty=temperature_uncertainty,
             ptas=ptas,
