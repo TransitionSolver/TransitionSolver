@@ -145,10 +145,7 @@ class AnalyseIndividualTransition:
 
     @property
     def at_percolation(self):
-        return (
-            self.source_temperature is None
-            or self.source_temperature == self.transition_report.get("T_p")
-        )
+        return self.source_temperature is None
 
     @property
     def upsilon(self):
