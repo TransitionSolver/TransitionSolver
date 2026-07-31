@@ -78,6 +78,27 @@ def _configure_eigen_abi() -> None:
 
     args = os.environ.get("EXTRA_CLING_ARGS", "")
     options = args.split()
+
+    required_values = {
+        "EIGEN_MAX_ALIGN_BYTES": "16",
+        "EIGEN_MAX_STATIC_ALIGN_BYTES": "16",
+    }
+
+    for option in options:
+        for macro, required_value in required_values.items():
+            prefix = f"-D{macro}="
+            if option.startswith(prefix) and option != f"{prefix}{required_value}":
+                raise RuntimeError(
+                    "Conflicting Eigen ABI setting in EXTRA_CLING_ARGS: "
+                    f"{macro} must be {required_value}, but found "
+                    f"{option.removeprefix(prefix)}."
+                )
+
+        if option == "-UEIGEN_DONT_VECTORIZE":
+            raise RuntimeError(
+                "EXTRA_CLING_ARGS must not undefine EIGEN_DONT_VECTORIZE."
+            )
+
     for arg in EIGEN_ABI_ARGS:
         if arg not in options:
             args = f"{args} {arg}".strip()
