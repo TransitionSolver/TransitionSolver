@@ -422,7 +422,7 @@ class CurveData:
 
 class LinearInterp:
     def __init__(self, x, target):
-        self.factor = 0.0 if x[-1] == x[-2] else (x[-1] - target) / (x[-1] - x[-2])
+        self.factor = 0.0 if x[-1] == x[-2] else (target - x[-2]) / (x[-1] - x[-2])
 
     def __call__(self, z):
         return z[-2] + self.factor * (z[-1] - z[-2])
