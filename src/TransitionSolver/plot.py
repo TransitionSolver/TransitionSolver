@@ -71,13 +71,23 @@ def plot_temperature_scan(report: dict, transition_id=None):
     plot_positive(axes[0, 1], "Kinetic energy fraction")
     axes[0, 1].set_ylabel("Kinetic energy fraction")
 
-    for key in ("Mean bubble separation", "Mean bubble radius"):
+    for key in (
+        "Mean bubble separation",
+        "Mean bubble radius",
+        "Mean bubble separation from beta",
+    ):
         plot_positive(axes[0, 2], key, key)
     axes[0, 2].set_ylabel("Length scale [GeV$^{-1}$]")
     axes[0, 2].legend()
 
-    plot_positive(axes[1, 0], "Beta/H")
+    plot_positive(axes[1, 0], "Beta/H", "From action derivative")
+    plot_positive(
+        axes[1, 0],
+        "Beta/H from mean bubble separation",
+        "From mean bubble separation",
+    )
     axes[1, 0].set_ylabel(r"$\beta/H$")
+    axes[1, 0].legend()
 
     axes[1, 1].plot(
         temperatures, [result["Bubble wall velocity"] for result in results]

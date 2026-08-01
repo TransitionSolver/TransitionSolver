@@ -6,24 +6,16 @@ from pathlib import Path
 
 import click
 import numpy as np
-import rich.pretty
-from rich.console import Console
-from rich.status import Status
-from rich.text import Text
-
-from . import gws, load_potential, read_phase_tracer, save_gw_outputs
+from . import load_potential, read_phase_tracer
 from .cli import (
     DETECTORS,
     LEVELS,
     PTAS,
-    transition_diagnostics,
+    analyse_and_save_gws,
     transitions_with_percolation_temperature,
     valid_transition_ids,
 )
 from .phasetracer import DEFAULT_NAMESPACE
-
-
-console = Console()
 
 
 def load_saved_json(path: Path) -> dict:
@@ -141,85 +133,22 @@ def gw_cli(
             message += " Try --include-all-transitions-with-perc-temp."
         raise click.ClickException(message)
 
-    diagnostics = {}
-    if include_all_transitions_with_perc_temp:
-        diagnostics = {
-            transition_id: transition_diagnostics(
-                transition_report["transitions"][transition_id]
-            )
-            for transition_id in transition_ids
-        }
-        for transition_id, diagnostic in diagnostics.items():
-            for warning in diagnostic["Warnings"]:
-                console.print(f"Warning for transition {transition_id}: {warning}")
-            if (
-                temperature_uncertainty
-                and transition_report["transitions"][transition_id].get("T_f") is None
-            ):
-                console.print(
-                    f"Warning for transition {transition_id}: The temperature-"
-                    "uncertainty calculation is skipped because there is no "
-                    "completion "
-                    "temperature."
-                )
-
-    detectors = [DETECTORS[name] for name in detector]
-    ptas = [PTAS[name] for name in pta]
-
-    with Status("Analyzing gravitational wave signal"):
-        analyser = gws.GWAnalyser(
-            potential,
-            transition_report,
-            phase_structure,
-            transition_ids=transition_ids,
-        )
-        gw_report = {
-            transition_id: analyser.gws[transition_id].report(*detectors)
-            for transition_id in transition_ids
-        }
-        for transition_id in diagnostics:
-            gw_report[transition_id]["Transition diagnostics"] = diagnostics[
-                transition_id
-            ]
-        gw_fig = analyser.plot(detectors=detectors, ptas=ptas, show=show)
-
-    console.rule("[bold red]Gravitational waves")
-    rich.pretty.pprint(gw_report, console=console, max_length=10)
-
-    additional_ids = [
-        transition_id
-        for transition_id in transition_ids
-        if transition_id not in valid_ids
-    ]
-    with Status("Calculating and saving gravitational wave results"):
-        folder, path_dirs = save_gw_outputs(
-            transition_report,
-            gw_fig,
-            analyser,
-            detectors,
-            output_folder,
-            temperature_scan=temperature_scan,
-            temperature_uncertainty=temperature_uncertainty,
-            ptas=ptas,
-            additional_transition_ids=additional_ids,
-            transition_diagnostics=diagnostics,
-        )
-
-    console.print(
-        Text.assemble("Gravitational wave results saved in: ", (folder, "bold magenta"))
+    analyse_and_save_gws(
+        potential,
+        transition_report,
+        phase_structure,
+        transition_ids,
+        valid_ids,
+        detector,
+        pta,
+        output_folder,
+        show=show,
+        temperature_scan=temperature_scan,
+        temperature_uncertainty=temperature_uncertainty,
+        include_all_transitions_with_perc_temp=(
+            include_all_transitions_with_perc_temp
+        ),
     )
-    for path in path_dirs:
-        console.print(
-            f"  Valid cosmological history path {path['index']}: "
-            f"{path['directory']}"
-        )
-    for transition_id in additional_ids:
-        directory = (
-            Path(folder)
-            / "transitions_with_perc_temp"
-            / f"transition_{transition_id}"
-        )
-        console.print(f"  Additional transition {transition_id}: {directory}")
 
 
 if __name__ == "__main__":

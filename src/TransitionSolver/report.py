@@ -68,6 +68,7 @@ def save_gw_outputs(
     analyser,
     detectors,
     folder,
+    valid_transition_ids,
     temperature_scan=False,
     temperature_uncertainty=False,
     ptas=None,
@@ -82,14 +83,6 @@ def save_gw_outputs(
 
     gw_fig.savefig(folder / "gw.pdf")
 
-    valid_transition_ids = list(
-        dict.fromkeys(
-            transition_id
-            for path in tr_report["paths"]
-            if path["valid"]
-            for transition_id in path["transitions"]
-        )
-    )
     additional_transition_ids = [
         str(transition_id)
         for transition_id in additional_transition_ids

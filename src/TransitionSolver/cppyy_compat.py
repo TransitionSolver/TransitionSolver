@@ -1,6 +1,6 @@
 """
-Compatibility helpers for importing cppyy on macOS
-==================================================
+Compatibility helpers for importing cppyy
+==========================================
 """
 
 from __future__ import annotations
@@ -27,6 +27,11 @@ MACOS_SDK_SEARCH_DIRS = (
         "/Developer/SDKs"
     ),
 )
+EIGEN_ABI_ARGS = (
+    "-DEIGEN_DONT_VECTORIZE",
+    "-DEIGEN_MAX_ALIGN_BYTES=16",
+    "-DEIGEN_MAX_STATIC_ALIGN_BYTES=16",
+)
 
 
 def once(func):
@@ -42,9 +47,10 @@ def once(func):
 
 def import_cppyy():
     """
-    Import cppyy after applying macOS fixes needed by current wheels
+    Import cppyy after applying compatibility fixes
     and patch it to not repeat including libraries etc.
     """
+    _configure_eigen_abi()
     _configure_macos_sdk()
     _patch_macos_zstd()
 
@@ -63,6 +69,41 @@ def import_cppyy():
                     cppyy.cache_add_include_path(include_path)
 
     return cppyy
+
+
+def _configure_eigen_abi() -> None:
+    """Match cppyy's Eigen ABI to the generic PhaseTracer build."""
+    if platform.machine().lower() not in {"x86_64", "amd64"}:
+        return
+
+    args = os.environ.get("EXTRA_CLING_ARGS", "")
+    options = args.split()
+
+    required_values = {
+        "EIGEN_MAX_ALIGN_BYTES": "16",
+        "EIGEN_MAX_STATIC_ALIGN_BYTES": "16",
+    }
+
+    for option in options:
+        for macro, required_value in required_values.items():
+            prefix = f"-D{macro}="
+            if option.startswith(prefix) and option != f"{prefix}{required_value}":
+                raise RuntimeError(
+                    "Conflicting Eigen ABI setting in EXTRA_CLING_ARGS: "
+                    f"{macro} must be {required_value}, but found "
+                    f"{option.removeprefix(prefix)}."
+                )
+
+        if option == "-UEIGEN_DONT_VECTORIZE":
+            raise RuntimeError(
+                "EXTRA_CLING_ARGS must not undefine EIGEN_DONT_VECTORIZE."
+            )
+
+    for arg in EIGEN_ABI_ARGS:
+        if arg not in options:
+            args = f"{args} {arg}".strip()
+            options.append(arg)
+    os.environ["EXTRA_CLING_ARGS"] = args
 
 
 def _configure_macos_sdk() -> None:

@@ -128,9 +128,6 @@ def test_temperature_uncertainty_reports_sampled_ranges(monkeypatch):
         phase_tracer_file=BASELINE / "rss_bp4_phase_structure.dat",
     )
     transition = phase_history["transitions"]["0"]
-    start = transition["T_c"] + 0.8 * (
-        transition["T_p"] - transition["T_c"]
-    )
 
     def fake_report(_, temperature, *detectors):
         return {
@@ -141,9 +138,12 @@ def test_temperature_uncertainty_reports_sampled_ranges(monkeypatch):
 
     monkeypatch.setattr(analyser, "_report_at_temperature", fake_report)
     report = analyser.temperature_uncertainty_report("0")
+    start = report["Highest evaluated temperature"]
     value_range = report["Ranges"]["Test quantity"]
 
-    assert report["Highest evaluated temperature"] == start
+    assert interpolate_transition_report(transition, "Pf", start) == pytest.approx(
+        0.9
+    )
     assert report["Lowest evaluated temperature"] == transition["T_f"]
     assert value_range["Minimum"] >= 0
     assert value_range["Temperature at minimum"] <= start
