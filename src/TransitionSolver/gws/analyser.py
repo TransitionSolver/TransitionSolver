@@ -551,10 +551,10 @@ class AnalyseIndividualTransition:
             for i, pta in enumerate(ptas):
                 pta.plot(ax, color=f"C{i}")
 
-        ax.loglog(frequencies, self.gw_total(frequencies), label="total")
+        #ax.loglog(frequencies, self.gw_total(frequencies), label="total")
         ax.loglog(frequencies, self.gw_sw(frequencies), label="sw")
-        ax.loglog(frequencies, self.gw_turb(frequencies), label="turb")
-        ax.loglog(frequencies, self.gw_coll(frequencies), label="coll")
+        #ax.loglog(frequencies, self.gw_turb(frequencies), label="turb")
+        #ax.loglog(frequencies, self.gw_coll(frequencies), label="coll")
         ax.legend(scatterpoints=1)
         ax.set_ylabel("Amplitude")
         ax.set_xlabel("Frequency (Hz)")
