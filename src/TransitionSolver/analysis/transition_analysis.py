@@ -585,6 +585,7 @@ class TransitionAnalyser:
             self.properties.T_f = li(self.action_sampler.subT)
             self.properties.Hf = li(self.properties.H)
             self.properties.beta_f = li(self.properties.beta)
+            self.properties.bubble_separation_f = li(self.properties.bubble_separation)
             self.properties.decreasing_v_phys_f = bool(
                 # don't want a numpy.bool
                 self.properties.deriv_physical_volume[-1] < 0
