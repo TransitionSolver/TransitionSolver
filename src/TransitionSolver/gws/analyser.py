@@ -61,7 +61,7 @@ def interpolate_transition_report(
     return float(np.interp(temperature, temperatures[order], values[order]))
 
 
-# TODO: consider making T_s solving Pf(T_s) = 0.9 a milestoine temp in
+# TODO: consider making T_s solving Pf(T_s) = 0.9 a milestone temp in
 #       transition analysis.  Then the function below is not needed
 def _temperature_at_false_vacuum_fraction(
     transition_report: dict, target_pf: float
