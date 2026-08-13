@@ -312,17 +312,19 @@ class ActionSampler:
         # TODO: replace with quadratic interpolation.
         SonTList = np.linspace(self.SonT[-1], SonTnew, numPoints)
         GammaList = self.transitionAnalyser.gamma_rate(TList, SonTList)
-        energyStart = (
-            hydrodynamics.energy_density_from_phase(
-                self.fromPhase, self.toPhase, self.potential, TList[0]
-            )
-            - self.transitionAnalyser.ground_state_energy_density
+        energyStart = hydrodynamics.cosmological_energy_density(
+            self.fromPhase,
+            self.toPhase,
+            self.potential,
+            TList[0],
+            self.transitionAnalyser.ground_state_energy_density,
         )
-        energyEnd = (
-            hydrodynamics.energy_density_from_phase(
-                self.fromPhase, self.toPhase, self.potential, TList[-1]
-            )
-            - self.transitionAnalyser.ground_state_energy_density
+        energyEnd = hydrodynamics.cosmological_energy_density(
+            self.fromPhase,
+            self.toPhase,
+            self.potential,
+            TList[-1],
+            self.transitionAnalyser.ground_state_energy_density,
         )
         # TODO: replace with quadratic interpolation.
         energyDensityList = np.linspace(energyStart, energyEnd, numPoints)
@@ -437,7 +439,7 @@ class TransitionAnalyser:
         properties,
         fromPhase: Phase,
         toPhase: Phase,
-        ground_state_energy_density: float,
+        ground_state_energy_density: float | None,
         Tmin=None,
         Tmax=None,
         bubble_wall_velocity=None,
@@ -471,6 +473,8 @@ class TransitionAnalyser:
         self.properties.perc_threshold_pf = perc_threshold_pf
         self.properties.perc_threshold_vol_ext = -np.log(perc_threshold_pf)
         self.properties.completion_threshold = completion_threshold
+        if ground_state_energy_density is None:
+            self.properties.assumes_radiation_domination = True
 
         if self.Tmin is None:
             # The minimum temperature for which both phases exist, and prevent analysis below the effective potential's
@@ -1586,12 +1590,14 @@ class TransitionAnalyser:
         return self.gamma_rate(T, action) / (T * self.hubble_squared(T) ** 2)
 
     def hubble_squared(self, T: float) -> float:
-        rhof = hydrodynamics.energy_density_from_phase(
-            self.fromPhase, self.toPhase, self.potential, T
+        energy_density = hydrodynamics.cosmological_energy_density(
+            self.fromPhase,
+            self.toPhase,
+            self.potential,
+            T,
+            self.ground_state_energy_density,
         )
-        return hubble_squared_from_energy_density(
-            rhof - self.ground_state_energy_density
-        )
+        return hubble_squared_from_energy_density(energy_density)
 
     def get_hydro_vars(self, T: float) -> HydroVars:
         return hydrodynamics.make_hydro_vars(
@@ -1665,7 +1671,13 @@ def hubble_squared(
     toPhase: Phase,
     potential,
     T: float,
-    ground_state_energy_density: float,
+    ground_state_energy_density: float | None,
 ) -> float:
-    rhof = hydrodynamics.energy_density_from_phase(fromPhase, toPhase, potential, T)
-    return hubble_squared_from_energy_density(rhof - ground_state_energy_density)
+    energy_density = hydrodynamics.cosmological_energy_density(
+        fromPhase,
+        toPhase,
+        potential,
+        T,
+        ground_state_energy_density,
+    )
+    return hubble_squared_from_energy_density(energy_density)

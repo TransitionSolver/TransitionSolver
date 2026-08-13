@@ -38,6 +38,8 @@ class HydroVars:
     soundSpeedSqTrue: float
 
     T: float
+    cosmologicalEnergyDensityFalse: float
+    assumesRadiationDomination: bool
 
     @property
     def traceAnomalyFalse(self):
@@ -88,11 +90,13 @@ class HydroVars:
         (ie taking kappa = 1)
         """
         return (self.pseudotraceFalse - self.pseudotraceTrue) / \
-            self.energyDensityFalse
+            self.cosmologicalEnergyDensityFalse
 
     @property
     def hubble_constant(self):
-        return hubble_squared_from_energy_density(self.energyDensityFalse)**0.5
+        return hubble_squared_from_energy_density(
+            self.cosmologicalEnergyDensityFalse
+        )**0.5
 
     def average_pressure_density(self, pf):
         """
@@ -102,10 +106,13 @@ class HydroVars:
 
     def adiabatic_index(self, pf):
         """
-        Slightly better than averaging the enthalpy of each phase. Use energy conservation for the energy, and average
-        the pressure of each phase. Don't use totalEnergyDensity because we should not subtract off the ground state
-        energy density
+        Use energy conservation for the average energy and average the phase
+        pressures when the ground-state normalisation is known. When assuming
+        radiation-domination, as currently required when the phases cannot
+        extend to T=0, use Gamma = 4/3.
         """
+        if self.assumesRadiationDomination:
+            return 4 / 3
         return 1. + self.average_pressure_density(pf) / self.energyDensityFalse
 
 
@@ -118,12 +125,18 @@ def interpolate_hydro_vars(
         f = (T - hv1.T) / (hv2.T - hv1.T)
         return val1 + f * (val2 - val1)
 
+    if hv1.assumesRadiationDomination != hv2.assumesRadiationDomination:
+        raise ValueError(
+            "Cannot interpolate between different cosmological assumptions"
+        )
+
     data = [
         linear_interpolate(
             getattr(
                 hv1, f.name), getattr(
-                hv2, f.name)) for f in fields(HydroVars)]
-    return HydroVars(*data)
+                hv2, f.name)) for f in fields(HydroVars)
+        if f.name != "assumesRadiationDomination"]
+    return HydroVars(*data, hv1.assumesRadiationDomination)
 
 
 def guess_delta_t(from_phase: Phase, to_phase: Phase, potential, T: float) -> float:
@@ -168,6 +181,23 @@ def _make_hydro_vars(phase, potential, T, delta_t, ground_state_energy=0.):
     return {"p": p, "e": e, "w": w, "s": s, "c2": c2}
 
 
+def radiation_energy_density(potential, T: float) -> float:
+    raddof = potential.raddof
+    return pi**2 / 30 * raddof * T**4
+
+
+def _cosmological_energy_density(
+        hvf, hvt, potential, T: float, ground_state_energy) -> float:
+    if ground_state_energy is not None:
+        return hvf["e"]
+
+    # When the potential is unavailable at T = 0, approximate
+    # rho_true(T) - rho_ground(0) by the radiation energy density. Thus
+    # rho_false(T) - rho_ground(0) = Delta rho(T) + rho_r(T).
+    return radiation_energy_density(potential, T) \
+        + hvf["e"] - hvt["e"]
+
+
 def make_hydro_vars(from_phase: Phase, to_phase: Phase, potential, T: float,
                     ground_state_energy=0.) -> HydroVars:
     """
@@ -175,10 +205,39 @@ def make_hydro_vars(from_phase: Phase, to_phase: Phase, potential, T: float,
     """
     delta_t = guess_delta_t(from_phase, to_phase, potential, T)
 
-    hvt = _make_hydro_vars(to_phase, potential, T, delta_t, ground_state_energy)
-    hvf = _make_hydro_vars(from_phase, potential, T, delta_t, ground_state_energy)
+    normalisation = 0. if ground_state_energy is None else ground_state_energy
+    hvt = _make_hydro_vars(to_phase, potential, T, delta_t, normalisation)
+    hvf = _make_hydro_vars(from_phase, potential, T, delta_t, normalisation)
 
-    return HydroVars(*hvf.values(), *hvt.values(), T)
+    cosmological_energy_density = _cosmological_energy_density(
+        hvf, hvt, potential, T, ground_state_energy
+    )
+
+    return HydroVars(
+        *hvf.values(), *hvt.values(), T, cosmological_energy_density,
+        ground_state_energy is None
+    )
+
+
+def cosmological_energy_density(
+        from_phase: Phase, to_phase: Phase, potential, T: float,
+        ground_state_energy=0.) -> float:
+    """
+    @returns The false-phase energy density used to calculate the Hubble rate.
+    """
+    delta_t = guess_delta_t(from_phase, to_phase, potential, T)
+    normalisation = 0. if ground_state_energy is None else ground_state_energy
+    hvf = _make_hydro_vars(
+        from_phase, potential, T, delta_t, normalisation
+    )
+
+    if ground_state_energy is not None:
+        return hvf["e"]
+
+    hvt = _make_hydro_vars(to_phase, potential, T, delta_t, normalisation)
+    return _cosmological_energy_density(
+        hvf, hvt, potential, T, ground_state_energy
+    )
 
 
 def _energy_density(from_phase: Phase, to_phase: Phase,
