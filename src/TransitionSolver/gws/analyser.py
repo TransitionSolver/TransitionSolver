@@ -12,7 +12,7 @@ from importlib.resources import files
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import special
+from scipy import special, integrate
 
 from ..analysis.phase_structure import PhaseStructure
 from ..models.analysable_potential import AnalysablePotential
@@ -82,7 +82,14 @@ class AnalyseIndividualTransition:
             self.transition_temp,
             phase_structure.ground_state_energy_density,
         )
-
+        
+        self.hydro_transition_temp_Tf = hydrodynamics.make_hydro_vars(
+            self.from_phase,
+            self.to_phase,
+            self.potential,
+            self.transition_temp_Tf,
+            phase_structure.ground_state_energy_density) 
+         
         self.hydro_redshift_temp = hydrodynamics.make_hydro_vars(
             self.from_phase,
             self.to_phase,
@@ -129,6 +136,10 @@ class AnalyseIndividualTransition:
     @property
     def transition_temp(self) -> float:
         return self.transition_report["T_p"]
+        
+    @property    
+    def transition_temp_Tf(self) -> float:
+        return self.transition_report["T_f"]    
 
     @cached_property
     def redshift_temp(self) -> float:
@@ -361,7 +372,7 @@ class AnalyseIndividualTransition:
         return self.peak_amplitude_sw_semi_analytic_2022 * self.spectral_shape_sw_semi_analytic_2022(f)
     
     @property
-    def peak_amplitude_sw_higgsless_2024(self) -> float:
+    def peak_amplitude_sw_higgsless_2024(self, OMEGA_SW, S, b) -> float:
         """
         Fit from https://arxiv.org/abs/2409.03651 Eq.5.8
         Parameters from https://arxiv.org/abs/2409.03651
@@ -371,30 +382,32 @@ class AnalyseIndividualTransition:
         OMEGA_SW = 3.11e-2
         S = 0.84
         b = 1.17
-  
-        _k = self.hydro_transition_temp.alpha / (1 + self.hydro_transition_temp.alpha)
-        Ksw = _k * S * self.kappa_sw
+        
+        K2 = S * self.kinetic_energy_fraction
         RH = self.hydro_transition_temp.hubble_constant * self.length_scale
 
-        betaTf = self.transition_report.get('beta_f', None)
-        betaTf = betaTf / self.hydro_transition_temp.hubble_constant
-
-        dt0 = 11 / betaTf
+        factor = (8 * np.pi)**(1/3)       
+        betaTf = factor * self.vw / self.length_scale_Tf
+        betaTp = factor * self.vw / self.length_scale
+        
+        betaoverH_Tf = betaTf / self.hydro_transition_temp_Tf.hubble_constant
+        betaoverH_Tp = betaTp / self.hydro_transition_temp.hubble_constant
+        
+        dt0 = 11 / betaoverH_Tf
         fluid_velocity = (self.kinetic_energy_fraction /
                           self.hydro_transition_temp.adiabatic_index(self.Pf))**0.5
-        tau_sw = 1 / fluid_velocity
-        dtfin = tau_sw 
+        tau_sw = self.length_scale / fluid_velocity 
+        dtfin = tau_sw * betaTp
+
         A_hyp = special.hyp2f1(2, 1 - 2*b, 2.0 - 2*b, (dt0 + dtfin) / (dt0 - 1))
-        B_hyp = special.hyp2f1(2, 1 - 2*b, 2.0 - 2*b, dt0 / (dt0 - 1.0))
+        B_hyp = special.hyp2f1(2, 1 - 2*b, 2.0 - 2*b, dt0 / (dt0 - 1.0))       
         
-        # K2int
         factor1 = 1.0 / (1.0 - 2 * b)
         factor2 = (1 + dtfin / dt0) ** (1.0 - 2 * b) * A_hyp - B_hyp
-        
-        #expanding universe
-        K2int = (Ksw**2 * dt0) * factor1 * factor2
+        K2int = (K2**2 * dt0) * factor1 * factor2
         
         h2Omega = 3 * OMEGA_SW * self.redshift_amp * K2int * RH
+        
         return h2Omega
     
     @property
@@ -404,6 +417,29 @@ class AnalyseIndividualTransition:
         """
         k2 = 0.45
         return k2 * self.redshift_freq / self.length_scale
+    
+    def safe_trapezoid(self, y, x, axis=-1):
+        """
+        Safely compute the trapezoidal integral of y with respect to x.
+
+        Parameters
+        ----------
+        y : array_like
+            Values to integrate.
+        x : array_like
+            Integration variable.
+        axis : int, optional
+            Axis along which to integrate (default: -1).
+
+        Returns
+        -------
+        float or ndarray
+            The integral result.
+        """
+        try:
+            return np.trapezoid(y, x, axis=axis)
+        except AttributeError:
+            return np.trapz(y, x, axis=axis)
     
     def spectral_shape_sw_higgsless_2024(self, f: float, k1, k2, n3) -> float:
         """
@@ -416,15 +452,10 @@ class AnalyseIndividualTransition:
         a1 = 3.6
         a2 = 2.4
         S = (f / f1)**n1 * (1 + (f / f1)**a1)**((n2 - n1) / a1) * (1 + (f / f2)**a2)**((n3 - n2) / a2)
-        def safe_trapezoid(y, x, axis=-1):
-            try:
-                return np.trapezoid(y, x, axis=axis)
-            except AttributeError:
-                return np.trapz(y, x, axis=axis)
-        mu = safe_trapezoid(S, np.log(f), axis = -1)
+        mu = self.safe_trapezoid(S, np.log(f), axis = -1)
         S2 = S / mu # both are normalized to the same arbitrary constant which drops out here
-        return S2
-
+        return S2 
+        
     def gw_sw_higgsless_2024(self, f):
         """
         From https://arxiv.org/abs/2409.03651
@@ -433,7 +464,6 @@ class AnalyseIndividualTransition:
         From https://arxiv.org/pdf/2403.03723
         n3: table I second row
         """
-        
         k1 = 0.39
         k2 = 0.45
         n3 = -3.0
@@ -579,6 +609,14 @@ class AnalyseIndividualTransition:
         """
         key = "bubble_separation_p" if self.use_bubble_sep else "bubble_radius_p"
         return self.transition_report[key]
+        
+    @property
+    def length_scale_Tf(self) -> float:
+        """
+        @returns Characteristic bubble length scale
+        """
+        key = "bubble_separation" if self.use_bubble_sep else "bubble_radius"
+        return self.transition_report[key][-1]    
 
     def report(self, *detectors):
         report = {}
