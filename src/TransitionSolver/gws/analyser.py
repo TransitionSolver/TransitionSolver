@@ -372,7 +372,7 @@ class AnalyseIndividualTransition:
         return self.peak_amplitude_sw_semi_analytic_2022 * self.spectral_shape_sw_semi_analytic_2022(f)
     
     @property
-    def peak_amplitude_sw_higgsless_2024(self, OMEGA_SW, S, b) -> float:
+    def peak_amplitude_sw_higgsless_2024(self) -> float:
         """
         Fit from https://arxiv.org/abs/2409.03651 Eq.5.8
         Parameters from https://arxiv.org/abs/2409.03651
@@ -387,8 +387,8 @@ class AnalyseIndividualTransition:
         RH = self.hydro_transition_temp.hubble_constant * self.length_scale
 
         factor = (8 * np.pi)**(1/3)       
-        betaTf = factor * self.vw / self.length_scale_Tf
-        betaTp = factor * self.vw / self.length_scale
+        betaTf = factor * self.bubble_wall_velocity / self.length_scale_Tf
+        betaTp = factor * self.bubble_wall_velocity / self.length_scale
         
         betaoverH_Tf = betaTf / self.hydro_transition_temp_Tf.hubble_constant
         betaoverH_Tp = betaTp / self.hydro_transition_temp.hubble_constant
@@ -615,8 +615,8 @@ class AnalyseIndividualTransition:
         """
         @returns Characteristic bubble length scale
         """
-        key = "bubble_separation" if self.use_bubble_sep else "bubble_radius"
-        return self.transition_report[key][-1]    
+        key = "bubble_separation_f" if self.use_bubble_sep else "bubble_radius_f"
+        return self.transition_report[key] 
 
     def report(self, *detectors):
         report = {}
