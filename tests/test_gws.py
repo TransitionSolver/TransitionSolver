@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from TransitionSolver.gws import GWAnalyser, lisa
+from TransitionSolver.gws.analyser import interpolate_transition_report
 from TransitionSolver import gws, benchmarks
 from dictcmp import assert_deep_equal
 
@@ -71,6 +72,89 @@ def test_snr():
     )
     snr = lisa.SNR(analyser.gw_total)
     assert np.isclose(snr, 59.706589252791396)
+
+
+def test_source_temperature_report(generate_baseline):
+    analyser = GWAnalyser(
+        benchmarks.RSS_BP4,
+        get_phase_history("RSS_BP4"),
+        phase_tracer_file=BASELINE / "rss_bp4_phase_structure.dat",
+    )
+    analysis = analyser.transition_at_temperature("0", 63.5)
+
+    assert_deep_equal(
+        analysis.report(lisa),
+        BASELINE / "rss_bp4_gw_at_temperature.json",
+        generate_baseline=generate_baseline,
+    )
+
+
+def test_temperature_scan_uses_all_valid_samples(monkeypatch):
+    phase_history = get_phase_history("RSS_BP4")
+    phase_history["transitions"]["0"]["T_f"] = None
+    analyser = GWAnalyser(
+        benchmarks.RSS_BP4,
+        phase_history,
+        phase_tracer_file=BASELINE / "rss_bp4_phase_structure.dat",
+    )
+    monkeypatch.setattr(
+        analyser,
+        "_report_at_temperature",
+        lambda _, temperature, *detectors: {
+            "Transition temperature": temperature,
+        },
+    )
+
+    report = analyser.temperature_scan_report("0")
+    transition = phase_history["transitions"]["0"]
+    expected = [
+        temperature
+        for temperature, separation in zip(
+            transition["T"], transition["bubble_separation"]
+        )
+        if np.isfinite(separation) and separation > 0
+    ]
+
+    assert [result["Transition temperature"] for result in report["Results"]] == sorted(
+        expected, reverse=True
+    )
+
+
+def test_temperature_uncertainty_reports_sampled_ranges(monkeypatch):
+    phase_history = get_phase_history("RSS_BP4")
+    analyser = GWAnalyser(
+        benchmarks.RSS_BP4,
+        phase_history,
+        phase_tracer_file=BASELINE / "rss_bp4_phase_structure.dat",
+    )
+    transition = phase_history["transitions"]["0"]
+
+    def fake_report(_, temperature, *detectors):
+        return {
+            "Transition temperature": temperature,
+            "Test quantity": (temperature - transition["T_p"]) ** 2,
+            "Signal-to-Noise Ratio": {"Test detector": temperature},
+        }
+
+    monkeypatch.setattr(analyser, "_report_at_temperature", fake_report)
+    report = analyser.temperature_uncertainty_report("0")
+    start = report["Highest evaluated temperature"]
+    value_range = report["Ranges"]["Test quantity"]
+
+    assert interpolate_transition_report(transition, "Pf", start) == pytest.approx(
+        0.9
+    )
+    assert report["Lowest evaluated temperature"] == transition["T_f"]
+    assert value_range["Minimum"] >= 0
+    assert value_range["Temperature at minimum"] <= start
+    assert "Test detector" in report["Ranges"]["Signal-to-Noise Ratio"]
+
+
+def test_interpolation_rejects_temperature_outside_saved_history():
+    transition = {"T": [10.0, 5.0], "value": [1.0, 2.0]}
+
+    with pytest.raises(ValueError, match="saved temperature range"):
+        interpolate_transition_report(transition, "value", 11.0)
 
 
 @pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)

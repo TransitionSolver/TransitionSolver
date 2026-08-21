@@ -65,3 +65,4 @@ filterwarnings = ["ignore::Warning:cosmoTransitions*"]
 
 [project.scripts]
 ts = "TransitionSolver.cli:cli"
+ts-gw = "TransitionSolver.gw_cli:gw_cli"

@@ -6,8 +6,10 @@ Hydrodynamic quantities for phase transitions and gravitational waves
 from __future__ import annotations
 
 from dataclasses import dataclass, fields
+import warnings
 
 from numpy import pi
+import scipy.optimize
 
 from ..analysis.phase_structure import Phase
 from .numdiff import derivatives
@@ -199,3 +201,33 @@ def energy_density_from_phase(*args, **kwargs) -> float:
 
 def energy_density_to_phase(*args, **kwargs) -> float:
     return _energy_density(*args, **kwargs, use_from_phase=False)
+
+
+def reheat_temperature(
+    from_phase: Phase,
+    to_phase: Phase,
+    potential,
+    T: float,
+    T_c: float,
+    T_min: float,
+) -> float | None:
+    """
+    Calculate the temperature after instantaneous reheating by solving
+    rho_false(T) = rho_true(T_reh).
+    """
+    T_sep = min(0.001 * (T_c - T_min), 0.5 * (T - T_min))
+    rho_false = energy_density_from_phase(from_phase, to_phase, potential, T)
+
+    def objective(T_reh):
+        rho_true = energy_density_to_phase(from_phase, to_phase, potential, T_reh)
+        return rho_true - rho_false
+
+    if objective(T_c) >= 0:
+        max_T = T_c
+    else:
+        max_T = to_phase.T[-1] - 2.0 * T_sep
+        if max_T > T_c and objective(max_T) < 0:
+            warnings.warn("Cannot find reheat temperature")
+            return None
+
+    return scipy.optimize.toms748(objective, T, max_T)
