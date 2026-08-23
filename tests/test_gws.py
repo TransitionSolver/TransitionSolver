@@ -70,7 +70,7 @@ def test_snr():
         benchmarks.RSS_BP1, get_phase_history(), phase_tracer_file=phase_tracer_file
     )
     snr = lisa.SNR(analyser.gw_total)
-    assert np.isclose(snr, 59.706589252791396)
+    assert np.isclose(snr, 36.08117516093357)
 
 
 @pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)
