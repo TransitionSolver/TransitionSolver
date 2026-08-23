@@ -50,10 +50,20 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
-      run: |
-        pip install .[test]
-        pytest -rs
+    - name: Install test dependencies
+      run: pip install .[test]
+    - name: Test CosmoTransitions action
+      env:
+        PYTHONFAULTHANDLER: "1"
+      run: python -X faulthandler -m pytest -vv -s tests/test_action.py::test_action_ct
+    - name: Test PhaseTracer action
+      if: always()
+      env:
+        PYTHONFAULTHANDLER: "1"
+      run: python -X faulthandler -m pytest -vv -s tests/test_action.py::test_action_pt
+    - name: Run remaining tests
+      if: success()
+      run: pytest -rs --ignore=tests/test_action.py
     - name: Try CLI
       run: ts --model RSS_BP --point input/RSS/RSS_BP1.txt
     - name: Install script test dependencies
