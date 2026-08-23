@@ -8,8 +8,8 @@ set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
   PhaseTracer
   GIT_REPOSITORY https://github.com/PhaseTracer/PhaseTracer
-  GIT_TAG master
-  GIT_SHALLOW TRUE
+  GIT_TAG c4b5960ced478cb1079707f380f7d19003178a1c
+  GIT_SHALLOW FALSE
   GIT_PROGRESS TRUE
 )
 
