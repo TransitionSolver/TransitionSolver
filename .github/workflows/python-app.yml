@@ -34,14 +34,14 @@ jobs:
       uses: actions/cache/restore@v4
       with:
         path: /home/runner/.TransitionSolver
-        key: ${{ runner.os }}_phase_tracer
+        key: ${{ runner.os }}_phase_tracer_debug_v2
     - name: Install TransitionFinder
       run: pip install .
     - name: Save PhaseTracer
       uses: actions/cache/save@v4
       with:
         path: /home/runner/.TransitionSolver
-        key: ${{ runner.os }}_phase_tracer
+        key: ${{ runner.os }}_phase_tracer_debug_v2
     - name: Lint with flake8
       continue-on-error: true
       run: |
