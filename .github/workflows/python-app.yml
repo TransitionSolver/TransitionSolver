@@ -83,3 +83,51 @@ jobs:
         sed -i '/^\s*"analysisTime"/d' tests/pipeline_example30_12_2025/phase_history.json output/pipeline_example_output/phase_history.json
         numdiff tests/pipeline_example30_12_2025/phase_history.json output/pipeline_example_output/phase_history.json
         numdiff tests/pipeline_example30_12_2025/phase_structure.dat output/pipeline_example_output/phase_structure.dat
+
+  python-patch-compatibility:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+    - name: Set up Python 3.12.14
+      id: py31214
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.12.14"
+        update-environment: false
+    - name: Set up Python 3.13.14
+      id: py31314
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.13.14"
+        update-environment: false
+    - name: Set up Python 3.13.15
+      id: py31315
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.13.15"
+        update-environment: false
+    - name: Install apt dependencies
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: git cmake libalglib-dev libnlopt-cxx-dev libeigen3-dev libboost-filesystem-dev libboost-log-dev libgsl-dev
+    - name: Show runner CPU and Python versions
+      run: |
+        lscpu
+        ${{ steps.py31214.outputs.python-path }} -VV
+        ${{ steps.py31314.outputs.python-path }} -VV
+        ${{ steps.py31315.outputs.python-path }} -VV
+    - name: Test actions with Python 3.12.14
+      run: |
+        ${{ steps.py31214.outputs.python-path }} -m pip install .[test]
+        ${{ steps.py31214.outputs.python-path }} -m pytest -vv -s tests/test_action.py
+    - name: Test actions with Python 3.13.14
+      if: always()
+      run: |
+        ${{ steps.py31314.outputs.python-path }} -m pip install .[test]
+        ${{ steps.py31314.outputs.python-path }} -m pytest -vv -s tests/test_action.py
+    - name: Test actions with Python 3.13.15
+      if: always()
+      run: |
+        ${{ steps.py31315.outputs.python-path }} -m pip install .[test]
+        ${{ steps.py31315.outputs.python-path }} -m pytest -vv -s tests/test_action.py
