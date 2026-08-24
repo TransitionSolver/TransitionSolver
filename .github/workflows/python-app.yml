@@ -84,50 +84,42 @@ jobs:
         numdiff tests/pipeline_example30_12_2025/phase_history.json output/pipeline_example_output/phase_history.json
         numdiff tests/pipeline_example30_12_2025/phase_structure.dat output/pipeline_example_output/phase_structure.dat
 
-  python-patch-compatibility:
+  python-313-runner-compatibility:
+    name: Python 3.13.15 runner ${{ matrix.run }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        run: [1, 2, 3, 4, 5]
 
     steps:
     - uses: actions/checkout@v6
-    - name: Set up Python 3.12.14
-      id: py31214
-      uses: actions/setup-python@v6
-      with:
-        python-version: "3.12.14"
-        update-environment: false
-    - name: Set up Python 3.13.14
-      id: py31314
-      uses: actions/setup-python@v6
-      with:
-        python-version: "3.13.14"
-        update-environment: false
     - name: Set up Python 3.13.15
-      id: py31315
       uses: actions/setup-python@v6
       with:
         python-version: "3.13.15"
-        update-environment: false
     - name: Install apt dependencies
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
         packages: git cmake libalglib-dev libnlopt-cxx-dev libeigen3-dev libboost-filesystem-dev libboost-log-dev libgsl-dev
-    - name: Show runner CPU and Python versions
+    - name: Show runner environment
       run: |
+        uname -a
         lscpu
-        ${{ steps.py31214.outputs.python-path }} -VV
-        ${{ steps.py31314.outputs.python-path }} -VV
-        ${{ steps.py31315.outputs.python-path }} -VV
-    - name: Test actions with Python 3.13.15
+        python -VV
+        gcc --version
+        cmake --version
+        echo "RUNNER_ARCH=$RUNNER_ARCH"
+        echo "RUNNER_OS=$RUNNER_OS"
+        echo "ImageOS=$ImageOS"
+        echo "ImageVersion=$ImageVersion"
+    - name: Install with Python 3.13.15
       run: |
-        ${{ steps.py31315.outputs.python-path }} -m pip install --no-cache-dir .[test]
-        ${{ steps.py31315.outputs.python-path }} -m pytest -vv -s tests/test_action.py
-    - name: Test actions with Python 3.13.14
+        python -m pip install --no-cache-dir .[test]
+    - name: Test CT action
+      run: |
+        python -X faulthandler -m pytest -vv -s tests/test_action.py::test_action_ct
+    - name: Test PT action
       if: always()
       run: |
-        ${{ steps.py31314.outputs.python-path }} -m pip install --no-cache-dir .[test]
-        ${{ steps.py31314.outputs.python-path }} -m pytest -vv -s tests/test_action.py
-    - name: Test actions with Python 3.12.14
-      if: always()
-      run: |
-        ${{ steps.py31214.outputs.python-path }} -m pip install --no-cache-dir .[test]
-        ${{ steps.py31214.outputs.python-path }} -m pytest -vv -s tests/test_action.py
+        python -X faulthandler -m pytest -vv -s tests/test_action.py::test_action_pt
