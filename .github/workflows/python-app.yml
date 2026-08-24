@@ -117,17 +117,17 @@ jobs:
         ${{ steps.py31214.outputs.python-path }} -VV
         ${{ steps.py31314.outputs.python-path }} -VV
         ${{ steps.py31315.outputs.python-path }} -VV
-    - name: Test actions with Python 3.12.14
+    - name: Test actions with Python 3.13.15
       run: |
-        ${{ steps.py31214.outputs.python-path }} -m pip install .[test]
-        ${{ steps.py31214.outputs.python-path }} -m pytest -vv -s tests/test_action.py
+        ${{ steps.py31315.outputs.python-path }} -m pip install --no-cache-dir .[test]
+        ${{ steps.py31315.outputs.python-path }} -m pytest -vv -s tests/test_action.py
     - name: Test actions with Python 3.13.14
       if: always()
       run: |
-        ${{ steps.py31314.outputs.python-path }} -m pip install .[test]
+        ${{ steps.py31314.outputs.python-path }} -m pip install --no-cache-dir .[test]
         ${{ steps.py31314.outputs.python-path }} -m pytest -vv -s tests/test_action.py
-    - name: Test actions with Python 3.13.15
+    - name: Test actions with Python 3.12.14
       if: always()
       run: |
-        ${{ steps.py31315.outputs.python-path }} -m pip install .[test]
-        ${{ steps.py31315.outputs.python-path }} -m pytest -vv -s tests/test_action.py
+        ${{ steps.py31214.outputs.python-path }} -m pip install --no-cache-dir .[test]
+        ${{ steps.py31214.outputs.python-path }} -m pytest -vv -s tests/test_action.py
