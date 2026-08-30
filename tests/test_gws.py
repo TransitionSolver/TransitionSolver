@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from TransitionSolver.gws import GWAnalyser, lisa
+from TransitionSolver.gws.analyser import AnalyseIndividualTransition
 from TransitionSolver import gws, benchmarks
 from dictcmp import assert_deep_equal
 
@@ -71,6 +72,42 @@ def test_snr():
     )
     snr = lisa.SNR(analyser.gw_total)
     assert np.isclose(snr, 36.08117516093357)
+
+
+def test_higgsless_2024_peak_and_normalisation():
+    k1 = 0.39
+    k2 = 0.45
+    n3 = -3.0
+
+    x_peak = (
+        AnalyseIndividualTransition._peak_frequency_ratio_sw_higgsless_2024(
+            k1, k2, n3
+        )
+    )
+    shape_at_peak = (
+        AnalyseIndividualTransition._spectral_shape_sw_higgsless_2024_raw(
+            x_peak, k1, k2, n3
+        )
+    )
+    shape_integral = (
+        AnalyseIndividualTransition._spectral_shape_integral_sw_higgsless_2024(
+            k1, k2, n3
+        )
+    )
+
+    assert np.isclose(x_peak, 0.4233116849)
+    assert k1 < x_peak < k2
+    assert shape_at_peak > (
+        AnalyseIndividualTransition._spectral_shape_sw_higgsless_2024_raw(
+            k1, k1, k2, n3
+        )
+    )
+    assert shape_at_peak > (
+        AnalyseIndividualTransition._spectral_shape_sw_higgsless_2024_raw(
+            k2, k1, k2, n3
+        )
+    )
+    assert np.isclose(shape_at_peak / shape_integral, 0.7226121793)
 
 
 @pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)

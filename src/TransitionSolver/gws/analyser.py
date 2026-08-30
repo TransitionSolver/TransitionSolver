@@ -7,12 +7,12 @@ from __future__ import annotations
 
 import json
 import logging
-from functools import cached_property
+from functools import cached_property, lru_cache
 from importlib.resources import files
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import special, integrate
+from scipy import special, integrate, optimize
 
 from ..analysis.phase_structure import PhaseStructure
 from ..models.analysable_potential import AnalysablePotential
@@ -406,55 +406,85 @@ class AnalyseIndividualTransition:
         factor2 = (1 + dtfin / dt0) ** (1.0 - 2 * b) * A_hyp - B_hyp
         K2int = (K2**2 * dt0) * factor1 * factor2
         
-        h2Omega = 3 * OMEGA_SW * self.redshift_amp * K2int * RH
+        integrated_amplitude = 3 * OMEGA_SW * self.redshift_amp * K2int * RH
+
+        k1 = 0.39
+        k2 = 0.45
+        n3 = -3.0
+        x_peak = self._peak_frequency_ratio_sw_higgsless_2024(k1, k2, n3)
+        shape_at_peak = self._spectral_shape_sw_higgsless_2024_raw(
+            x_peak, k1, k2, n3
+        )
+        shape_integral = self._spectral_shape_integral_sw_higgsless_2024(
+            k1, k2, n3
+        )
         
-        return h2Omega
+        return integrated_amplitude * shape_at_peak / shape_integral
     
     @property
     def peak_frequency_sw_higgsless_2024(self) -> float:
         """
-        From https://arxiv.org/abs/2409.03651 eq.4.18
+        Numerically determined maximum of the double broken power-law shape.
         """
+        k1 = 0.39
         k2 = 0.45
-        return k2 * self.redshift_freq / self.length_scale
-    
-    def safe_trapezoid(self, y, x, axis=-1):
-        """
-        Safely compute the trapezoidal integral of y with respect to x.
+        n3 = -3.0
+        x_peak = self._peak_frequency_ratio_sw_higgsless_2024(k1, k2, n3)
+        return x_peak * self.redshift_freq / self.length_scale
 
-        Parameters
-        ----------
-        y : array_like
-            Values to integrate.
-        x : array_like
-            Integration variable.
-        axis : int, optional
-            Axis along which to integrate (default: -1).
+    @staticmethod
+    def _spectral_shape_sw_higgsless_2024_raw(x, k1, k2, n3):
+        n1 = 3.0
+        n2 = 1.0
+        a1 = 3.6
+        a2 = 2.4
+        return (
+            (x / k1) ** n1
+            * (1 + (x / k1) ** a1) ** ((n2 - n1) / a1)
+            * (1 + (x / k2) ** a2) ** ((n3 - n2) / a2)
+        )
 
-        Returns
-        -------
-        float or ndarray
-            The integral result.
-        """
-        try:
-            return np.trapezoid(y, x, axis=axis)
-        except AttributeError:
-            return np.trapz(y, x, axis=axis)
+    @staticmethod
+    @lru_cache(maxsize=None)
+    def _peak_frequency_ratio_sw_higgsless_2024(k1, k2, n3):
+        n1 = 3.0
+        n2 = 1.0
+        a1 = 3.6
+        a2 = 2.4
+
+        def log_derivative(log_x):
+            x = np.exp(log_x)
+            y1 = (x / k1) ** a1
+            y2 = (x / k2) ** a2
+            return (
+                n1
+                + (n2 - n1) * y1 / (1 + y1)
+                + (n3 - n2) * y2 / (1 + y2)
+            )
+
+        return np.exp(optimize.brentq(log_derivative, -50.0, 50.0))
+
+    @classmethod
+    @lru_cache(maxsize=None)
+    def _spectral_shape_integral_sw_higgsless_2024(cls, k1, k2, n3):
+        def integrand(log_x):
+            return cls._spectral_shape_sw_higgsless_2024_raw(
+                np.exp(log_x), k1, k2, n3
+            )
+
+        return integrate.quad(integrand, -50.0, 50.0)[0]
     
     def spectral_shape_sw_higgsless_2024(self, f: float, k1, k2, n3) -> float:
         """
         From https://arxiv.org/abs/2409.03651
         """
-        f1 = k1 * self.redshift_freq / self.length_scale
-        f2 = k2 * self.redshift_freq / self.length_scale
-        n1 = 3.0
-        n2 = 1.0
-        a1 = 3.6
-        a2 = 2.4
-        S = (f / f1)**n1 * (1 + (f / f1)**a1)**((n2 - n1) / a1) * (1 + (f / f2)**a2)**((n3 - n2) / a2)
-        mu = self.safe_trapezoid(S, np.log(f), axis = -1)
-        S2 = S / mu # both are normalized to the same arbitrary constant which drops out here
-        return S2 
+        x = f * self.length_scale / self.redshift_freq
+        x_peak = self._peak_frequency_ratio_sw_higgsless_2024(k1, k2, n3)
+        shape = self._spectral_shape_sw_higgsless_2024_raw(x, k1, k2, n3)
+        shape_at_peak = self._spectral_shape_sw_higgsless_2024_raw(
+            x_peak, k1, k2, n3
+        )
+        return shape / shape_at_peak
         
     def gw_sw_higgsless_2024(self, f):
         """
