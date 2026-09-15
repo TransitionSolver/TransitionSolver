@@ -38,8 +38,8 @@ class HydroVars:
     soundSpeedSqTrue: float
 
     T: float
-    cosmologicalEnergyDensityFalse: float
-    assumesRadiationDomination: bool
+    cosmological_energy_density_false: float
+    assumes_radiation_domination: bool
 
     @property
     def traceAnomalyFalse(self):
@@ -90,12 +90,12 @@ class HydroVars:
         (ie taking kappa = 1)
         """
         return (self.pseudotraceFalse - self.pseudotraceTrue) / \
-            self.cosmologicalEnergyDensityFalse
+            self.cosmological_energy_density_false
 
     @property
     def hubble_constant(self):
         return hubble_squared_from_energy_density(
-            self.cosmologicalEnergyDensityFalse
+            self.cosmological_energy_density_false
         )**0.5
 
     def average_pressure_density(self, pf):
@@ -111,7 +111,7 @@ class HydroVars:
         radiation-domination, as currently required when the phases cannot
         extend to T=0, use Gamma = 4/3.
         """
-        if self.assumesRadiationDomination:
+        if self.assumes_radiation_domination:
             return 4 / 3
         return 1. + self.average_pressure_density(pf) / self.energyDensityFalse
 
@@ -125,7 +125,7 @@ def interpolate_hydro_vars(
         f = (T - hv1.T) / (hv2.T - hv1.T)
         return val1 + f * (val2 - val1)
 
-    if hv1.assumesRadiationDomination != hv2.assumesRadiationDomination:
+    if hv1.assumes_radiation_domination != hv2.assumes_radiation_domination:
         raise ValueError(
             "Cannot interpolate between different cosmological assumptions"
         )
@@ -135,8 +135,8 @@ def interpolate_hydro_vars(
             getattr(
                 hv1, f.name), getattr(
                 hv2, f.name)) for f in fields(HydroVars)
-        if f.name != "assumesRadiationDomination"]
-    return HydroVars(*data, hv1.assumesRadiationDomination)
+        if f.name != "assumes_radiation_domination"]
+    return HydroVars(*data, hv1.assumes_radiation_domination)
 
 
 def guess_delta_t(from_phase: Phase, to_phase: Phase, potential, T: float) -> float:
