@@ -130,13 +130,17 @@ def interpolate_hydro_vars(
             "Cannot interpolate between different cosmological assumptions"
         )
 
-    data = [
-        linear_interpolate(
-            getattr(
-                hv1, f.name), getattr(
-                hv2, f.name)) for f in fields(HydroVars)
-        if f.name != "assumes_radiation_domination"]
-    return HydroVars(*data, hv1.assumes_radiation_domination)
+    interpolated_fields = {
+        field.name: linear_interpolate(
+            getattr(hv1, field.name), getattr(hv2, field.name)
+        )
+        for field in fields(HydroVars)
+        if field.type is not bool
+    }
+    return HydroVars(
+        **interpolated_fields,
+        assumes_radiation_domination=hv1.assumes_radiation_domination,
+    )
 
 
 def guess_delta_t(from_phase: Phase, to_phase: Phase, potential, T: float) -> float:
