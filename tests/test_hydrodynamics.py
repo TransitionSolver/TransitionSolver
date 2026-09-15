@@ -36,11 +36,14 @@ FROM_PHASE = FixedPhase(0)
 TO_PHASE = FixedPhase(1)
 TEMPERATURE = 100.0
 
-# test that for phases extending to T=0 the code works as expected:
-# - The original (T=0) subtraction is still calculated correctly.
-# - The radiation-dominated fallback is not used when (F_{\rm gs}(0)) is known.
-# - A consistent common shift of the potential and ground-state energy has no physical effect.
 def test_known_ground_state_preserves_existing_normalisation():
+    """
+    Test that for phases extending to T=0 the code works as expected:
+    - The original T=0 subtraction is still calculated correctly.
+    - The radiation-dominated fallback is not used when F_gs(0) is known.
+    - A consistent common shift of the potential and ground-state energy has
+      no physical effect.
+    """
     potential = QuarticPotential(offset=100.0)
     ground_state_energy = 60.0
     hydro = hydrodynamics.make_hydro_vars(
