@@ -50,9 +50,9 @@ def test_known_ground_state_preserves_existing_normalisation():
     expected_false_energy = 50.0 + 3 * 2.0e-4 * TEMPERATURE**4
     assert np.isclose(hydro.energyDensityFalse, expected_false_energy)
     assert np.isclose(
-        hydro.cosmologicalEnergyDensityFalse, hydro.energyDensityFalse
+        hydro.cosmological_energy_density_false, hydro.energyDensityFalse
     )
-    assert not hydro.assumesRadiationDomination
+    assert not hydro.assumes_radiation_domination
 
     pf = 0.71
     expected_gamma = 1 + hydro.average_pressure_density(pf) \
@@ -65,8 +65,8 @@ def test_known_ground_state_preserves_existing_normalisation():
         ground_state_energy + 1023.0
     )
     assert np.isclose(
-        shifted.cosmologicalEnergyDensityFalse,
-        hydro.cosmologicalEnergyDensityFalse,
+        shifted.cosmological_energy_density_false,
+        hydro.cosmological_energy_density_false,
     )
     assert np.isclose(shifted.hubble_constant, hydro.hubble_constant)
 
@@ -81,9 +81,9 @@ def test_radiation_domination_fallback_is_normalisation_independent():
     delta_rho = 50.0 + 3 * 1.0e-4 * TEMPERATURE**4
     radiation = np.pi**2 / 30 * potential.raddof * TEMPERATURE**4
     assert np.isclose(
-        hydro.cosmologicalEnergyDensityFalse, radiation + delta_rho
+        hydro.cosmological_energy_density_false, radiation + delta_rho
     )
-    assert hydro.assumesRadiationDomination
+    assert hydro.assumes_radiation_domination
     assert hydro.adiabatic_index(0.71) == 4 / 3
 
     shifted = hydrodynamics.make_hydro_vars(
@@ -91,8 +91,8 @@ def test_radiation_domination_fallback_is_normalisation_independent():
         TEMPERATURE, None
     )
     assert np.isclose(
-        shifted.cosmologicalEnergyDensityFalse,
-        hydro.cosmologicalEnergyDensityFalse,
+        shifted.cosmological_energy_density_false,
+        hydro.cosmological_energy_density_false,
     )
     assert np.isclose(shifted.hubble_constant, hydro.hubble_constant)
     assert np.isclose(
@@ -103,7 +103,7 @@ def test_radiation_domination_fallback_is_normalisation_independent():
     direct = hydrodynamics.cosmological_energy_density(
         FROM_PHASE, TO_PHASE, potential, TEMPERATURE, None
     )
-    assert np.isclose(direct, hydro.cosmologicalEnergyDensityFalse)
+    assert np.isclose(direct, hydro.cosmological_energy_density_false)
 
 
 def test_radiation_energy_density_uses_raddof():
