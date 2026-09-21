@@ -71,7 +71,7 @@ def test_snr():
         benchmarks.RSS_BP1, get_phase_history(), phase_tracer_file=phase_tracer_file
     )
     snr = lisa.SNR(analyser.gw_total)
-    assert np.isclose(snr, 36.08117516093357)
+    assert np.isclose(snr, 8.909189289876617)
 
 
 def test_higgsless_2024_peak_and_normalisation():
