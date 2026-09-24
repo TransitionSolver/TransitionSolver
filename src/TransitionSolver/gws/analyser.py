@@ -396,16 +396,15 @@ class AnalyseIndividualTransition:
 
         factor = (8 * np.pi)**(1/3)       
         betaTf = factor * self.bubble_wall_velocity / self.length_scale_Tf
-        betaTp = factor * self.bubble_wall_velocity / self.length_scale
         
         betaoverH_Tf = betaTf / self.hydro_transition_temp_Tf.hubble_constant
-        betaoverH_Tp = betaTp / self.hydro_transition_temp.hubble_constant
-        
         dt0 = 11 / betaoverH_Tf
         fluid_velocity = (self.kinetic_energy_fraction /
                           self.hydro_transition_temp.adiabatic_index(self.Pf))**0.5
         tau_sw = self.length_scale / fluid_velocity 
-        dtfin = tau_sw * betaTp
+        # Eq. (34) uses Hubble-normalized conformal time, not beta * tau_sw.
+        # At the transition epoch, the physical shock time is its conformal-time proxy.
+        dtfin = tau_sw * self.hydro_transition_temp.hubble_constant
 
         A_hyp = special.hyp2f1(2, 1 - 2*b, 2.0 - 2*b, (dt0 + dtfin) / (dt0 - 1))
         B_hyp = special.hyp2f1(2, 1 - 2*b, 2.0 - 2*b, dt0 / (dt0 - 1.0))       
