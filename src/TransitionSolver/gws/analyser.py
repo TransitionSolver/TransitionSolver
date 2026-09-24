@@ -164,7 +164,7 @@ class AnalyseIndividualTransition:
         """
         From https://arxiv.org/pdf/1704.05871
         """
-        return 10 / (2 * np.pi) * self.redshift_freq / self.length_scale * ZP / 10
+        return self.redshift_freq / self.length_scale * ZP / (2 * np.pi)
 
     @property
     def peak_frequency_sw_bubble_separation_dbpl(self):
@@ -172,7 +172,7 @@ class AnalyseIndividualTransition:
         From https://arxiv.org/pdf/1909.10040 table 3 (largest alpha and vw,
         simultaneous nucleation condition)
         """
-        return 10 / (2 * np.pi) * self.redshift_freq / self.length_scale * 7.7 / 10
+        return self.redshift_freq / self.length_scale * 7.7 / (2 * np.pi)
     
     def peak_frequency_semi_analytic_2022_general(self, A):
         """
@@ -402,7 +402,7 @@ class AnalyseIndividualTransition:
         fluid_velocity = (self.kinetic_energy_fraction /
                           self.hydro_transition_temp.adiabatic_index(self.Pf))**0.5
         tau_sw = self.length_scale / fluid_velocity 
-        # Eq. (34) uses Hubble-normalized conformal time, not beta * tau_sw.
+        # Eq. (2.34) uses Hubble-normalized conformal time.
         # At the transition epoch, the physical shock time is its conformal-time proxy.
         dtfin = tau_sw * self.hydro_transition_temp.hubble_constant
 
