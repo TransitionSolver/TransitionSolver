@@ -10,8 +10,10 @@ from pathlib import Path
 import pytest
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.integrate import quad
 
 from TransitionSolver.gws import GWAnalyser, lisa
+from TransitionSolver.gws.analyser import AnalyseIndividualTransition
 from TransitionSolver import gws, benchmarks
 from dictcmp import assert_deep_equal
 
@@ -70,7 +72,102 @@ def test_snr():
         benchmarks.RSS_BP1, get_phase_history(), phase_tracer_file=phase_tracer_file
     )
     snr = lisa.SNR(analyser.gw_total)
-    assert np.isclose(snr, 59.706589252791396)
+    assert np.isclose(snr, 8.909189289876617)
+
+
+def test_higgsless_2024_peak_and_normalisation():
+    k1 = 0.39
+    k2 = 0.45
+    n3 = -3.0
+
+    x_peak = (
+        AnalyseIndividualTransition._peak_frequency_ratio_sw_higgsless_2024(
+            k1, k2, n3
+        )
+    )
+    shape_at_peak = (
+        AnalyseIndividualTransition._spectral_shape_sw_higgsless_2024_raw(
+            x_peak, k1, k2, n3
+        )
+    )
+    shape_integral = (
+        AnalyseIndividualTransition._spectral_shape_integral_sw_higgsless_2024(
+            k1, k2, n3
+        )
+    )
+
+    assert np.isclose(x_peak, 0.4233116849)
+    assert k1 < x_peak < k2
+    assert shape_at_peak > (
+        AnalyseIndividualTransition._spectral_shape_sw_higgsless_2024_raw(
+            k1, k1, k2, n3
+        )
+    )
+    assert shape_at_peak > (
+        AnalyseIndividualTransition._spectral_shape_sw_higgsless_2024_raw(
+            k2, k1, k2, n3
+        )
+    )
+    assert np.isclose(shape_at_peak / shape_integral, 0.7226121793)
+
+
+def test_higgsless_2024_expanding_time_integral():
+    with open(BASELINE / "rss_bp1_phase_structure_pt_action.json", "r") as f:
+        phase_history = json.load(f)
+
+    analyser = GWAnalyser(
+        benchmarks.RSS_BP1,
+        phase_history,
+        phase_tracer_file=phase_tracer_file,
+        sound_wave_template="higgsless_2024",
+    )
+    transition = analyser.gws["1"]
+    hubble_p = transition.hydro_transition_temp.hubble_constant
+    hubble_f = transition.hydro_transition_temp_Tf.hubble_constant
+    beta_f = (
+        (8 * np.pi) ** (1 / 3)
+        * transition.bubble_wall_velocity
+        / transition.length_scale_Tf
+    )
+    dt0 = 11 * hubble_f / beta_f
+    fluid_velocity = np.sqrt(
+        transition.kinetic_energy_fraction
+        / transition.hydro_transition_temp.adiabatic_index(transition.Pf)
+    )
+    duration = hubble_p * transition.length_scale / fluid_velocity
+
+    time_integral = quad(
+        lambda delta_eta: (dt0 / (dt0 + delta_eta)) ** (2 * 1.17)
+        / (1 + delta_eta) ** 2,
+        0,
+        duration,
+    )[0]
+    shape_peak = AnalyseIndividualTransition._spectral_shape_sw_higgsless_2024_raw(
+        0.4233116849, 0.39, 0.45, -3.0
+    )
+    shape_integral = (
+        AnalyseIndividualTransition._spectral_shape_integral_sw_higgsless_2024(
+            0.39, 0.45, -3.0
+        )
+    )
+    expected_amplitude = (
+        3
+        * 3.11e-2
+        * transition.redshift_amp
+        * (0.84 * transition.kinetic_energy_fraction) ** 2
+        * time_integral
+        * hubble_p
+        * transition.length_scale
+        * shape_peak
+        / shape_integral
+    )
+
+    assert np.isclose(
+        transition.peak_amplitude_sw_higgsless_2024,
+        expected_amplitude,
+        rtol=1e-7,
+        atol=0,
+    )
 
 
 @pytest.mark.mpl_image_compare(**PYTEST_MPL_KWARGS)
