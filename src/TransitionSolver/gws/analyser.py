@@ -203,7 +203,7 @@ class AnalyseIndividualTransition:
         rb = abs(v_w - c_s) / v_w
         if not 0 <= rb <= 1:
             raise ValueError(
-                "r_b is out of range for the SSM template (expected 0 <= r_b <= 1): "
+                "r_b is out of range for the Sound Shell Model template (expected 0 <= r_b <= 1): "
                 f"r_b={rb}, v_w={v_w}, c_s={c_s}."
             )
         return rb
