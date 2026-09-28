@@ -147,7 +147,8 @@ class PhaseStructure:
     @property
     def ground_state_energy_density(self):
         """
-        @returns The lowest energy of any phase at T = 0
+        @returns The lowest energy of any phase at T = 0, or None when no
+        traced phase reaches T = 0.
         """
         ground_state_energy_density = np.inf
 
@@ -156,7 +157,13 @@ class PhaseStructure:
                 ground_state_energy_density = phase.V[0]
 
         if np.isinf(ground_state_energy_density):
-            warnings.warn("Could not determine ground state energy density; assuming 0")
-            ground_state_energy_density = 0.0
+            warnings.warn(
+                "No traced phase reaches T = 0, so the ground-state energy "
+                "density cannot be determined from the phase structure. "
+                "Assuming radiation domination when calculating the Hubble "
+                "rate and gravitational-wave observables.",
+                RuntimeWarning,
+            )
+            return None
 
         return ground_state_energy_density
