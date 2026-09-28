@@ -198,10 +198,15 @@ class AnalyseIndividualTransition:
         """
         @returns Ratio of shell thickness and bubble separation
         """
-        return (
-            abs(self.bubble_wall_velocity - self.hydro_transition_temp.soundSpeedFalse)
-            / self.bubble_wall_velocity
-        )
+        v_w = self.bubble_wall_velocity
+        c_s = self.hydro_transition_temp.soundSpeedFalse
+        rb = abs(v_w - c_s) / v_w
+        if not 0 <= rb <= 1:
+            raise ValueError(
+                "r_b is out of range for the SSM template (expected 0 <= r_b <= 1): "
+                f"r_b={rb}, v_w={v_w}, c_s={c_s}."
+            )
+        return rb
 
     @property
     def peak_frequency_turb(self):
