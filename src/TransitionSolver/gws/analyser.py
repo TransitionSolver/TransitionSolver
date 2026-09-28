@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+import warnings
 from functools import cached_property, lru_cache
 from importlib.resources import files
 
@@ -74,28 +75,33 @@ class AnalyseIndividualTransition:
         self.from_phase = phase_structure.phases[transition_report["false_phase"]]
         self.to_phase = phase_structure.phases[transition_report["true_phase"]]
         self.potential = potential
+        self._ground_state_energy_density = phase_structure.ground_state_energy_density
 
         self.hydro_transition_temp = hydrodynamics.make_hydro_vars(
             self.from_phase,
             self.to_phase,
             self.potential,
             self.transition_temp,
-            phase_structure.ground_state_energy_density,
+            self._ground_state_energy_density,
         )
-        
-        self.hydro_transition_temp_Tf = hydrodynamics.make_hydro_vars(
-            self.from_phase,
-            self.to_phase,
-            self.potential,
-            self.transition_temp_Tf,
-            phase_structure.ground_state_energy_density) 
-         
+
         self.hydro_redshift_temp = hydrodynamics.make_hydro_vars(
             self.from_phase,
             self.to_phase,
             self.potential,
             self.redshift_temp,
-            phase_structure.ground_state_energy_density,
+            self._ground_state_energy_density,
+        )
+
+    @cached_property
+    def hydro_transition_temp_Tf(self):
+        """Calculate completion hydrodynamics on first access."""
+        return hydrodynamics.make_hydro_vars(
+            self.from_phase,
+            self.to_phase,
+            self.potential,
+            self.transition_temp_Tf,
+            self._ground_state_energy_density,
         )
 
     @property
@@ -136,10 +142,10 @@ class AnalyseIndividualTransition:
     @property
     def transition_temp(self) -> float:
         return self.transition_report["T_p"]
-        
-    @property    
+
+    @property
     def transition_temp_Tf(self) -> float:
-        return self.transition_report["T_f"]    
+        return self.transition_report["T_f"]
 
     @cached_property
     def redshift_temp(self) -> float:
@@ -399,10 +405,32 @@ class AnalyseIndividualTransition:
         k2 = S * self.kinetic_energy_fraction
         RH = self.hydro_transition_temp.hubble_constant * self.length_scale
 
-        factor = (8 * np.pi)**(1/3)       
-        betaTf = factor * self.bubble_wall_velocity / self.length_scale_Tf
+        report = self.transition_report
+
+        if report.get("T_f") is not None:
+            hubble_f = self.hydro_transition_temp_Tf.hubble_constant
+            length_f = self.length_scale_Tf
+        else:
+            key = "bubble_separation" if self.use_bubble_sep else "bubble_radius"
+            hubble_f = report["H"][-1]
+            length_f = report[key][-1]
+
+            if not (0 < hubble_f < np.inf and 0 < length_f < np.inf):
+                raise ValueError(
+                    "Higgsless: invalid final Hubble rate or bubble length."
+                )
+
+            warnings.warn(
+                f"Higgsless: no T_f for transition {report['false_phase']} -> "
+                f"{report['true_phase']}; using the final calculated "
+                "Hubble rate and bubble length.",
+                RuntimeWarning,
+            )
+
+        factor = (8 * np.pi)**(1/3)
+        betaTf = factor * self.bubble_wall_velocity / length_f
         
-        betaoverH_Tf = betaTf / self.hydro_transition_temp_Tf.hubble_constant
+        betaoverH_Tf = betaTf / hubble_f
         dt0 = 11 / betaoverH_Tf
         fluid_velocity = (self.kinetic_energy_fraction /
                           self.hydro_transition_temp.adiabatic_index(self.Pf))**0.5
