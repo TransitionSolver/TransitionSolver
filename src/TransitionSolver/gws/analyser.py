@@ -417,13 +417,14 @@ class AnalyseIndividualTransition:
 
             if not (0 < hubble_f < np.inf and 0 < length_f < np.inf):
                 raise ValueError(
-                    "Higgsless: invalid final Hubble rate or bubble length."
+                    "Higgsless template: invalid final Hubble rate or bubble length."
                 )
 
             warnings.warn(
-                f"Higgsless: no T_f for transition {report['false_phase']} -> "
+                f"Higgsless template: no T_f for transition {report['false_phase']} -> "
                 f"{report['true_phase']}; using the final calculated "
-                "Hubble rate and bubble length.",
+                f"Hubble rate and bubble length (final P_f={report['Pf'][-1]:.4g}, "
+                f"completion threshold={report['completion_threshold']:.4g}).",
                 RuntimeWarning,
             )
 
