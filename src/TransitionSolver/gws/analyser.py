@@ -13,7 +13,7 @@ from importlib.resources import files
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import special, integrate, optimize
+from scipy import integrate, optimize
 
 from ..analysis.phase_structure import PhaseStructure
 from ..models.analysable_potential import AnalysablePotential
@@ -439,14 +439,20 @@ class AnalyseIndividualTransition:
         # At the transition epoch, the physical shock time is its conformal-time proxy.
         dtfin = tau_sw * self.hydro_transition_temp.hubble_constant
 
-        # Complex arguments allow analytic continuation when dt0 > 1.
-        A_hyp = special.hyp2f1(2, 1 - 2*b, 2.0 - 2*b, (dt0 + dtfin) / (dt0 - 1) + 0j)
-        B_hyp = special.hyp2f1(2, 1 - 2*b, 2.0 - 2*b, dt0 / (dt0 - 1.0) + 0j)
-        
-        factor1 = 1.0 / (1.0 - 2 * b)
-        factor2 = (1 + dtfin / dt0) ** (1.0 - 2 * b) * A_hyp - B_hyp
-        k2int = k2**2 * dt0 / (dt0 - 1.0)**2 * factor1 * factor2
-        k2int = np.real(k2int)
+        # Integrate Eq. (2.34) directly, rescaling elapsed conformal time x. 
+        if dt0 < 1:
+            # u = x / (dt0 + x) resolves the narrow decay at small dt0.
+            time_integral = dt0 * integrate.quad(
+                lambda u: (1 - u)**(2 * b) / ((1 - u) + dt0 * u)**2,
+                0, dtfin / (dt0 + dtfin), epsabs=0, epsrel=1e-8,
+            )[0]
+        else:
+            # u = x / (1 + x) resolves the expansion factor, including dt0 = 1.
+            time_integral = integrate.quad(
+                lambda u: (dt0 * (1 - u) / (dt0 * (1 - u) + u))**(2 * b),
+                0, dtfin / (1 + dtfin), epsabs=0, epsrel=1e-8,
+            )[0]
+        k2int = k2**2 * time_integral
         
         integrated_amplitude = 3 * OMEGA_SW * self.redshift_amp * k2int * RH
 
