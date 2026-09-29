@@ -439,12 +439,14 @@ class AnalyseIndividualTransition:
         # At the transition epoch, the physical shock time is its conformal-time proxy.
         dtfin = tau_sw * self.hydro_transition_temp.hubble_constant
 
-        A_hyp = special.hyp2f1(2, 1 - 2*b, 2.0 - 2*b, (dt0 + dtfin) / (dt0 - 1))
-        B_hyp = special.hyp2f1(2, 1 - 2*b, 2.0 - 2*b, dt0 / (dt0 - 1.0))       
+        # Complex arguments allow analytic continuation when dt0 > 1.
+        A_hyp = special.hyp2f1(2, 1 - 2*b, 2.0 - 2*b, (dt0 + dtfin) / (dt0 - 1) + 0j)
+        B_hyp = special.hyp2f1(2, 1 - 2*b, 2.0 - 2*b, dt0 / (dt0 - 1.0) + 0j)
         
         factor1 = 1.0 / (1.0 - 2 * b)
         factor2 = (1 + dtfin / dt0) ** (1.0 - 2 * b) * A_hyp - B_hyp
         k2int = k2**2 * dt0 / (dt0 - 1.0)**2 * factor1 * factor2
+        k2int = np.real(k2int)
         
         integrated_amplitude = 3 * OMEGA_SW * self.redshift_amp * k2int * RH
 
