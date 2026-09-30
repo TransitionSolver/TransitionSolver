@@ -2,6 +2,7 @@
     "0": {
         "Peak amplitude (sound waves)": 1.3770302413251543e-27,
         "Peak frequency (sound waves)": 0.8634798543408182,
+        "Bubble separation break frequency (sound waves)": 0.36510707056201636,
         "Peak amplitude (turbulence)": 3.697875606557697e-30,
         "Peak frequency (turbulence)": 2.466092697199908,
         "Peak amplitude (collisions)": 0.0,
@@ -19,6 +20,7 @@
     "2": {
         "Peak amplitude (sound waves)": 1.1555960523099674e-16,
         "Peak frequency (sound waves)": 0.0035582187399278093,
+        "Bubble separation break frequency (sound waves)": 0.0015051415376769962,
         "Peak amplitude (turbulence)": 3.2411943234572557e-19,
         "Peak frequency (turbulence)": 0.010162248957475214,
         "Peak amplitude (collisions)": 0.0,

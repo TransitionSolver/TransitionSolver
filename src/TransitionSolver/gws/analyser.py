@@ -315,6 +315,18 @@ class AnalyseIndividualTransition:
         """
         return self.redshift_freq / self.length_scale * 7.7 / (2 * np.pi)
 
+    @property
+    def bubble_separation_break_frequency_sw_dbpl_sound_shell(self):
+        """
+        Lower break associated with the mean bubble separation. From
+        https://arxiv.org/pdf/1909.10040 Eq. 6.1: z_b / z_p is approximately
+        the relative sound-shell thickness, r_b.
+        """
+        return (
+            self.rb_sw_dbpl_sound_shell
+            * self.peak_frequency_sw_dbpl_sound_shell
+        )
+
     def spectral_shape_sw_dbpl_sound_shell(self, f: float, k3=True):
         """
         From https://arxiv.org/abs/2209.13551 Eq. 2.11. Originally from https://arxiv.org/abs/1909.10040 Eq. 5.7
@@ -781,6 +793,9 @@ class AnalyseIndividualTransition:
             )
             report["Peak frequency (sound waves)"] = (
                 self.peak_frequency_sw_dbpl_sound_shell
+            )
+            report["Bubble separation break frequency (sound waves)"] = (
+                self.bubble_separation_break_frequency_sw_dbpl_sound_shell
             )
         elif self.sound_wave_template == "semi-analytic_2022":
             report['Peak amplitude (sound waves)'] = self.peak_amplitude_sw_semi_analytic_2022
