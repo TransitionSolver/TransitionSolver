@@ -86,7 +86,7 @@ def test_higgsless_2024_peak_and_normalisation():
         )
     )
     shape_at_peak = (
-        AnalyseIndividualTransition._spectral_shape_sw_higgsless_2024_raw(
+        AnalyseIndividualTransition._spectral_shape_raw_sw_higgsless_2024(
             x_peak, k1, k2, n3
         )
     )
@@ -99,12 +99,12 @@ def test_higgsless_2024_peak_and_normalisation():
     assert np.isclose(x_peak, 0.4233116849)
     assert k1 < x_peak < k2
     assert shape_at_peak > (
-        AnalyseIndividualTransition._spectral_shape_sw_higgsless_2024_raw(
+        AnalyseIndividualTransition._spectral_shape_raw_sw_higgsless_2024(
             k1, k1, k2, n3
         )
     )
     assert shape_at_peak > (
-        AnalyseIndividualTransition._spectral_shape_sw_higgsless_2024_raw(
+        AnalyseIndividualTransition._spectral_shape_raw_sw_higgsless_2024(
             k2, k1, k2, n3
         )
     )
@@ -142,7 +142,7 @@ def test_higgsless_2024_expanding_time_integral():
         0,
         duration,
     )[0]
-    shape_peak = AnalyseIndividualTransition._spectral_shape_sw_higgsless_2024_raw(
+    shape_peak = AnalyseIndividualTransition._spectral_shape_raw_sw_higgsless_2024(
         0.4233116849, 0.39, 0.45, -3.0
     )
     shape_integral = (
