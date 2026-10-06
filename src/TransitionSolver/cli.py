@@ -301,14 +301,14 @@ def analyse_and_save_gws(
     help="Model header-file",
     required=False,
     default=None,
-    type=click.Path(exists=True),
+    type=click.Path(exists=True, resolve_path=True),
 )
 @click.option(
     "--model-lib",
     help="Library for model if not header-only",
     required=False,
     default=None,
-    type=click.Path(exists=True),
+    type=click.Path(exists=True, resolve_path=True),
 )
 @click.option(
     "--model-namespace",
