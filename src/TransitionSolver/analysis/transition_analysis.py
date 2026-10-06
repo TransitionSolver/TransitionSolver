@@ -1031,7 +1031,7 @@ class TransitionAnalyser:
                 )
                 self.properties.analysed = False
                 self.properties.error = f"failed at T = {sampleData.T}: {message}"
-                return
+                break
 
         # ==============================================================================================================
         # End transition analysis.
