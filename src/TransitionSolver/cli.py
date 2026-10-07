@@ -344,7 +344,7 @@ def analyse_and_save_gws(
 @click.option("--show/--no-show", default=True, help="Whether to show plots", type=bool)
 @click.option(
     "--level",
-    default="critical",
+    default="warning",
     help="Logging level",
     type=click.Choice(LEVELS.keys()),
 )
@@ -444,6 +444,7 @@ def cli(
 
     ts --model RSS_BP --point input/RSS/RSS_BP1.txt
     """
+    logging.basicConfig()
     logging.getLogger().setLevel(LEVELS[level])
 
     if model_header is None:
