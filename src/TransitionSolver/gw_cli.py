@@ -74,7 +74,7 @@ def reconstruct_potential(results_folder: Path, saved_options: dict):
 @click.option("--show/--no-show", default=True, help="Whether to show plots")
 @click.option(
     "--level",
-    default="critical",
+    default="warning",
     help="Logging level",
     type=click.Choice(LEVELS.keys()),
 )
@@ -105,6 +105,7 @@ def gw_cli(
     include_all_transitions_with_perc_temp,
 ):
     """Calculate gravitational waves from a saved transition analysis."""
+    logging.basicConfig()
     logging.getLogger().setLevel(LEVELS[level])
     output_folder = output_folder or results_folder
 
