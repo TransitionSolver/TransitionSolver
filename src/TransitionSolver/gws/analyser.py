@@ -247,7 +247,7 @@ class AnalyseIndividualTransition:
         )
 
     ####################################################################################
-    # Sound waves: single broken power law fit from lattice simulations.       #
+    # Sound waves: single broken power law fit from lattice simulations.               #
     # Paper: https://arxiv.org/abs/1704.05871                                          #
     # Select in gw_template_choices.json with:                                         #
     #     "sound_wave_template": "sgbp_lattice_2017"                                   #
