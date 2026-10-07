@@ -246,10 +246,12 @@ class AnalyseIndividualTransition:
             - (1 + 2.0 * self.hydro_transition_temp.hubble_constant * tau_sw) ** -0.5
         )
 
-    # Sound waves: single generalized broken power law from lattice simulations.
-    # Paper: https://arxiv.org/abs/1704.05871
-    # Select in gw_template_choices.json with:
-    #     "sound_wave_template": "sgbp_lattice_2017"
+    ####################################################################################
+    # Sound waves: single generalized broken power law from lattice simulations.       #
+    # Paper: https://arxiv.org/abs/1704.05871                                          #
+    # Select in gw_template_choices.json with:                                         #
+    #     "sound_wave_template": "sgbp_lattice_2017"                                   #
+    ####################################################################################
 
     @property
     def peak_frequency_sw_sgbp_lattice_2017(self):
@@ -286,11 +288,13 @@ class AnalyseIndividualTransition:
             * self.spectral_shape_sw_sgbp_lattice_2017(f)
         )
 
-    # Sound waves: double broken power law based on the sound-shell model.
-    # Papers: https://arxiv.org/abs/1909.10040,
-    # https://arxiv.org/abs/2209.13551 and https://arxiv.org/abs/2308.12943
-    # Select in gw_template_choices.json with:
-    #     "sound_wave_template": "dbpl_sound_shell"
+    ####################################################################################
+    # Sound waves: double broken power law based on the sound-shell model.             #
+    # Papers: https://arxiv.org/abs/1909.10040,                                        #
+    # https://arxiv.org/abs/2209.13551 and https://arxiv.org/abs/2308.12943            #
+    # Select in gw_template_choices.json with:                                         #
+    #     "sound_wave_template": "dbpl_sound_shell"                                    #
+    ####################################################################################
 
     @property
     def rb_sw_dbpl_sound_shell(self):
@@ -382,8 +386,10 @@ class AnalyseIndividualTransition:
             * self.spectral_shape_sw_dbpl_sound_shell(f)
         )
 
-    # Shared helpers for the 2022 semi-analytic sound-wave and collision templates.
-    # Paper: https://arxiv.org/abs/2208.11697
+    ####################################################################################
+    # Shared helpers for the 2022 semi-analytic sound-wave and collision templates.    #
+    # Paper: https://arxiv.org/abs/2208.11697                                          #
+    ####################################################################################
 
     def _peak_frequency_general_semi_analytic_2022(self, A):
         """
@@ -399,10 +405,12 @@ class AnalyseIndividualTransition:
     def _spectral_shape_general_semi_analytic_2022(self, f, x, a, b, c):
         return (a + b) ** c / (b * x ** (-a / c) + a * x ** (b / c)) ** c
 
-    # Sound waves: semi-analytic fit.
-    # Paper: https://arxiv.org/abs/2208.11697
-    # Select in gw_template_choices.json with:
-    #     "sound_wave_template": "semi-analytic_2022"
+    ####################################################################################
+    # Sound waves: semi-analytic fit.                                                  #
+    # Paper: https://arxiv.org/abs/2208.11697                                          #
+    # Select in gw_template_choices.json with:                                         #
+    #     "sound_wave_template": "semi-analytic_2022"                                  #
+    ####################################################################################
 
     @property
     def peak_frequency_sw_semi_analytic_2022(self):
@@ -447,10 +455,12 @@ class AnalyseIndividualTransition:
             * self.spectral_shape_sw_semi_analytic_2022(f)
         )
     
-    # Sound waves: expanding-universe sound-shell simulation fit.
-    # Paper: https://arxiv.org/abs/2409.03651
-    # Select in gw_template_choices.json with:
-    #     "sound_wave_template": "higgsless_2024"
+    ####################################################################################
+    # Sound waves: expanding-universe sound-shell simulation fit.                      #
+    # Paper: https://arxiv.org/abs/2409.03651                                          #
+    # Select in gw_template_choices.json with:                                         #
+    #     "sound_wave_template": "higgsless_2024"                                      #
+    ####################################################################################
 
     @property
     def peak_amplitude_sw_higgsless_2024(self) -> float:
@@ -612,10 +622,12 @@ class AnalyseIndividualTransition:
         n3 = -3.0
         return self.peak_amplitude_sw_higgsless_2024 * self.spectral_shape_sw_higgsless_2024(f, k1, k2, n3)
 
-    # Turbulence: analytic broken-power-law template.
-    # Paper: https://arxiv.org/abs/0909.0622
-    # Select in gw_template_choices.json with:
-    #     "turbulence_template": "analytic_2009"
+    ####################################################################################
+    # Turbulence: analytic broken-power-law template.                                  #
+    # Paper: https://arxiv.org/abs/0909.0622                                           #
+    # Select in gw_template_choices.json with:                                         #
+    #     "turbulence_template": "analytic_2009"                                       #
+    ####################################################################################
 
     @property
     def peak_frequency_turb_analytic_2009(self):
@@ -661,10 +673,12 @@ class AnalyseIndividualTransition:
             * self.spectral_shape_turb_analytic_2009(f)
         )
 
-    # Bubble collisions: semi-analytic fit.
-    # Paper: https://arxiv.org/abs/2208.11697
-    # Select in gw_template_choices.json with:
-    #     "collision_template": "semi-analytic_2022"
+    ####################################################################################
+    # Bubble collisions: semi-analytic fit.                                            #
+    # Paper: https://arxiv.org/abs/2208.11697                                          #
+    # Select in gw_template_choices.json with:                                         #
+    #     "collision_template": "semi-analytic_2022"                                   #
+    ####################################################################################
 
     @property
     def peak_frequency_coll_semi_analytic_2022(self):
@@ -718,7 +732,9 @@ class AnalyseIndividualTransition:
             * self.spectral_shape_coll_semi_analytic_2022(f)
         )
 
-    # Template dispatch
+    ####################################################################################
+    # Template dispatch                                                                #
+    ####################################################################################
 
     def gw_sw(self, f):
         if self.sound_wave_template is None:
