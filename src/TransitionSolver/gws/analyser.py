@@ -247,7 +247,7 @@ class AnalyseIndividualTransition:
         )
 
     ####################################################################################
-    # Sound waves: single generalized broken power law from lattice simulations.       #
+    # Sound waves: single broken power law fit from lattice simulations.       #
     # Paper: https://arxiv.org/abs/1704.05871                                          #
     # Select in gw_template_choices.json with:                                         #
     #     "sound_wave_template": "sgbp_lattice_2017"                                   #
@@ -456,7 +456,7 @@ class AnalyseIndividualTransition:
         )
     
     ####################################################################################
-    # Sound waves: expanding-universe sound-shell simulation fit.                      #
+    # Sound waves: double broken power law fit to Higgsless fluid simulations.         #
     # Paper: https://arxiv.org/abs/2409.03651                                          #
     # Select in gw_template_choices.json with:                                         #
     #     "sound_wave_template": "higgsless_2024"                                      #
@@ -469,6 +469,9 @@ class AnalyseIndividualTransition:
         Parameters from https://arxiv.org/abs/2409.03651
         OMEGA_SW: eq.4.12
         S: eq.5.4
+        Cosmic expansion correction factor to the flat space-time simulation results
+        is calculated using the paper's proxy for the integrated kinetic energy source
+        rather than using the class's general upsilon factor.
         """
         OMEGA_SW = 3.11e-2
         S = 0.84
