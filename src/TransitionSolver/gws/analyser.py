@@ -94,13 +94,13 @@ class AnalyseIndividualTransition:
         )
 
     @cached_property
-    def hydro_transition_temp_Tf(self):
+    def hydro_Tf(self):
         """Calculate completion hydrodynamics on first access."""
         return hydrodynamics.make_hydro_vars(
             self.from_phase,
             self.to_phase,
             self.potential,
-            self.transition_temp_Tf,
+            self.completion_temp_Tf,
             self._ground_state_energy_density,
         )
 
@@ -109,7 +109,7 @@ class AnalyseIndividualTransition:
         return self.transition_report["T_p"]
 
     @property
-    def transition_temp_Tf(self) -> float:
+    def completion_temp_Tf(self) -> float:
         return self.transition_report["T_f"]
 
     @cached_property
@@ -470,7 +470,7 @@ class AnalyseIndividualTransition:
         report = self.transition_report
 
         if report.get("T_f") is not None:
-            hubble_f = self.hydro_transition_temp_Tf.hubble_constant
+            hubble_f = self.hydro_Tf.hubble_constant
             length_f = self.length_scale_Tf
         else:
             key = "bubble_separation" if self.use_bubble_sep else "bubble_radius"
