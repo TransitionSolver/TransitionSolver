@@ -123,7 +123,7 @@ def test_higgsless_2024_expanding_time_integral():
     )
     transition = analyser.gws["1"]
     hubble_p = transition.hydro_transition_temp.hubble_constant
-    hubble_f = transition.hydro_transition_temp_Tf.hubble_constant
+    hubble_f = transition.hydro_Tf.hubble_constant
     beta_f = (
         (8 * np.pi) ** (1 / 3)
         * transition.bubble_wall_velocity
