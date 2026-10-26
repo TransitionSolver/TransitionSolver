@@ -989,7 +989,7 @@ class TransitionAnalyser:
                     self.update_after_vac(
                         # for i >= 3
                         integrator_true_vac_vol.data[-1],
-                        T[-1],
+                        T[i],
                         dT,
                         -1,
                     )
