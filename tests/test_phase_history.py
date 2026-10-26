@@ -114,6 +114,17 @@ def test_phase_history_pt_action(generate_baseline, name):
         np.testing.assert_allclose(
             transition["bubble_density"][1:], density, rtol=1e-9, atol=0,
         )
+        bubble_count_integrand = (
+            np.asarray(transition["Pf"]) * transition["gamma"]
+            / (temperature * np.asarray(transition["H"])**4)
+        )
+        bubble_count = np.cumsum(
+            0.5 * step
+            * (bubble_count_integrand[:-1] + bubble_count_integrand[1:])
+        )
+        np.testing.assert_allclose(
+            transition["bubble_num_bar"][1:], bubble_count, rtol=1e-9, atol=0,
+        )
         np.testing.assert_allclose(
             transition["deriv_physical_volume"][1:],
             3 - temperature[1:] * np.diff(transition["vol_ext"]) / step,
