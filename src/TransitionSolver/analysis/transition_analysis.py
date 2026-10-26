@@ -702,8 +702,8 @@ class TransitionAnalyser:
             + 0.5
             * dT
             * (
-                self.properties.bubble_num_integrand[-1] * self.properties.Pf[-1]
-                + self.properties.bubble_num_integrand[-2] * self.properties.Pf[-2]
+                self.properties.bubble_num_integrand[j] * self.properties.Pf[-1]
+                + self.properties.bubble_num_integrand[j - 1] * self.properties.Pf[-2]
             )
         )
 
