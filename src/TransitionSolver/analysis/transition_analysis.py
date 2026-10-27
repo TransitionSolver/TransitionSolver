@@ -987,7 +987,7 @@ class TransitionAnalyser:
                 # The integration helper needs three data points before it can be initialised. However, we wait for an
                 # additional point so that we can immediately integrate and add it to the true vacuum fraction and false
                 # vacuum probability arrays as usual below.
-                if integrator_true_vac_vol is None and i == 3:
+                if integrator_true_vac_vol is None and len(self.action_sampler.subT) == 4:
                     integrator_true_vac_vol = CubedHelper(
                         [0, 1, 2],
                         outerFunction_trueVacVol,
@@ -995,8 +995,15 @@ class TransitionAnalyser:
                         sampleTransformationFunction,
                     )
 
-                    for j, d in enumerate(integrator_true_vac_vol.data[1:]):
-                        self.update_after_vac(d, T[j + 1], dT, j + 1)  # for i = 1, 2
+                    # Populate volume-dependent properties for history samples 1 and 2,
+                    # using subT samples since it can belong to earlier sets if T[i] .
+                    for j, d in enumerate(integrator_true_vac_vol.data[1:], start=1):
+                        self.update_after_vac(
+                            d,
+                            self.action_sampler.subT[j],
+                            self.action_sampler.subT[j - 1] - self.action_sampler.subT[j],
+                            j,
+                        )
 
                     # Do the same thing for the average bubble radius integration helper. This needs to be done after Pf
                     # has been filled with data because outerFunction_avgBubRad uses this data.
@@ -1018,12 +1025,12 @@ class TransitionAnalyser:
 
                     # Don't add the first element since we have already stored self.properties.vol_ext[0] = 0, Pf[0] = 1, etc.
                     for d in integrator_bubble_radius.data[1:]:
-                        self.update_after_rad(d)  # for i = 1, 2
+                        self.update_after_rad(d)  # history samples 1 and 2
 
                 if integrator_true_vac_vol is not None:
                     integrator_true_vac_vol.integrate(len(self.action_sampler.subT) - 1)
                     self.update_after_vac(
-                        # for i >= 3
+                        # From the fourth history sample onwards.
                         integrator_true_vac_vol.data[-1],
                         T[i],
                         dT,
@@ -1034,7 +1041,7 @@ class TransitionAnalyser:
                     )
                     self.update_after_rad(
                         integrator_bubble_radius.data[-1]
-                    )  # for i >= 3
+                    )
 
                 # Check if we have reached any milestones (e.g. unit nucleation, percolation, etc.).
 
