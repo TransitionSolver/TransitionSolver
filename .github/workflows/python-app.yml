@@ -24,15 +24,13 @@ jobs:
       uses: actions/setup-python@v6
       with:
         python-version: "3.13"
-    - name: Identify runner image
-      id: runner-image
-      run: |
-        echo "cache-version=apt-v2-${ImageOS:-unknown}-${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
     - name: Install apt dependencies
-      uses: awalsh128/cache-apt-pkgs-action@latest
-      with:
-        packages: git cmake libalglib-dev libnlopt-cxx-dev libeigen3-dev libboost-filesystem-dev libboost-log-dev libgsl-dev numdiff fonts-dejavu ghostscript
-        version: ${{ steps.runner-image.outputs.cache-version }}
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          git cmake libalglib-dev libnlopt-cxx-dev libeigen3-dev \
+          libboost-filesystem-dev libboost-log-dev libgsl-dev \
+          numdiff fonts-dejavu ghostscript
     - name: Install TransitionSolver and test dependencies
       run: python -m pip install --no-cache-dir .[test]
     - name: Lint with flake8
