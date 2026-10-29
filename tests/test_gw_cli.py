@@ -15,7 +15,11 @@ def test_valid_transition_ids_are_unique():
             {"valid": True, "transitions": ["0", "1"]},
             {"valid": True, "transitions": ["1"]},
             {"valid": False, "transitions": ["2"]},
-        ]
+        ],
+        "transitions": {
+            "0": {"decreasing_v_phys_p": True},
+            "1": {"decreasing_v_phys_p": True},
+        },
     }
 
     assert valid_transition_ids(report) == ["0", "1"]
@@ -43,8 +47,8 @@ def test_transitions_with_percolation_temperature_include_invalid_paths():
         ),
         (
             None,
-            "Global physical percolation and completion are therefore not "
-            "established",
+            "The results of the GW analysis here are then not reliable "
+            "and significant gravitational wave signals are not expected.",
         ),
     ],
 )

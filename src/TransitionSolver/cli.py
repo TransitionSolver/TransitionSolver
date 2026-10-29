@@ -104,14 +104,23 @@ def create_pt_settings(
     return pt_settings
 
 
-def valid_transition_ids(transition_report: dict) -> list[str]:
-    """Return unique transition IDs from valid cosmological paths."""
+def valid_transition_ids(
+    transition_report: dict,
+    include_all_transitions_with_perc_temp=False,
+) -> list[str]:
+    """Return GW-eligible transition IDs from valid cosmological paths."""
     return list(
         dict.fromkeys(
             str(transition_id)
             for path in transition_report["paths"]
             if path["valid"]
             for transition_id in path["transitions"]
+            if (
+                include_all_transitions_with_perc_temp
+                or transition_report["transitions"][str(transition_id)].get(
+                    "decreasing_v_phys_p"
+                ) is True
+            )
         )
     )
 
@@ -151,10 +160,12 @@ def transition_diagnostics(transition: dict) -> dict:
             warnings.append(
                 "The physical false-vacuum volume is not decreasing at T_p, "
                 "and no temperature at which it begins decreasing was found "
-                "in the analysed range. Global physical percolation and "
-                "completion are therefore not established. Local bubble "
-                "collisions are not excluded, but the assumptions underlying "
-                "this GW prediction may not be realised."
+                "in the analysed range. Cosmic expansion is at least keeping "
+                "pace with conversion of the false vacuum, so true percolation "
+                "and widespread bubble collisions are not expected in this "
+                "range. Global completion cannot occur while this persists. "
+                "The results of the GW analysis here are then not reliable "
+                "and significant gravitational wave signals are not expected."
             )
         else:
             warnings.append(
@@ -240,6 +251,7 @@ def analyse_and_save_gws(
                 potential,
                 transition_report,
                 phase_structure,
+                transition_ids=transition_ids,
             )
             gw_report = analyser.report(*detectors)
         gw_figure = analyser.plot(detectors=detectors, ptas=ptas, show=show)
@@ -500,7 +512,10 @@ def cli(
     if transitions_only:
         return
 
-    valid_ids = valid_transition_ids(tr_report)
+    valid_ids = valid_transition_ids(
+        tr_report,
+        include_all_transitions_with_perc_temp=include_all_transitions_with_perc_temp,
+    )
     transition_ids = valid_ids
     if include_all_transitions_with_perc_temp:
         transition_ids = transitions_with_percolation_temperature(tr_report)

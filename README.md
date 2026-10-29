@@ -96,9 +96,13 @@ ts --model RSS_BP --point input/RSS/RSS_BP1.txt \
 ts-gw RSS_BP1 --detector LISA
 ```
 
-The transition-only run saves a copy of the input point as `parameter_point.txt`, alongside `tr.json` and `phasetracer.txt`. `ts-gw` reconstructs the potential and phase structure from these files, without rerunning PhaseTracer or the transition analysis. By default it calculates GWs only for transitions on valid cosmological paths. It accepts the same detector, PTA, temperature-scan and temperature-uncertainty options used for the immediate GW calculation.
+The transition-only run saves a copy of the input point as `parameter_point.txt`, alongside `tr.json` and `phasetracer.txt`. `ts-gw` reconstructs the potential and phase structure from these files, without rerunning PhaseTracer or the transition analysis. It accepts the same detector, PTA, temperature-scan and temperature-uncertainty options used for the immediate GW calculation.
 
-To also calculate a diagnostic GW prediction for every transition that has a conventional percolation temperature $T_p$, use:
+## Transition selection and warnings
+
+The following rules apply equally to `ts` and `ts-gw`. By default, both calculate GWs only for transitions on valid cosmological paths whose physical false-vacuum volume is decreasing at $T_p$. Transitions must have both $T_p$ and $T_f$ to form these paths. The GW filter does not change the phase history or its completion criterion.
+
+Pass `--include-all-transitions-with-perc-temp` to either command to also calculate a diagnostic GW prediction for every transition that has a conventional percolation temperature $T_p$, including transitions without $T_f$ or whose physical false-vacuum volume is not decreasing at $T_p$. For example, when post-processing:
 
 ```bash
 ts-gw RSS_BP1 --include-all-transitions-with-perc-temp
@@ -111,7 +115,7 @@ ts --model RSS_BP --point input/RSS/RSS_new_BP4.txt \
   --include-all-transitions-with-perc-temp --folder RSS_new_BP4
 ```
 
-The existence of $T_p$, defined through a false-vacuum-fraction threshold, does not by itself establish true physical percolation in an expanding Universe. For these calculations, `ts` and `ts-gw` check the physical false-vacuum-volume diagnostics saved in `tr.json` and records warnings in both the terminal and GW JSON output.
+The existence of $T_p$, defined through a false-vacuum-fraction threshold, does not by itself establish true physical percolation in an expanding Universe. With `--include-all-transitions-with-perc-temp` enabled, both `ts` and `ts-gw` check the physical false-vacuum-volume diagnostics saved in `tr.json` and record warnings in both the terminal and GW JSON output.
 
 If the physical false-vacuum volume is not decreasing at $T_p$ but begins decreasing later, the warning is:
 
@@ -119,9 +123,9 @@ If the physical false-vacuum volume is not decreasing at $T_p$ but begins decrea
 
 If no temperature at which it begins decreasing was found in the analysed range, the warning is:
 
-> The physical false-vacuum volume is not decreasing at T_p, and no temperature at which it begins decreasing was found in the analysed range. Global physical percolation and completion are therefore not established. Local bubble collisions are not excluded, but the assumptions underlying this GW prediction may not be realised.
+> The physical false-vacuum volume is not decreasing at T_p, and no temperature at which it begins decreasing was found in the analysed range. Cosmic expansion is at least keeping pace with conversion of the false vacuum, so true percolation and widespread bubble collisions are not expected in this range. Global completion cannot occur while this persists. The results of the GW analysis here are then not reliable and significant gravitational wave signals are not expected.
 
-Transitions with $T_p$ but no completion temperature $T_f$ receive a standard GW calculation at $T_p$. A requested temperature-uncertainty scan is skipped for those transitions because the scan has no completion-temperature endpoint. Additional transitions that do not belong to valid paths are saved under `transitions_with_perc_temp/transition_<id>/`.
+With this option, transitions with $T_p$ but no completion temperature $T_f$ receive a standard GW calculation at $T_p$. A requested temperature-uncertainty scan is skipped for those transitions because the scan has no completion-temperature endpoint. Additional transitions that do not belong to valid paths are saved under `transitions_with_perc_temp/transition_<id>/`.
 
 A single temperature can be evaluated from Python with `analyser.transition_at_temperature(transition_id, temperature)`; temperatures must lie between $T_c$ and $T_f$.
 

@@ -123,7 +123,10 @@ def gw_cli(
     )
     potential = reconstruct_potential(results_folder, saved_options)
 
-    valid_ids = valid_transition_ids(transition_report)
+    valid_ids = valid_transition_ids(
+        transition_report,
+        include_all_transitions_with_perc_temp=include_all_transitions_with_perc_temp,
+    )
     transition_ids = valid_ids
     if include_all_transitions_with_perc_temp:
         transition_ids = transitions_with_percolation_temperature(transition_report)
