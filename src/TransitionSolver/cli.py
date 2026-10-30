@@ -31,6 +31,7 @@ from . import (
 )
 
 from .phasetracer import DEFAULT_NAMESPACE
+from .gws.analyser import extract_relevant_transitions
 
 
 console = Console()
@@ -109,39 +110,25 @@ def valid_transition_ids(
     include_all_transitions_with_perc_temp=False,
 ) -> list[str]:
     """Return GW-eligible transition IDs from valid cosmological paths."""
-    return list(
-        dict.fromkeys(
-            str(transition_id)
-            for path in transition_report["paths"]
-            if path["valid"]
-            for transition_id in path["transitions"]
-            if (
-                include_all_transitions_with_perc_temp
-                or transition_report["transitions"][str(transition_id)].get(
-                    "decreasing_v_phys_p"
-                ) is True
-            )
-        )
-    )
+    return [
+        str(transition_id)
+        for transition_id, transition in extract_relevant_transitions(
+            transition_report
+        ).items()
+        if include_all_transitions_with_perc_temp
+        or transition.get("decreasing_v_phys_p") is True
+    ]
 
 
 def transitions_with_percolation_temperature(
     transition_report: dict,
 ) -> list[str]:
-    """Return valid-path and conventional-percolation transition IDs."""
-    valid_ids = valid_transition_ids(transition_report)
-    return list(
-        dict.fromkeys(
-            valid_ids
-            + [
-                str(transition_id)
-                for transition_id, transition in transition_report[
-                    "transitions"
-                ].items()
-                if transition.get("T_p") is not None
-            ]
-        )
-    )
+    """Return every transition ID with a conventional percolation temperature."""
+    return [
+        str(transition_id)
+        for transition_id, transition in transition_report["transitions"].items()
+        if transition.get("T_p") is not None
+    ]
 
 
 def transition_diagnostics(transition: dict) -> dict:
