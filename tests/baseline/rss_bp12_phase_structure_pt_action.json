@@ -1267,6 +1267,8 @@
             "bubble_separation_p": 5566973094145106.0,
             "bubble_wall_velocity_p": 1.0,
             "error": "failed at T = 0.0: Action failed: T = 0.0. S3 = 6830.065529712093",
+            "idx_gamma": 159,
+            "T_gamma": 59.636492827935804,
             "size": 0,
             "bubble_num": [
                 0.0,
