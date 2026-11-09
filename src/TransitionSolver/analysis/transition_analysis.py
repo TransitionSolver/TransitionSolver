@@ -432,6 +432,45 @@ class LinearInterp:
         return z[-2] + self.factor * (z[-1] - z[-2])
 
 
+def estimate_action_minimum(temperature, action):
+    """Estimate the last bracketed S3/T minimum, falling back to a sample."""
+    temperature = np.asarray(temperature, dtype=float)
+    action = np.asarray(action, dtype=float)
+    valid = (
+        np.isfinite(temperature) & np.isfinite(action)
+        & (temperature > 0) & (action > 0)
+    )
+    indices = np.flatnonzero(valid)
+    if not len(indices):
+        return None, None
+    lowest = indices[np.argmin(action[valid])]
+    fallback = float(temperature[lowest]), float(action[lowest])
+    if len(temperature) < 3 or not np.all(valid[-3:]):
+        return fallback
+
+    t0, t1, t2 = temperature[-3:]
+    s0, s1, s2 = action[-3:]
+    if not (t0 > t1 > t2 and s1 <= s0 and s1 <= s2):
+        return fallback
+    # Centre and scale temperature; the samples need not be equally spaced.
+    scale = max(t0 - t1, t1 - t2)
+    x0, x2 = (t0 - t1) / scale, (t2 - t1) / scale
+    if min(x0, -x2) <= np.sqrt(np.finfo(float).eps):
+        return fallback
+    interp = BarycentricInterpolator([x0, 0, x2], [s0 - s1, 0, s2 - s1])
+    _, slope, curvature = interp.derivatives(0, der=3)
+    if not np.isfinite(slope) or not np.isfinite(curvature) or curvature <= 0:
+        return fallback
+    vertex = -slope / curvature
+    value = s1 + float(interp(vertex))
+    if not (
+        np.isfinite(vertex) and np.isfinite(value)
+        and x2 <= vertex <= x0 and 0 < value <= fallback[1]
+    ):
+        return fallback
+    return float(t1 + scale * vertex), float(value)
+
+
 class TransitionAnalyser:
     def __init__(
         self,
@@ -702,8 +741,8 @@ class TransitionAnalyser:
             + 0.5
             * dT
             * (
-                self.properties.bubble_num_integrand[-1] * self.properties.Pf[-1]
-                + self.properties.bubble_num_integrand[-2] * self.properties.Pf[-2]
+                self.properties.bubble_num_integrand[j] * self.properties.Pf[-1]
+                + self.properties.bubble_num_integrand[j - 1] * self.properties.Pf[-2]
             )
         )
 
@@ -862,18 +901,15 @@ class TransitionAnalyser:
             or (len(self.properties.Pf) < 3)
             or self.could_complete(maxSonTThreshold + toleranceSonT)
         ):
-            # If the action begins increasing with decreasing temperature.
+            # Report the first minimum detected as temperature decreases.
             if (
-                not self.properties.action_3d_min
+                self.properties.action_3d_min is None
                 and self.action_sampler.SonT[simIndex + 1]
                 > self.action_sampler.SonT[simIndex]
             ):
-                li = LinearInterp(
-                    self.action_sampler.SonT[: simIndex + 1],
-                    self.action_sampler.SonT[simIndex + 1],
+                self.properties.Tmin, self.properties.action_3d_min = estimate_action_minimum(
+                    self.action_sampler.T, self.action_sampler.SonT,
                 )
-                self.properties.Tmin = li(self.action_sampler.T)
-                self.properties.action_3d_min = li(self.action_sampler.SonT)
 
             num_samples = self.action_sampler.num_sub_samples(
                 minSonTThreshold, maxSonTThreshold
@@ -951,7 +987,7 @@ class TransitionAnalyser:
                 # The integration helper needs three data points before it can be initialised. However, we wait for an
                 # additional point so that we can immediately integrate and add it to the true vacuum fraction and false
                 # vacuum probability arrays as usual below.
-                if integrator_true_vac_vol is None and i == 3:
+                if integrator_true_vac_vol is None and len(self.action_sampler.subT) == 4:
                     integrator_true_vac_vol = CubedHelper(
                         [0, 1, 2],
                         outerFunction_trueVacVol,
@@ -959,8 +995,15 @@ class TransitionAnalyser:
                         sampleTransformationFunction,
                     )
 
-                    for j, d in enumerate(integrator_true_vac_vol.data[1:]):
-                        self.update_after_vac(d, T[j + 1], dT, j + 1)  # for i = 1, 2
+                    # Populate volume-dependent properties for history samples 1 and 2,
+                    # using subT samples since it can belong to earlier sets if T[i] .
+                    for j, d in enumerate(integrator_true_vac_vol.data[1:], start=1):
+                        self.update_after_vac(
+                            d,
+                            self.action_sampler.subT[j],
+                            self.action_sampler.subT[j - 1] - self.action_sampler.subT[j],
+                            j,
+                        )
 
                     # Do the same thing for the average bubble radius integration helper. This needs to be done after Pf
                     # has been filled with data because outerFunction_avgBubRad uses this data.
@@ -982,14 +1025,14 @@ class TransitionAnalyser:
 
                     # Don't add the first element since we have already stored self.properties.vol_ext[0] = 0, Pf[0] = 1, etc.
                     for d in integrator_bubble_radius.data[1:]:
-                        self.update_after_rad(d)  # for i = 1, 2
+                        self.update_after_rad(d)  # history samples 1 and 2
 
                 if integrator_true_vac_vol is not None:
                     integrator_true_vac_vol.integrate(len(self.action_sampler.subT) - 1)
                     self.update_after_vac(
-                        # for i >= 3
+                        # From the fourth history sample onwards.
                         integrator_true_vac_vol.data[-1],
-                        T[-1],
+                        T[i],
                         dT,
                         -1,
                     )
@@ -998,7 +1041,7 @@ class TransitionAnalyser:
                     )
                     self.update_after_rad(
                         integrator_bubble_radius.data[-1]
-                    )  # for i >= 3
+                    )
 
                 # Check if we have reached any milestones (e.g. unit nucleation, percolation, etc.).
 
