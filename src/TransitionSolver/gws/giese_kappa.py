@@ -79,9 +79,10 @@ def kappa_nu_model(cs2, al, vp, use_cj=True):
     w0 = wm
     # boundaries for v
     v0 = mu(vp, vm)
-    v1 = 0.
+    v1 = 1e-10
     # solve system of differential equations for \xi and w
-    sol = solve_ivp(dxi_w_dv, [v0, v1], [xi0, w0], vectorized=True, dense_output=True)
+    sol = solve_ivp(dxi_w_dv, [v0, v1], [xi0, w0], method="RK45", rtol=1e-7, atol=1e-10,
+                    vectorized=True, dense_output=True)
 
     def rho_fl_integrand(v):
         """
