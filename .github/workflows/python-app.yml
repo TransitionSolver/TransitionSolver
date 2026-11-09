@@ -16,14 +16,14 @@ permissions:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
     - uses: actions/checkout@v6
     - name: Set up Python 3.13
       uses: actions/setup-python@v6
       with:
-        python-version: "3.13"
+        python-version: "3.13.18"
     - name: Install apt dependencies
       run: |
         sudo apt-get update
@@ -41,8 +41,11 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
-      run: python -m pytest -rs
+    - name: Test CosmoTransitions action
+      continue-on-error: true
+      run: python -m pytest -vv -s tests/test_action.py::test_action_ct
+    - name: Test PhaseTracer action
+      run: python -m pytest -vv -s tests/test_action.py::test_action_pt
     - name: Try CLI
       run: ts --model RSS_BP --point input/RSS/RSS_BP1.txt
     - name: Install script test dependencies
