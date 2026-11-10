@@ -8,7 +8,7 @@ set(FETCHCONTENT_QUIET OFF)
 FetchContent_Declare(
   PhaseTracer
   GIT_REPOSITORY https://github.com/PhaseTracer/PhaseTracer
-  GIT_TAG master
+  GIT_TAG fix_symmetric_partner
   GIT_SHALLOW TRUE
   GIT_PROGRESS TRUE
 )
