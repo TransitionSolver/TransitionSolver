@@ -6,6 +6,7 @@ PhaseTracer interface using system calls
 import os
 import datetime
 from pathlib import Path
+import platform
 import subprocess
 import sys
 import tempfile
@@ -25,6 +26,11 @@ EP_INCLUDE = EP_HOME / "include" / "effectivepotential"
 EP_MODELS = EP_HOME / "include" / "models"
 CXX = "g++"
 CXX_STANDARD = "-std=c++17"
+EIGEN_ABI_ARGS = [
+    "-DEIGEN_DONT_VECTORIZE",
+    "-DEIGEN_MAX_ALIGN_BYTES=16",
+    "-DEIGEN_MAX_STATIC_ALIGN_BYTES=16",
+]
 TEMPLATE_CPP = os.path.join(CWD, "interface.cpp")
 PT_UNIT_TEST = PT_HOME / "bin" / "unit_tests"
 DEFAULT_NAMESPACE = ("EffectivePotential",)
@@ -69,6 +75,13 @@ def compiler_search_args():
     return args
 
 
+def compiler_abi_args():
+    """Match model executables to the PhaseTracer Eigen ABI on x86_64."""
+    if platform.machine().lower() in {"x86_64", "amd64"}:
+        return EIGEN_ABI_ARGS
+    return []
+
+
 def build_phase_tracer(
     model_header,
     model=None,
@@ -111,7 +124,7 @@ def build_phase_tracer(
         CWD,
         rpath(EP_HOME / "lib"),
         rpath(PT_HOME / "lib"),
-    ] + compiler_search_args() + LIBS
+    ] + compiler_abi_args() + compiler_search_args() + LIBS
 
     if model_lib:
         cmd.append(model_lib)
