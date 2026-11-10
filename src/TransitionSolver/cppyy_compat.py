@@ -27,12 +27,11 @@ MACOS_SDK_SEARCH_DIRS = (
         "/Developer/SDKs"
     ),
 )
-# Cling may not detect glibc's aligned malloc, so disable Eigen alignment in
-# JIT-compiled models rather than mixing its allocator with PhaseTracer's.
+# Use the same conservative Eigen ABI as the PhaseTracer build on x86_64.
 EIGEN_ABI_ARGS = (
     "-DEIGEN_DONT_VECTORIZE",
-    "-DEIGEN_MAX_ALIGN_BYTES=0",
-    "-DEIGEN_MAX_STATIC_ALIGN_BYTES=0",
+    "-DEIGEN_MAX_ALIGN_BYTES=16",
+    "-DEIGEN_MAX_STATIC_ALIGN_BYTES=16",
 )
 
 
@@ -82,8 +81,8 @@ def _configure_eigen_abi() -> None:
     options = args.split()
 
     required_values = {
-        "EIGEN_MAX_ALIGN_BYTES": "0",
-        "EIGEN_MAX_STATIC_ALIGN_BYTES": "0",
+        "EIGEN_MAX_ALIGN_BYTES": "16",
+        "EIGEN_MAX_STATIC_ALIGN_BYTES": "16",
     }
 
     for option in options:

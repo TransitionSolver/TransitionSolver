@@ -35,6 +35,9 @@ jobs:
       run: python -m pip install -vvv --no-cache-dir .[test]
     - name: Diagnose Eigen ABI
       run: |
+        echo "PhaseTracer CMake Eigen definitions:"
+        find "$HOME/.TransitionSolver" -name flags.make -print \
+          -exec grep -H "EIGEN_" {} \;
         python - <<'PY'
         import os
 
