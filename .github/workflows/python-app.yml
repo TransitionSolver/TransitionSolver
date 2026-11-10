@@ -32,7 +32,7 @@ jobs:
           libboost-filesystem-dev libboost-log-dev libgsl-dev \
           numdiff fonts-dejavu ghostscript
     - name: Install TransitionSolver and test dependencies
-      run: python -m pip install --no-cache-dir .[test]
+      run: python -m pip install -vvv --no-cache-dir .[test]
     - name: Lint with flake8
       continue-on-error: true
       run: |
