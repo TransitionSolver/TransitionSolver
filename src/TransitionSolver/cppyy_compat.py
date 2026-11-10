@@ -27,10 +27,12 @@ MACOS_SDK_SEARCH_DIRS = (
         "/Developer/SDKs"
     ),
 )
+# Cling may not detect glibc's aligned malloc, so disable Eigen alignment in
+# JIT-compiled models rather than mixing its allocator with PhaseTracer's.
 EIGEN_ABI_ARGS = (
     "-DEIGEN_DONT_VECTORIZE",
-    "-DEIGEN_MAX_ALIGN_BYTES=16",
-    "-DEIGEN_MAX_STATIC_ALIGN_BYTES=16",
+    "-DEIGEN_MAX_ALIGN_BYTES=0",
+    "-DEIGEN_MAX_STATIC_ALIGN_BYTES=0",
 )
 
 
@@ -72,7 +74,7 @@ def import_cppyy():
 
 
 def _configure_eigen_abi() -> None:
-    """Match cppyy's Eigen ABI to the generic PhaseTracer build."""
+    """Keep Eigen allocations safe across the cppyy/PhaseTracer boundary."""
     if platform.machine().lower() not in {"x86_64", "amd64"}:
         return
 
@@ -80,8 +82,8 @@ def _configure_eigen_abi() -> None:
     options = args.split()
 
     required_values = {
-        "EIGEN_MAX_ALIGN_BYTES": "16",
-        "EIGEN_MAX_STATIC_ALIGN_BYTES": "16",
+        "EIGEN_MAX_ALIGN_BYTES": "0",
+        "EIGEN_MAX_STATIC_ALIGN_BYTES": "0",
     }
 
     for option in options:
