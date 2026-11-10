@@ -33,6 +33,57 @@ jobs:
           numdiff fonts-dejavu ghostscript
     - name: Install TransitionSolver and test dependencies
       run: python -m pip install -vvv --no-cache-dir .[test]
+    - name: Diagnose Eigen ABI
+      run: |
+        python - <<'PY'
+        import os
+
+        from TransitionSolver import action
+
+        cppyy = action.cppyy
+        cppyy.cppdef(r"""
+        int ts_eigen_max_align() { return EIGEN_MAX_ALIGN_BYTES; }
+        int ts_eigen_static_align() { return EIGEN_MAX_STATIC_ALIGN_BYTES; }
+        int ts_eigen_default_align() { return EIGEN_DEFAULT_ALIGN_BYTES; }
+        int ts_eigen_malloc_aligned() { return EIGEN_MALLOC_ALREADY_ALIGNED; }
+        int ts_eigen_dont_vectorize() {
+        #ifdef EIGEN_DONT_VECTORIZE
+          return 1;
+        #else
+          return 0;
+        #endif
+        }
+        int ts_glibc_version() {
+        #ifdef __GLIBC__
+          return 100 * __GLIBC__ + __GLIBC_MINOR__;
+        #else
+          return -1;
+        #endif
+        }
+        """)
+        print("EXTRA_CLING_ARGS=", os.environ.get("EXTRA_CLING_ARGS"))
+        print("Cling EIGEN_MAX_ALIGN_BYTES=", cppyy.gbl.ts_eigen_max_align())
+        print("Cling EIGEN_MAX_STATIC_ALIGN_BYTES=", cppyy.gbl.ts_eigen_static_align())
+        print("Cling EIGEN_DEFAULT_ALIGN_BYTES=", cppyy.gbl.ts_eigen_default_align())
+        print("Cling EIGEN_MALLOC_ALREADY_ALIGNED=", cppyy.gbl.ts_eigen_malloc_aligned())
+        print("Cling EIGEN_DONT_VECTORIZE=", cppyy.gbl.ts_eigen_dont_vectorize())
+        print("Cling glibc version=", cppyy.gbl.ts_glibc_version())
+        PY
+        printf '%s\n' \
+          '#include <eigen3/Eigen/Core>' \
+          '#include <iostream>' \
+          'int main() {' \
+          'std::cout << "C++ EIGEN_MAX_ALIGN_BYTES=" << EIGEN_MAX_ALIGN_BYTES << "\\n";' \
+          'std::cout << "C++ EIGEN_MAX_STATIC_ALIGN_BYTES=" << EIGEN_MAX_STATIC_ALIGN_BYTES << "\\n";' \
+          'std::cout << "C++ EIGEN_DEFAULT_ALIGN_BYTES=" << EIGEN_DEFAULT_ALIGN_BYTES << "\\n";' \
+          'std::cout << "C++ EIGEN_MALLOC_ALREADY_ALIGNED=" << EIGEN_MALLOC_ALREADY_ALIGNED << "\\n";' \
+          '#ifdef EIGEN_DONT_VECTORIZE' \
+          'std::cout << "C++ EIGEN_DONT_VECTORIZE=1\\n";' \
+          '#else' \
+          'std::cout << "C++ EIGEN_DONT_VECTORIZE=0\\n";' \
+          '#endif' \
+          '}' | c++ -O3 -x c++ - -o /tmp/eigen_abi_probe
+        /tmp/eigen_abi_probe
     - name: Test PhaseTracer
       continue-on-error: true
       run: cd /home/runner/.TransitionSolver/phasetracer-src && mkdir build && cd build && cmake .. && make && ../bin/unit_tests
