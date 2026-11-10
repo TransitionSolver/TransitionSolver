@@ -36,8 +36,8 @@ jobs:
     - name: Diagnose Eigen ABI
       run: |
         echo "PhaseTracer CMake Eigen definitions:"
-        find "$HOME/.TransitionSolver" -name flags.make -print \
-          -exec grep -H "EIGEN_" {} \;
+        find "$HOME/.TransitionSolver" -name build.ninja -print \
+          -exec grep -m 3 -H "EIGEN_" {} \;
         python - <<'PY'
         import os
 
@@ -89,7 +89,7 @@ jobs:
         /tmp/eigen_abi_probe
     - name: Test PhaseTracer
       continue-on-error: true
-      run: cd /home/runner/.TransitionSolver/phasetracer-src && mkdir build && cd build && cmake .. && make && ../bin/unit_tests
+      run: /home/runner/.TransitionSolver/phasetracer-src/bin/unit_tests
     - name: Lint with flake8
       continue-on-error: true
       run: |
