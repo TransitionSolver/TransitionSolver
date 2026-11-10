@@ -27,7 +27,6 @@ EP_MODELS = EP_HOME / "include" / "models"
 CXX = "g++"
 CXX_STANDARD = "-std=c++17"
 EIGEN_ABI_ARGS = [
-    "-DEIGEN_DONT_VECTORIZE",
     "-DEIGEN_MAX_ALIGN_BYTES=16",
     "-DEIGEN_MAX_STATIC_ALIGN_BYTES=16",
 ]

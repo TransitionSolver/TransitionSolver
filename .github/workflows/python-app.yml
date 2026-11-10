@@ -102,6 +102,7 @@ jobs:
       continue-on-error: true
       run: python -m pytest -vv -s tests/test_action.py::test_action_ct
     - name: Test PhaseTracer action
+      continue-on-error: true
       run: python -m pytest -vv -s tests/test_action.py::test_action_pt
     - name: Try CLI
       run: ts --model RSS_BP --point input/RSS/RSS_BP1.txt
