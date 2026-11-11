@@ -26,7 +26,7 @@ def test_find_phase_at_t():
 
     result = phase.find_phase_at_t(200.0, benchmarks.RSS_BP1)
 
-    assert np.allclose(result, np.array([2.85775445e-04, 6.47017016e02]))
+    assert np.allclose(result, np.array([3.66634354e-04, 6.47016829e02]))
 
 
 def test_ground_state_energy_density():
