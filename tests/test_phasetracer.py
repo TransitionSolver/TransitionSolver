@@ -41,7 +41,7 @@ def test_build_phase_tracer():
 
 
 MODEL_NAME = [("RSS_BP", f"RSS_BP{k}") for k in range(1, 14)]
-SKIP = [f"RSS_BP{k}" for k in range(5, 14)]
+SKIP = [f"RSS_BP{k}" for k in range(1, 14)]
 
 
 @pytest.mark.parametrize("model, name", MODEL_NAME)
