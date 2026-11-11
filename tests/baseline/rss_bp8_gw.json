@@ -1,43 +1,43 @@
 {
     "0": {
-        "Peak amplitude (sound waves)": 4.253606259310245e-27,
+        "Peak amplitude (sound waves)": 4.2529572790425954e-27,
         "Peak frequency (sound waves)": 0.5426800074820158,
         "Bubble separation break frequency (sound waves)": 0.22942682932359637,
-        "Peak amplitude (turbulence)": 1.4235412235717797e-29,
+        "Peak amplitude (turbulence)": 1.4233506732706308e-29,
         "Peak frequency (turbulence)": 1.5498904770505044,
         "Peak amplitude (collisions)": 0.0,
         "Peak frequency (collisions)": 0.0,
         "Signal-to-Noise Ratio": {
-            "LISA --- Analytic": 2.225197148201687e-18
+            "LISA --- Analytic": 2.2248585881953297e-18
         },
         "Bubble wall velocity": 1.0,
         "Transition temperature": 170.4594703558562,
         "Redshift temperature": 170.47853056043218,
-        "Kinetic energy fraction": 1.770235165799097e-08,
-        "Upsilon": 0.31212302036254824,
+        "Kinetic energy fraction": 1.7700771905730912e-08,
+        "Upsilon": 0.3121311056750099,
         "Length scale": 1576516288.0464292
     },
     "2": {
-        "Peak amplitude (sound waves)": 5.918633400833112e-14,
-        "Peak frequency (sound waves)": 0.0015227338263585767,
+        "Peak amplitude (sound waves)": 5.918684019733735e-14,
+        "Peak frequency (sound waves)": 0.0015227338263585765,
         "Bubble separation break frequency (sound waves)": 0.0006444612660965318,
-        "Peak amplitude (turbulence)": 1.3610999749288616e-16,
+        "Peak amplitude (turbulence)": 1.3611110004101397e-16,
         "Peak frequency (turbulence)": 0.00434891763841889,
         "Peak amplitude (collisions)": 0.0,
         "Peak frequency (collisions)": 0.0,
         "Signal-to-Noise Ratio": {
-            "LISA --- Analytic": 2.195684012018546
+            "LISA --- Analytic": 2.1957027882957196
         },
         "Bubble wall velocity": 1.0,
         "Transition temperature": 81.78059919765671,
         "Redshift temperature": 83.3271252313532,
-        "Kinetic energy fraction": 0.00813289686283953,
-        "Upsilon": 0.11610306406535709,
+        "Kinetic energy fraction": 0.008132940782699785,
+        "Upsilon": 0.11610280305569987,
         "Length scale": 1166068847261.507
     },
     "Combined": {
         "Signal-to-Noise Ratio": {
-            "LISA --- Analytic": 2.195684012018546
+            "LISA --- Analytic": 2.1957027882957196
         }
     }
 }
