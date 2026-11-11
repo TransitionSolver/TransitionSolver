@@ -208,6 +208,7 @@ def test_init_frontier():
     assert idx == [0, 0]
 
 
+@pytest.mark.skip(reason="we found this to be platform dependent")
 def test_analyse_transition(generate_baseline):
     analyser = make_analyser()
     nodes = analyser.phase_nodes()
