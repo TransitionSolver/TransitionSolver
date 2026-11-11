@@ -31,7 +31,11 @@ from . import (
 )
 
 from .phasetracer import DEFAULT_NAMESPACE
-from .gws.analyser import extract_relevant_transitions
+from .gws.analyser import (
+    transition_diagnostics,
+    transitions_with_percolation_temperature,
+    valid_transition_ids,
+)
 
 
 console = Console()
@@ -103,77 +107,6 @@ def create_pt_settings(
     for settings in [point_settings, *other_settings]:
         pt_settings = deep_merge(pt_settings, settings)
     return pt_settings
-
-
-def valid_transition_ids(
-    transition_report: dict,
-    include_all_transitions_with_perc_temp=False,
-) -> list[str]:
-    """Return GW-eligible transition IDs from valid cosmological paths."""
-    return [
-        str(transition_id)
-        for transition_id, transition in extract_relevant_transitions(
-            transition_report
-        ).items()
-        if include_all_transitions_with_perc_temp
-        or transition.get("decreasing_v_phys_p") is True
-    ]
-
-
-def transitions_with_percolation_temperature(
-    transition_report: dict,
-) -> list[str]:
-    """Return every transition ID with a conventional percolation temperature."""
-    return [
-        str(transition_id)
-        for transition_id, transition in transition_report["transitions"].items()
-        if transition.get("T_p") is not None
-    ]
-
-
-def transition_diagnostics(transition: dict) -> dict:
-    """Describe completion and physical-volume checks at percolation."""
-    warnings = []
-    if transition.get("T_f") is None:
-        warnings.append(
-            "This transition has no completion temperature and does not reach "
-            "the specified completion threshold in the analysed range."
-        )
-
-    decreasing_at_percolation = transition.get("decreasing_v_phys_p")
-    decreasing_temperature = transition.get("T_decreasing_v_phys")
-    if decreasing_at_percolation is False:
-        if decreasing_temperature is None:
-            warnings.append(
-                "The physical false-vacuum volume is not decreasing at T_p, "
-                "and no temperature at which it begins decreasing was found "
-                "in the analysed range. Cosmic expansion is at least keeping "
-                "pace with conversion of the false vacuum, so true percolation "
-                "and widespread bubble collisions are not expected in this "
-                "range. Global completion cannot occur while this persists. "
-                "The results of the GW analysis here are then not reliable "
-                "and significant gravitational wave signals are not expected."
-            )
-        else:
-            warnings.append(
-                "The physical false-vacuum volume is not decreasing at T_p. "
-                "Cosmic expansion may therefore prevent true percolation, "
-                "where bubbles collide across space, making significant GW "
-                "production questionable. The physical false-vacuum volume "
-                "does, however, begin decreasing later in the analysed "
-                "evolution, and this could be investigated in more detail."
-            )
-
-    return {
-        "Completion temperature exists": transition.get("T_f") is not None,
-        "Physical false-vacuum volume decreasing at T_p": (
-            decreasing_at_percolation
-        ),
-        "Temperature where physical false-vacuum volume begins decreasing": (
-            decreasing_temperature
-        ),
-        "Warnings": warnings,
-    }
 
 
 def analyse_and_save_gws(

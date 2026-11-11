@@ -12,6 +12,8 @@ from .cli import (
     LEVELS,
     PTAS,
     analyse_and_save_gws,
+)
+from .gws.analyser import (
     transitions_with_percolation_temperature,
     valid_transition_ids,
 )

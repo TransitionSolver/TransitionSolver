@@ -2,7 +2,7 @@
 
 import pytest
 
-from TransitionSolver.cli import (
+from TransitionSolver.gws.analyser import (
     transition_diagnostics,
     transitions_with_percolation_temperature,
     valid_transition_ids,
