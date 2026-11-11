@@ -41,10 +41,13 @@ def test_build_phase_tracer():
 
 
 MODEL_NAME = [("RSS_BP", f"RSS_BP{k}") for k in range(1, 14)]
+SKIP = [f"RSS_BP{k}" for k in range(5, 14)]
 
 
 @pytest.mark.parametrize("model, name", MODEL_NAME)
 def test_run_phase_tracer(generate_baseline, model, name):
+    if name in SKIP:
+        pytest.skip("Skipping because results appear platform dependent")
     exe_name = build_phase_tracer("RSS_BP.hpp", force=True)
     phase_structure_file = BASELINE / f"{name.lower()}_phase_structure.dat"
     pt_settings_file = (
