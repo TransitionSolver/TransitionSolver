@@ -1,14 +1,14 @@
 {
     "0": {
         "Peak amplitude (sound waves)": 4.067671225686599e-27,
-        "Peak frequency (sound waves)": 0.5914126410762084,
+        "Peak frequency (sound waves)": 0.5914126410762083,
         "Bubble separation break frequency (sound waves)": 0.2500232365278244,
         "Peak amplitude (turbulence)": 1.3336045355729043e-29,
         "Peak frequency (turbulence)": 1.6890705531319572,
         "Peak amplitude (collisions)": 0.0,
         "Peak frequency (collisions)": 0.0,
         "Signal-to-Noise Ratio": {
-            "LISA --- Analytic": 1.6473552637203745e-18
+            "LISA --- Analytic": 1.6473552637203757e-18
         },
         "Bubble wall velocity": 1.0,
         "Transition temperature": 178.05491553888274,
@@ -19,7 +19,7 @@
     },
     "2": {
         "Peak amplitude (sound waves)": 3.979741051107977e-14,
-        "Peak frequency (sound waves)": 0.0007359799652118528,
+        "Peak frequency (sound waves)": 0.0007359799652118529,
         "Bubble separation break frequency (sound waves)": 0.0003116106662613528,
         "Peak amplitude (turbulence)": 1.219440972269233e-16,
         "Peak frequency (turbulence)": 0.0021019538653625713,
