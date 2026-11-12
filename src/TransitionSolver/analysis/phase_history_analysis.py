@@ -551,4 +551,5 @@ class PhaseHistoryAnalyser:
             Tmin,
             self.phase_structure.phases[transition_edge.transition.false_phase].T.min(),
             self.phase_structure.phases[transition_edge.transition.true_phase].T.min(),
+            self.potential.minimum_temperature,
         )

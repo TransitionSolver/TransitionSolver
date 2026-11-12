@@ -515,15 +515,14 @@ class TransitionAnalyser:
         if ground_state_energy_density is None:
             self.properties.assumes_radiation_domination = True
 
-        if self.Tmin is None:
-            # The minimum temperature for which both phases exist, and prevent analysis below the effective potential's
-            # cutoff temperature. Below this cutoff temperature, external effects may dramatically affect the phase
-            # transition and cannot be captured here in a generic way.
-            self.Tmin = max(
-                self.fromPhase.T[0],
-                self.toPhase.T[0],
-                self.potential.minimum_temperature,
-            )
+        # A supplied bound can restrict the transition further, but cannot
+        # override either phase's range or the potential's physical cutoff.
+        self.Tmin = max(
+            self.fromPhase.T[0],
+            self.toPhase.T[0],
+            self.potential.minimum_temperature,
+            0.0 if Tmin is None else Tmin,
+        )
 
         if self.Tmax is None:
             # The transition is not evaluated subcritically.
