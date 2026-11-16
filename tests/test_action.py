@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 
 from TransitionSolver import action, read_phase_tracer
+from TransitionSolver.analysis.transition_analysis import PD_DEFAULT_SETTINGS
 from TransitionSolver.benchmarks import RSS_BP1
 
 THIS = Path(os.path.dirname(os.path.abspath(__file__)))
@@ -34,6 +35,8 @@ def test_action_pt():
     false_vacuum = phase_structure.phases[0].find_phase_at_t(190.0, RSS_BP1)
     true_vacuum = phase_structure.phases[1].find_phase_at_t(190.0, RSS_BP1)
 
-    result = action.action_pt(RSS_BP1, 190.0, false_vacuum, true_vacuum)
+    result = action.action_pt(
+        RSS_BP1, 190.0, false_vacuum, true_vacuum, **PD_DEFAULT_SETTINGS
+    )
 
-    assert np.isclose(result, 2.1750111699808055)
+    assert np.isclose(result, 2.176271161030622)
