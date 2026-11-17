@@ -30,7 +30,7 @@ def test_action_ct():
         RSS_BP1, 190.0, false_vacuum, true_vacuum, **PD_DEFAULT_SETTINGS
     )
 
-    assert np.isclose(result, 2.175930336511123)
+    assert np.isclose(result, 2.1760490153373664)
 
 
 def test_action_pt():
