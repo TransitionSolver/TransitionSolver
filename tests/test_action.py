@@ -15,6 +15,9 @@ from TransitionSolver.benchmarks import RSS_BP1
 THIS = Path(os.path.dirname(os.path.abspath(__file__)))
 BASELINE = THIS / "baseline"
 
+FALSE_VACUUM_AT_190 = np.array([2.7185364877499842e-05, 645.4717470219503])
+TRUE_VACUUM_AT_190 = np.array([1.2354131737989441e-05, 632.050713823395])
+
 
 def test_action_ct():
     phase_structure = read_phase_tracer(
@@ -39,6 +42,22 @@ def test_action_pt():
 
     result = action.action_pt(
         RSS_BP1, 190.0, false_vacuum, true_vacuum, **PD_DEFAULT_SETTINGS
+    )
+
+    assert np.isclose(result, 2.176271161030622)
+
+
+def test_action_ct_fixed_minima():
+    result = action.action_ct(
+        RSS_BP1, 190.0, FALSE_VACUUM_AT_190, TRUE_VACUUM_AT_190, **PD_DEFAULT_SETTINGS
+    )
+
+    assert np.isclose(result, 2.176123533560369)
+
+
+def test_action_pt_fixed_minima():
+    result = action.action_pt(
+        RSS_BP1, 190.0, FALSE_VACUUM_AT_190, TRUE_VACUUM_AT_190, **PD_DEFAULT_SETTINGS
     )
 
     assert np.isclose(result, 2.176271161030622)
