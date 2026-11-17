@@ -55,8 +55,6 @@ def test_action_ct_fixed_minima():
     result = action.action_ct(
         RSS_BP1, 190.0, FALSE_VACUUM_AT_190, TRUE_VACUUM_AT_190, **PD_DEFAULT_SETTINGS
     )
-    print(" test_action_ct_fixed false_vacuum = ", false_vacuum)
-    print(" test_action_ct_fixed true_vacuum = ", true_vacuum)
     print(" test_action_ct_fixed result = ", result)
     assert np.isclose(result, 2.1759622127052163)
 
@@ -65,7 +63,5 @@ def test_action_pt_fixed_minima():
     result = action.action_pt(
         RSS_BP1, 190.0, FALSE_VACUUM_AT_190, TRUE_VACUUM_AT_190, **PD_DEFAULT_SETTINGS
     )
-    print(" test_action_pt_fixed false_vacuum = ", false_vacuum)
-    print(" test_action_pt_fixed true_vacuum = ", true_vacuum)
     print(" test_action_pt_fixed result = ", result)
     assert np.isclose(result, 2.176330531760892)
