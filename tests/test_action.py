@@ -18,7 +18,6 @@ BASELINE = THIS / "baseline"
 FALSE_VACUUM_AT_190 = np.array([2.7185364877499842e-05, 645.4717470219503])
 TRUE_VACUUM_AT_190 = np.array([1.2354131737989441e-05, 632.050713823395])
 
-
 def test_action_ct():
     phase_structure = read_phase_tracer(
         phase_tracer_file=BASELINE / "rss_bp1_phase_structure.dat"
@@ -29,8 +28,8 @@ def test_action_ct():
     result = action.action_ct(
         RSS_BP1, 190.0, false_vacuum, true_vacuum, **PD_DEFAULT_SETTINGS
     )
-    print(" test_action_ct false_vacuum = ", false_vacuum)
-    print(" test_action_ct true_vacuum = ", true_vacuum)
+    print(" test_action_ct false_vacuum = ", false_vacuum.tolist())
+    print(" test_action_ct true_vacuum = ", true_vacuum.tolist())
     print(" test_action_ct result = ", result)
     assert np.isclose(result, 2.1760490153373664)
 
@@ -45,8 +44,8 @@ def test_action_pt():
     result = action.action_pt(
         RSS_BP1, 190.0, false_vacuum, true_vacuum, **PD_DEFAULT_SETTINGS
     )
-    print(" test_action_pt false_vacuum = ", false_vacuum)
-    print(" test_action_pt true_vacuum = ", true_vacuum)
+    print(" test_action_pt false_vacuum = ", false_vacuum.tolist())
+    print(" test_action_pt true_vacuum = ", true_vacuum.tolist())
     print(" test_action_pt result = ", result)
     assert np.isclose(result, 2.1762490040416886)
 
@@ -58,7 +57,16 @@ def test_action_ct_fixed_minima():
     print(" test_action_ct_fixed result = ", result)
     assert np.isclose(result, 2.1759622127052163)
 
+def test_action_ct_fixed_minima_exact_gh_vacua():
+    false_vacuum_gh = np.array([1.34323347e-03, 6.45471841e+02])
+    true_vacuum_gh = np.array([9.79480729e-06, 6.32049988e+02])
+    result = action.action_ct(
+        RSS_BP1, 190.0, false_vacuum_gh, true_vacuum_gh, **PD_DEFAULT_SETTINGS
+    )
+    print(" test_action_ct_fixed result = ", result)
+    assert np.isclose(result, 2.1759622127052163)
 
+    
 def test_action_pt_fixed_minima():
     result = action.action_pt(
         RSS_BP1, 190.0, FALSE_VACUUM_AT_190, TRUE_VACUUM_AT_190, **PD_DEFAULT_SETTINGS
