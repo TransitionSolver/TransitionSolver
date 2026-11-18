@@ -58,8 +58,8 @@ def test_action_ct_fixed_minima():
     assert np.isclose(result, 2.1759622127052163)
 
 def test_action_ct_fixed_minima_exact_gh_vacua():
-    false_vacuum_gh = np.array([1.34323347e-03, 6.45471841e+02])
-    true_vacuum_gh = np.array([9.79480729e-06, 6.32049988e+02])
+    false_vacuum_gh = np.array([0.0013432334743053993, 645.471840707148])
+    true_vacuum_gh = np.array([9.794807288519328e-06, 632.0499875974773])
     result = action.action_ct(
         RSS_BP1, 190.0, false_vacuum_gh, true_vacuum_gh, **PD_DEFAULT_SETTINGS
     )
