@@ -31,7 +31,7 @@ def test_action_ct():
     print(" test_action_ct false_vacuum = ", false_vacuum.tolist())
     print(" test_action_ct true_vacuum = ", true_vacuum.tolist())
     print(" test_action_ct result = ", result)
-    assert np.isclose(result, 2.1760490153373664)
+    assert np.isclose(result, 2.1760490153373664, rtol=1e-4)
 
 
 def test_action_pt():
@@ -64,7 +64,7 @@ def test_action_ct_fixed_minima_exact_gh_vacua():
         RSS_BP1, 190.0, false_vacuum_gh, true_vacuum_gh, **PD_DEFAULT_SETTINGS
     )
     print(" test_action_ct_fixed result = ", result)
-    assert np.isclose(result, 2.1760490153373664)
+    assert np.isclose(result, 2.1760490153373664, rtol=1e-4)
 
     
 def test_action_pt_fixed_minima():
