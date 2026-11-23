@@ -31,7 +31,7 @@ FetchContent_Declare(
 set(OVERWRITE "$ENV{TS_INSTALL_OVERWRITE}")
 
 if(EXISTS "${FETCHCONTENT_BASE_DIR}/phasetracer-src" AND NOT OVERWRITE)
-  message(WARNING "PhaseTracer already seems to be present. Not modifying existing source files in '${FETCHCONTENT_BASE_DIR}/phasetracer-src/'")
+  message(WARNING "PhaseTracer already seems to be present at ${FETCHCONTENT_BASE_DIR}/phasetracer-src. The installer will build the existing source files without fetching updates. To use the latest PhaseTracer, update the source in that directory and rebuild.")
   add_subdirectory(
     "${FETCHCONTENT_BASE_DIR}/phasetracer-src/"
     "${FETCHCONTENT_BASE_DIR}/phasetracer-build/"
