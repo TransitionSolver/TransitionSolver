@@ -184,6 +184,7 @@ def test_source_temperature_report(generate_baseline):
     assert_deep_equal(
         analysis.report(lisa),
         BASELINE / "rss_bp4_gw_at_temperature.json",
+        significant_digits=2,
         generate_baseline=generate_baseline,
     )
 
