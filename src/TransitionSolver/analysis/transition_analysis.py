@@ -136,6 +136,13 @@ class ActionSampler:
         if len(self.T) > 0 and sampleData.T <= self.potential.minimum_temperature:
             return False, "Reached minimum temperature"
 
+        # Keep samples positive when the transition's lower bound is zero.
+        numerical_floor = (
+            1e-12 * self.potential.get_temperature_scale()
+            if self.Tmin == 0
+            else 0.0
+        )
+
         # Remove all stored data points whose temperature is larger than the last sampled temperature.
         while (
             len(self.lower_s_on_t_data) > 0
@@ -146,14 +153,18 @@ class ActionSampler:
         # Construct a quadratic BarycentricInterpolator interpolant from the three most recent action samples.
         interp = BarycentricInterpolator(self.T[-3:], self.SonT[-3:])
         # Extrapolate with the same step size as between the last two samples.
-        Tnew = max(self.Tmin * 1.001, 2 * self.T[-1] - self.T[-2])
+        Tnew = max(
+            self.Tmin * 1.001, 2 * self.T[-1] - self.T[-2], numerical_floor
+        )
         SonTnew = interp(Tnew)
 
         # If we are sampling the same point because we've reached Tmin, then the transition cannot progress any
         # further.
         Tmin_buffer = 1e-3
         numeric_tol = 1e-8
-        if self.T[-1] <= self.Tmin * (1.0 + Tmin_buffer) + numeric_tol:
+        if self.T[-1] <= max(
+            self.Tmin * (1.0 + Tmin_buffer), numerical_floor
+        ) + numeric_tol:
             logger.debug(
                 "Already sampled near Tmin ={}. Transition analysis halted",
                 sampleData.T,
@@ -268,6 +279,7 @@ class ActionSampler:
 
         Tnew = max(
             self.Tmin * 1.001,
+            numerical_floor,
             self.T[-1]
             - max(
                 stepFactor * (self.T[-2] - self.T[-1]),
