@@ -23,13 +23,16 @@ def gamma(v):
     return (1. - v**2)**-0.5
 
 
-def kappa_nu_model(cs2, al, vp, use_cj=True):
+def kappa_nu_model(cs2, al, vp, use_cj=True, rv1=1e-10):
     r"""
     Based on code from Appendix A of https://arxiv.org/abs/2004.06995
+
+    Boundary for velocity $v_1$ close to zero, but not quite at zero to avoid division by zero
 
     @param cs2  $c_s^2$, the speed of sound squared
     @param al $\alpha_\bar\theta$, the strength of PT
     @param vp $v_p \equiv \xi_w$, the bubble wall velocity
+    @param rv1 Velocity boundary value relative to $v_0$
 
     @returns $\kappa_{\bar\theta}$, the efficiency
     """
@@ -79,7 +82,7 @@ def kappa_nu_model(cs2, al, vp, use_cj=True):
     w0 = wm
     # boundaries for v
     v0 = mu(vp, vm)
-    v1 = 1e-10 * v0
+    v1 = rv1 * v0
     # solve system of differential equations for \xi and w
     sol = solve_ivp(dxi_w_dv, [v0, v1], [xi0, w0], method="RK45", rtol=1e-7, atol=1e-10,
                     vectorized=True, dense_output=True)
